@@ -1,0 +1,242 @@
+<app-page-header title="Dashboard" subtitle="Resumen de rendimiento de ventas">
+  <div class="inline-flex items-center gap-1 rounded-lg border border-border bg-card p-1">
+    @for (r of ranges; track r.id) {
+      <button
+        type="button"
+        (click)="setRange(r.id)"
+        class="h-8 px-3 rounded-md text-xs font-medium transition-colors"
+        [class.bg-foreground]="range() === r.id"
+        [class.text-background]="range() === r.id"
+        [class.text-muted-foreground]="range() !== r.id"
+        [class.hover:bg-accent]="range() !== r.id"
+      >
+        {{ r.label }}
+      </button>
+    }
+  </div>
+</app-page-header>
+
+@if (loading() && !data()) {
+  <div class="flex items-center gap-3 text-muted-foreground text-sm py-10 justify-center">
+    <ui-icon name="refresh-cw" [size]="16" />
+    Cargando dashboard…
+  </div>
+} @else if (errorMessage(); as msg) {
+  <div class="rounded-lg border border-danger/30 bg-danger-soft p-4 text-danger-fg text-sm">
+    {{ msg }}
+  </div>
+} @else if (data(); as d) {
+
+  <!-- KPI principales -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    <div class="bg-card border border-border rounded-xl p-6">
+      <header class="flex items-center gap-3 mb-3">
+        <div class="h-9 w-9 rounded-lg bg-success-soft text-success-fg ring-1 ring-success/20 flex items-center justify-center">
+          <ui-icon name="arrow-up-right" [size]="18" />
+        </div>
+        <span class="text-[12px] font-medium text-muted-foreground uppercase tracking-wide">
+          Total venta bruta
+        </span>
+      </header>
+      <p class="text-[40px] font-bold leading-tight text-foreground">
+        {{ totalBrutoMwh() | apoloEnergy:'value':'GWh' }}
+        <span class="text-2xl font-bold text-success-fg ml-2">GWh</span>
+      </p>
+      <p class="text-xs text-muted-foreground mt-2">
+        {{ totalBrutoMwh() | apoloMwh }}
+      </p>
+      <p class="text-[11px] text-muted-foreground/70 mt-1">
+        Consumo contratado · excluye finalizados y sin estado
+      </p>
+      <p class="text-xs text-muted-foreground mt-1">
+        Consumo real (12m):
+        <span class="text-foreground font-medium">
+          {{ totalBrutoAnualMwh() | apoloEnergy:'value':'GWh' }} GWh
+        </span>
+      </p>
+    </div>
+
+    <div class="bg-card border border-border rounded-xl p-6">
+      <header class="flex items-center gap-3 mb-3">
+        <div class="h-9 w-9 rounded-lg bg-info-soft text-info-fg ring-1 ring-info/20 flex items-center justify-center">
+          <ui-icon name="bolt" [size]="18" />
+        </div>
+        <span class="text-[12px] font-medium text-muted-foreground uppercase tracking-wide">
+          Activas
+        </span>
+      </header>
+      <p class="text-[40px] font-bold leading-tight text-foreground">
+        {{ totalActivasMwh() | apoloEnergy:'value':'GWh' }}
+        <span class="text-2xl font-bold text-info-fg ml-2">GWh</span>
+      </p>
+      <p class="text-xs text-muted-foreground mt-2">
+        {{ totalActivasMwh() | apoloMwh }}
+      </p>
+      <p class="text-xs text-muted-foreground mt-1">
+        <span class="text-foreground font-medium">{{ count(d, 'activo') | apoloInteger }}</span>
+        contratos activos · anual:
+        <span class="text-foreground font-medium">
+          {{ totalActivasAnualMwh() | apoloEnergy:'value':'GWh' }} GWh
+        </span>
+      </p>
+    </div>
+  </div>
+
+  <!-- KPI Strip por estado -->
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+    @for (item of statusStrip(); track item.status) {
+      <div class="bg-card border border-border rounded-xl p-4 relative overflow-hidden">
+        <div class="absolute inset-x-0 bottom-0 h-1" [style.background]="item.color"></div>
+        <div class="flex items-start justify-between gap-2 mb-3">
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {{ item.label }}
+          </span>
+          <span
+            class="h-7 w-7 rounded-md flex items-center justify-center"
+            [style.background]="item.colorSoft"
+            [style.color]="item.color"
+          >
+            <ui-icon [name]="item.icon" [size]="14" />
+          </span>
+        </div>
+        <p class="text-2xl font-bold text-foreground leading-tight">
+          {{ item.total | apoloInteger }}
+        </p>
+        <p class="text-[11px] text-muted-foreground mt-1">
+          <span class="font-medium">{{ item.mwh | apoloMwh }}</span>
+        </p>
+        <p class="text-[10px] text-muted-foreground/70 mt-0.5">
+          anual: {{ item.mwhAnual | apoloMwh }}
+        </p>
+      </div>
+    }
+  </div>
+
+  <!-- Resumen + Top delegaciones -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+    <section class="lg:col-span-1 bg-card border border-border rounded-xl p-5">
+      <header class="mb-4">
+        <h2 class="text-base font-semibold text-foreground">Top delegaciones</h2>
+        <p class="text-xs text-muted-foreground">Por número de contratos</p>
+      </header>
+      @if (d.topDelegaciones.length > 0) {
+        <ul class="space-y-2">
+          @for (item of d.topDelegaciones; track item.nombre; let i = $index) {
+            <li class="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-accent/40 transition-colors">
+              <span
+                class="h-6 w-6 rounded-full bg-primary/15 text-primary text-xs font-semibold flex items-center justify-center"
+              >
+                {{ i + 1 }}
+              </span>
+              <span class="flex-1 text-sm text-foreground truncate">{{ item.nombre }}</span>
+              <span class="text-xs font-medium text-muted-foreground">
+                {{ item.total | apoloInteger }}
+              </span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="text-sm text-muted-foreground">Sin delegaciones registradas.</p>
+      }
+    </section>
+
+    <section class="lg:col-span-2 bg-card border border-border rounded-xl p-5">
+      <header class="mb-4">
+        <h2 class="text-base font-semibold text-foreground">Resumen económico</h2>
+        <p class="text-xs text-muted-foreground">Márgenes y volumen acumulado</p>
+      </header>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="rounded-lg border border-border/60 bg-background/40 p-4">
+          <p class="text-xs text-muted-foreground uppercase tracking-wide">Margen bruto</p>
+          <p class="text-2xl font-bold text-foreground mt-1">
+            {{ d.margenes.totalBruto | apoloEuro }}
+          </p>
+        </div>
+        <div class="rounded-lg border border-border/60 bg-background/40 p-4">
+          <p class="text-xs text-muted-foreground uppercase tracking-wide">Margen neto</p>
+          <p class="text-2xl font-bold text-foreground mt-1">
+            {{ d.margenes.totalNeto | apoloEuro }}
+          </p>
+        </div>
+        <div class="rounded-lg border border-border/60 bg-background/40 p-4">
+          <p class="text-xs text-muted-foreground uppercase tracking-wide">Beneficio promedio</p>
+          <p class="text-2xl font-bold text-foreground mt-1">
+            {{ d.margenes.promedioMargenBeneficioPct | apoloDecimal }}%
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="rounded-lg border border-border/60 bg-background/30 p-3">
+          <p class="text-[11px] uppercase tracking-wider text-muted-foreground">Clientes</p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <span class="text-lg font-bold text-foreground">{{ d.clientes.total | apoloInteger }}</span>
+            <span class="text-xs text-success-fg">
+              {{ d.clientes.activos | apoloInteger }} activos
+            </span>
+          </div>
+        </div>
+        <div class="rounded-lg border border-border/60 bg-background/30 p-3">
+          <p class="text-[11px] uppercase tracking-wider text-muted-foreground">Suministros</p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <span class="text-lg font-bold text-foreground">{{ d.suministros.total | apoloInteger }}</span>
+            <span class="text-xs text-success-fg">
+              {{ d.suministros.activos | apoloInteger }} activos
+            </span>
+          </div>
+          <div class="flex items-center gap-2 mt-1.5 text-[11px]">
+            <span class="inline-flex items-center gap-1 text-warning-fg">
+              <span class="h-1.5 w-1.5 rounded-full bg-warning"></span>
+              E {{ d.suministros.electricidad | apoloInteger }}
+            </span>
+            <span class="inline-flex items-center gap-1 text-info-fg">
+              <span class="h-1.5 w-1.5 rounded-full bg-info"></span>
+              G {{ d.suministros.gas | apoloInteger }}
+            </span>
+          </div>
+        </div>
+        <div class="rounded-lg border border-border/60 bg-background/30 p-3">
+          <p class="text-[11px] uppercase tracking-wider text-muted-foreground">Contratos</p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <span class="text-lg font-bold text-foreground">{{ d.contratos.total | apoloInteger }}</span>
+            <span class="text-xs text-success-fg">
+              {{ count(d, 'activo') | apoloInteger }} activos
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Bar charts mensuales -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    <section class="bg-card border border-border rounded-xl p-5">
+      <header class="mb-4">
+        <h2 class="text-base font-semibold text-foreground">Consumo total venta bruta por mes</h2>
+        <p class="text-xs text-muted-foreground">Últimos 6 meses · todos los contratos</p>
+      </header>
+      <div class="pt-6">
+        <app-bar-chart [data]="brutoChartData()" color="#10b981" [height]="220" />
+      </div>
+    </section>
+
+    <section class="bg-card border border-border rounded-xl p-5">
+      <header class="mb-4">
+        <h2 class="text-base font-semibold text-foreground">Consumo total activo por mes</h2>
+        <p class="text-xs text-muted-foreground">Últimos 6 meses · contratos activos</p>
+      </header>
+      <div class="pt-6">
+        <app-bar-chart [data]="activoChartData()" color="#3b82f6" [height]="220" />
+      </div>
+    </section>
+  </div>
+
+  <!-- Dona Distribución de Estatus -->
+  <section class="bg-card border border-border rounded-xl p-5">
+    <header class="mb-4">
+      <h2 class="text-base font-semibold text-foreground">Distribución de estatus</h2>
+      <p class="text-xs text-muted-foreground">Contratos por estado · pasa el cursor para ver detalle</p>
+    </header>
+    <app-donut-chart [data]="donutData()" centerLabel="Total" />
+  </section>
+}

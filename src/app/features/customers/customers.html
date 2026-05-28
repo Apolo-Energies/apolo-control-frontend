@@ -1,0 +1,234 @@
+<app-page-header title="Clientes" subtitle="Listado y búsqueda de clientes registrados">
+  <button
+    type="button"
+    class="h-9 px-3 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+    (click)="openCreate()"
+  >
+    <ui-icon name="plus" [size]="14" />
+    Nuevo cliente
+  </button>
+</app-page-header>
+
+<section class="bg-card border border-border rounded-xl p-4 mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
+  <div class="flex items-center gap-2 flex-1 min-w-[240px] px-3 h-10 rounded-lg border border-border bg-background">
+    <ui-icon name="search" [size]="16" />
+    <input
+      type="search"
+      [(ngModel)]="search"
+      (ngModelChange)="onSearchChange()"
+      placeholder="Buscar por nombre, NIF o titular…"
+      class="bg-transparent outline-none text-sm flex-1 text-foreground placeholder:text-muted-foreground"
+    />
+  </div>
+
+  <label class="inline-flex items-center gap-2 text-sm text-foreground">
+    <input
+      type="checkbox"
+      [(ngModel)]="activeOnly"
+      (ngModelChange)="reload(0)"
+      class="h-4 w-4 rounded border-border accent-primary"
+    />
+    Solo activos
+  </label>
+</section>
+
+@if (errorMessage(); as msg) {
+  <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm mb-4">
+    {{ msg }}
+  </div>
+}
+
+@if (loading() && rows().length === 0) {
+  <app-table-skeleton [cols]="8" [rows]="8" />
+} @else {
+  <div class="relative bg-card border border-border rounded-xl overflow-hidden">
+    <app-loading-overlay [loading]="loading() && rows().length > 0" message="Actualizando…" />
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">Cliente</th>
+            <th class="px-4 py-3 text-left font-semibold">NIF</th>
+            <th class="px-4 py-3 text-left font-semibold">Grupo</th>
+            <th class="px-4 py-3 text-left font-semibold">Delegación</th>
+            <th class="px-4 py-3 text-left font-semibold">Contacto</th>
+            <th class="px-4 py-3 text-left font-semibold">Comercial</th>
+            <th class="px-4 py-3 text-left font-semibold">Estado</th>
+            <th class="px-4 py-3 text-right font-semibold">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          @for (row of rows(); track row.id) {
+            <tr class="hover:bg-accent/20 transition-colors">
+              <td class="px-4 py-3">
+                <p class="font-medium text-foreground">{{ row.nombre }}</p>
+                @if (row.email) {
+                  <p class="text-xs text-muted-foreground">{{ row.email }}</p>
+                }
+              </td>
+              <td class="px-4 py-3 font-mono text-xs text-foreground/80">
+                {{ text(row.nif) }}
+              </td>
+              <td class="px-4 py-3 text-foreground/80">{{ text(row.grupoNombre) }}</td>
+              <td class="px-4 py-3 text-foreground/80">{{ text(row.delegacionNombre) }}</td>
+              <td class="px-4 py-3">
+                @if (row.contacto) {
+                  <p class="text-foreground/80">{{ row.contacto }}</p>
+                }
+                @if (row.telefono || row.telefonoContacto) {
+                  <p class="text-xs text-muted-foreground">
+                    {{ row.telefono || row.telefonoContacto }}
+                  </p>
+                }
+                @if (!row.contacto && !row.telefono && !row.telefonoContacto) {
+                  —
+                }
+              </td>
+              <td class="px-4 py-3 text-foreground/80">{{ text(row.comercial) }}</td>
+              <td class="px-4 py-3">
+                <app-status-badge [tone]="row.activo ? 'success' : 'neutral'">
+                  {{ row.activo ? 'Activo' : 'Inactivo' }}
+                </app-status-badge>
+              </td>
+              <td class="px-4 py-3 text-right">
+                @if (row.activo) {
+                  <button
+                    type="button"
+                    (click)="confirmDelete(row)"
+                    class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-border text-danger-fg hover:bg-danger/10"
+                    aria-label="Dar de baja"
+                    title="Dar de baja"
+                  >
+                    <ui-icon name="trash" [size]="14" />
+                  </button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="8" class="px-4 py-10 text-center text-sm text-muted-foreground">
+                Sin clientes que coincidan con los filtros.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+<div class="mt-4">
+  <app-pagination
+    [page]="page()"
+    [pageSize]="size()"
+    [totalElements]="totalElements()"
+    [totalPages]="totalPages()"
+    (pageChange)="reload($event)"
+    (pageSizeChange)="onSizeChange($event)"
+  />
+</div>
+
+<app-form-dialog
+  [open]="modalOpen()"
+  title="Nuevo cliente"
+  subtitle="Registra un nuevo cliente en el sistema"
+  icon="users"
+  width="560px"
+  [saving]="submitting()"
+  [canSave]="form.valid"
+  saveLabel="Crear cliente"
+  [errorMessage]="formError()"
+  (cancel)="closeModal()"
+  (save)="submit()"
+>
+  <form [formGroup]="form" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <label class="flex flex-col gap-1.5 sm:col-span-2">
+      <span class="text-xs font-medium text-foreground/80">Nombre / Razón social</span>
+      <input
+        type="text"
+        formControlName="nombre"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">NIF</span>
+      <input
+        type="text"
+        formControlName="nif"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 font-mono"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Comercial</span>
+      <input
+        type="text"
+        formControlName="comercial"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Delegación</span>
+      <select
+        formControlName="delegacionId"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      >
+        <option value="">— Sin delegación —</option>
+        @for (b of branches(); track b.id) {
+          <option [value]="b.id">{{ b.nombre }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Grupo</span>
+      <select
+        formControlName="grupoId"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      >
+        <option value="">— Sin grupo —</option>
+        @for (g of groups(); track g.id) {
+          <option [value]="g.id">{{ g.nombre }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Contacto</span>
+      <input
+        type="text"
+        formControlName="contacto"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Teléfono</span>
+      <input
+        type="text"
+        formControlName="telefono"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5 sm:col-span-2">
+      <span class="text-xs font-medium text-foreground/80">Email</span>
+      <input
+        type="email"
+        formControlName="email"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="inline-flex items-center gap-2 text-sm sm:col-span-2">
+      <input
+        type="checkbox"
+        formControlName="activo"
+        class="h-4 w-4 rounded border-border accent-primary"
+      />
+      Cliente activo
+    </label>
+  </form>
+</app-form-dialog>

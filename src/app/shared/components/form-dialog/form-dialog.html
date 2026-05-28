@@ -1,0 +1,60 @@
+<p-dialog
+  [visible]="open()"
+  (visibleChange)="$event ? null : cancel.emit()"
+  [modal]="true"
+  [closable]="false"
+  [draggable]="false"
+  [resizable]="false"
+  [dismissableMask]="true"
+  styleClass="apolo-dialog"
+  [style]="{ width: width(), 'max-width': '94vw' }"
+>
+  <ng-template pTemplate="header">
+    <div class="flex items-center gap-3">
+      <div class="h-9 w-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
+        <ui-icon [name]="icon()" [size]="18" />
+      </div>
+      <div>
+        <h2 class="text-base font-semibold text-foreground">{{ title() }}</h2>
+        @if (subtitle()) {
+          <p class="text-xs text-muted-foreground">{{ subtitle() }}</p>
+        }
+      </div>
+    </div>
+  </ng-template>
+
+  <div class="pt-1">
+    <ng-content />
+
+    @if (errorMessage(); as msg) {
+      <div class="mt-4 rounded-lg border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger-fg">
+        {{ msg }}
+      </div>
+    }
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="flex items-center justify-end gap-2 w-full">
+      <button
+        type="button"
+        (click)="cancel.emit()"
+        class="h-9 px-3 rounded-lg border border-border text-sm text-foreground hover:bg-accent"
+      >
+        {{ cancelLabel() }}
+      </button>
+      <button
+        type="button"
+        (click)="save.emit()"
+        [disabled]="!canSave() || saving()"
+        class="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        @if (saving()) {
+          <ui-icon name="refresh-cw" [size]="14" />
+          Guardando…
+        } @else {
+          {{ saveLabel() }}
+        }
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>

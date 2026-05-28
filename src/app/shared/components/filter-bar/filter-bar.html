@@ -1,0 +1,25 @@
+<div class="flex flex-col lg:flex-row lg:items-center gap-3">
+  <div class="flex items-center gap-2 px-3 h-10 rounded-md bg-input border border-border flex-1 min-w-0 lg:max-w-md">
+    <ui-icon name="search" [size]="16" />
+    <input
+      type="text"
+      [placeholder]="searchPlaceholder()"
+      [value]="searchValue()"
+      (input)="onSearchInput($event)"
+      class="bg-transparent outline-none text-sm placeholder:text-muted-foreground flex-1 text-foreground min-w-0"
+    />
+    @if (searchValue()) {
+      <button
+        type="button"
+        class="text-muted-foreground hover:text-foreground"
+        (click)="searchChange.emit('')"
+        aria-label="Limpiar búsqueda"
+      >
+        <ui-icon name="x" [size]="14" />
+      </button>
+    }
+  </div>
+  <div class="flex flex-wrap items-center gap-2">
+    <ng-content />
+  </div>
+</div>

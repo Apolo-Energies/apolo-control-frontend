@@ -1,0 +1,21 @@
+<router-outlet />
+
+<!-- Toasts (notify.success/error/info/warn) -->
+<p-toast position="bottom-right" />
+
+<!-- Confirmaciones (confirm.ask) -->
+<p-confirmDialog
+  [breakpoints]="{ '960px': '85vw', '480px': '94vw' }"
+  [closable]="false"
+  [dismissableMask]="true"
+  styleClass="apolo-confirm"
+/>
+
+<!-- BrandLoader global (loading.start / loading.stop) -->
+@if (globalLoading.loading()) {
+  <app-brand-loader
+    [title]="globalLoading.title() ?? 'Procesando…'"
+    [description]="globalLoading.description()"
+    microcopy="Esto puede tardar unos segundos"
+  />
+}

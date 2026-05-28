@@ -1,0 +1,8 @@
+@keyframes lo-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.lo-fade {
+  animation: lo-fade-in 160ms ease-out;
+}

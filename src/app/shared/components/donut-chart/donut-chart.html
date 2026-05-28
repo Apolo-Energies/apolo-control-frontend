@@ -1,0 +1,64 @@
+@if (segments().length === 0) {
+  <p class="text-sm text-muted-foreground py-6 text-center">{{ emptyLabel() }}</p>
+} @else {
+  <div class="flex flex-col lg:flex-row items-center justify-center gap-8 py-2">
+    <!-- SVG donut -->
+    <div class="relative" (mouseleave)="onLeave()">
+      <svg viewBox="0 0 200 200" class="h-52 w-52 overflow-visible">
+        @for (seg of segments(); track seg.id) {
+          <path
+            [attr.d]="seg.pathD"
+            [attr.fill]="seg.color"
+            [style.opacity]="isDimmed(seg.id) ? 0.3 : 1"
+            [style.transform]="isHovered(seg.id) ? 'scale(1.04)' : 'scale(1)'"
+            style="transform-origin: 100px 100px; transition: all 0.2s ease;"
+            class="cursor-pointer"
+            (mouseenter)="onEnter(seg.id)"
+          />
+        }
+      </svg>
+
+      <!-- Center label -->
+      <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        @if (hoveredSegment(); as h) {
+          <span class="text-[10px] uppercase tracking-wider text-muted-foreground">{{ h.label }}</span>
+          <span class="text-2xl font-bold" [style.color]="h.color">{{ formatValue(h.value) }}</span>
+          <span class="text-xs text-muted-foreground">{{ h.pct }}%</span>
+        } @else {
+          <span class="text-[10px] uppercase tracking-wider text-muted-foreground">{{ centerLabel() }}</span>
+          <span class="text-2xl font-bold text-foreground">{{ formatValue(total()) }}</span>
+        }
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <ul class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm min-w-[320px]">
+      @for (seg of segments(); track seg.id) {
+        <li
+          class="flex items-center gap-2 px-2 py-1 rounded-md cursor-pointer transition-colors"
+          [class.bg-accent/30]="isHovered(seg.id)"
+          (mouseenter)="onEnter(seg.id)"
+          (mouseleave)="onLeave()"
+        >
+          <span
+            class="h-3 w-3 rounded-full shrink-0 transition-transform"
+            [style.background]="seg.color"
+            [style.transform]="isHovered(seg.id) ? 'scale(1.3)' : 'scale(1)'"
+          ></span>
+          <span
+            class="flex-1 transition-colors"
+            [class.text-foreground]="isHovered(seg.id)"
+            [class.font-medium]="isHovered(seg.id)"
+            [class.text-foreground/80]="!isHovered(seg.id)"
+          >
+            {{ seg.label }}
+          </span>
+          <span class="text-xs text-muted-foreground tabular-nums">
+            {{ formatValue(seg.value) }}
+            <span class="text-foreground/60">({{ seg.pct }}%)</span>
+          </span>
+        </li>
+      }
+    </ul>
+  </div>
+}

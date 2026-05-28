@@ -1,0 +1,17 @@
+<app-placeholder-page
+  title="Facturas Contabilidad"
+  subtitle="Facturas recibidas de proveedores"
+  icon="file-text"
+  [highlights]="[
+    { label: 'Pendiente de pago', value: '457,21 €' },
+    { label: 'Total pagado',     value: '101.045,09 €' },
+    { label: 'Vencidas sin pagar', value: 0 },
+    { label: 'Cobradas en cuenta', value: 2 }
+  ]"
+  [capabilities]="[
+    'Estados: Enviado a pago · Pagado · Cobrado en la cuenta',
+    'Filtros por proveedor, concepto y vencimiento',
+    'Marca de transferencia confirmada',
+    'Exportación a CSV'
+  ]"
+/>

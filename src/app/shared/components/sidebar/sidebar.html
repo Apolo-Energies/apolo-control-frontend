@@ -1,0 +1,99 @@
+<aside
+  class="h-full w-[260px] shrink-0 bg-card border-r border-border flex flex-col"
+  [ngClass]="{
+    'fixed inset-y-0 left-0 z-40 transition-transform duration-200': true,
+    'lg:relative lg:translate-x-0': true,
+    '-translate-x-full': !mobileOpen(),
+    'translate-x-0': mobileOpen()
+  }"
+>
+  <div class="px-5 h-16 flex items-center gap-3 border-b border-border/50">
+    <div class="h-9 w-9 rounded-lg bg-primary/15 ring-1 ring-primary/30 flex items-center justify-center">
+      <img
+        src="/apolo/isotipo_blanco.svg"
+        alt="Apolo"
+        class="h-6 w-6 object-contain"
+        draggable="false"
+      />
+    </div>
+    <div class="flex flex-col leading-tight">
+      <span class="text-foreground font-semibold tracking-tight">Apolo Control</span>
+      <span class="text-[11px] text-muted-foreground">Gestión integral</span>
+    </div>
+    <button
+      type="button"
+      class="ml-auto lg:hidden h-8 w-8 rounded-md text-muted-foreground hover:bg-accent flex items-center justify-center"
+      (click)="closeMobile.emit()"
+      aria-label="Cerrar menú"
+    >
+      <ui-icon name="x" [size]="18" />
+    </button>
+  </div>
+
+  <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+    @for (section of sections(); track $index) {
+      <div>
+        @if (section.title) {
+          <h3 class="px-3 mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+            {{ section.title }}
+          </h3>
+        }
+        <ul class="space-y-0.5">
+          @for (item of section.items; track item.url) {
+            <li>
+              <a
+                [routerLink]="item.url"
+                routerLinkActive="bg-accent/60 text-foreground"
+                [routerLinkActiveOptions]="{ exact: false }"
+                #rla="routerLinkActive"
+                class="group relative flex items-center gap-3 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-accent/40 hover:text-foreground transition-colors"
+              >
+                <span
+                  class="text-muted-foreground group-hover:text-foreground"
+                  [ngClass]="{ '!text-primary': rla.isActive }"
+                >
+                  <ui-icon [name]="item.icon" [size]="18" />
+                </span>
+                <span class="flex-1 truncate">{{ item.label }}</span>
+                @if (item.badge != null && item.badge !== '') {
+                  <span
+                    class="ml-auto inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 rounded-full text-[10px] font-semibold border"
+                    [ngClass]="{
+                      'bg-info-soft text-info-fg border-info/30': item.badgeTone === 'info' || !item.badgeTone,
+                      'bg-warning-soft text-warning-fg border-warning/30': item.badgeTone === 'warning',
+                      'bg-danger-soft text-danger-fg border-danger/30': item.badgeTone === 'danger'
+                    }"
+                  >
+                    {{ item.badge }}
+                  </span>
+                }
+                @if (rla.isActive) {
+                  <span class="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-primary"></span>
+                }
+              </a>
+            </li>
+          }
+        </ul>
+      </div>
+    }
+  </nav>
+
+  <div class="border-t border-border/50 p-3">
+    <button
+      type="button"
+      class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-danger-fg hover:bg-danger/10 hover:text-danger transition-colors"
+      (click)="logoutClick.emit()"
+    >
+      <ui-icon name="log-out" [size]="18" />
+      <span>Cerrar sesión</span>
+    </button>
+  </div>
+</aside>
+
+@if (mobileOpen()) {
+  <div
+    class="fixed inset-0 bg-black/50 z-30 lg:hidden"
+    (click)="closeMobile.emit()"
+    aria-hidden="true"
+  ></div>
+}

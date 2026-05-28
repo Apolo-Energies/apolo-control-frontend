@@ -1,0 +1,52 @@
+<div class="bg-card border border-border rounded-xl overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+        <tr>
+          @for (col of columns(); track col.key) {
+            <th
+              scope="col"
+              class="px-4 py-3 font-semibold whitespace-nowrap"
+              [style.width]="col.width || null"
+              [class.text-left]="col.align === 'left' || !col.align"
+              [class.text-right]="col.align === 'right'"
+              [class.text-center]="col.align === 'center'"
+            >
+              {{ col.header }}
+            </th>
+          }
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-border/40">
+        @for (row of rows(); track $index; let i = $index) {
+          <tr class="hover:bg-accent/20 transition-colors">
+            @for (col of columns(); track col.key) {
+              <td
+                class="px-4 py-3 align-middle"
+                [class.text-left]="col.align === 'left' || !col.align"
+                [class.text-right]="col.align === 'right'"
+                [class.text-center]="col.align === 'center'"
+                [class]="col.className || ''"
+              >
+                @let tpl = cellTemplate();
+                @if (tpl) {
+                  <ng-container
+                    *ngTemplateOutlet="tpl; context: { $implicit: row, column: col, index: i }"
+                  />
+                } @else {
+                  {{ getCell(row, col.key) }}
+                }
+              </td>
+            }
+          </tr>
+        } @empty {
+          <tr>
+            <td [attr.colspan]="columns().length" class="px-4 py-10 text-center text-sm text-muted-foreground">
+              Sin resultados
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

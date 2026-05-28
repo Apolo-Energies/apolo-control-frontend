@@ -1,0 +1,83 @@
+<header
+  class="h-16 shrink-0 px-4 lg:px-6 bg-card/40 backdrop-blur-sm border-b border-border flex items-center gap-3"
+>
+  <button
+    type="button"
+    class="lg:hidden h-9 w-9 rounded-md text-muted-foreground hover:bg-accent flex items-center justify-center"
+    (click)="sidebarToggle.emit()"
+    aria-label="Abrir menú"
+  >
+    <ui-icon name="menu" [size]="20" />
+  </button>
+
+  <div class="hidden md:flex items-center gap-2 px-3 h-9 rounded-md bg-input border border-border w-[320px]">
+    <ui-icon name="search" [size]="16" />
+    <input
+      type="text"
+      placeholder="Buscar cliente, CUPS, contrato..."
+      class="bg-transparent outline-none text-sm placeholder:text-muted-foreground flex-1 text-foreground"
+    />
+    <kbd class="hidden lg:inline text-[10px] text-muted-foreground border border-border rounded px-1.5 py-0.5">⌘K</kbd>
+  </div>
+
+  <div class="ml-auto flex items-center gap-2">
+    <button
+      type="button"
+      class="h-9 w-9 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground flex items-center justify-center transition-colors"
+      (click)="theme.toggle()"
+      [attr.aria-label]="theme.isDark() ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
+      [title]="theme.isDark() ? 'Modo claro' : 'Modo oscuro'"
+    >
+      <ui-icon [name]="theme.isDark() ? 'sun' : 'moon'" [size]="18" />
+    </button>
+
+    <button
+      type="button"
+      class="relative h-9 w-9 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground flex items-center justify-center"
+      aria-label="Notificaciones"
+    >
+      <ui-icon name="bell" [size]="18" />
+    </button>
+
+    <div class="h-7 w-px bg-border mx-1"></div>
+
+    <div class="relative">
+      <button
+        type="button"
+        (click)="menuOpen.update((v) => !v)"
+        class="flex items-center gap-2 h-9 px-2 rounded-md hover:bg-accent transition-colors"
+      >
+        <span
+          class="h-7 w-7 rounded-full bg-primary/15 ring-1 ring-primary/30 text-primary flex items-center justify-center text-xs font-semibold"
+        >
+          {{ initials() }}
+        </span>
+        <div class="hidden sm:flex flex-col items-start leading-tight">
+          <span class="text-xs font-medium text-foreground">{{ userName() }}</span>
+          <span class="text-[10px] text-muted-foreground">{{ userRole() }}</span>
+        </div>
+        <ui-icon name="chevron-down" [size]="14" />
+      </button>
+
+      @if (menuOpen()) {
+        <div
+          class="absolute right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-40"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="px-3 py-2 border-b border-border/60">
+            <p class="text-sm font-medium text-foreground truncate">{{ userName() }}</p>
+            <p class="text-xs text-muted-foreground truncate">{{ userEmail() }}</p>
+          </div>
+          <button
+            type="button"
+            (click)="onLogout()"
+            class="w-full flex items-center gap-2 px-3 py-2 text-sm text-danger-fg hover:bg-danger/10 transition-colors text-left"
+          >
+            <ui-icon name="log-out" [size]="16" />
+            Cerrar sesión
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+</header>

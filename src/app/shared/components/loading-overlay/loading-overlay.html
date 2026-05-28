@@ -1,0 +1,25 @@
+@if (loading()) {
+  <div
+    class="absolute inset-0 z-20 flex items-center justify-center bg-card/80 backdrop-blur-sm rounded-xl lo-fade"
+    role="status"
+    aria-live="polite"
+  >
+    <div class="flex items-center gap-3 text-sm text-foreground/80">
+      <svg
+        class="h-5 w-5 animate-spin"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-opacity="0.18" stroke-width="3" />
+        <path
+          d="M22 12a10 10 0 0 1-10 10"
+          stroke="currentColor"
+          stroke-width="3"
+          stroke-linecap="round"
+        />
+      </svg>
+      <span>{{ message() }}</span>
+    </div>
+  </div>
+}

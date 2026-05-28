@@ -1,0 +1,162 @@
+<app-page-header
+  title="Altas"
+  [subtitle]="filtered().length + ' de ' + rows.length + ' registros'"
+>
+  <button class="h-9 px-3 rounded-md bg-card border border-border hover:bg-accent text-sm font-medium flex items-center gap-2 transition-colors">
+    <ui-icon name="filter" [size]="14" />
+    Más filtros
+  </button>
+  <button class="h-9 px-3 rounded-md bg-card border border-border hover:bg-accent text-sm font-medium flex items-center gap-2 transition-colors">
+    <ui-icon name="download" [size]="14" />
+    Exportar
+  </button>
+  <button class="h-9 px-3 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium flex items-center gap-2 transition-colors">
+    <ui-icon name="plus" [size]="14" />
+    Nueva alta
+  </button>
+</app-page-header>
+
+<section class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+  <app-kpi-card label="Total contratos" [value]="rows.length" icon="layers" tone="info" />
+  <app-kpi-card label="Válidas" value="14" icon="shield-check" tone="success" sublabel="131.810 kWh" />
+  <app-kpi-card label="Pdte. firma" value="23" icon="file-text" tone="warning" sublabel="142.572 kWh" />
+  <app-kpi-card label="Rechazadas" value="12" icon="alert-triangle" tone="danger" sublabel="293.590 kWh" />
+  <app-kpi-card label="KO" value="163" icon="x" tone="danger" sublabel="7.996.039 kWh" />
+</section>
+
+<div class="bg-card border border-border rounded-xl p-4 mb-4">
+  <app-filter-bar
+    [searchValue]="search()"
+    searchPlaceholder="Buscar por CUPS, cliente o colaborador..."
+    (searchChange)="search.set($event)"
+  >
+    <select
+      class="h-10 px-3 rounded-md bg-input border border-border text-sm text-foreground focus:outline-none focus:border-primary"
+      [value]="status()"
+      (change)="onStatus($event)"
+    >
+      <option value="">Todos los estados</option>
+      @for (s of statuses; track s) {
+        <option [value]="s">{{ s }}</option>
+      }
+    </select>
+    <select
+      class="h-10 px-3 rounded-md bg-input border border-border text-sm text-foreground focus:outline-none focus:border-primary"
+      [value]="partner()"
+      (change)="onPartner($event)"
+    >
+      <option value="">Todos los colaboradores</option>
+      @for (p of partners; track p) {
+        <option [value]="p">{{ p }}</option>
+      }
+    </select>
+    <button
+      type="button"
+      class="h-10 px-3 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center gap-1.5"
+      (click)="clearFilters()"
+    >
+      <ui-icon name="x" [size]="14" />
+      Limpiar
+    </button>
+  </app-filter-bar>
+</div>
+
+@if (filtered().length === 0) {
+  <div class="bg-card border border-border rounded-xl">
+    <app-empty-state
+      icon="search"
+      title="Sin coincidencias"
+      description="Ajusta los filtros o limpia la búsqueda para ver más resultados."
+    >
+      <button
+        class="h-9 px-3 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium"
+        (click)="clearFilters()"
+      >
+        Limpiar filtros
+      </button>
+    </app-empty-state>
+  </div>
+} @else {
+  <div class="bg-card border border-border rounded-xl overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">Fecha</th>
+            <th class="px-4 py-3 text-left font-semibold">CUPS</th>
+            <th class="px-4 py-3 text-left font-semibold">Colaborador</th>
+            <th class="px-4 py-3 text-left font-semibold">Cliente</th>
+            <th class="px-4 py-3 text-left font-semibold">Estatus</th>
+            <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">F. Validación</th>
+            <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">F. Activación</th>
+            <th class="px-4 py-3 text-right font-semibold">Consumo</th>
+            <th class="px-4 py-3 text-center font-semibold">Scoring</th>
+            <th class="px-4 py-3 text-left font-semibold">Observaciones</th>
+            <th class="px-4 py-3 text-right font-semibold w-20"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          @for (r of filtered(); track r.cups) {
+            <tr class="hover:bg-accent/20 transition-colors">
+              <td class="px-4 py-3 whitespace-nowrap text-muted-foreground">{{ r.fecha }}</td>
+              <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">{{ r.cups }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ r.partner }}</td>
+              <td class="px-4 py-3 max-w-[260px] truncate font-medium" [title]="r.cliente">
+                {{ r.cliente }}
+              </td>
+              <td class="px-4 py-3">
+                <app-status-badge [tone]="toneFor(r.status)">{{ r.status }}</app-status-badge>
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                {{ r.validationDate ?? '—' }}
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                {{ r.activationDate ?? '—' }}
+              </td>
+              <td class="px-4 py-3 text-right whitespace-nowrap font-mono">
+                {{ r.consumption | number:'1.0-0':'es-ES' }} kWh
+              </td>
+              <td class="px-4 py-3 text-center">
+                <span
+                  class="inline-flex items-center gap-1 text-xs font-semibold"
+                  [class.text-success-fg]="r.scoring <= 3"
+                  [class.text-warning-fg]="r.scoring > 3 && r.scoring <= 6"
+                  [class.text-danger-fg]="r.scoring > 6"
+                >
+                  <ui-icon name="circle-dot" [size]="12" />
+                  {{ r.scoring }}/10
+                </span>
+              </td>
+              <td class="px-4 py-3 max-w-[280px] truncate text-xs text-muted-foreground" [title]="r.notes || ''">
+                {{ r.notes || '—' }}
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex items-center justify-end gap-1">
+                  <button class="h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center" aria-label="Ver">
+                    <ui-icon name="eye" [size]="14" />
+                  </button>
+                  <button class="h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center" aria-label="Editar">
+                    <ui-icon name="edit" [size]="14" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flex items-center justify-between px-4 py-3 border-t border-border/50 text-xs text-muted-foreground">
+      <span>{{ filtered().length }} resultados</span>
+      <div class="flex items-center gap-1">
+        <button class="h-7 w-7 rounded-md hover:bg-accent flex items-center justify-center" aria-label="Anterior">
+          <ui-icon name="chevron-left" [size]="14" />
+        </button>
+        <span class="px-2">1 / 1</span>
+        <button class="h-7 w-7 rounded-md hover:bg-accent flex items-center justify-center" aria-label="Siguiente">
+          <ui-icon name="chevron-right" [size]="14" />
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,202 @@
+<app-page-header
+  title="Impagos"
+  [subtitle]="filtered().length + ' de ' + rows.length + ' registros · gestión integral de deuda'"
+>
+  <button class="h-9 px-3 rounded-md bg-card border border-border hover:bg-accent text-sm font-medium flex items-center gap-2 transition-colors">
+    <ui-icon name="download" [size]="14" />
+    Exportar
+  </button>
+  <button class="h-9 px-3 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium flex items-center gap-2 transition-colors">
+    <ui-icon name="plus" [size]="14" />
+    Nuevo impago
+  </button>
+</app-page-header>
+
+<section class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+  <app-kpi-card label="Total registros" [value]="rows.length" icon="receipt-x" tone="info" sublabel="200 activos · 210 pagados" />
+  <app-kpi-card label="Aviso de corte" value="7" icon="alert-triangle" tone="warning" sublabel="2.271,33 € pendientes" />
+  <app-kpi-card label="Cortados" value="19" icon="scissors" tone="danger" sublabel="4.855,46 €" />
+  <app-kpi-card label="OVC" value="85" icon="shield" tone="purple" sublabel="73.952,72 €" />
+</section>
+
+@if (pendingDisconnections.length > 0) {
+  <section class="bg-warning-soft border border-warning/30 rounded-xl mb-6">
+    <header class="px-5 py-3 flex items-center gap-2 border-b border-warning/20">
+      <ui-icon name="alert-triangle" [size]="16" />
+      <h3 class="text-sm font-semibold text-warning-fg">
+        {{ pendingDisconnections.length }} impagos pendientes de Aviso de Corte
+      </h3>
+    </header>
+    <ul class="divide-y divide-warning/10">
+      @for (a of pendingDisconnections; track a.cliente) {
+        <li class="px-5 py-3 flex flex-wrap items-center gap-3 hover:bg-warning/5 transition-colors">
+          <span class="h-9 w-9 rounded-md bg-warning-soft text-warning-fg flex items-center justify-center shrink-0">
+            <ui-icon name="scissors" [size]="16" />
+          </span>
+          <div class="flex-1 min-w-[220px]">
+            <p class="text-sm font-medium text-foreground">{{ a.cliente }}</p>
+            <p class="text-xs text-muted-foreground">
+              {{ a.invoices }} facturas pendientes · Total:
+              <span class="font-semibold text-foreground">{{ formatEur(a.total) }}</span>
+            </p>
+            <p class="text-xs text-warning-fg mt-0.5">
+              {{ a.profile }} · {{ a.contact }} · {{ a.target }}
+            </p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button class="h-8 px-3 rounded-md bg-card border border-border hover:bg-accent text-xs font-medium flex items-center gap-1.5 transition-colors">
+              <ui-icon name="bell" [size]="12" />
+              Saltar alerta
+            </button>
+            <button class="h-8 px-3 rounded-md bg-red-600 hover:bg-red-500 text-white text-xs font-medium flex items-center gap-1.5 transition-colors">
+              <ui-icon name="scissors" [size]="12" />
+              Ejecutar Aviso
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+  </section>
+}
+
+<div class="bg-card border border-border rounded-xl p-4 mb-4">
+  <app-filter-bar
+    [searchValue]="search()"
+    searchPlaceholder="Buscar por cliente o factura..."
+    (searchChange)="search.set($event)"
+  >
+    <select
+      class="h-10 px-3 rounded-md bg-input border border-border text-sm text-foreground focus:outline-none focus:border-primary"
+      [value]="status()"
+      (change)="onStatus($event)"
+    >
+      <option value="">Todos los estados</option>
+      @for (s of statuses; track s) {
+        <option [value]="s">{{ s }}</option>
+      }
+    </select>
+    <select
+      class="h-10 px-3 rounded-md bg-input border border-border text-sm text-foreground focus:outline-none focus:border-primary"
+      [value]="onlyOverdue() ? '1' : ''"
+      (change)="onOverdueChange($event)"
+    >
+      <option value="">Vencimiento: todos</option>
+      <option value="1">Solo vencidos</option>
+    </select>
+    <button
+      type="button"
+      class="h-10 px-3 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center gap-1.5"
+      (click)="clearFilters()"
+    >
+      <ui-icon name="x" [size]="14" />
+      Limpiar
+    </button>
+  </app-filter-bar>
+</div>
+
+@if (filtered().length === 0) {
+  <div class="bg-card border border-border rounded-xl">
+    <app-empty-state
+      icon="search"
+      title="Sin coincidencias"
+      description="Ajusta los filtros para ver impagos."
+    >
+      <button
+        class="h-9 px-3 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium"
+        (click)="clearFilters()"
+      >
+        Limpiar filtros
+      </button>
+    </app-empty-state>
+  </div>
+} @else {
+  <div class="bg-card border border-border rounded-xl overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">Fec. Dev.</th>
+            <th class="px-4 py-3 text-left font-semibold">Cliente</th>
+            <th class="px-4 py-3 text-left font-semibold">Factura</th>
+            <th class="px-4 py-3 text-right font-semibold">Importe</th>
+            <th class="px-4 py-3 text-left font-semibold">Vencim.</th>
+            <th class="px-4 py-3 text-left font-semibold">Estado</th>
+            <th class="px-4 py-3 text-left font-semibold">Colaborador</th>
+            <th class="px-4 py-3 text-left font-semibold">Motivo</th>
+            <th class="px-4 py-3 text-left font-semibold">Contacto</th>
+            <th class="px-4 py-3 text-right font-semibold">Días</th>
+            <th class="px-4 py-3 text-right font-semibold w-16"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          @for (r of filtered(); track r.invoice) {
+            <tr class="hover:bg-accent/20 transition-colors" [class.bg-warning-soft]="r.status === 'Aviso de corte'">
+              <td class="px-4 py-3 whitespace-nowrap text-muted-foreground">{{ r.returnDate }}</td>
+              <td class="px-4 py-3 max-w-[220px] truncate font-medium" [title]="r.cliente">{{ r.cliente }}</td>
+              <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">{{ r.invoice }}</td>
+              <td class="px-4 py-3 text-right whitespace-nowrap font-mono">
+                {{ r.amount | number:'1.2-2':'es-ES' }} €
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-xs">
+                @if (r.dueDate) {
+                  <span class="text-muted-foreground">{{ r.dueDate }}</span>
+                  @if (r.overdueDays && r.overdueDays > 0) {
+                    <span class="block text-danger-fg font-semibold">{{ r.overdueDays }}d vencido</span>
+                  }
+                } @else {
+                  <span class="text-muted-foreground">—</span>
+                }
+              </td>
+              <td class="px-4 py-3">
+                <app-status-badge [tone]="toneFor(r.status)">{{ r.status }}</app-status-badge>
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-muted-foreground text-xs">{{ r.partner }}</td>
+              <td class="px-4 py-3 max-w-[180px] truncate text-xs text-muted-foreground" [title]="r.returnReason || ''">
+                {{ r.returnReason || '—' }}
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex flex-col gap-1">
+                  <app-contact-dots [current]="r.contacts" />
+                  <span class="text-[10px] text-muted-foreground">{{ r.lastStatus }}</span>
+                  @if (r.promiseDate) {
+                    <span class="inline-flex items-center gap-1 text-[10px] text-success-fg">
+                      <ui-icon name="check" [size]="10" />
+                      Promesa {{ r.promiseDate }}
+                    </span>
+                  }
+                </div>
+              </td>
+              <td class="px-4 py-3 text-right whitespace-nowrap">
+                @if (r.overdueDays && r.overdueDays > 0) {
+                  <span class="text-danger-fg font-semibold">{{ r.overdueDays }}d</span>
+                } @else {
+                  <span class="text-muted-foreground">—</span>
+                }
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex items-center justify-end gap-1">
+                  <button class="h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center" aria-label="Ver">
+                    <ui-icon name="eye" [size]="14" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flex items-center justify-between px-4 py-3 border-t border-border/50 text-xs text-muted-foreground">
+      <span>Mostrando {{ filtered().length }} de {{ rows.length }}</span>
+      <div class="flex items-center gap-1">
+        <button class="h-7 w-7 rounded-md hover:bg-accent flex items-center justify-center" aria-label="Anterior">
+          <ui-icon name="chevron-left" [size]="14" />
+        </button>
+        <span class="px-2">1 / 1</span>
+        <button class="h-7 w-7 rounded-md hover:bg-accent flex items-center justify-center" aria-label="Siguiente">
+          <ui-icon name="chevron-right" [size]="14" />
+        </button>
+      </div>
+    </div>
+  </div>
+}

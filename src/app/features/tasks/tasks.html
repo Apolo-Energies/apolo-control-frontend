@@ -1,0 +1,17 @@
+<app-placeholder-page
+  title="Tareas del día"
+  subtitle="Bandeja unificada — contratos pendientes de firma + impagos a contactar hoy"
+  icon="check-square"
+  [highlights]="[
+    { label: 'Pdte. firma',         value: 23, hint: '4 urgentes (+15 días)' },
+    { label: 'Impagos a contactar', value: 90, hint: 'Sincronizado con Impagos' },
+    { label: 'Aviso de corte',      value: 7,  hint: 'Listos para enviar' },
+    { label: 'Promesas hoy',        value: 4,  hint: 'Vencen hoy' }
+  ]"
+  [capabilities]="[
+    'Filtros por tipo (firma · cobros · corte)',
+    'Acciones rápidas: registrar contacto, marcar gestionado',
+    'Priorización por antigüedad y deuda',
+    'Sincronización en tiempo real con módulo Impagos'
+  ]"
+/>

@@ -1,0 +1,234 @@
+<app-page-header title="Suministros" subtitle="Puntos de suministro (CUPS) gestionados">
+  <button
+    type="button"
+    class="h-9 px-3 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+    (click)="openCreate()"
+  >
+    <ui-icon name="plus" [size]="14" />
+    Nuevo suministro
+  </button>
+</app-page-header>
+
+<section class="bg-card border border-border rounded-xl p-4 mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
+  <div class="flex items-center gap-2 flex-1 min-w-[240px] px-3 h-10 rounded-lg border border-border bg-background">
+    <ui-icon name="search" [size]="16" />
+    <input
+      type="search"
+      [(ngModel)]="cups"
+      (ngModelChange)="onSearchChange()"
+      placeholder="Buscar por CUPS…"
+      class="bg-transparent outline-none text-sm flex-1 text-foreground placeholder:text-muted-foreground font-mono"
+    />
+  </div>
+
+  <label class="inline-flex items-center gap-2 text-sm text-foreground">
+    <input
+      type="checkbox"
+      [(ngModel)]="activeOnly"
+      (ngModelChange)="reload(0)"
+      class="h-4 w-4 rounded border-border accent-primary"
+    />
+    Solo activos
+  </label>
+</section>
+
+@if (errorMessage(); as msg) {
+  <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm mb-4">
+    {{ msg }}
+  </div>
+}
+
+@if (loading() && rows().length === 0) {
+  <app-table-skeleton [cols]="8" [rows]="8" />
+} @else {
+  <div class="relative bg-card border border-border rounded-xl overflow-hidden">
+    <app-loading-overlay [loading]="loading() && rows().length > 0" message="Actualizando…" />
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">CUPS</th>
+            <th class="px-4 py-3 text-left font-semibold">Tipo</th>
+            <th class="px-4 py-3 text-left font-semibold">Tarifa</th>
+            <th class="px-4 py-3 text-left font-semibold">Cliente</th>
+            <th class="px-4 py-3 text-left font-semibold">Ubicación</th>
+            <th class="px-4 py-3 text-right font-semibold">Consumo 12m</th>
+            <th class="px-4 py-3 text-right font-semibold">Potencia P1</th>
+            <th class="px-4 py-3 text-center font-semibold">Estado</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          @for (row of rows(); track row.id) {
+            <tr class="hover:bg-accent/20 transition-colors">
+              <td class="px-4 py-3 font-mono text-xs text-foreground">{{ row.cups }}</td>
+              <td class="px-4 py-3">
+                <app-status-badge [tone]="typeTone(row.tipo)">
+                  {{ typeLabel(row.tipo) }}
+                </app-status-badge>
+              </td>
+              <td class="px-4 py-3 text-foreground/80">{{ text(row.tarifa) }}</td>
+              <td class="px-4 py-3">
+                <p class="font-medium text-foreground">{{ row.clienteNombre }}</p>
+                @if (row.clienteNif) {
+                  <p class="text-xs text-muted-foreground font-mono">{{ row.clienteNif }}</p>
+                }
+              </td>
+              <td class="px-4 py-3">
+                @if (row.poblacion || row.provincia) {
+                  <p class="text-foreground/80">
+                    {{ text(row.poblacion) }}@if (row.poblacion && row.provincia) {<span>, </span>}{{ text(row.provincia, '') }}
+                  </p>
+                }
+                @if (row.codigoPostal) {
+                  <p class="text-xs text-muted-foreground">CP {{ row.codigoPostal }}</p>
+                }
+                @if (!row.poblacion && !row.provincia && !row.codigoPostal) {
+                  —
+                }
+              </td>
+              <td class="px-4 py-3 text-right text-foreground/80">
+                {{ mwh(row.consumoUltimos12Meses) }}
+              </td>
+              <td class="px-4 py-3 text-right text-foreground/80">
+                {{ num(row.potenciaP1) }} kW
+              </td>
+              <td class="px-4 py-3 text-center">
+                <app-status-badge [tone]="row.activo ? 'success' : 'neutral'">
+                  {{ row.activo ? 'Activo' : 'Inactivo' }}
+                </app-status-badge>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="8" class="px-4 py-10 text-center text-sm text-muted-foreground">
+                Sin suministros para los filtros seleccionados.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+<div class="mt-4">
+  <app-pagination
+    [page]="page()"
+    [pageSize]="size()"
+    [totalElements]="totalElements()"
+    [totalPages]="totalPages()"
+    (pageChange)="reload($event)"
+    (pageSizeChange)="onSizeChange($event)"
+  />
+</div>
+
+<app-form-dialog
+  [open]="modalOpen()"
+  title="Nuevo suministro"
+  subtitle="Registra un punto de suministro (CUPS)"
+  icon="bolt"
+  width="560px"
+  [saving]="submitting()"
+  [canSave]="form.valid"
+  saveLabel="Crear suministro"
+  [errorMessage]="formError()"
+  (cancel)="closeModal()"
+  (save)="submit()"
+>
+  <form [formGroup]="form" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <label class="flex flex-col gap-1.5 sm:col-span-2">
+      <span class="text-xs font-medium text-foreground/80">Cliente</span>
+      <app-remote-select
+        formControlName="clienteId"
+        placeholder="Escribe nombre o NIF del cliente…"
+        [searchFn]="searchClientes"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5 sm:col-span-2">
+      <span class="text-xs font-medium text-foreground/80">CUPS</span>
+      <input
+        type="text"
+        formControlName="cups"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 font-mono"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Tipo</span>
+      <select
+        formControlName="tipo"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      >
+        @for (t of types; track t) {
+          <option [value]="t">{{ typeLabel(t) }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Tarifa</span>
+      <input
+        type="text"
+        formControlName="tarifa"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Consumo 12m (MWh)</span>
+      <input
+        type="number"
+        step="any"
+        formControlName="consumoUltimos12Meses"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Potencia P1 (kW)</span>
+      <input
+        type="number"
+        step="any"
+        formControlName="potenciaP1"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Población</span>
+      <input
+        type="text"
+        formControlName="poblacion"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Provincia</span>
+      <input
+        type="text"
+        formControlName="provincia"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Código postal</span>
+      <input
+        type="text"
+        formControlName="codigoPostal"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="inline-flex items-center gap-2 text-sm sm:col-span-2">
+      <input
+        type="checkbox"
+        formControlName="activo"
+        class="h-4 w-4 rounded border-border accent-primary"
+      />
+      Suministro activo
+    </label>
+  </form>
+</app-form-dialog>

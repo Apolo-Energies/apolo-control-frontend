@@ -1,0 +1,39 @@
+<p-autocomplete
+  [(ngModel)]="selectedModel"
+  [suggestions]="suggestions()"
+  (completeMethod)="search($event)"
+  (onSelect)="onSelect($event)"
+  (onClear)="onClear()"
+  optionLabel="label"
+  [dropdown]="true"
+  [forceSelection]="true"
+  [minLength]="minLength()"
+  [delay]="280"
+  [scrollHeight]="scrollHeight()"
+  [placeholder]="placeholder()"
+  [disabled]="disabled"
+  [showClear]="true"
+  appendTo="body"
+  styleClass="apolo-autocomplete w-full"
+  inputStyleClass="w-full"
+  panelStyleClass="apolo-autocomplete-panel"
+>
+  <ng-template let-opt pTemplate="item">
+    <div class="flex flex-col gap-0.5 leading-tight w-full">
+      <span class="text-sm text-foreground truncate">{{ opt.label }}</span>
+      @if (opt.sublabel) {
+        <span class="text-xs text-muted-foreground font-mono truncate">{{ opt.sublabel }}</span>
+      }
+    </div>
+  </ng-template>
+
+  <ng-template pTemplate="empty">
+    <div class="px-3 py-2 text-sm text-muted-foreground">
+      @if (loading()) {
+        Buscando…
+      } @else {
+        Sin resultados
+      }
+    </div>
+  </ng-template>
+</p-autocomplete>

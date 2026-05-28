@@ -1,0 +1,267 @@
+<app-page-header title="Contratos" subtitle="Listado y filtro de contratos por estado">
+  <button
+    type="button"
+    class="h-9 px-3 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+    (click)="openCreate()"
+  >
+    <ui-icon name="plus" [size]="14" />
+    Nuevo contrato
+  </button>
+</app-page-header>
+
+<section class="bg-card border border-border rounded-xl p-4 mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
+  <label class="flex items-center gap-2 text-sm text-foreground">
+    <span class="text-xs text-muted-foreground">Estado</span>
+    <select
+      [(ngModel)]="statusFilter"
+      (ngModelChange)="reload(0)"
+      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+    >
+      <option [ngValue]="null">Todos</option>
+      @for (status of statuses; track status) {
+        <option [ngValue]="status">{{ label(status) }}</option>
+      }
+    </select>
+  </label>
+</section>
+
+@if (errorMessage(); as msg) {
+  <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm mb-4">
+    {{ msg }}
+  </div>
+}
+
+@if (loading() && rows().length === 0) {
+  <app-table-skeleton [cols]="10" [rows]="8" />
+} @else {
+  <div class="relative bg-card border border-border rounded-xl overflow-hidden">
+    <app-loading-overlay [loading]="loading() && rows().length > 0" message="Actualizando…" />
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">ID externo</th>
+            <th class="px-4 py-3 text-left font-semibold">Cliente</th>
+            <th class="px-4 py-3 text-left font-semibold">CUPS</th>
+            <th class="px-4 py-3 text-left font-semibold">Servicio</th>
+            <th class="px-4 py-3 text-left font-semibold">Estado</th>
+            <th class="px-4 py-3 text-left font-semibold">F. inicio</th>
+            <th class="px-4 py-3 text-left font-semibold">F. fin</th>
+            <th class="px-4 py-3 text-right font-semibold">Margen bruto</th>
+            <th class="px-4 py-3 text-right font-semibold">Margen neto</th>
+            <th class="px-4 py-3 text-right font-semibold">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          @for (row of rows(); track row.id) {
+            <tr class="hover:bg-accent/20 transition-colors">
+              <td class="px-4 py-3 font-mono text-xs text-foreground/80">
+                {{ text(row.idExterno) }}
+              </td>
+              <td class="px-4 py-3">
+                <p class="font-medium text-foreground">{{ row.clienteNombre }}</p>
+                @if (row.clienteNif) {
+                  <p class="text-xs text-muted-foreground font-mono">{{ row.clienteNif }}</p>
+                }
+              </td>
+              <td class="px-4 py-3 font-mono text-xs text-foreground/80">
+                {{ text(row.cups) }}
+              </td>
+              <td class="px-4 py-3">
+                <p class="text-foreground/80">{{ text(row.servicio) }}</p>
+                @if (row.campana) {
+                  <p class="text-xs text-muted-foreground">{{ row.campana }}</p>
+                }
+              </td>
+              <td class="px-4 py-3">
+                <app-status-badge [tone]="tone(row.estado)">
+                  {{ label(row.estado) }}
+                </app-status-badge>
+              </td>
+              <td class="px-4 py-3 text-foreground/80">{{ date(row.fechaInicio) }}</td>
+              <td class="px-4 py-3 text-foreground/80">{{ date(row.fechaFinPrevista) }}</td>
+              <td class="px-4 py-3 text-right font-medium text-foreground">
+                {{ euro(row.margenBruto) }}
+              </td>
+              <td class="px-4 py-3 text-right font-medium text-foreground">
+                {{ euro(row.margenNeto) }}
+              </td>
+              <td class="px-4 py-3 text-right">
+                <button
+                  type="button"
+                  (click)="openStatus(row)"
+                  class="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-md border border-border text-xs text-foreground hover:bg-accent/40"
+                  title="Cambiar estado"
+                >
+                  <ui-icon name="repeat" [size]="13" />
+                  Estado
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="10" class="px-4 py-10 text-center text-sm text-muted-foreground">
+                Sin contratos para los filtros seleccionados.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+<div class="mt-4">
+  <app-pagination
+    [page]="page()"
+    [pageSize]="size()"
+    [totalElements]="totalElements()"
+    [totalPages]="totalPages()"
+    (pageChange)="reload($event)"
+    (pageSizeChange)="onSizeChange($event)"
+  />
+</div>
+
+<!-- Crear contrato -->
+<app-form-dialog
+  [open]="createOpen()"
+  title="Nuevo contrato"
+  subtitle="Registra un contrato de servicio energético"
+  icon="file-text"
+  width="560px"
+  [saving]="submitting()"
+  [canSave]="createForm.valid"
+  saveLabel="Crear contrato"
+  [errorMessage]="formError()"
+  (cancel)="closeCreate()"
+  (save)="submitCreate()"
+>
+  <form [formGroup]="createForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <label class="flex flex-col gap-1.5 sm:col-span-2">
+      <span class="text-xs font-medium text-foreground/80">Cliente</span>
+      <app-remote-select
+        formControlName="clienteId"
+        placeholder="Escribe nombre o NIF del cliente…"
+        [searchFn]="searchClientes"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5 sm:col-span-2">
+      <span class="text-xs font-medium text-foreground/80">Suministro (CUPS)</span>
+      <app-remote-select
+        formControlName="suministroId"
+        placeholder="Escribe el CUPS…"
+        [searchFn]="searchSuministros"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Servicio</span>
+      <input
+        type="text"
+        formControlName="servicio"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Campaña</span>
+      <input
+        type="text"
+        formControlName="campana"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Estado inicial</span>
+      <select
+        formControlName="estado"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      >
+        @for (s of assignableStatuses; track s) {
+          <option [value]="s">{{ label(s) }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Descuento (%)</span>
+      <input
+        type="number"
+        step="any"
+        formControlName="descuento"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Fecha inicio</span>
+      <input
+        type="date"
+        formControlName="fechaInicio"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Fecha fin prevista</span>
+      <input
+        type="date"
+        formControlName="fechaFinPrevista"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+  </form>
+</app-form-dialog>
+
+<!-- Cambiar estado -->
+<app-form-dialog
+  [open]="statusOpen()"
+  title="Cambiar estado"
+  subtitle="Actualiza el estado del contrato"
+  icon="repeat"
+  width="420px"
+  [saving]="submitting()"
+  [canSave]="statusForm.valid"
+  saveLabel="Guardar estado"
+  [errorMessage]="formError()"
+  (cancel)="closeStatus()"
+  (save)="submitStatus()"
+>
+  <form [formGroup]="statusForm" class="flex flex-col gap-4">
+    @if (editingContract(); as c) {
+      <div class="rounded-lg bg-background/60 border border-border/60 px-3 py-2 text-sm">
+        <p class="font-medium text-foreground">{{ c.clienteNombre }}</p>
+        <p class="text-xs text-muted-foreground font-mono">{{ text(c.cups) }}</p>
+        <p class="text-xs text-muted-foreground mt-1">
+          Estado actual:
+          <app-status-badge [tone]="tone(c.estado)">{{ label(c.estado) }}</app-status-badge>
+        </p>
+      </div>
+    }
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Nuevo estado</span>
+      <select
+        formControlName="estado"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      >
+        @for (s of assignableStatuses; track s) {
+          <option [value]="s">{{ label(s) }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">
+        Fecha del cambio <span class="text-muted-foreground">(opcional, hoy por defecto)</span>
+      </span>
+      <input
+        type="date"
+        formControlName="fechaEstado"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+  </form>
+</app-form-dialog>

@@ -1,0 +1,98 @@
+@if (data().length === 0) {
+  <p class="text-sm text-muted-foreground py-6 text-center">{{ emptyLabel() }}</p>
+} @else {
+  <div class="flex flex-col">
+    <!-- Bars area -->
+    <div
+      class="relative flex items-end gap-2 px-1"
+      [style.height.px]="chartHeightPx()"
+      (mouseleave)="onLeave()"
+    >
+      <!-- Gridlines -->
+      <div class="absolute inset-x-0 top-0 bottom-0 pointer-events-none">
+        @for (line of [0, 0.25, 0.5, 0.75, 1]; track line) {
+          <div
+            class="absolute inset-x-0 border-t border-dashed border-border/40"
+            [style.bottom.%]="line * 100"
+          ></div>
+        }
+        <!-- Average line -->
+        <div
+          class="absolute inset-x-0 border-t-2 border-dashed border-foreground/30 z-0"
+          [style.bottom.%]="avgPct()"
+          [attr.title]="'Promedio'"
+        ></div>
+      </div>
+
+      <!-- Bars -->
+      @for (row of data(); track row.label; let i = $index) {
+        <div
+          class="flex-1 h-full flex items-end relative group cursor-pointer z-10"
+          (mouseenter)="onEnter(i)"
+        >
+          <div
+            class="w-full rounded-t-md transition-all duration-200 relative shadow-sm"
+            [style.height.%]="pct(row.value)"
+            [style.background]="color()"
+            [style.opacity]="isDimmed(i) ? 0.35 : 1"
+            [style.transform]="isHovered(i) ? 'scaleY(1.02)' : 'scaleY(1)'"
+            style="transform-origin: bottom;"
+          >
+            <!-- Value label above bar -->
+            <span
+              class="absolute left-1/2 -translate-x-1/2 -top-6 text-[11px] font-semibold whitespace-nowrap transition-all"
+              [class.text-foreground]="isHovered(i)"
+              [class.text-foreground/80]="!isHovered(i)"
+              [class.scale-110]="isHovered(i)"
+            >
+              {{ row.formattedValue }}
+            </span>
+          </div>
+
+          <!-- Tooltip on hover -->
+          @if (isHovered(i)) {
+            <div
+              class="absolute bottom-full left-1/2 -translate-x-1/2 mb-8 z-30 pointer-events-none"
+            >
+              <div
+                class="bg-foreground text-background text-xs rounded-lg shadow-lg px-3 py-2 whitespace-nowrap"
+              >
+                <p class="font-semibold">{{ row.label }}</p>
+                <p class="opacity-90">{{ row.formattedValue }}</p>
+                @if (row.hint) {
+                  <p class="opacity-70 text-[10px]">{{ row.hint }}</p>
+                }
+                @if (row.tooltip) {
+                  <p class="opacity-70 text-[10px]">{{ row.tooltip }}</p>
+                }
+              </div>
+              <div
+                class="w-2 h-2 bg-foreground rotate-45 mx-auto -mt-1"
+                aria-hidden="true"
+              ></div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- X-axis labels -->
+    <div class="flex gap-2 px-1 mt-2">
+      @for (row of data(); track row.label; let i = $index) {
+        <div class="flex-1 flex flex-col items-center text-center">
+          <span
+            class="text-[11px] transition-colors"
+            [class.text-foreground]="isHovered(i)"
+            [class.font-semibold]="isHovered(i)"
+            [class.text-muted-foreground]="!isHovered(i)"
+          >
+            {{ row.label }}
+          </span>
+          @if (row.hint) {
+            <span class="text-[10px] text-muted-foreground/70">{{ row.hint }}</span>
+          }
+        </div>
+      }
+    </div>
+  </div>
+}

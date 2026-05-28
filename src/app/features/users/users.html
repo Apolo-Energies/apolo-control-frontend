@@ -1,0 +1,220 @@
+<app-page-header title="Usuarios" subtitle="Gestión de usuarios y roles del sistema">
+  @if (canCreate()) {
+    <button
+      type="button"
+      class="h-9 px-3 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+      (click)="openCreate()"
+    >
+      <ui-icon name="plus" [size]="14" />
+      Nuevo usuario
+    </button>
+  }
+</app-page-header>
+
+@if (errorMessage(); as msg) {
+  <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm mb-4">
+    {{ msg }}
+  </div>
+}
+
+@if (loading() && rows().length === 0) {
+  <app-table-skeleton [cols]="canEdit() ? 6 : 5" [rows]="6" />
+} @else {
+  <div class="relative bg-card border border-border rounded-xl overflow-hidden">
+    <app-loading-overlay [loading]="loading() && rows().length > 0" message="Actualizando…" />
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">Nombre</th>
+            <th class="px-4 py-3 text-left font-semibold">Email</th>
+            <th class="px-4 py-3 text-left font-semibold">Rol</th>
+            <th class="px-4 py-3 text-center font-semibold">Estado</th>
+            <th class="px-4 py-3 text-left font-semibold">Alta</th>
+            @if (canEdit()) {
+              <th class="px-4 py-3 text-right font-semibold">Acciones</th>
+            }
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          @for (row of rows(); track row.id) {
+            <tr class="hover:bg-accent/20 transition-colors">
+              <td class="px-4 py-3 font-medium text-foreground">{{ row.nombre }}</td>
+              <td class="px-4 py-3 text-foreground/80">{{ row.email }}</td>
+              <td class="px-4 py-3">
+                <app-status-badge [tone]="roleTone(row.rol)">
+                  {{ roleLabel(row.rol) }}
+                </app-status-badge>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <app-status-badge [tone]="row.activo ? 'success' : 'neutral'">
+                  {{ row.activo ? 'Activo' : 'Inactivo' }}
+                </app-status-badge>
+              </td>
+              <td class="px-4 py-3 text-xs text-muted-foreground">
+                {{ date(row.createdAt) }}
+              </td>
+              @if (canEdit()) {
+                <td class="px-4 py-3 text-right">
+                  <div class="inline-flex items-center gap-1">
+                    <button
+                      type="button"
+                      (click)="openEdit(row)"
+                      class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-accent/40"
+                      aria-label="Editar"
+                    >
+                      <ui-icon name="edit" [size]="14" />
+                    </button>
+                    @if (canDelete()) {
+                      <button
+                        type="button"
+                        (click)="confirmDelete(row)"
+                        class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-border text-danger-fg hover:bg-danger/10"
+                        aria-label="Eliminar"
+                      >
+                        <ui-icon name="trash" [size]="14" />
+                      </button>
+                    }
+                  </div>
+                </td>
+              }
+            </tr>
+          } @empty {
+            <tr>
+              <td [attr.colspan]="canEdit() ? 6 : 5" class="px-4 py-10 text-center text-sm text-muted-foreground">
+                Sin usuarios registrados.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+<div class="mt-4">
+  <app-pagination
+    [page]="page()"
+    [pageSize]="size()"
+    [totalElements]="totalElements()"
+    [totalPages]="totalPages()"
+    (pageChange)="reload($event)"
+    (pageSizeChange)="onSizeChange($event)"
+  />
+</div>
+
+<p-dialog
+  [visible]="modalOpen()"
+  (visibleChange)="$event ? null : closeModal()"
+  [modal]="true"
+  [closable]="false"
+  [draggable]="false"
+  [resizable]="false"
+  [dismissableMask]="true"
+  styleClass="apolo-dialog"
+  [style]="{ width: '480px', 'max-width': '94vw' }"
+>
+  <ng-template pTemplate="header">
+    <div class="flex items-center gap-3">
+      <div class="h-9 w-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
+        <ui-icon [name]="editing() ? 'edit' : 'plus'" [size]="18" />
+      </div>
+      <div>
+        <h2 class="text-base font-semibold text-foreground">
+          {{ editing() ? 'Editar usuario' : 'Nuevo usuario' }}
+        </h2>
+        <p class="text-xs text-muted-foreground">
+          {{ editing() ? 'Modifica los datos del usuario seleccionado' : 'Crea un nuevo usuario en el sistema' }}
+        </p>
+      </div>
+    </div>
+  </ng-template>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-4 pt-1" novalidate>
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Nombre</span>
+      <input
+        type="text"
+        formControlName="nombre"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Email</span>
+      <input
+        type="email"
+        formControlName="email"
+        autocomplete="email"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">
+        Contraseña
+        @if (editing()) {
+          <span class="text-muted-foreground">(dejar vacío para no cambiar)</span>
+        }
+      </span>
+      <input
+        type="password"
+        formControlName="password"
+        autocomplete="new-password"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Rol</span>
+      <select
+        formControlName="rol"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      >
+        @for (role of roles; track role) {
+          <option [value]="role">{{ roleLabel(role) }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="inline-flex items-center gap-2 text-sm">
+      <input
+        type="checkbox"
+        formControlName="activo"
+        class="h-4 w-4 rounded border-border accent-primary"
+      />
+      Usuario activo
+    </label>
+
+    @if (formError(); as msg) {
+      <div class="rounded-lg border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger-fg">
+        {{ msg }}
+      </div>
+    }
+  </form>
+
+  <ng-template pTemplate="footer">
+    <div class="flex items-center justify-end gap-2 w-full">
+      <button
+        type="button"
+        (click)="closeModal()"
+        class="h-9 px-3 rounded-lg border border-border text-sm text-foreground hover:bg-accent"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        (click)="submit()"
+        [disabled]="form.invalid || submitting()"
+        class="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        @if (submitting()) {
+          <ui-icon name="refresh-cw" [size]="14" />
+          Guardando…
+        } @else {
+          {{ editing() ? 'Guardar cambios' : 'Crear usuario' }}
+        }
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>

@@ -1,0 +1,49 @@
+<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm">
+  <p class="text-muted-foreground">
+    Mostrando
+    <span class="font-medium text-foreground">{{ rangeStart() }}</span>
+    –
+    <span class="font-medium text-foreground">{{ rangeEnd() }}</span>
+    de
+    <span class="font-medium text-foreground">{{ totalElements() }}</span>
+  </p>
+
+  <div class="flex items-center gap-2">
+    <label class="flex items-center gap-2 text-muted-foreground">
+      <span class="text-xs">Por página</span>
+      <select
+        class="rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+        [value]="pageSize()"
+        (change)="onSizeChange($event)"
+      >
+        @for (size of pageSizes(); track size) {
+          <option [value]="size">{{ size }}</option>
+        }
+      </select>
+    </label>
+
+    <div class="flex items-center gap-1">
+      <button
+        type="button"
+        class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent/40"
+        [disabled]="page() <= 0"
+        (click)="onPageChange(page() - 1)"
+        aria-label="Anterior"
+      >
+        <ui-icon name="chevron-left" [size]="14" />
+      </button>
+      <span class="text-xs text-muted-foreground px-2">
+        {{ page() + 1 }} / {{ Math.max(totalPages(), 1) }}
+      </span>
+      <button
+        type="button"
+        class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent/40"
+        [disabled]="page() >= totalPages() - 1"
+        (click)="onPageChange(page() + 1)"
+        aria-label="Siguiente"
+      >
+        <ui-icon name="chevron-right" [size]="14" />
+      </button>
+    </div>
+  </div>
+</div>

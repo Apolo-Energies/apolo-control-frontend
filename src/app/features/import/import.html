@@ -1,0 +1,74 @@
+<app-page-header
+  title="Importar datos"
+  subtitle="Sube un Excel/CSV — el sistema detecta el tipo (remesa, altas, cambios)"
+/>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 bg-card border border-border rounded-xl p-6">
+    <h3 class="text-base font-semibold text-foreground mb-1">Subir archivo</h3>
+    <p class="text-sm text-muted-foreground mb-4">CSV o Excel. Tamaño máximo 25 MB.</p>
+
+    <label
+      class="block border-2 border-dashed border-border hover:border-primary/40 rounded-xl p-10 text-center cursor-pointer transition-colors bg-input/30"
+    >
+      <div class="h-14 w-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
+        <ui-icon name="upload" [size]="22" />
+      </div>
+      <p class="text-sm font-medium text-foreground">Arrastra un archivo o haz clic para seleccionar</p>
+      <p class="text-xs text-muted-foreground mt-1">Formatos admitidos: .csv · .xlsx · .xls</p>
+      <input type="file" class="hidden" accept=".csv,.xlsx,.xls" />
+    </label>
+
+    <div class="mt-4 flex flex-col sm:flex-row gap-2">
+      <select class="h-10 px-3 rounded-md bg-input border border-border text-sm text-foreground focus:outline-none focus:border-primary flex-1">
+        <option>Detectar automáticamente</option>
+        <option>Remesa de impagos</option>
+        <option>Altas de ventas</option>
+        <option>Cambios (titularidad/cuenta/potencia)</option>
+        <option>Pagos & liquidaciones</option>
+      </select>
+      <button
+        class="h-10 px-4 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+        disabled
+      >
+        <ui-icon name="upload" [size]="14" />
+        Procesar archivo
+      </button>
+    </div>
+  </div>
+
+  <div class="bg-card border border-border rounded-xl p-6">
+    <h3 class="text-base font-semibold text-foreground mb-1 flex items-center gap-2">
+      <ui-icon name="info" [size]="16" />
+      Integración HubSpot
+    </h3>
+    <p class="text-sm text-muted-foreground mb-4">Para automatizar la importación desde HubSpot:</p>
+    <ol class="text-sm text-foreground/80 space-y-3">
+      <li class="flex gap-3">
+        <span class="h-6 w-6 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center shrink-0">1</span>
+        <span>Exportar deals/facturas pendientes desde HubSpot como CSV</span>
+      </li>
+      <li class="flex gap-3">
+        <span class="h-6 w-6 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center shrink-0">2</span>
+        <span>Subirlo aquí para sincronizar automáticamente</span>
+      </li>
+      <li class="flex gap-3">
+        <span class="h-6 w-6 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center shrink-0">3</span>
+        <span>
+          Incluir el campo <code class="px-1.5 py-0.5 rounded bg-input border border-border text-xs">invoice_number</code>
+          para el matching exacto
+        </span>
+      </li>
+    </ol>
+  </div>
+</div>
+
+<section class="mt-6 bg-card border border-border rounded-xl">
+  <header class="px-5 py-4 border-b border-border/50 flex items-center justify-between">
+    <h3 class="text-base font-semibold text-foreground">Importaciones recientes</h3>
+    <span class="text-xs text-muted-foreground">Últimas 24h</span>
+  </header>
+  <div class="px-5 py-10 text-center text-sm text-muted-foreground">
+    Aún no hay importaciones recientes. Sube un archivo para comenzar.
+  </div>
+</section>

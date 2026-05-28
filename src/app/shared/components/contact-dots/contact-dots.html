@@ -1,0 +1,14 @@
+<div class="inline-flex items-center" role="img" [attr.aria-label]="ariaLabel()">
+  @for (dot of dots(); track $index; let i = $index, last = $last) {
+    <span
+      class="h-5 w-5 rounded-full text-[10px] font-semibold flex items-center justify-center ring-2 ring-card"
+      [ngClass]="dot.classes"
+      [attr.title]="dot.title"
+    >
+      {{ i + 1 }}
+    </span>
+    @if (!last) {
+      <span class="w-2 h-px bg-border"></span>
+    }
+  }
+</div>

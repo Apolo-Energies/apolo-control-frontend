@@ -1,0 +1,111 @@
+<app-page-header title="Grupos" subtitle="Grupos comerciales registrados en el sistema">
+  <button
+    type="button"
+    class="h-9 px-3 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+    (click)="openCreate()"
+  >
+    <ui-icon name="plus" [size]="14" />
+    Nuevo grupo
+  </button>
+</app-page-header>
+
+@if (errorMessage(); as msg) {
+  <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm mb-4">
+    {{ msg }}
+  </div>
+}
+
+@if (loading() && rows().length === 0) {
+  <app-table-skeleton [cols]="4" [rows]="6" />
+} @else {
+  <div class="relative bg-card border border-border rounded-xl overflow-hidden">
+    <app-loading-overlay [loading]="loading() && rows().length > 0" message="Actualizando…" />
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">Nombre</th>
+            <th class="px-4 py-3 text-left font-semibold">Descripción</th>
+            <th class="px-4 py-3 text-center font-semibold">Estado</th>
+            <th class="px-4 py-3 text-right font-semibold">Alta</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          @for (row of rows(); track row.id) {
+            <tr class="hover:bg-accent/20 transition-colors">
+              <td class="px-4 py-3 font-medium text-foreground">{{ row.nombre }}</td>
+              <td class="px-4 py-3 text-foreground/80">{{ text(row.descripcion) }}</td>
+              <td class="px-4 py-3 text-center">
+                <app-status-badge [tone]="row.activo ? 'success' : 'neutral'">
+                  {{ row.activo ? 'Activo' : 'Inactivo' }}
+                </app-status-badge>
+              </td>
+              <td class="px-4 py-3 text-right text-xs text-muted-foreground">
+                {{ date(row.createdAt) }}
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="4" class="px-4 py-10 text-center text-sm text-muted-foreground">
+                No hay grupos registrados.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+<div class="mt-4">
+  <app-pagination
+    [page]="page()"
+    [pageSize]="size()"
+    [totalElements]="totalElements()"
+    [totalPages]="totalPages()"
+    (pageChange)="reload($event)"
+    (pageSizeChange)="onSizeChange($event)"
+  />
+</div>
+
+<app-form-dialog
+  [open]="modalOpen()"
+  title="Nuevo grupo"
+  subtitle="Registra un grupo comercial"
+  icon="shield"
+  [saving]="submitting()"
+  [canSave]="form.valid"
+  saveLabel="Crear grupo"
+  [errorMessage]="formError()"
+  (cancel)="closeModal()"
+  (save)="submit()"
+>
+  <form [formGroup]="form" class="flex flex-col gap-4">
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Nombre</span>
+      <input
+        type="text"
+        formControlName="nombre"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Descripción</span>
+      <textarea
+        formControlName="descripcion"
+        rows="2"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+      ></textarea>
+    </label>
+
+    <label class="inline-flex items-center gap-2 text-sm">
+      <input
+        type="checkbox"
+        formControlName="activo"
+        class="h-4 w-4 rounded border-border accent-primary"
+      />
+      Grupo activo
+    </label>
+  </form>
+</app-form-dialog>
