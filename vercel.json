@@ -1,4 +1,6 @@
 {
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/apolo-control-frontend/browser",
   "rewrites": [
     {
       "source": "/api/:path*",
