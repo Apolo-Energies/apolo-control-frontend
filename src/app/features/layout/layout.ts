@@ -3,6 +3,7 @@ import { Router, RouterOutlet } from '@angular/router';
 import { Sidebar, SidebarSection } from '../../shared/components/sidebar/sidebar';
 import { Header } from '../../shared/components/header/header';
 import { AuthService } from '../../core/auth/auth.service';
+import { MasterDataService } from '../../core/services/master-data.service';
 
 @Component({
   selector: 'app-layout',
@@ -13,8 +14,15 @@ import { AuthService } from '../../core/auth/auth.service';
 export class Layout {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly masterData = inject(MasterDataService);
 
   protected readonly mobileOpen = signal(false);
+
+  constructor() {
+    // Fire-and-forget: fetch /v1/master-data and update IDB + signals.
+    // Runs once per authenticated session load; concurrent calls collapse automatically.
+    void this.masterData.refresh();
+  }
 
   protected readonly sections = computed<SidebarSection[]>(() => {
     const isAdmin = this.auth.hasRole('admin');

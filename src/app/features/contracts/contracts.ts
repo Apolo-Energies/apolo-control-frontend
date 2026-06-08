@@ -11,8 +11,7 @@ import { FormDialog } from '../../shared/components/form-dialog/form-dialog';
 import { RemoteSelect, RemoteOption } from '../../shared/components/remote-select/remote-select';
 import { Icon } from '../../shared/icons/icon';
 import { ContractService } from '../../core/services/contract.service';
-import { CustomerService } from '../../core/services/customer.service';
-import { SupplyService } from '../../core/services/supply.service';
+import { MasterDataService } from '../../core/services/master-data.service';
 import { GlobalLoadingService } from '../../core/services/global-loading.service';
 import { NotificationService } from '../../core/services/notification.service';
 import {
@@ -24,8 +23,7 @@ import {
   Page,
 } from '../../core/models';
 import { formatDate, formatEuro, safeText } from '../../shared/utils/format';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
 
 const STATUS_TONE: Record<ContractStatus, StatusTone> = {
   previo: 'info',
@@ -78,8 +76,7 @@ const ASSIGNABLE_STATUSES: ContractStatus[] = [
 })
 export class Contracts {
   private readonly service = inject(ContractService);
-  private readonly customerService = inject(CustomerService);
-  private readonly supplyService = inject(SupplyService);
+  private readonly masterData = inject(MasterDataService);
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly notify = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
@@ -100,24 +97,38 @@ export class Contracts {
   protected readonly formError = signal<string | null>(null);
   protected readonly editingContract = signal<Contract | null>(null);
 
-  // Búsqueda remota para los autocompletadores (arrow fn para conservar `this`)
-  protected readonly searchClientes = (q: string): Observable<RemoteOption[]> =>
-    this.customerService
-      .list({ q: q || undefined, activeOnly: true }, { size: 50, sort: 'nombre,asc' })
-      .pipe(
-        map((res) =>
-          res.content.map((c) => ({ id: c.id, label: c.nombre, sublabel: c.nif ?? undefined })),
-        ),
-      );
+  // Búsqueda local contra el caché de IndexedDB — sin llamadas al backend
+  protected readonly searchClientes = (q: string): Observable<RemoteOption[]> => {
+    const query = q.trim().toLowerCase();
+    const results = this.masterData
+      .clientesActivos()
+      .filter(
+        (c) =>
+          !query ||
+          c.nombre.toLowerCase().includes(query) ||
+          (c.nif?.toLowerCase().includes(query) ?? false),
+      )
+      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+      .slice(0, 50)
+      .map((c) => ({ id: c.id, label: c.nombre, sublabel: c.nif ?? undefined }));
+    return of(results);
+  };
 
-  protected readonly searchSuministros = (q: string): Observable<RemoteOption[]> =>
-    this.supplyService
-      .list({ cups: q || undefined, activeOnly: true }, { size: 50, sort: 'cups,asc' })
-      .pipe(
-        map((res) =>
-          res.content.map((s) => ({ id: s.id, label: s.cups, sublabel: s.clienteNombre })),
-        ),
-      );
+  protected readonly searchSuministros = (q: string): Observable<RemoteOption[]> => {
+    const query = q.trim().toLowerCase();
+    const results = this.masterData
+      .suministrosActivos()
+      .filter(
+        (s) =>
+          !query ||
+          s.cups.toLowerCase().includes(query) ||
+          s.clienteNombre.toLowerCase().includes(query),
+      )
+      .sort((a, b) => a.cups.localeCompare(b.cups))
+      .slice(0, 50)
+      .map((s) => ({ id: s.id, label: s.cups, sublabel: s.clienteNombre }));
+    return of(results);
+  };
 
   protected readonly createForm = this.fb.nonNullable.group({
     clienteId: ['', [Validators.required]],

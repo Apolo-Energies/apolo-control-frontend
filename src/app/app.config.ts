@@ -16,6 +16,8 @@ import Aura from '@primeuix/themes/aura';
 import { routes } from './app.routes';
 import { environment } from '../environments/environment';
 import { authInterceptor } from './core/auth/auth.interceptor';
+import { AuthService } from './core/auth/auth.service';
+import { MasterDataService } from './core/services/master-data.service';
 
 registerLocaleData(localeEs, 'es-ES');
 
@@ -39,6 +41,21 @@ export const appConfig: ApplicationConfig = {
           document.title = environment.appTitle;
         }
       },
+    },
+    {
+      // Hydrate master-data signals from the IndexedDB cache before the first
+      // route renders. Only fires when a valid session already exists (page
+      // refresh / tab restore). Does NOT hit the network — that happens in the
+      // Layout component so the interceptor has a live token.
+      provide: APP_INITIALIZER,
+      multi: true,
+      deps: [PLATFORM_ID, AuthService, MasterDataService],
+      useFactory:
+        (platformId: object, auth: AuthService, masterData: MasterDataService) => async () => {
+          if (isPlatformBrowser(platformId) && auth.isAuthenticated()) {
+            await masterData.initialize();
+          }
+        },
     },
   ],
 };
