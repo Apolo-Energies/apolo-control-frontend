@@ -13,6 +13,7 @@ import {
   ApoloMwhPipe,
 } from '../../shared/pipes';
 import { DashboardService } from '../../core/services/dashboard.service';
+import { MasterDataService } from '../../core/services/master-data.service';
 import {
   ApiErrorResponse,
   ContractStatus,
@@ -106,6 +107,7 @@ const STATUS_COLORS: Record<ContractStatus, { color: string; colorSoft: string; 
 })
 export class Dashboard {
   private readonly service = inject(DashboardService);
+  private readonly masterData = inject(MasterDataService);
 
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
@@ -236,6 +238,7 @@ export class Dashboard {
     this.service.summary(this.buildFilter()).subscribe({
       next: (response) => {
         this.data.set(response);
+        this.masterData.mergeMotivos(Object.keys(response.kosPorMotivo ?? {}));
         this.loading.set(false);
       },
       error: (err: HttpErrorResponse) => {

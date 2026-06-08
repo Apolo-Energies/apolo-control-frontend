@@ -29,6 +29,10 @@ export interface Contract {
 
 export interface ContractFilter {
   status?: ContractStatus;
+  q?: string;
+  startDate?: string;
+  endDate?: string;
+  motivoRechazo?: string;
 }
 
 export interface ContractPayload {

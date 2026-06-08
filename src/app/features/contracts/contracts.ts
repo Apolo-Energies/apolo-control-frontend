@@ -81,9 +81,18 @@ export class Contracts {
   private readonly notify = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
 
-  protected statusFilter: ContractStatus | null = null;
+  // Filtros de la barra superior
+  protected statusFilter: ContractStatus | '' = '';
+  protected q = '';
+  protected startDate = '';
+  protected endDate = '';
+  protected motivoRechazo = '';
+
   protected readonly statuses = CONTRACT_STATUS_VALUES;
   protected readonly assignableStatuses = ASSIGNABLE_STATUSES;
+
+  // Motivos de rechazo desde caché local (sin llamada HTTP)
+  protected readonly motivosRechazo = this.masterData.motivosRechazo;
 
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
@@ -160,7 +169,13 @@ export class Contracts {
     this.errorMessage.set(null);
     this.service
       .list(
-        { status: this.statusFilter ?? undefined },
+        {
+          status: this.statusFilter || undefined,
+          q: this.q.trim() || undefined,
+          startDate: this.startDate || undefined,
+          endDate: this.endDate || undefined,
+          motivoRechazo: this.motivoRechazo || undefined,
+        },
         { page, size: this.size(), sort: 'fechaCreacion,desc' },
       )
       .subscribe({
@@ -177,6 +192,15 @@ export class Contracts {
 
   protected onSizeChange(size: number): void {
     this.size.set(size);
+    this.reload(0);
+  }
+
+  protected clearFilters(): void {
+    this.q = '';
+    this.statusFilter = '';
+    this.motivoRechazo = '';
+    this.startDate = '';
+    this.endDate = '';
     this.reload(0);
   }
 

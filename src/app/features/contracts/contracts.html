@@ -9,20 +9,81 @@
   </button>
 </app-page-header>
 
-<section class="bg-card border border-border rounded-xl p-4 mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
-  <label class="flex items-center gap-2 text-sm text-foreground">
+<section class="bg-card border border-border rounded-xl p-4 mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:flex-wrap">
+
+  <!-- Búsqueda libre -->
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">Búsqueda</span>
+    <input
+      type="text"
+      [(ngModel)]="q"
+      (ngModelChange)="reload(0)"
+      placeholder="Cliente, NIF, CUPS, servicio…"
+      class="rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground w-56 focus:outline-none focus:ring-2 focus:ring-primary/40"
+    />
+  </label>
+
+  <!-- Estado -->
+  <label class="flex flex-col gap-1">
     <span class="text-xs text-muted-foreground">Estado</span>
     <select
       [(ngModel)]="statusFilter"
       (ngModelChange)="reload(0)"
       class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
     >
-      <option [ngValue]="null">Todos</option>
+      <option value="">Todos</option>
       @for (status of statuses; track status) {
-        <option [ngValue]="status">{{ label(status) }}</option>
+        <option [value]="status">{{ label(status) }}</option>
       }
     </select>
   </label>
+
+  <!-- Motivo de rechazo (desde caché local de master-data) -->
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">Motivo rechazo</span>
+    <select
+      [(ngModel)]="motivoRechazo"
+      (ngModelChange)="reload(0)"
+      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+    >
+      <option value="">Todos</option>
+      @for (motivo of motivosRechazo(); track motivo) {
+        <option [value]="motivo">{{ motivo }}</option>
+      }
+    </select>
+  </label>
+
+  <!-- Rango de fechas -->
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">Fecha creación desde</span>
+    <input
+      type="date"
+      [(ngModel)]="startDate"
+      (ngModelChange)="reload(0)"
+      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+    />
+  </label>
+
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">hasta</span>
+    <input
+      type="date"
+      [(ngModel)]="endDate"
+      (ngModelChange)="reload(0)"
+      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+    />
+  </label>
+
+  <!-- Limpiar filtros -->
+  @if (q || statusFilter || motivoRechazo || startDate || endDate) {
+    <button
+      type="button"
+      (click)="clearFilters()"
+      class="h-8 px-3 rounded-lg border border-border text-xs text-muted-foreground hover:bg-accent/40 transition-colors self-end"
+    >
+      Limpiar filtros
+    </button>
+  }
 </section>
 
 @if (errorMessage(); as msg) {

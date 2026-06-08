@@ -22,6 +22,10 @@ export class ContractService {
     return this.http.get<Page<Contract>>(this.baseUrl, {
       params: buildParams({
         estado: filter.status,
+        q: filter.q,
+        startDate: filter.startDate,
+        endDate: filter.endDate,
+        motivoRechazo: filter.motivoRechazo,
         ...page,
       }),
     });

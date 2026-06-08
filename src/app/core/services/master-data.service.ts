@@ -165,6 +165,20 @@ export class MasterDataService {
     this._delegaciones.update((prev) => prev.filter((d) => d.id !== id));
   }
 
+  /**
+   * Merges additional rejection motivos into the local signal.
+   * Called by any feature (e.g. Dashboard) that receives kosPorMotivo from the API,
+   * as a fallback when /v1/master-data does not yet populate motivosRechazo.
+   */
+  mergeMotivos(incoming: string[]): void {
+    if (!incoming.length) return;
+    const current = new Set(this._motivosRechazo());
+    const merged = [...current, ...incoming.filter((m) => !current.has(m))].sort();
+    if (merged.length !== current.size) {
+      this._motivosRechazo.set(merged);
+    }
+  }
+
   /** Upserts a suministro in the local signal (call after POST/PUT). */
   upsertSuministro(updated: Supply): void {
     this._suministros.update((prev) => upsert(prev, updated));
