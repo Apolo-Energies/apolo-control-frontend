@@ -28,6 +28,9 @@ export interface MarginsSummary {
 export interface RankingItem {
   nombre: string;
   total: number;
+  fechaUltimoContrato: string;
+  antiguedadDias: number;
+  totalMwh: number;
 }
 
 export interface MonthlyConsumption {
@@ -42,6 +45,7 @@ export interface DashboardSummary {
   suministros: SuppliesSummary;
   margenes: MarginsSummary;
   topDelegaciones: RankingItem[];
+  kosPorMotivo: Record<string, number>;
   consumoMensualBruto: MonthlyConsumption[];
   consumoMensualActivo: MonthlyConsumption[];
 }

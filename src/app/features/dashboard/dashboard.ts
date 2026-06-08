@@ -29,6 +29,14 @@ interface RangeOption {
   label: string;
 }
 
+/** Genera N colores HSL equidistantes en el círculo cromático — sin repeticiones. */
+function generatePalette(count: number): string[] {
+  return Array.from({ length: count }, (_, i) => {
+    const hue = Math.round((i * 360) / count);
+    return `hsl(${hue}, 70%, 55%)`;
+  });
+}
+
 interface StatusStripItem {
   status: ContractStatus;
   label: string;
@@ -166,6 +174,19 @@ export class Dashboard {
       color: item.color,
     })),
   );
+
+  protected readonly koDonutData = computed<DonutChartItem[]>(() => {
+    const d = this.data();
+    if (!d?.kosPorMotivo) return [];
+    const entries = Object.entries(d.kosPorMotivo).sort(([, a], [, b]) => b - a);
+    const palette = generatePalette(entries.length);
+    return entries.map(([motivo, count], i) => ({
+      id: motivo,
+      label: motivo,
+      value: count,
+      color: palette[i],
+    }));
+  });
 
   protected readonly brutoChartData = computed<BarChartItem[]>(() => {
     const d = this.data();
