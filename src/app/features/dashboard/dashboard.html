@@ -248,7 +248,7 @@
   }
 
   <!-- Dona Distribución de Estatus -->
-  <section class="bg-card border border-border rounded-xl p-5">
+  <section class="bg-card border border-border rounded-xl p-5 mb-6">
     <header class="mb-4">
       <h2 class="text-base font-semibold text-foreground">Distribución de estatus</h2>
       <p class="text-xs text-muted-foreground">Contratos por estado · pasa el cursor para ver detalle</p>
@@ -256,3 +256,88 @@
     <app-donut-chart [data]="donutData()" centerLabel="Total" />
   </section>
 }
+
+<!-- Actividad por delegaciones (independiente del rango del resumen) -->
+<section class="bg-card border border-border rounded-xl p-5">
+  <header class="flex flex-col gap-3 mb-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h2 class="text-base font-semibold text-foreground">Actividad por delegaciones</h2>
+      <p class="text-xs text-muted-foreground">Contratos y consumo agrupados por delegación y fecha</p>
+    </div>
+    <div class="flex items-end gap-2 flex-wrap">
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-muted-foreground">Desde</span>
+        <input
+          type="date"
+          [(ngModel)]="actividadStartDate"
+          (ngModelChange)="reloadActividad(0)"
+          class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-muted-foreground">Hasta</span>
+        <input
+          type="date"
+          [(ngModel)]="actividadEndDate"
+          (ngModelChange)="reloadActividad(0)"
+          class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+      </label>
+    </div>
+  </header>
+
+  @if (actividadLoading() && actividadRows().length === 0) {
+    <app-table-skeleton [cols]="5" [rows]="8" />
+  } @else {
+    <div class="relative overflow-hidden rounded-lg border border-border">
+      <app-loading-overlay [loading]="actividadLoading() && actividadRows().length > 0" message="Actualizando…" />
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th class="px-4 py-3 text-left font-semibold">Delegación</th>
+              <th class="px-4 py-3 text-left font-semibold">Fecha</th>
+              <th class="px-4 py-3 text-right font-semibold">Contratos</th>
+              <th class="px-4 py-3 text-right font-semibold">Total MWh</th>
+              <th class="px-4 py-3 text-right font-semibold">Antigüedad</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border/40">
+            @for (row of actividadRows(); track row.nombre + row.fecha) {
+              <tr class="hover:bg-accent/20 transition-colors">
+                <td class="px-4 py-3 font-medium text-foreground">{{ row.nombre }}</td>
+                <td class="px-4 py-3 text-foreground/80">{{ row.fecha }}</td>
+                <td class="px-4 py-3 text-right font-medium text-foreground">
+                  {{ row.contratos | apoloInteger }}
+                </td>
+                <td class="px-4 py-3 text-right text-foreground/80">
+                  {{ row.totalMwh | apoloMwh }}
+                </td>
+                <td class="px-4 py-3 text-right text-muted-foreground text-xs">
+                  {{ row.antiguedadDias }} días
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="px-4 py-10 text-center text-sm text-muted-foreground">
+                  Sin actividad para el período seleccionado.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  <div class="mt-4">
+    <app-pagination
+      [page]="actividadPage()"
+      [pageSize]="actividadSize()"
+      [totalElements]="actividadTotal()"
+      [totalPages]="actividadTotalPages()"
+      (pageChange)="reloadActividad($event)"
+      (pageSizeChange)="onActividadSizeChange($event)"
+    />
+  </div>
+</section>

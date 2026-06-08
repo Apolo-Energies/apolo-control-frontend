@@ -54,3 +54,16 @@ export interface DashboardFilter {
   startDate?: string;
   endDate?: string;
 }
+
+export interface ActividadDelegacion {
+  nombre: string;
+  fecha: string;
+  contratos: number;
+  totalMwh: number;
+  antiguedadDias: number;
+}
+
+export interface ActividadDelegacionFilter {
+  startDate?: string;
+  endDate?: string;
+}

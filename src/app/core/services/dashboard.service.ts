@@ -4,6 +4,8 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import {
+  ActividadDelegacion,
+  ActividadDelegacionFilter,
   Contract,
   DashboardFilter,
   DashboardSummary,
@@ -27,5 +29,15 @@ export class DashboardService {
     return this.http.get<Page<Contract>>(`${this.baseUrl}/ventas-mes`, {
       params: buildParams(page),
     });
+  }
+
+  actividadDelegaciones(
+    filter: ActividadDelegacionFilter = {},
+    page: PageRequest = {},
+  ): Observable<Page<ActividadDelegacion>> {
+    return this.http.get<Page<ActividadDelegacion>>(
+      `${this.baseUrl}/actividad-delegaciones`,
+      { params: buildParams({ ...filter, ...page }) },
+    );
   }
 }
