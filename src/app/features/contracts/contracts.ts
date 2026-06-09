@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormArray, FormBuilder, FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { PageHeader } from '../../shared/components/page-header/page-header';
 import { StatusBadge, StatusTone } from '../../shared/components/status-badge/status-badge';
@@ -139,15 +139,24 @@ export class Contracts {
     return of(results);
   };
 
-  protected readonly createForm = this.fb.nonNullable.group({
-    clienteId: ['', [Validators.required]],
-    suministroId: ['', [Validators.required]],
-    servicio: [''],
-    campana: [''],
-    descuento: [null as number | null],
-    estado: ['para_estudio' as ContractStatus],
-    fechaInicio: [''],
-    fechaFinPrevista: [''],
+  protected readonly createForm = this.fb.group({
+    clienteId: this.fb.nonNullable.control('', [Validators.required]),
+    suministros: this.fb.array<FormControl<string>>(
+      [this.fb.nonNullable.control('', [Validators.required])],
+    ),
+    servicio: this.fb.nonNullable.control(''),
+    campana: this.fb.nonNullable.control(''),
+    descuento: this.fb.control<number | null>(null),
+    estado: this.fb.nonNullable.control<ContractStatus>('para_estudio'),
+    fechaInicio: this.fb.nonNullable.control(''),
+    fechaFinPrevista: this.fb.nonNullable.control(''),
+  });
+
+  private readonly suministroVersion = signal(0);
+
+  protected readonly suministroControls = computed(() => {
+    this.suministroVersion();
+    return (this.createForm.get('suministros') as FormArray<FormControl<string>>).controls;
   });
 
   protected readonly statusForm = this.fb.nonNullable.group({
@@ -207,17 +216,37 @@ export class Contracts {
   // ── Crear contrato ──
   protected openCreate(): void {
     this.formError.set(null);
-    this.createForm.reset({
+    const arr = this.createForm.get('suministros') as FormArray;
+    while (arr.length > 0) arr.removeAt(0);
+    arr.push(this.fb.nonNullable.control('', [Validators.required]));
+    this.suministroVersion.set(1);
+    this.createForm.patchValue({
       clienteId: '',
-      suministroId: '',
       servicio: '',
       campana: '',
       descuento: null,
-      estado: 'para_estudio',
+      estado: 'para_estudio' as ContractStatus,
       fechaInicio: '',
       fechaFinPrevista: '',
     });
+    this.createForm.markAsPristine();
+    this.createForm.markAsUntouched();
     this.createOpen.set(true);
+  }
+
+  protected addSuministro(): void {
+    (this.createForm.get('suministros') as FormArray).push(
+      this.fb.nonNullable.control('', [Validators.required]),
+    );
+    this.suministroVersion.update(v => v + 1);
+  }
+
+  protected removeSuministro(index: number): void {
+    const arr = this.createForm.get('suministros') as FormArray;
+    if (arr.length > 1) {
+      arr.removeAt(index);
+      this.suministroVersion.update(v => v + 1);
+    }
   }
 
   protected closeCreate(): void {
@@ -230,6 +259,9 @@ export class Contracts {
       return;
     }
     const v = this.createForm.getRawValue();
+    const ids = (this.createForm.get('suministros') as FormArray).getRawValue() as string[];
+    const validIds = ids.filter(id => !!id);
+
     this.submitting.set(true);
     this.formError.set(null);
     this.globalLoading.start('Guardando contrato', 'Registrando el nuevo contrato.');
@@ -237,7 +269,8 @@ export class Contracts {
     this.service
       .create({
         clienteId: v.clienteId,
-        suministroId: v.suministroId,
+        suministroId: validIds[0] ?? null,
+        suministroIds: validIds.length > 1 ? validIds : undefined,
         servicio: v.servicio || null,
         campana: v.campana || null,
         descuento: v.descuento,

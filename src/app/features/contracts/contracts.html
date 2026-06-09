@@ -222,14 +222,45 @@
       />
     </label>
 
-    <label class="flex flex-col gap-1.5 sm:col-span-2">
-      <span class="text-xs font-medium text-foreground/80">Suministro (CUPS)</span>
-      <app-remote-select
-        formControlName="suministroId"
-        placeholder="Escribe el CUPS…"
-        [searchFn]="searchSuministros"
-      />
-    </label>
+    <div class="flex flex-col gap-1.5 sm:col-span-2" formArrayName="suministros">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-medium text-foreground/80">Suministros (CUPS)</span>
+        @if (suministroControls().length > 1) {
+          <span class="text-xs text-muted-foreground">{{ suministroControls().length }} suministros</span>
+        }
+      </div>
+      <div class="flex flex-col gap-2">
+        @for (ctrl of suministroControls(); track $index; let i = $index) {
+          <div class="flex items-center gap-2">
+            <div class="flex-1">
+              <app-remote-select
+                [formControl]="ctrl"
+                placeholder="Escribe el CUPS…"
+                [searchFn]="searchSuministros"
+              />
+            </div>
+            @if (suministroControls().length > 1) {
+              <button
+                type="button"
+                (click)="removeSuministro(i)"
+                class="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-lg border border-border text-danger-fg hover:bg-danger/10 transition-colors"
+                title="Quitar suministro"
+              >
+                <ui-icon name="x" [size]="14" />
+              </button>
+            }
+          </div>
+        }
+        <button
+          type="button"
+          (click)="addSuministro()"
+          class="h-9 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:text-primary hover:border-primary transition-colors"
+        >
+          <ui-icon name="plus" [size]="12" />
+          Añadir otro suministro
+        </button>
+      </div>
+    </div>
 
     <label class="flex flex-col gap-1.5">
       <span class="text-xs font-medium text-foreground/80">Servicio</span>

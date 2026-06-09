@@ -39,7 +39,8 @@ export interface ContractFilter {
 
 export interface ContractPayload {
   clienteId: string;
-  suministroId: string;
+  suministroId?: string | null;
+  suministroIds?: string[];
   campana?: string | null;
   servicio?: string | null;
   descuento?: number | null;
