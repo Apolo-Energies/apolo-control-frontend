@@ -15,6 +15,7 @@ import { GroupService } from '../../core/services/group.service';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { GlobalLoadingService } from '../../core/services/global-loading.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { ScoringService } from '../../core/services/scoring.service';
 import { ApiErrorResponse, Branch, Customer, Group, Page } from '../../core/models';
 import { formatDate, safeText } from '../../shared/utils/format';
 
@@ -41,6 +42,7 @@ export class Customers {
   private readonly confirm = inject(ConfirmService);
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly notify = inject(NotificationService);
+  private readonly scoringService = inject(ScoringService);
   private readonly fb = inject(FormBuilder);
 
   protected search = '';
@@ -57,6 +59,18 @@ export class Customers {
   protected readonly formError = signal<string | null>(null);
   protected readonly branches = signal<Branch[]>([]);
   protected readonly groups = signal<Group[]>([]);
+
+  protected readonly scoringModalOpen = signal(false);
+  protected readonly scoringSubmitting = signal(false);
+  protected readonly scoringFormError = signal<string | null>(null);
+  private _scoringTarget: Customer | null = null;
+
+  protected readonly scoringForm = this.fb.nonNullable.group({
+    puntuacion: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
+    comentarios: [''],
+    vigilancia: [false],
+    fechaActivacionVigilancia: [''],
+  });
 
   protected readonly form = this.fb.nonNullable.group({
     nombre: ['', [Validators.required]],
@@ -213,6 +227,86 @@ export class Customers {
         .list({ size: 100, sort: 'nombre,asc' })
         .subscribe({ next: (res) => this.groups.set(res.content) });
     }
+  }
+
+  protected get isEditingScoring(): boolean {
+    return !!this._scoringTarget?.scoring;
+  }
+
+  protected get scoringCustomerName(): string {
+    return this._scoringTarget?.nombre ?? '';
+  }
+
+  protected openScoringCreate(customer: Customer): void {
+    this._scoringTarget = customer;
+    this.scoringFormError.set(null);
+    this.scoringForm.reset({ puntuacion: 1, comentarios: '', vigilancia: false, fechaActivacionVigilancia: '' });
+    this.scoringModalOpen.set(true);
+  }
+
+  protected openScoringEdit(customer: Customer): void {
+    const s = customer.scoring!;
+    this._scoringTarget = customer;
+    this.scoringFormError.set(null);
+    this.scoringForm.reset({
+      puntuacion: s.puntuacion,
+      comentarios: s.comentarios ?? '',
+      vigilancia: s.vigilancia,
+      fechaActivacionVigilancia: s.fechaActivacionVigilancia ?? '',
+    });
+    this.scoringModalOpen.set(true);
+  }
+
+  protected closeScoringModal(): void {
+    this.scoringModalOpen.set(false);
+  }
+
+  protected submitScoring(): void {
+    if (this.scoringForm.invalid) {
+      this.scoringForm.markAllAsTouched();
+      return;
+    }
+    const customer = this._scoringTarget!;
+    const value = this.scoringForm.getRawValue();
+    const payload = {
+      clienteId: customer.id,
+      puntuacion: value.puntuacion,
+      comentarios: value.comentarios || null,
+      vigilancia: value.vigilancia,
+      fechaActivacionVigilancia: value.fechaActivacionVigilancia || null,
+    };
+
+    this.scoringSubmitting.set(true);
+    this.scoringFormError.set(null);
+
+    const obs$ = customer.scoring
+      ? this.scoringService.update(customer.scoring.id, payload)
+      : this.scoringService.create(payload);
+
+    obs$.subscribe({
+      next: (scoring) => {
+        this.scoringSubmitting.set(false);
+        this.closeScoringModal();
+        this.notify.success(customer.scoring ? 'Scoring actualizado' : 'Scoring creado');
+        const current = this.result();
+        if (current) {
+          const updatedContent = current.content.map((c) =>
+            c.id === customer.id ? { ...c, scoring } : c,
+          );
+          this.result.set({ ...current, content: updatedContent });
+        }
+      },
+      error: (err: HttpErrorResponse) => {
+        this.scoringSubmitting.set(false);
+        this.scoringFormError.set(extractMessage(err));
+      },
+    });
+  }
+
+  protected scoringTone(score: number): 'success' | 'warning' | 'danger' {
+    if (score <= 3) return 'success';
+    if (score <= 6) return 'warning';
+    return 'danger';
   }
 
   protected text(value: string | null): string {

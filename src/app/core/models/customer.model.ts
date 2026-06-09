@@ -1,3 +1,16 @@
+export interface CustomerScoring {
+  id: string;
+  clienteId: string;
+  clienteNombre: string;
+  clienteNif: string | null;
+  puntuacion: number;
+  comentarios: string | null;
+  vigilancia: boolean;
+  fechaActivacionVigilancia: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Customer {
   id: string;
   nombre: string;
@@ -18,6 +31,7 @@ export interface Customer {
   actividad: string | null;
   comercial: string | null;
   activo: boolean;
+  scoring?: CustomerScoring | null;
   createdAt: string;
   updatedAt: string;
 }
