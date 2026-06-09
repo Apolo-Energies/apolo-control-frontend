@@ -33,6 +33,10 @@ export const routes: Routes = [
         path: 'supplies',
         loadComponent: () => import('./features/supplies/supplies').then((m) => m.Supplies),
       },
+      {
+        path: 'scoring',
+        loadComponent: () => import('./features/scoring/scoring').then((m) => m.ScoringList),
+      },
 
       // ── Organization ──
       {

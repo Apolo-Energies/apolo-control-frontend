@@ -93,7 +93,7 @@
 }
 
 @if (loading() && rows().length === 0) {
-  <app-table-skeleton [cols]="10" [rows]="8" />
+  <app-table-skeleton [cols]="11" [rows]="8" />
 } @else {
   <div class="relative bg-card border border-border rounded-xl overflow-hidden">
     <app-loading-overlay [loading]="loading() && rows().length > 0" message="Actualizando…" />
@@ -110,6 +110,7 @@
             <th class="px-4 py-3 text-left font-semibold">F. fin</th>
             <th class="px-4 py-3 text-right font-semibold">Margen bruto</th>
             <th class="px-4 py-3 text-right font-semibold">Margen neto</th>
+            <th class="px-4 py-3 text-left font-semibold">Scoring</th>
             <th class="px-4 py-3 text-right font-semibold">Acciones</th>
           </tr>
         </thead>
@@ -147,6 +148,20 @@
               <td class="px-4 py-3 text-right font-medium text-foreground">
                 {{ euro(row.margenNeto) }}
               </td>
+              <td class="px-4 py-3">
+                @if (row.scoring != null) {
+                  <div class="flex flex-col items-start gap-1">
+                    <app-status-badge [tone]="scoringTone(row.scoring.puntuacion)">
+                      {{ row.scoring.puntuacion }}/10
+                    </app-status-badge>
+                    @if (row.scoring.vigilancia) {
+                      <app-status-badge tone="warning">Vigilancia</app-status-badge>
+                    }
+                  </div>
+                } @else {
+                  <span class="text-muted-foreground">—</span>
+                }
+              </td>
               <td class="px-4 py-3 text-right">
                 <button
                   type="button"
@@ -161,7 +176,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="10" class="px-4 py-10 text-center text-sm text-muted-foreground">
+              <td colspan="11" class="px-4 py-10 text-center text-sm text-muted-foreground">
                 Sin contratos para los filtros seleccionados.
               </td>
             </tr>

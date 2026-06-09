@@ -1,4 +1,5 @@
 import { ContractStatus } from './enums';
+import { CustomerScoring } from './customer.model';
 
 export interface Contract {
   id: string;
@@ -23,6 +24,7 @@ export interface Contract {
   provincia: string | null;
   margenBruto: number | null;
   margenNeto: number | null;
+  scoring?: CustomerScoring | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -39,6 +39,7 @@ export class Layout {
           { label: 'Contratos', url: '/contracts', icon: 'file-text' },
           { label: 'Clientes', url: '/customers', icon: 'users' },
           { label: 'Suministros', url: '/supplies', icon: 'bolt' },
+          { label: 'Scoring', url: '/scoring', icon: 'sparkles' },
         ],
       },
       {

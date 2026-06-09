@@ -310,6 +310,12 @@ export class Contracts {
     return STATUS_TONE[status];
   }
 
+  protected scoringTone(score: number): 'success' | 'warning' | 'danger' {
+    if (score <= 3) return 'success';
+    if (score <= 6) return 'warning';
+    return 'danger';
+  }
+
   protected label(status: ContractStatus): string {
     return CONTRACT_STATUS_LABEL[status];
   }

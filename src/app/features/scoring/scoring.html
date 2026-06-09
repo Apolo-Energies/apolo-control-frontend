@@ -1,0 +1,176 @@
+<app-page-header title="Scoring de clientes" subtitle="Calificación de riesgo por cliente" />
+
+<!-- Filtros -->
+<section class="bg-card border border-border rounded-xl p-4 mb-4 flex flex-col gap-3">
+  <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:flex-wrap">
+    <!-- Búsqueda -->
+    <div class="flex items-center gap-2 flex-1 min-w-[220px] px-3 h-10 rounded-lg border border-border bg-background">
+      <ui-icon name="search" [size]="16" />
+      <input
+        type="search"
+        [(ngModel)]="busqueda"
+        (ngModelChange)="onSearchChange()"
+        placeholder="Buscar por nombre o NIF…"
+        class="bg-transparent outline-none text-sm flex-1 text-foreground placeholder:text-muted-foreground"
+      />
+    </div>
+
+    <!-- Puntuación mín / máx -->
+    <div class="flex items-center gap-2">
+      <span class="text-xs text-muted-foreground shrink-0">Puntuación</span>
+      <input
+        type="number"
+        [(ngModel)]="minPuntuacion"
+        (ngModelChange)="reload(0)"
+        placeholder="Mín"
+        min="1"
+        max="10"
+        class="w-16 h-10 rounded-lg border border-border bg-background px-2 text-sm text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+      <span class="text-xs text-muted-foreground">–</span>
+      <input
+        type="number"
+        [(ngModel)]="maxPuntuacion"
+        (ngModelChange)="reload(0)"
+        placeholder="Máx"
+        min="1"
+        max="10"
+        class="w-16 h-10 rounded-lg border border-border bg-background px-2 text-sm text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </div>
+
+    <!-- Rango vigilancia -->
+    <div class="flex items-center gap-2">
+      <ui-icon name="calendar" [size]="14" class="text-muted-foreground shrink-0" />
+      <input
+        type="date"
+        [(ngModel)]="fechaInicioVigilancia"
+        (ngModelChange)="reload(0)"
+        class="h-10 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+      <span class="text-xs text-muted-foreground">–</span>
+      <input
+        type="date"
+        [(ngModel)]="fechaFinVigilancia"
+        (ngModelChange)="reload(0)"
+        class="h-10 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </div>
+
+    <!-- Checkboxes -->
+    <div class="flex items-center gap-4 flex-wrap">
+      <label class="inline-flex items-center gap-2 text-sm text-foreground">
+        <input
+          type="checkbox"
+          [ngModel]="vigilanciaActiva"
+          (ngModelChange)="onVigilanciaActivaChange($event)"
+          class="h-4 w-4 rounded border-border accent-primary"
+        />
+        Solo vigilancia activa
+      </label>
+      <label class="inline-flex items-center gap-2 text-sm text-foreground">
+        <input
+          type="checkbox"
+          [ngModel]="historico"
+          (ngModelChange)="onHistoricoChange($event)"
+          class="h-4 w-4 rounded border-border accent-primary"
+        />
+        Histórico completo
+      </label>
+    </div>
+
+    <!-- Limpiar -->
+    <button
+      type="button"
+      (click)="clearFilters()"
+      class="h-10 px-3 inline-flex items-center gap-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-accent/30 transition-colors"
+    >
+      <ui-icon name="x" [size]="14" />
+      Limpiar
+    </button>
+  </div>
+</section>
+
+@if (errorMessage(); as msg) {
+  <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm mb-4">
+    {{ msg }}
+  </div>
+}
+
+@if (loading() && rows().length === 0) {
+  <app-table-skeleton [cols]="6" [rows]="10" />
+} @else {
+  <div class="relative bg-card border border-border rounded-xl overflow-hidden">
+    <app-loading-overlay [loading]="loading() && rows().length > 0" message="Actualizando…" />
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">Cliente</th>
+            <th class="px-4 py-3 text-left font-semibold">Puntuación</th>
+            <th class="px-4 py-3 text-left font-semibold">Vigilancia</th>
+            <th class="px-4 py-3 text-left font-semibold">Fecha vigilancia</th>
+            <th class="px-4 py-3 text-left font-semibold">Comentarios</th>
+            <th class="px-4 py-3 text-left font-semibold">Actualizado</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          @for (row of rows(); track row.id) {
+            <tr class="hover:bg-accent/20 transition-colors">
+              <td class="px-4 py-3">
+                <p class="font-medium text-foreground">{{ row.clienteNombre }}</p>
+                @if (row.clienteNif) {
+                  <p class="text-xs font-mono text-muted-foreground">{{ row.clienteNif }}</p>
+                }
+              </td>
+              <td class="px-4 py-3">
+                <app-status-badge [tone]="scoringTone(row.puntuacion)">
+                  {{ row.puntuacion }}/10
+                </app-status-badge>
+              </td>
+              <td class="px-4 py-3">
+                @if (row.vigilancia) {
+                  <app-status-badge tone="warning">Activa</app-status-badge>
+                } @else {
+                  <span class="text-muted-foreground text-xs">—</span>
+                }
+              </td>
+              <td class="px-4 py-3 text-foreground/80 text-sm">
+                {{ date(row.fechaActivacionVigilancia) }}
+              </td>
+              <td class="px-4 py-3 max-w-xs">
+                @if (row.comentarios) {
+                  <p class="text-foreground/80 text-sm truncate" [title]="row.comentarios">
+                    {{ row.comentarios }}
+                  </p>
+                } @else {
+                  <span class="text-muted-foreground">—</span>
+                }
+              </td>
+              <td class="px-4 py-3 text-muted-foreground text-xs">
+                {{ date(row.updatedAt) }}
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="px-4 py-10 text-center text-sm text-muted-foreground">
+                Sin scorings que coincidan con los filtros.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+<div class="mt-4">
+  <app-pagination
+    [page]="page()"
+    [pageSize]="size()"
+    [totalElements]="totalElements()"
+    [totalPages]="totalPages()"
+    (pageChange)="reload($event)"
+    (pageSizeChange)="onSizeChange($event)"
+  />
+</div>
