@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { FormArray, FormBuilder, FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { PageHeader } from '../../shared/components/page-header/page-header';
 import { StatusBadge, StatusTone } from '../../shared/components/status-badge/status-badge';
@@ -21,6 +21,7 @@ import {
   CONTRACT_STATUS_LABEL,
   CONTRACT_STATUS_VALUES,
   Page,
+  SuministroPayload,
 } from '../../core/models';
 import { formatDate, formatEuro, safeText } from '../../shared/utils/format';
 import { Observable, of } from 'rxjs';
@@ -141,9 +142,36 @@ export class Contracts {
 
   protected readonly createForm = this.fb.group({
     clienteId: this.fb.nonNullable.control('', [Validators.required]),
-    suministros: this.fb.array<FormControl<string>>(
-      [this.fb.nonNullable.control('', [Validators.required])],
-    ),
+    suministros: this.fb.array([
+      this.fb.group({
+        mode: this.fb.nonNullable.control<'existing' | 'new'>('existing'),
+        id: this.fb.nonNullable.control(''),
+        cups: this.fb.nonNullable.control(''),
+        tipo: this.fb.nonNullable.control<'E' | 'G' | ''>(''),
+        tarifa: this.fb.nonNullable.control(''),
+        compra: this.fb.nonNullable.control(false),
+        consumoContrato: this.fb.control<number | null>(null),
+        consumoUltimos12Meses: this.fb.control<number | null>(null),
+        direccion: this.fb.nonNullable.control(''),
+        codigoPostal: this.fb.nonNullable.control(''),
+        ineProvincia: this.fb.nonNullable.control(''),
+        provincia: this.fb.nonNullable.control(''),
+        inePoblacion: this.fb.nonNullable.control(''),
+        poblacion: this.fb.nonNullable.control(''),
+        dirFacturacion: this.fb.nonNullable.control(''),
+        cpFacturacion: this.fb.nonNullable.control(''),
+        ineProvFacturacion: this.fb.nonNullable.control(''),
+        provFacturacion: this.fb.nonNullable.control(''),
+        inePobFacturacion: this.fb.nonNullable.control(''),
+        pobFacturacion: this.fb.nonNullable.control(''),
+        potenciaP1: this.fb.control<number | null>(null),
+        potenciaP2: this.fb.control<number | null>(null),
+        potenciaP3: this.fb.control<number | null>(null),
+        potenciaP4: this.fb.control<number | null>(null),
+        potenciaP5: this.fb.control<number | null>(null),
+        potenciaP6: this.fb.control<number | null>(null),
+      }),
+    ]),
     servicio: this.fb.nonNullable.control(''),
     campana: this.fb.nonNullable.control(''),
     descuento: this.fb.control<number | null>(null),
@@ -154,9 +182,9 @@ export class Contracts {
 
   private readonly suministroVersion = signal(0);
 
-  protected readonly suministroControls = computed(() => {
+  protected readonly suministroControls = computed((): FormGroup[] => {
     this.suministroVersion();
-    return (this.createForm.get('suministros') as FormArray<FormControl<string>>).controls;
+    return (this.createForm.get('suministros') as FormArray).controls as FormGroup[];
   });
 
   protected readonly statusForm = this.fb.nonNullable.group({
@@ -218,7 +246,7 @@ export class Contracts {
     this.formError.set(null);
     const arr = this.createForm.get('suministros') as FormArray;
     while (arr.length > 0) arr.removeAt(0);
-    arr.push(this.fb.nonNullable.control('', [Validators.required]));
+    arr.push(this.makeSuministroGroup());
     this.suministroVersion.set(1);
     this.createForm.patchValue({
       clienteId: '',
@@ -235,9 +263,7 @@ export class Contracts {
   }
 
   protected addSuministro(): void {
-    (this.createForm.get('suministros') as FormArray).push(
-      this.fb.nonNullable.control('', [Validators.required]),
-    );
+    (this.createForm.get('suministros') as FormArray).push(this.makeSuministroGroup());
     this.suministroVersion.update(v => v + 1);
   }
 
@@ -259,8 +285,51 @@ export class Contracts {
       return;
     }
     const v = this.createForm.getRawValue();
-    const ids = (this.createForm.get('suministros') as FormArray).getRawValue() as string[];
-    const validIds = ids.filter(id => !!id);
+    const rawRows = (this.createForm.get('suministros') as FormArray).getRawValue() as Array<{
+      mode: 'existing' | 'new';
+      id: string;
+      cups: string; tipo: string; tarifa: string; compra: boolean;
+      consumoContrato: number | null; consumoUltimos12Meses: number | null;
+      direccion: string; codigoPostal: string;
+      ineProvincia: string; provincia: string; inePoblacion: string; poblacion: string;
+      dirFacturacion: string; cpFacturacion: string;
+      ineProvFacturacion: string; provFacturacion: string;
+      inePobFacturacion: string; pobFacturacion: string;
+      potenciaP1: number | null; potenciaP2: number | null; potenciaP3: number | null;
+      potenciaP4: number | null; potenciaP5: number | null; potenciaP6: number | null;
+    }>;
+    const suministros: SuministroPayload[] = rawRows
+      .map((s): SuministroPayload | null => {
+        if (s.mode === 'existing') return s.id ? { id: s.id } : null;
+        if (!s.cups) return null;
+        return {
+          cups: s.cups,
+          tipo: (s.tipo as 'E' | 'G') || undefined,
+          tarifa: s.tarifa || undefined,
+          compra: s.compra || undefined,
+          consumoContrato: s.consumoContrato ?? undefined,
+          consumoUltimos12Meses: s.consumoUltimos12Meses ?? undefined,
+          direccion: s.direccion || undefined,
+          codigoPostal: s.codigoPostal || undefined,
+          ineProvincia: s.ineProvincia || undefined,
+          provincia: s.provincia || undefined,
+          inePoblacion: s.inePoblacion || undefined,
+          poblacion: s.poblacion || undefined,
+          dirFacturacion: s.dirFacturacion || undefined,
+          cpFacturacion: s.cpFacturacion || undefined,
+          ineProvFacturacion: s.ineProvFacturacion || undefined,
+          provFacturacion: s.provFacturacion || undefined,
+          inePobFacturacion: s.inePobFacturacion || undefined,
+          pobFacturacion: s.pobFacturacion || undefined,
+          potenciaP1: s.potenciaP1 ?? undefined,
+          potenciaP2: s.potenciaP2 ?? undefined,
+          potenciaP3: s.potenciaP3 ?? undefined,
+          potenciaP4: s.potenciaP4 ?? undefined,
+          potenciaP5: s.potenciaP5 ?? undefined,
+          potenciaP6: s.potenciaP6 ?? undefined,
+        };
+      })
+      .filter((s): s is SuministroPayload => s !== null);
 
     this.submitting.set(true);
     this.formError.set(null);
@@ -269,8 +338,7 @@ export class Contracts {
     this.service
       .create({
         clienteId: v.clienteId,
-        suministroId: validIds[0] ?? null,
-        suministroIds: validIds.length > 1 ? validIds : undefined,
+        suministros: suministros.length > 0 ? suministros : undefined,
         servicio: v.servicio || null,
         campana: v.campana || null,
         descuento: v.descuento,
@@ -337,6 +405,51 @@ export class Contracts {
           this.formError.set(extractMessage(err));
         },
       });
+  }
+
+  protected makeSuministroGroup(): FormGroup {
+    return this.fb.group({
+      mode: this.fb.nonNullable.control<'existing' | 'new'>('existing'),
+      // existente
+      id: this.fb.nonNullable.control(''),
+      // nuevo — datos básicos
+      cups: this.fb.nonNullable.control(''),
+      tipo: this.fb.nonNullable.control<'E' | 'G' | ''>(''),
+      tarifa: this.fb.nonNullable.control(''),
+      compra: this.fb.nonNullable.control(false),
+      consumoContrato: this.fb.control<number | null>(null),
+      consumoUltimos12Meses: this.fb.control<number | null>(null),
+      // nuevo — ubicación
+      direccion: this.fb.nonNullable.control(''),
+      codigoPostal: this.fb.nonNullable.control(''),
+      ineProvincia: this.fb.nonNullable.control(''),
+      provincia: this.fb.nonNullable.control(''),
+      inePoblacion: this.fb.nonNullable.control(''),
+      poblacion: this.fb.nonNullable.control(''),
+      // nuevo — facturación
+      dirFacturacion: this.fb.nonNullable.control(''),
+      cpFacturacion: this.fb.nonNullable.control(''),
+      ineProvFacturacion: this.fb.nonNullable.control(''),
+      provFacturacion: this.fb.nonNullable.control(''),
+      inePobFacturacion: this.fb.nonNullable.control(''),
+      pobFacturacion: this.fb.nonNullable.control(''),
+      // nuevo — potencias
+      potenciaP1: this.fb.control<number | null>(null),
+      potenciaP2: this.fb.control<number | null>(null),
+      potenciaP3: this.fb.control<number | null>(null),
+      potenciaP4: this.fb.control<number | null>(null),
+      potenciaP5: this.fb.control<number | null>(null),
+      potenciaP6: this.fb.control<number | null>(null),
+    });
+  }
+
+  protected setSuministroMode(grp: FormGroup, mode: 'existing' | 'new'): void {
+    grp.get('mode')!.setValue(mode);
+    this.suministroVersion.update(v => v + 1);
+  }
+
+  protected asControl(ctrl: AbstractControl | null): FormControl {
+    return ctrl as FormControl;
   }
 
   protected tone(status: ContractStatus): StatusTone {

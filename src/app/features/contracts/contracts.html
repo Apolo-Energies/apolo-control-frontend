@@ -223,31 +223,198 @@
     </label>
 
     <div class="flex flex-col gap-1.5 sm:col-span-2" formArrayName="suministros">
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-medium text-foreground/80">Suministros (CUPS)</span>
-        @if (suministroControls().length > 1) {
-          <span class="text-xs text-muted-foreground">{{ suministroControls().length }} suministros</span>
-        }
-      </div>
+      <span class="text-xs font-medium text-foreground/80">Suministros (CUPS)</span>
       <div class="flex flex-col gap-2">
-        @for (ctrl of suministroControls(); track $index; let i = $index) {
-          <div class="flex items-center gap-2">
-            <div class="flex-1">
+        @for (grp of suministroControls(); track $index; let i = $index) {
+          <div class="flex flex-col gap-2 p-3 rounded-lg border border-border/60 bg-background/50">
+            <div class="flex items-center justify-between gap-2">
+              <!-- Toggle modo existente / nuevo -->
+              <div class="flex overflow-hidden rounded-md border border-border text-xs">
+                <button
+                  type="button"
+                  (click)="setSuministroMode(grp, 'existing')"
+                  [class]="grp.get('mode')?.value === 'existing'
+                    ? 'px-3 py-1.5 bg-primary text-primary-foreground font-medium'
+                    : 'px-3 py-1.5 text-muted-foreground hover:bg-accent/30 transition-colors'"
+                >Existente</button>
+                <button
+                  type="button"
+                  (click)="setSuministroMode(grp, 'new')"
+                  [class]="grp.get('mode')?.value === 'new'
+                    ? 'px-3 py-1.5 bg-primary text-primary-foreground font-medium'
+                    : 'px-3 py-1.5 text-muted-foreground hover:bg-accent/30 transition-colors'"
+                >Nuevo</button>
+              </div>
+              @if (suministroControls().length > 1) {
+                <button
+                  type="button"
+                  (click)="removeSuministro(i)"
+                  class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border text-danger-fg hover:bg-danger/10 transition-colors"
+                  title="Quitar suministro"
+                >
+                  <ui-icon name="x" [size]="12" />
+                </button>
+              }
+            </div>
+
+            @if (grp.get('mode')?.value === 'existing') {
               <app-remote-select
-                [formControl]="ctrl"
-                placeholder="Escribe el CUPS…"
+                [formControl]="asControl(grp.get('id'))"
+                placeholder="Buscar por CUPS o cliente…"
                 [searchFn]="searchSuministros"
               />
-            </div>
-            @if (suministroControls().length > 1) {
-              <button
-                type="button"
-                (click)="removeSuministro(i)"
-                class="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-lg border border-border text-danger-fg hover:bg-danger/10 transition-colors"
-                title="Quitar suministro"
-              >
-                <ui-icon name="x" [size]="14" />
-              </button>
+            } @else {
+              <div class="flex flex-col gap-3">
+
+                <!-- Datos básicos -->
+                <div class="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    [formControl]="asControl(grp.get('cups'))"
+                    placeholder="CUPS (ES0031…)"
+                    class="col-span-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <select
+                    [formControl]="asControl(grp.get('tipo'))"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="">Tipo…</option>
+                    <option value="E">Electricidad (E)</option>
+                    <option value="G">Gas (G)</option>
+                  </select>
+                  <input
+                    type="text"
+                    [formControl]="asControl(grp.get('tarifa'))"
+                    placeholder="Tarifa (2.0TD…)"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <input
+                    type="number"
+                    step="any"
+                    [formControl]="asControl(grp.get('consumoContrato'))"
+                    placeholder="Consumo contrato (kWh)"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <input
+                    type="number"
+                    step="any"
+                    [formControl]="asControl(grp.get('consumoUltimos12Meses'))"
+                    placeholder="Consumo últ. 12m (kWh)"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <label class="col-span-2 inline-flex items-center gap-2 text-sm text-foreground">
+                    <input
+                      type="checkbox"
+                      [formControl]="asControl(grp.get('compra'))"
+                      class="h-4 w-4 rounded border-border accent-primary"
+                    />
+                    En compra
+                  </label>
+                </div>
+
+                <!-- Ubicación -->
+                <div class="flex flex-col gap-1.5">
+                  <p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ubicación</p>
+                  <div class="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('direccion'))"
+                      placeholder="Dirección"
+                      class="col-span-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('codigoPostal'))"
+                      placeholder="C.P."
+                      class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('provincia'))"
+                      placeholder="Provincia"
+                      class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('poblacion'))"
+                      placeholder="Población"
+                      class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('ineProvincia'))"
+                      placeholder="INE provincia"
+                      class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('inePoblacion'))"
+                      placeholder="INE población"
+                      class="col-span-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                  </div>
+                </div>
+
+                <!-- Dirección facturación -->
+                <div class="flex flex-col gap-1.5">
+                  <p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Dirección facturación</p>
+                  <div class="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('dirFacturacion'))"
+                      placeholder="Dirección"
+                      class="col-span-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('cpFacturacion'))"
+                      placeholder="C.P."
+                      class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('provFacturacion'))"
+                      placeholder="Provincia"
+                      class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('pobFacturacion'))"
+                      placeholder="Población"
+                      class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('ineProvFacturacion'))"
+                      placeholder="INE provincia"
+                      class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('inePobFacturacion'))"
+                      placeholder="INE población"
+                      class="col-span-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                  </div>
+                </div>
+
+                <!-- Potencias -->
+                <div class="flex flex-col gap-1.5">
+                  <p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Potencias (kW)</p>
+                  <div class="grid grid-cols-3 gap-2">
+                    @for (p of [1,2,3,4,5,6]; track p) {
+                      <input
+                        type="number"
+                        step="any"
+                        [formControl]="asControl(grp.get('potenciaP' + p))"
+                        [placeholder]="'P' + p"
+                        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    }
+                  </div>
+                </div>
+
+              </div>
             }
           </div>
         }

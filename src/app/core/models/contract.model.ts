@@ -37,19 +37,62 @@ export interface ContractFilter {
   motivoRechazo?: string;
 }
 
+export interface SuministroPayload {
+  id?: string;
+  cups?: string;
+  tipo?: 'E' | 'G';
+  tarifa?: string;
+  compra?: boolean;
+  consumoContrato?: number | null;
+  consumoUltimos12Meses?: number | null;
+  direccion?: string | null;
+  codigoPostal?: string | null;
+  ineProvincia?: string | null;
+  provincia?: string | null;
+  inePoblacion?: string | null;
+  poblacion?: string | null;
+  dirFacturacion?: string | null;
+  cpFacturacion?: string | null;
+  ineProvFacturacion?: string | null;
+  provFacturacion?: string | null;
+  inePobFacturacion?: string | null;
+  pobFacturacion?: string | null;
+  potenciaP1?: number | null;
+  potenciaP2?: number | null;
+  potenciaP3?: number | null;
+  potenciaP4?: number | null;
+  potenciaP5?: number | null;
+  potenciaP6?: number | null;
+}
+
 export interface ContractPayload {
   clienteId: string;
-  suministroId?: string | null;
-  suministroIds?: string[];
+  suministros?: SuministroPayload[];
   campana?: string | null;
   servicio?: string | null;
+  pagoFacturas?: string | null;
+  tipoEnvioFactura?: string | null;
+  importeEnvioFactura?: number | null;
   descuento?: number | null;
+  observacionesFactura?: string | null;
   fechaCreacion?: string | null;
   mesesPrevisto?: number | null;
   fechaInicio?: string | null;
   fechaFinPrevista?: string | null;
+  fechaFinReal?: string | null;
+  fechaRenovacion?: string | null;
   estado?: ContractStatus | null;
   fechaEstado?: string | null;
+  margenBruto?: number | null;
+  margenNeto?: number | null;
+  margenCobros?: number | null;
+  margenCliente?: number | null;
+  margenAgenteAnual?: number | null;
+  margenAgenteKwh?: number | null;
+  categoriaAgente?: string | null;
+  formaPagoAgente?: string | null;
+  margenBeneficio?: number | null;
+  margenOperacion?: number | null;
 }
 
 export interface ChangeContractStatusPayload {
