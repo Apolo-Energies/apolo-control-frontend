@@ -106,6 +106,7 @@ export class Contracts {
   protected readonly submitting = signal(false);
   protected readonly formError = signal<string | null>(null);
   protected readonly editingContract = signal<Contract | null>(null);
+  protected readonly selectedFiles = signal<File[]>([]);
 
   // Búsqueda local contra el caché de IndexedDB — sin llamadas al backend
   protected readonly searchClientes = (q: string): Observable<RemoteOption[]> => {
@@ -259,6 +260,7 @@ export class Contracts {
     });
     this.createForm.markAsPristine();
     this.createForm.markAsUntouched();
+    this.selectedFiles.set([]);
     this.createOpen.set(true);
   }
 
@@ -276,10 +278,36 @@ export class Contracts {
   }
 
   protected closeCreate(): void {
+    this.selectedFiles.set([]);
     this.createOpen.set(false);
   }
 
-  protected submitCreate(): void {
+  protected onFilesSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    this.selectedFiles.update(files => [...files, ...Array.from(input.files!)]);
+    input.value = '';
+  }
+
+  protected removeFile(index: number): void {
+    this.selectedFiles.update(files => files.filter((_, i) => i !== index));
+  }
+
+  protected formatFileSize(bytes: number): string {
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  private readAsBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  protected async submitCreate(): Promise<void> {
     if (this.createForm.invalid) {
       this.createForm.markAllAsTouched();
       return;
@@ -331,6 +359,10 @@ export class Contracts {
       })
       .filter((s): s is SuministroPayload => s !== null);
 
+    const anexos = this.selectedFiles().length > 0
+      ? await Promise.all(this.selectedFiles().map(f => this.readAsBase64(f)))
+      : undefined;
+
     this.submitting.set(true);
     this.formError.set(null);
     this.globalLoading.start('Guardando contrato', 'Registrando el nuevo contrato.');
@@ -345,6 +377,7 @@ export class Contracts {
         estado: v.estado || null,
         fechaInicio: v.fechaInicio || null,
         fechaFinPrevista: v.fechaFinPrevista || null,
+        anexos,
       })
       .subscribe({
         next: () => {

@@ -93,6 +93,7 @@ export interface ContractPayload {
   formaPagoAgente?: string | null;
   margenBeneficio?: number | null;
   margenOperacion?: number | null;
+  anexos?: string[];
 }
 
 export interface ChangeContractStatusPayload {
