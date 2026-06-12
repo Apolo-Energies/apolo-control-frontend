@@ -40,6 +40,7 @@ export class Layout {
           { label: 'Clientes', url: '/customers', icon: 'users' },
           { label: 'Suministros', url: '/supplies', icon: 'bolt' },
           { label: 'Scoring', url: '/scoring', icon: 'sparkles' },
+          { label: 'Facturas Contab.', url: '/facturas-contabilidad', icon: 'receipt-x' },
         ],
       },
       {

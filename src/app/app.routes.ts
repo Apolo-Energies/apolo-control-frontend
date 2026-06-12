@@ -37,6 +37,13 @@ export const routes: Routes = [
         path: 'scoring',
         loadComponent: () => import('./features/scoring/scoring').then((m) => m.ScoringList),
       },
+      {
+        path: 'facturas-contabilidad',
+        loadComponent: () =>
+          import('./features/facturas-contabilidad/facturas-contabilidad').then(
+            (m) => m.FacturasContabilidad,
+          ),
+      },
 
       // ── Organization ──
       {

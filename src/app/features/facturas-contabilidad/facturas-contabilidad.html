@@ -1,0 +1,368 @@
+<app-page-header title="Facturas Contabilidad" subtitle="Facturas de proveedores y pagos">
+  <button
+    type="button"
+    class="h-9 px-3 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+    (click)="openCreate()"
+  >
+    <ui-icon name="plus" [size]="14" />
+    Nueva factura
+  </button>
+</app-page-header>
+
+<!-- Filtros -->
+<section class="bg-card border border-border rounded-xl p-4 mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:flex-wrap">
+
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">Búsqueda</span>
+    <input
+      type="text"
+      [(ngModel)]="q"
+      (ngModelChange)="onSearchChange()"
+      placeholder="Proveedor, CIF, número, concepto…"
+      class="rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground w-64 focus:outline-none focus:ring-2 focus:ring-primary/40"
+    />
+  </label>
+
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">Estado</span>
+    <select
+      [(ngModel)]="estado"
+      (ngModelChange)="reload(0)"
+      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+    >
+      <option value="">Todos</option>
+      @for (e of estados; track e) {
+        <option [value]="e">{{ estatusLabel(e) }}</option>
+      }
+    </select>
+  </label>
+
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">Delegación</span>
+    <select
+      [(ngModel)]="delegacionId"
+      (ngModelChange)="reload(0)"
+      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+    >
+      <option value="">Todas</option>
+      @for (d of delegaciones(); track d.id) {
+        <option [value]="d.id">{{ d.nombre }}</option>
+      }
+    </select>
+  </label>
+
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">Fecha desde</span>
+    <input
+      type="date"
+      [(ngModel)]="startDate"
+      (ngModelChange)="reload(0)"
+      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+    />
+  </label>
+
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">hasta</span>
+    <input
+      type="date"
+      [(ngModel)]="endDate"
+      (ngModelChange)="reload(0)"
+      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+    />
+  </label>
+
+  @if (q || estado || delegacionId || startDate || endDate) {
+    <button
+      type="button"
+      (click)="clearFilters()"
+      class="h-8 px-3 rounded-lg border border-border text-xs text-muted-foreground hover:bg-accent/40 transition-colors self-end"
+    >
+      Limpiar filtros
+    </button>
+  }
+</section>
+
+<!-- Resumen -->
+@if (resumen(); as r) {
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+    <div class="bg-card border border-border rounded-xl p-4 flex flex-col gap-1">
+      <p class="text-xs text-muted-foreground uppercase tracking-wide">Pendiente de pago</p>
+      <p class="text-2xl font-semibold text-warning-fg">{{ euro(r.pendientePago) }}</p>
+    </div>
+    <div class="bg-card border border-border rounded-xl p-4 flex flex-col gap-1">
+      <p class="text-xs text-muted-foreground uppercase tracking-wide">Total pagado</p>
+      <p class="text-2xl font-semibold text-success-fg">{{ euro(r.totalPagado) }}</p>
+    </div>
+    <div class="bg-card border border-border rounded-xl p-4 flex flex-col gap-1">
+      <p class="text-xs text-muted-foreground uppercase tracking-wide">Vencidas sin pagar</p>
+      <p class="text-2xl font-semibold text-danger-fg">{{ euro(r.vencidasSinPagar) }}</p>
+    </div>
+  </div>
+}
+
+@if (errorMessage(); as msg) {
+  <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm mb-4">
+    {{ msg }}
+  </div>
+}
+
+@if (loading() && rows().length === 0) {
+  <app-table-skeleton [cols]="9" [rows]="8" />
+} @else {
+  <div class="relative bg-card border border-border rounded-xl overflow-hidden">
+    <app-loading-overlay [loading]="loading() && rows().length > 0" message="Actualizando…" />
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">Fecha</th>
+            <th class="px-4 py-3 text-left font-semibold">Número</th>
+            <th class="px-4 py-3 text-left font-semibold">Proveedor</th>
+            <th class="px-4 py-3 text-left font-semibold">Concepto</th>
+            <th class="px-4 py-3 text-right font-semibold">Base + IVA</th>
+            <th class="px-4 py-3 text-right font-semibold">Total</th>
+            <th class="px-4 py-3 text-left font-semibold">Estado</th>
+            <th class="px-4 py-3 text-left font-semibold">Vencimiento / Pago</th>
+            <th class="px-4 py-3 text-left font-semibold">Delegación</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          @for (row of rows(); track row.id) {
+            <tr class="hover:bg-accent/20 transition-colors">
+              <td class="px-4 py-3 text-foreground/80 whitespace-nowrap">{{ date(row.fechaFactura) }}</td>
+              <td class="px-4 py-3 font-mono text-xs text-foreground/80">
+                {{ row.numeroFactura ?? '—' }}
+              </td>
+              <td class="px-4 py-3">
+                <p class="font-medium text-foreground">{{ row.proveedor }}</p>
+                @if (row.cifProveedor) {
+                  <p class="text-xs font-mono text-muted-foreground">{{ row.cifProveedor }}</p>
+                }
+              </td>
+              <td class="px-4 py-3 max-w-[200px]">
+                @if (row.concepto) {
+                  <p class="text-foreground/80 truncate" [title]="row.concepto">{{ row.concepto }}</p>
+                } @else {
+                  <span class="text-muted-foreground">—</span>
+                }
+              </td>
+              <td class="px-4 py-3 text-right">
+                <p class="font-medium text-foreground">{{ euro(row.baseImponible) }}</p>
+                <p class="text-xs text-muted-foreground">IVA {{ pct(row.ivaPct) }}</p>
+              </td>
+              <td class="px-4 py-3 text-right font-semibold text-foreground">
+                {{ euro(row.total) }}
+              </td>
+              <td class="px-4 py-3">
+                <app-status-badge [tone]="estatusTone(row.estado)">
+                  {{ estatusLabel(row.estado) }}
+                </app-status-badge>
+              </td>
+              <td class="px-4 py-3">
+                @if (row.fechaVencimiento) {
+                  <p class="text-xs text-muted-foreground">Vence: {{ date(row.fechaVencimiento) }}</p>
+                }
+                @if (row.fechaPago) {
+                  <p class="text-xs text-success-fg">Pagado: {{ date(row.fechaPago) }}</p>
+                }
+                @if (row.transferencia) {
+                  <p class="text-xs text-muted-foreground">Transferencia</p>
+                }
+              </td>
+              <td class="px-4 py-3 text-foreground/80 text-sm">
+                {{ row.delegacionNombre ?? '—' }}
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="9" class="px-4 py-10 text-center text-sm text-muted-foreground">
+                Sin facturas para los filtros seleccionados.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+<div class="mt-4">
+  <app-pagination
+    [page]="page()"
+    [pageSize]="size()"
+    [totalElements]="totalElements()"
+    [totalPages]="totalPages()"
+    (pageChange)="reload($event)"
+    (pageSizeChange)="onSizeChange($event)"
+  />
+</div>
+
+<!-- Nueva factura -->
+<app-form-dialog
+  [open]="createOpen()"
+  title="Nueva factura"
+  subtitle="Registra una factura de contabilidad"
+  icon="receipt-x"
+  width="600px"
+  [saving]="submitting()"
+  [canSave]="createForm.valid"
+  saveLabel="Crear factura"
+  [errorMessage]="formError()"
+  (cancel)="closeCreate()"
+  (save)="submitCreate()"
+>
+  <form [formGroup]="createForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+    <!-- Proveedor -->
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Proveedor <span class="text-danger-fg">*</span></span>
+      <input
+        type="text"
+        formControlName="proveedor"
+        placeholder="Nombre del proveedor"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">CIF proveedor</span>
+      <input
+        type="text"
+        formControlName="cifProveedor"
+        placeholder="B12345678"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <!-- Número y fecha -->
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Número de factura</span>
+      <input
+        type="text"
+        formControlName="numeroFactura"
+        placeholder="FAC-2026-001"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Fecha factura <span class="text-danger-fg">*</span></span>
+      <input
+        type="date"
+        formControlName="fechaFactura"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <!-- Concepto -->
+    <label class="flex flex-col gap-1.5 sm:col-span-2">
+      <span class="text-xs font-medium text-foreground/80">Concepto</span>
+      <input
+        type="text"
+        formControlName="concepto"
+        placeholder="Descripción del servicio o producto"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <!-- Importes -->
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Base imponible (€) <span class="text-danger-fg">*</span></span>
+      <input
+        type="number"
+        step="0.01"
+        formControlName="baseImponible"
+        placeholder="0.00"
+        (input)="updateTotal()"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">IVA (%)</span>
+      <input
+        type="number"
+        step="0.01"
+        formControlName="ivaPct"
+        placeholder="21"
+        (input)="updateTotal()"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5 sm:col-span-2">
+      <span class="text-xs font-medium text-foreground/80">Total (€) <span class="text-danger-fg">*</span></span>
+      <input
+        type="number"
+        step="0.01"
+        formControlName="total"
+        placeholder="Calculado automáticamente"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <!-- Estado -->
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Estado <span class="text-danger-fg">*</span></span>
+      <select
+        formControlName="estado"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      >
+        @for (e of estados; track e) {
+          <option [value]="e">{{ estatusLabel(e) }}</option>
+        }
+      </select>
+    </label>
+
+    <!-- Delegación -->
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Delegación</span>
+      <app-remote-select
+        formControlName="delegacionId"
+        placeholder="Buscar delegación…"
+        [searchFn]="searchDelegaciones"
+      />
+    </label>
+
+    <!-- Fechas vencimiento / pago -->
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Fecha vencimiento</span>
+      <input
+        type="date"
+        formControlName="fechaVencimiento"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Fecha pago</span>
+      <input
+        type="date"
+        formControlName="fechaPago"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <!-- Transferencia -->
+    <label class="sm:col-span-2 inline-flex items-center gap-2 text-sm text-foreground">
+      <input
+        type="checkbox"
+        formControlName="transferencia"
+        class="h-4 w-4 rounded border-border accent-primary"
+      />
+      Pago por transferencia
+    </label>
+
+    <!-- Comentarios -->
+    <label class="flex flex-col gap-1.5 sm:col-span-2">
+      <span class="text-xs font-medium text-foreground/80">Comentarios</span>
+      <textarea
+        formControlName="comentarios"
+        rows="3"
+        placeholder="Notas internas…"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+      ></textarea>
+    </label>
+
+  </form>
+</app-form-dialog>

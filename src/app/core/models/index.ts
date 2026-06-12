@@ -10,3 +10,4 @@ export * from './branch.model';
 export * from './group.model';
 export * from './dashboard.model';
 export * from './master-data.model';
+export * from './factura-contabilidad.model';
