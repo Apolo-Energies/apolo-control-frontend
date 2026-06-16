@@ -38,20 +38,6 @@
   </label>
 
   <label class="flex flex-col gap-1">
-    <span class="text-xs text-muted-foreground">Delegación</span>
-    <select
-      [(ngModel)]="delegacionId"
-      (ngModelChange)="reload(0)"
-      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-    >
-      <option value="">Todas</option>
-      @for (d of delegaciones(); track d.id) {
-        <option [value]="d.id">{{ d.nombre }}</option>
-      }
-    </select>
-  </label>
-
-  <label class="flex flex-col gap-1">
     <span class="text-xs text-muted-foreground">Fecha desde</span>
     <input
       type="date"
@@ -71,7 +57,7 @@
     />
   </label>
 
-  @if (q || estado || delegacionId || startDate || endDate) {
+  @if (q || estado || startDate || endDate) {
     <button
       type="button"
       (click)="clearFilters()"
@@ -123,7 +109,6 @@
             <th class="px-4 py-3 text-right font-semibold">Total</th>
             <th class="px-4 py-3 text-left font-semibold">Estado</th>
             <th class="px-4 py-3 text-left font-semibold">Vencimiento / Pago</th>
-            <th class="px-4 py-3 text-left font-semibold">Delegación</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-border/40">
@@ -168,9 +153,6 @@
                 @if (row.transferencia) {
                   <p class="text-xs text-muted-foreground">Transferencia</p>
                 }
-              </td>
-              <td class="px-4 py-3 text-foreground/80 text-sm">
-                {{ row.delegacionNombre ?? '—' }}
               </td>
             </tr>
           } @empty {
@@ -312,16 +294,6 @@
           <option [value]="e">{{ estatusLabel(e) }}</option>
         }
       </select>
-    </label>
-
-    <!-- Delegación -->
-    <label class="flex flex-col gap-1.5">
-      <span class="text-xs font-medium text-foreground/80">Delegación</span>
-      <app-remote-select
-        formControlName="delegacionId"
-        placeholder="Buscar delegación…"
-        [searchFn]="searchDelegaciones"
-      />
     </label>
 
     <!-- Fechas vencimiento / pago -->

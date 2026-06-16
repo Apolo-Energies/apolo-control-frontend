@@ -8,7 +8,6 @@ import { Pagination } from '../../shared/components/pagination/pagination';
 import { TableSkeleton } from '../../shared/components/table-skeleton/table-skeleton';
 import { LoadingOverlay } from '../../shared/components/loading-overlay/loading-overlay';
 import { FormDialog } from '../../shared/components/form-dialog/form-dialog';
-import { RemoteSelect, RemoteOption } from '../../shared/components/remote-select/remote-select';
 import { Icon } from '../../shared/icons/icon';
 import { FacturaContabilidadService } from '../../core/services/factura-contabilidad.service';
 import { MasterDataService } from '../../core/services/master-data.service';
@@ -23,7 +22,6 @@ import {
   FacturaContabilidadResumen,
 } from '../../core/models';
 import { formatDate, formatEuro } from '../../shared/utils/format';
-import { Observable, of } from 'rxjs';
 
 const ESTADO_TONE: Record<FacturaContabilidadEstado, StatusTone> = {
   enviado_a_pago: 'warning',
@@ -43,7 +41,6 @@ const ESTADO_TONE: Record<FacturaContabilidadEstado, StatusTone> = {
     TableSkeleton,
     LoadingOverlay,
     FormDialog,
-    RemoteSelect,
     Icon,
   ],
   templateUrl: './facturas-contabilidad.html',
@@ -56,23 +53,10 @@ export class FacturasContabilidad {
   private readonly fb = inject(FormBuilder);
 
   protected readonly estados = FACTURA_ESTADO_VALUES;
-  protected readonly delegaciones = this.masterData.delegacionesActivas;
-
-  protected readonly searchDelegaciones = (q: string): Observable<RemoteOption[]> => {
-    const query = q.trim().toLowerCase();
-    return of(
-      this.masterData
-        .delegacionesActivas()
-        .filter(d => !query || d.nombre.toLowerCase().includes(query))
-        .sort((a, b) => a.nombre.localeCompare(b.nombre))
-        .map(d => ({ id: d.id, label: d.nombre })),
-    );
-  };
 
   // Filtros
   protected q = '';
   protected estado: FacturaContabilidadEstado | '' = '';
-  protected delegacionId = '';
   protected startDate = '';
   protected endDate = '';
 
@@ -104,7 +88,6 @@ export class FacturasContabilidad {
     fechaVencimiento: this.fb.nonNullable.control(''),
     transferencia: this.fb.nonNullable.control(false),
     fechaPago: this.fb.nonNullable.control(''),
-    delegacionId: this.fb.nonNullable.control(''),
     comentarios: this.fb.nonNullable.control(''),
   });
 
@@ -123,7 +106,6 @@ export class FacturasContabilidad {
         {
           q: this.q.trim() || undefined,
           estado: this.estado || undefined,
-          delegacionId: this.delegacionId || undefined,
           startDate: this.startDate || undefined,
           endDate: this.endDate || undefined,
         },
@@ -159,7 +141,6 @@ export class FacturasContabilidad {
   protected clearFilters(): void {
     this.q = '';
     this.estado = '';
-    this.delegacionId = '';
     this.startDate = '';
     this.endDate = '';
     this.reload(0);
@@ -190,7 +171,6 @@ export class FacturasContabilidad {
       fechaVencimiento: '',
       transferencia: false,
       fechaPago: '',
-      delegacionId: '',
       comentarios: '',
     });
     this.createOpen.set(true);
@@ -224,7 +204,7 @@ export class FacturasContabilidad {
         fechaVencimiento: v.fechaVencimiento || null,
         transferencia: v.transferencia,
         fechaPago: v.fechaPago || null,
-        delegacionId: v.delegacionId || null,
+        delegacionId: null,
         comentarios: v.comentarios || null,
       })
       .subscribe({
