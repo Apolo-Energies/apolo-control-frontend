@@ -116,7 +116,7 @@
         </thead>
         <tbody class="divide-y divide-border/40">
           @for (row of rows(); track row.id) {
-            <tr class="hover:bg-accent/20 transition-colors">
+            <tr class="hover:bg-accent/20 transition-colors cursor-pointer" (click)="openEdit(row)">
               <td class="px-4 py-3 font-mono text-xs text-foreground/80">
                 {{ text(row.idExterno) }}
               </td>
@@ -162,7 +162,7 @@
                   <span class="text-muted-foreground">—</span>
                 }
               </td>
-              <td class="px-4 py-3 text-right">
+              <td class="px-4 py-3 text-right" (click)="$event.stopPropagation()">
                 <button
                   type="button"
                   (click)="openStatus(row)"
@@ -515,6 +515,92 @@
         </div>
       }
     </div>
+  </form>
+</app-form-dialog>
+
+<!-- Editar contrato -->
+<app-form-dialog
+  [open]="editOpen()"
+  title="Editar contrato"
+  subtitle="Modifica los datos del contrato"
+  icon="edit"
+  width="480px"
+  [saving]="submitting()"
+  [canSave]="editForm.valid"
+  saveLabel="Guardar cambios"
+  [errorMessage]="formError()"
+  (cancel)="closeEdit()"
+  (save)="submitEdit()"
+>
+  @if (editingContract(); as c) {
+    <div class="rounded-lg bg-background/60 border border-border/60 px-3 py-2 text-sm mb-4">
+      <p class="font-medium text-foreground">{{ c.clienteNombre }}</p>
+      @if (c.clienteNif) {
+        <p class="text-xs text-muted-foreground font-mono">{{ c.clienteNif }}</p>
+      }
+      @if (c.cups) {
+        <p class="text-xs text-muted-foreground font-mono mt-0.5">{{ c.cups }}</p>
+      }
+    </div>
+  }
+  <form [formGroup]="editForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Servicio</span>
+      <input
+        type="text"
+        formControlName="servicio"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Campaña</span>
+      <input
+        type="text"
+        formControlName="campana"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Estado</span>
+      <select
+        formControlName="estado"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      >
+        @for (s of assignableStatuses; track s) {
+          <option [value]="s">{{ label(s) }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Descuento (%)</span>
+      <input
+        type="number"
+        step="any"
+        formControlName="descuento"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Fecha inicio</span>
+      <input
+        type="date"
+        formControlName="fechaInicio"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Fecha fin prevista</span>
+      <input
+        type="date"
+        formControlName="fechaFinPrevista"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
   </form>
 </app-form-dialog>
 

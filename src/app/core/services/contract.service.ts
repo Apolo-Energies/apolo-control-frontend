@@ -35,8 +35,15 @@ export class ContractService {
     return this.http.get<Contract>(`${this.baseUrl}/${id}`);
   }
 
-  create(body: ContractPayload): Observable<Contract> {
-    return this.http.post<Contract>(this.baseUrl, body);
+  create(body: ContractPayload, files: File[] = []): Observable<Contract> {
+    const form = new FormData();
+    form.append('contrato', new Blob([JSON.stringify(body)], { type: 'application/json' }));
+    files.forEach(f => form.append('anexos', f, f.name));
+    return this.http.post<Contract>(this.baseUrl, form);
+  }
+
+  update(id: string, body: ContractPayload): Observable<Contract> {
+    return this.http.put<Contract>(`${this.baseUrl}/${id}`, body);
   }
 
   changeStatus(id: string, body: ChangeContractStatusPayload): Observable<Contract> {

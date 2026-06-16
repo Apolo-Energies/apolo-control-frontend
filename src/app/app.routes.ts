@@ -44,6 +44,13 @@ export const routes: Routes = [
             (m) => m.FacturasContabilidad,
           ),
       },
+      {
+        path: 'pagos-liquidacion',
+        loadComponent: () =>
+          import('./features/pagos-liquidacion/pagos-liquidacion').then(
+            (m) => m.PagosLiquidacion,
+          ),
+      },
 
       // ── Organization ──
       {

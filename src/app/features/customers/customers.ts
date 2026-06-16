@@ -16,6 +16,7 @@ import { ConfirmService } from '../../core/services/confirm.service';
 import { GlobalLoadingService } from '../../core/services/global-loading.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ScoringService } from '../../core/services/scoring.service';
+import { MasterDataService } from '../../core/services/master-data.service';
 import { ApiErrorResponse, Branch, Customer, Group, Page } from '../../core/models';
 import { formatDate, safeText } from '../../shared/utils/format';
 
@@ -43,6 +44,7 @@ export class Customers {
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly notify = inject(NotificationService);
   private readonly scoringService = inject(ScoringService);
+  private readonly masterData = inject(MasterDataService);
   private readonly fb = inject(FormBuilder);
 
   protected search = '';
@@ -174,9 +176,10 @@ export class Customers {
         activo: value.activo,
       })
       .subscribe({
-        next: () => {
+        next: (created: Customer) => {
           this.submitting.set(false);
           this.globalLoading.stop();
+          this.masterData.upsertCliente(created);
           this.closeModal();
           this.notify.success('Cliente creado');
           this.reload(0);
@@ -204,6 +207,7 @@ export class Customers {
     this.service.delete(customer.id).subscribe({
       next: () => {
         this.globalLoading.stop();
+        this.masterData.removeCliente(customer.id);
         this.notify.success(`Cliente "${customer.nombre}" dado de baja`);
         this.reload(this.page());
       },

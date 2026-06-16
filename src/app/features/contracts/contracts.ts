@@ -103,6 +103,7 @@ export class Contracts {
 
   protected readonly createOpen = signal(false);
   protected readonly statusOpen = signal(false);
+  protected readonly editOpen = signal(false);
   protected readonly submitting = signal(false);
   protected readonly formError = signal<string | null>(null);
   protected readonly editingContract = signal<Contract | null>(null);
@@ -186,6 +187,15 @@ export class Contracts {
   protected readonly suministroControls = computed((): FormGroup[] => {
     this.suministroVersion();
     return (this.createForm.get('suministros') as FormArray).controls as FormGroup[];
+  });
+
+  protected readonly editForm = this.fb.group({
+    servicio: this.fb.nonNullable.control(''),
+    campana: this.fb.nonNullable.control(''),
+    descuento: this.fb.control<number | null>(null),
+    estado: this.fb.nonNullable.control<ContractStatus>('para_estudio'),
+    fechaInicio: this.fb.nonNullable.control(''),
+    fechaFinPrevista: this.fb.nonNullable.control(''),
   });
 
   protected readonly statusForm = this.fb.nonNullable.group({
@@ -298,16 +308,7 @@ export class Contracts {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
-  private readAsBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve((reader.result as string).split(',')[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
-  protected async submitCreate(): Promise<void> {
+  protected submitCreate(): void {
     if (this.createForm.invalid) {
       this.createForm.markAllAsTouched();
       return;
@@ -359,10 +360,6 @@ export class Contracts {
       })
       .filter((s): s is SuministroPayload => s !== null);
 
-    const anexos = this.selectedFiles().length > 0
-      ? await Promise.all(this.selectedFiles().map(f => this.readAsBase64(f)))
-      : undefined;
-
     this.submitting.set(true);
     this.formError.set(null);
     this.globalLoading.start('Guardando contrato', 'Registrando el nuevo contrato.');
@@ -377,8 +374,7 @@ export class Contracts {
         estado: v.estado || null,
         fechaInicio: v.fechaInicio || null,
         fechaFinPrevista: v.fechaFinPrevista || null,
-        anexos,
-      })
+      }, this.selectedFiles())
       .subscribe({
         next: () => {
           this.submitting.set(false);
@@ -386,6 +382,63 @@ export class Contracts {
           this.closeCreate();
           this.notify.success('Contrato creado');
           this.reload(0);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.submitting.set(false);
+          this.globalLoading.stop();
+          this.formError.set(extractMessage(err));
+        },
+      });
+  }
+
+  // ── Editar contrato ──
+  protected openEdit(contract: Contract): void {
+    this.editingContract.set(contract);
+    this.formError.set(null);
+    this.editForm.patchValue({
+      servicio: contract.servicio ?? '',
+      campana: contract.campana ?? '',
+      descuento: contract.descuento,
+      estado: contract.estado,
+      fechaInicio: contract.fechaInicio ?? '',
+      fechaFinPrevista: contract.fechaFinPrevista ?? '',
+    });
+    this.editOpen.set(true);
+  }
+
+  protected closeEdit(): void {
+    this.editOpen.set(false);
+    this.editingContract.set(null);
+  }
+
+  protected submitEdit(): void {
+    const contract = this.editingContract();
+    if (!contract || this.editForm.invalid) {
+      this.editForm.markAllAsTouched();
+      return;
+    }
+    const v = this.editForm.getRawValue();
+    this.submitting.set(true);
+    this.formError.set(null);
+    this.globalLoading.start('Guardando contrato', 'Actualizando el contrato.');
+
+    this.service
+      .update(contract.id, {
+        clienteId: contract.clienteId,
+        servicio: v.servicio || null,
+        campana: v.campana || null,
+        descuento: v.descuento,
+        estado: v.estado || null,
+        fechaInicio: v.fechaInicio || null,
+        fechaFinPrevista: v.fechaFinPrevista || null,
+      })
+      .subscribe({
+        next: () => {
+          this.submitting.set(false);
+          this.globalLoading.stop();
+          this.closeEdit();
+          this.notify.success('Contrato actualizado');
+          this.reload(this.page());
         },
         error: (err: HttpErrorResponse) => {
           this.submitting.set(false);
