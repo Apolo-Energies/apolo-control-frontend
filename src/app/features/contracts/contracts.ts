@@ -109,6 +109,11 @@ export class Contracts {
   protected readonly editingContract = signal<Contract | null>(null);
   protected readonly selectedFiles = signal<File[]>([]);
 
+  // Motivo KO: select + añadir nuevo
+  protected readonly motivoKoSelectVal = signal('');
+  protected readonly motivoKoAdding = signal(false);
+  protected readonly motivoKoNewText = signal('');
+
   // Búsqueda local contra el caché de IndexedDB — sin llamadas al backend
   protected readonly searchClientes = (q: string): Observable<RemoteOption[]> => {
     const query = q.trim().toLowerCase();
@@ -201,6 +206,7 @@ export class Contracts {
   protected readonly statusForm = this.fb.nonNullable.group({
     estado: ['activo' as ContractStatus, [Validators.required]],
     fechaEstado: [''],
+    motivoRechazo: [''],
   });
 
   protected readonly rows = computed(() => this.result()?.content ?? []);
@@ -452,9 +458,18 @@ export class Contracts {
   protected openStatus(contract: Contract): void {
     this.editingContract.set(contract);
     this.formError.set(null);
+    const motivo = contract.motivoRechazo ?? '';
+    // Si el motivo guardado no está en la lista local, lo añadimos para que aparezca en el select
+    if (motivo && !this.masterData.motivosRechazo().includes(motivo)) {
+      this.masterData.mergeMotivos([motivo]);
+    }
+    this.motivoKoSelectVal.set(motivo);
+    this.motivoKoAdding.set(false);
+    this.motivoKoNewText.set('');
     this.statusForm.reset({
       estado: ASSIGNABLE_STATUSES.includes(contract.estado) ? contract.estado : 'activo',
       fechaEstado: '',
+      motivoRechazo: motivo,
     });
     this.statusOpen.set(true);
   }
@@ -462,6 +477,29 @@ export class Contracts {
   protected closeStatus(): void {
     this.statusOpen.set(false);
     this.editingContract.set(null);
+    this.motivoKoSelectVal.set('');
+    this.motivoKoAdding.set(false);
+    this.motivoKoNewText.set('');
+  }
+
+  protected onMotivoKoSelect(val: string): void {
+    this.motivoKoSelectVal.set(val);
+    this.statusForm.patchValue({ motivoRechazo: val });
+  }
+
+  protected confirmMotivoKoNew(): void {
+    const text = this.motivoKoNewText().trim();
+    if (!text) return;
+    this.masterData.mergeMotivos([text]);
+    this.motivoKoSelectVal.set(text);
+    this.statusForm.patchValue({ motivoRechazo: text });
+    this.motivoKoAdding.set(false);
+    this.motivoKoNewText.set('');
+  }
+
+  protected cancelMotivoKoNew(): void {
+    this.motivoKoAdding.set(false);
+    this.motivoKoNewText.set('');
   }
 
   protected submitStatus(): void {
@@ -476,7 +514,11 @@ export class Contracts {
     this.globalLoading.start('Actualizando estado', 'Cambiando el estado del contrato.');
 
     this.service
-      .changeStatus(contract.id, { estado: v.estado, fechaEstado: v.fechaEstado || null })
+      .changeStatus(contract.id, {
+        estado: v.estado,
+        fechaEstado: v.fechaEstado || null,
+        motivoRechazo: v.estado === 'ko' ? (v.motivoRechazo || null) : null,
+      })
       .subscribe({
         next: () => {
           this.submitting.set(false);

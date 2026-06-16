@@ -24,6 +24,7 @@ export interface Contract {
   provincia: string | null;
   margenBruto: number | null;
   margenNeto: number | null;
+  motivoRechazo: string | null;
   scoring?: CustomerScoring | null;
   createdAt: string;
   updatedAt: string;
@@ -98,4 +99,5 @@ export interface ContractPayload {
 export interface ChangeContractStatusPayload {
   estado: ContractStatus;
   fechaEstado?: string | null;
+  motivoRechazo?: string | null;
 }
