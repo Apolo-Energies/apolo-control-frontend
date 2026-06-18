@@ -12,3 +12,4 @@ export * from './dashboard.model';
 export * from './master-data.model';
 export * from './factura-contabilidad.model';
 export * from './pagos-liquidacion.model';
+export * from './setting.model';

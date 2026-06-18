@@ -69,6 +69,12 @@ export const routes: Routes = [
         canActivate: [authGuard],
         loadComponent: () => import('./features/users/users').then((m) => m.Users),
       },
+      {
+        path: 'settings',
+        data: { roles: ['admin'] },
+        canActivate: [authGuard],
+        loadComponent: () => import('./features/settings/settings').then((m) => m.Settings),
+      },
       // ── Legacy / placeholders (no backend yet) ──
       {
         path: 'tasks',

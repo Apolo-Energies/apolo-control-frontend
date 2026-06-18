@@ -56,7 +56,10 @@ export class Layout {
     if (showUsers) {
       base.push({
         title: 'ADMINISTRACIÓN',
-        items: [{ label: 'Usuarios', url: '/users', icon: 'user' as const }],
+        items: [
+          { label: 'Usuarios', url: '/users', icon: 'user' as const },
+          ...(isAdmin ? [{ label: 'Configuración', url: '/settings', icon: 'sliders' as const }] : []),
+        ],
       });
     }
 

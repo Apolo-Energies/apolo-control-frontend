@@ -1,0 +1,105 @@
+<app-page-header
+  title="Configuración"
+  subtitle="Parámetros globales del sistema"
+  icon="sliders"
+/>
+
+<app-loading-overlay [loading]="loading()" message="Cargando configuración…" />
+
+@if (errorMessage(); as err) {
+  <div class="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger-fg mb-4">
+    {{ err }}
+  </div>
+}
+
+@for (categoria of categorias(); track categoria) {
+  <section class="mb-8">
+    <h2 class="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">
+      {{ categoria }}
+    </h2>
+
+    <div class="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
+      @for (setting of getSettings(categoria); track setting.id) {
+        <div class="flex items-center gap-4 px-5 py-4">
+
+          <!-- Info -->
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-foreground">{{ setting.nombre }}</p>
+            @if (setting.descripcion) {
+              <p class="text-xs text-muted-foreground mt-0.5">{{ setting.descripcion }}</p>
+            }
+            <p class="text-[11px] text-muted-foreground/60 font-mono mt-1">{{ setting.clave }}</p>
+          </div>
+
+          <!-- Control según tipo -->
+          <div class="flex items-center gap-2 shrink-0">
+
+            @if (setting.tipo === 'BOOLEAN') {
+              <button
+                type="button"
+                (click)="setDraft(setting.clave, getDraft(setting.clave) === 'true' ? 'false' : 'true')"
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
+                [class.bg-primary]="getDraft(setting.clave) === 'true'"
+                [class.bg-border]="getDraft(setting.clave) !== 'true'"
+              >
+                <span
+                  class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
+                  [class.translate-x-6]="getDraft(setting.clave) === 'true'"
+                  [class.translate-x-1]="getDraft(setting.clave) !== 'true'"
+                ></span>
+              </button>
+            }
+
+            @if (setting.tipo === 'INTEGER' || setting.tipo === 'DECIMAL') {
+              <input
+                type="number"
+                [step]="setting.tipo === 'DECIMAL' ? '0.01' : '1'"
+                [value]="getDraft(setting.clave)"
+                (input)="setDraft(setting.clave, $any($event.target).value)"
+                class="w-28 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            }
+
+            @if (setting.tipo === 'TEXT') {
+              <input
+                type="text"
+                [value]="getDraft(setting.clave)"
+                (input)="setDraft(setting.clave, $any($event.target).value)"
+                class="w-56 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            }
+
+            @if (setting.tipo === 'JSON') {
+              <textarea
+                rows="2"
+                [value]="getDraft(setting.clave)"
+                (input)="setDraft(setting.clave, $any($event.target).value)"
+                class="w-64 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+              ></textarea>
+            }
+
+            <!-- Botón guardar (visible si hay cambio) -->
+            <button
+              type="button"
+              (click)="save(setting)"
+              [disabled]="!isDirty(setting) || isSaving(setting.clave)"
+              class="flex h-8 w-8 items-center justify-center rounded-lg border transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              [class.border-primary]="isDirty(setting)"
+              [class.text-primary]="isDirty(setting)"
+              [class.hover:bg-primary/10]="isDirty(setting)"
+              [class.border-border]="!isDirty(setting)"
+              [class.text-muted-foreground]="!isDirty(setting)"
+              title="Guardar cambio"
+            >
+              @if (isSaving(setting.clave)) {
+                <ui-icon name="refresh-cw" [size]="14" class="animate-spin" />
+              } @else {
+                <ui-icon name="check" [size]="14" />
+              }
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+}
