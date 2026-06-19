@@ -14,9 +14,13 @@ import { ContractService } from '../../core/services/contract.service';
 import { MasterDataService } from '../../core/services/master-data.service';
 import { GlobalLoadingService } from '../../core/services/global-loading.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { CustomerService } from '../../core/services/customer.service';
+import { ContratoPdfService, PdfContratoData } from '../../core/services/contrato-pdf.service';
 import {
   ApiErrorResponse,
   Contract,
+  ContractOffer,
+  ContractOfferTarifa,
   ContractStatus,
   CONTRACT_STATUS_LABEL,
   CONTRACT_STATUS_VALUES,
@@ -58,6 +62,84 @@ const ASSIGNABLE_STATUSES: ContractStatus[] = [
   'desestimado',
 ];
 
+// ── PDF dialog models ─────────────────────────────────────────────────────────
+interface OfertaPreciosTarifa {
+  energia: (number | null)[];
+  potencia: (number | null)[];
+}
+interface OfertaDlg {
+  nombre: string;
+  tipo: 'FIJO' | 'INDEXADO' | 'PASS_POOL';
+  t20: OfertaPreciosTarifa;
+  t30: OfertaPreciosTarifa;
+  t61: OfertaPreciosTarifa;
+}
+function mkPrecios(): OfertaPreciosTarifa {
+  return { energia: [null, null, null, null, null, null], potencia: [null, null, null, null, null, null] };
+}
+function mkOferta(): OfertaDlg {
+  return { nombre: '', tipo: 'FIJO', t20: mkPrecios(), t30: mkPrecios(), t61: mkPrecios() };
+}
+
+function dlgToContractOfertas(
+  offers: OfertaDlg[], tar20: boolean, tar30: boolean, tar61: boolean,
+): ContractOffer[] {
+  const keys: { key: string; tar: 't20' | 't30' | 't61' }[] = [];
+  if (tar20) keys.push({ key: '2.0TD', tar: 't20' });
+  if (tar30) keys.push({ key: '3.0TD', tar: 't30' });
+  if (tar61) keys.push({ key: '6.1TD', tar: 't61' });
+  if (keys.length === 0) return [];
+  return offers.map(o => ({
+    nombreProducto: o.nombre || undefined,
+    tipoOferta: o.tipo,
+    tarifas: Object.fromEntries(keys.map(({ key, tar }) => {
+      const p = o[tar];
+      const t: ContractOfferTarifa = {
+        energiaP1: p.energia[0] ?? undefined, energiaP2: p.energia[1] ?? undefined,
+        energiaP3: p.energia[2] ?? undefined, energiaP4: p.energia[3] ?? undefined,
+        energiaP5: p.energia[4] ?? undefined, energiaP6: p.energia[5] ?? undefined,
+        potenciaP1: p.potencia[0] ?? undefined, potenciaP2: p.potencia[1] ?? undefined,
+        potenciaP3: p.potencia[2] ?? undefined, potenciaP4: p.potencia[3] ?? undefined,
+        potenciaP5: p.potencia[4] ?? undefined, potenciaP6: p.potencia[5] ?? undefined,
+      };
+      return [key, t];
+    })),
+  }));
+}
+
+function contractOfertasToDlg(offers: ContractOffer[]): OfertaDlg[] {
+  return offers.map(o => {
+    const t20 = mkPrecios(); const t30 = mkPrecios(); const t61 = mkPrecios();
+    const fill = (t: OfertaPreciosTarifa, d: ContractOfferTarifa) => {
+      t.energia = [d.energiaP1 ?? null, d.energiaP2 ?? null, d.energiaP3 ?? null,
+                   d.energiaP4 ?? null, d.energiaP5 ?? null, d.energiaP6 ?? null];
+      t.potencia = [d.potenciaP1 ?? null, d.potenciaP2 ?? null, d.potenciaP3 ?? null,
+                    d.potenciaP4 ?? null, d.potenciaP5 ?? null, d.potenciaP6 ?? null];
+    };
+    if (o.tarifas?.['2.0TD']) fill(t20, o.tarifas['2.0TD']);
+    if (o.tarifas?.['3.0TD']) fill(t30, o.tarifas['3.0TD']);
+    if (o.tarifas?.['6.1TD']) fill(t61, o.tarifas['6.1TD']);
+    return { nombre: o.nombreProducto ?? '', tipo: (o.tipoOferta ?? 'FIJO') as 'FIJO'|'INDEXADO'|'PASS_POOL', t20, t30, t61 };
+  });
+}
+
+function contractOffersToPdfOfertas(offers: ContractOffer[]) {
+  return offers.map(o => ({
+    nombre_producto: o.nombreProducto ?? undefined,
+    tipo_oferta: o.tipoOferta ?? undefined,
+    tarifas: o.tarifas
+      ? Object.fromEntries(Object.entries(o.tarifas).map(([k, t]) => [k, {
+          energia_p1: t.energiaP1 ?? undefined, energia_p2: t.energiaP2 ?? undefined,
+          energia_p3: t.energiaP3 ?? undefined, energia_p4: t.energiaP4 ?? undefined,
+          energia_p5: t.energiaP5 ?? undefined, energia_p6: t.energiaP6 ?? undefined,
+          potencia_p1: t.potenciaP1 ?? undefined, potencia_p2: t.potenciaP2 ?? undefined,
+          potencia_p3: t.potenciaP3 ?? undefined, potencia_p4: t.potenciaP4 ?? undefined,
+          potencia_p5: t.potenciaP5 ?? undefined, potencia_p6: t.potenciaP6 ?? undefined,
+        }]))
+      : {},
+  }));
+}
+
 @Component({
   selector: 'app-contracts',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -81,6 +163,8 @@ export class Contracts {
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly notify = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
+  private readonly customerService = inject(CustomerService);
+  private readonly pdfService = inject(ContratoPdfService);
 
   // Filtros de la barra superior
   protected statusFilter: ContractStatus | '' = '';
@@ -113,6 +197,15 @@ export class Contracts {
   protected readonly motivoKoSelectVal = signal('');
   protected readonly motivoKoAdding = signal(false);
   protected readonly motivoKoNewText = signal('');
+
+  // PDF — descarga directa usando ofertas guardadas en el contrato
+  protected readonly descargandoPdf = signal<string | null>(null);
+
+  // Ofertas en formulario de creación/edición (compartido, no pueden estar abiertos a la vez)
+  protected readonly fOfertaTar20 = signal(false);
+  protected readonly fOfertaTar30 = signal(false);
+  protected readonly fOfertaTar61 = signal(false);
+  protected readonly fOfertas = signal<OfertaDlg[]>([mkOferta()]);
 
   // Búsqueda local contra el caché de IndexedDB — sin llamadas al backend
   protected readonly searchClientes = (q: string): Observable<RemoteOption[]> => {
@@ -277,6 +370,10 @@ export class Contracts {
     this.createForm.markAsPristine();
     this.createForm.markAsUntouched();
     this.selectedFiles.set([]);
+    this.fOfertaTar20.set(false);
+    this.fOfertaTar30.set(false);
+    this.fOfertaTar61.set(false);
+    this.fOfertas.set([mkOferta()]);
     this.createOpen.set(true);
   }
 
@@ -380,6 +477,7 @@ export class Contracts {
         estado: v.estado || null,
         fechaInicio: v.fechaInicio || null,
         fechaFinPrevista: v.fechaFinPrevista || null,
+        ofertas: dlgToContractOfertas(this.fOfertas(), this.fOfertaTar20(), this.fOfertaTar30(), this.fOfertaTar61()),
       }, this.selectedFiles())
       .subscribe({
         next: () => {
@@ -409,6 +507,18 @@ export class Contracts {
       fechaInicio: contract.fechaInicio ?? '',
       fechaFinPrevista: contract.fechaFinPrevista ?? '',
     });
+    const savedOfertas = contract.ofertas ?? [];
+    if (savedOfertas.length > 0) {
+      this.fOfertas.set(contractOfertasToDlg(savedOfertas));
+      this.fOfertaTar20.set(savedOfertas.some(o => !!o.tarifas?.['2.0TD']));
+      this.fOfertaTar30.set(savedOfertas.some(o => !!o.tarifas?.['3.0TD']));
+      this.fOfertaTar61.set(savedOfertas.some(o => !!o.tarifas?.['6.1TD']));
+    } else {
+      this.fOfertas.set([mkOferta()]);
+      this.fOfertaTar20.set(false);
+      this.fOfertaTar30.set(false);
+      this.fOfertaTar61.set(false);
+    }
     this.editOpen.set(true);
   }
 
@@ -437,6 +547,7 @@ export class Contracts {
         estado: v.estado || null,
         fechaInicio: v.fechaInicio || null,
         fechaFinPrevista: v.fechaFinPrevista || null,
+        ofertas: dlgToContractOfertas(this.fOfertas(), this.fOfertaTar20(), this.fOfertaTar30(), this.fOfertaTar61()),
       })
       .subscribe({
         next: () => {
@@ -604,6 +715,75 @@ export class Contracts {
 
   protected euro(value: number | null): string {
     return formatEuro(value);
+  }
+
+  // ── Ofertas (formulario compartido crear/editar) ────────────────────────────
+  protected fAgregarOferta(): void {
+    this.fOfertas.update(list => [...list, mkOferta()]);
+  }
+
+  protected fEliminarOferta(i: number): void {
+    this.fOfertas.update(list => list.filter((_, j) => j !== i));
+  }
+
+  protected fSetNombre(i: number, v: string): void {
+    this.fOfertas.update(list => list.map((o, j) => j === i ? { ...o, nombre: v } : o));
+  }
+
+  protected fSetTipo(i: number, v: 'FIJO' | 'INDEXADO' | 'PASS_POOL'): void {
+    this.fOfertas.update(list => list.map((o, j) => j === i ? { ...o, tipo: v } : o));
+  }
+
+  protected fSetPrecio(oi: number, tar: 't20' | 't30' | 't61', tipo: 'energia' | 'potencia', pi: number, v: string): void {
+    const raw = parseFloat(v);
+    const val: number | null = v === '' || Number.isNaN(raw) ? null : raw;
+    this.fOfertas.update(list =>
+      list.map((o, j) => {
+        if (j !== oi) return o;
+        const bloque = { ...o[tar] };
+        const arr = [...bloque[tipo]];
+        arr[pi] = val;
+        return { ...o, [tar]: { ...bloque, [tipo]: arr } };
+      }),
+    );
+  }
+
+  // ── Descarga PDF (usa ofertas guardadas en el contrato) ─────────────────────
+  protected descargarPdf(contrato: Contract): void {
+    if (this.descargandoPdf()) return;
+    this.descargandoPdf.set(contrato.id);
+    const ofertas = contractOffersToPdfOfertas(contrato.ofertas ?? []);
+
+    const run = (base: PdfContratoData) =>
+      this.pdfService.generarPdf({ ...base, ofertas })
+        .catch(err => { console.error('Error generando PDF:', err); this.notify.error('Error al generar el PDF'); })
+        .finally(() => { this.descargandoPdf.set(null); });
+
+    this.customerService.getById(contrato.clienteId).subscribe({
+      next: (cliente) => run({
+        id_propuesta:           contrato.idExterno ?? undefined,
+        fecha_contrato:         contrato.fechaEstado ?? contrato.fechaCreacion ?? undefined,
+        nombre_cliente:         contrato.clienteNombre,
+        cif:                    contrato.clienteNif ?? undefined,
+        cnae:                   cliente.cnae ?? undefined,
+        telefono:               cliente.telefono ?? undefined,
+        correo:                 cliente.email ?? undefined,
+        representante_legal:    cliente.titular ?? undefined,
+        numero_cuenta_bancaria: cliente.iban ?? undefined,
+        cups:                   contrato.cups ? [contrato.cups] : undefined,
+        tarifa:                 contrato.suministroTarifa ?? undefined,
+        provincia:              contrato.provincia ?? undefined,
+      }),
+      error: () => run({
+        id_propuesta:   contrato.idExterno ?? undefined,
+        fecha_contrato: contrato.fechaEstado ?? contrato.fechaCreacion ?? undefined,
+        nombre_cliente: contrato.clienteNombre,
+        cif:            contrato.clienteNif ?? undefined,
+        cups:           contrato.cups ? [contrato.cups] : undefined,
+        tarifa:         contrato.suministroTarifa ?? undefined,
+        provincia:      contrato.provincia ?? undefined,
+      }),
+    });
   }
 }
 

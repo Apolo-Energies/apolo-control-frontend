@@ -1,6 +1,28 @@
 import { ContractStatus } from './enums';
 import { CustomerScoring } from './customer.model';
 
+export interface ContractOfferTarifa {
+  energiaP1?: number | null;
+  energiaP2?: number | null;
+  energiaP3?: number | null;
+  energiaP4?: number | null;
+  energiaP5?: number | null;
+  energiaP6?: number | null;
+  potenciaP1?: number | null;
+  potenciaP2?: number | null;
+  potenciaP3?: number | null;
+  potenciaP4?: number | null;
+  potenciaP5?: number | null;
+  potenciaP6?: number | null;
+}
+
+export interface ContractOffer {
+  nombreProducto?: string;
+  tipoOferta?: 'FIJO' | 'INDEXADO' | 'PASS_POOL';
+  /** keys: "2.0TD", "3.0TD", "6.1TD" */
+  tarifas?: Record<string, ContractOfferTarifa>;
+}
+
 export interface Contract {
   id: string;
   idExterno: string | null;
@@ -28,6 +50,7 @@ export interface Contract {
   scoring?: CustomerScoring | null;
   createdAt: string;
   updatedAt: string;
+  ofertas?: ContractOffer[] | null;
 }
 
 export interface ContractFilter {
@@ -94,6 +117,7 @@ export interface ContractPayload {
   formaPagoAgente?: string | null;
   margenBeneficio?: number | null;
   margenOperacion?: number | null;
+  ofertas?: ContractOffer[];
 }
 
 export interface ChangeContractStatusPayload {
