@@ -8,6 +8,7 @@ import {
   Contract,
   ContractFilter,
   ContractPayload,
+  ContractRenovaciones,
   Page,
   PageRequest,
 } from '../models';
@@ -58,5 +59,23 @@ export class ContractService {
     return this.http.get<Page<Contract>>(`${this.baseUrl}/por-cliente/${customerId}`, {
       params: buildParams(page),
     });
+  }
+
+  getRenovaciones(params: {
+    vPage: number; vSize: number;
+    pvPage: number; pvSize: number;
+    rPage: number; rSize: number;
+  } = { vPage: 0, vSize: 10, pvPage: 0, pvSize: 10, rPage: 0, rSize: 10 }): Observable<ContractRenovaciones> {
+    return this.http.get<ContractRenovaciones>(`${this.baseUrl}/renovaciones`, {
+      params: {
+        vPage: params.vPage.toString(), vSize: params.vSize.toString(),
+        pvPage: params.pvPage.toString(), pvSize: params.pvSize.toString(),
+        rPage: params.rPage.toString(), rSize: params.rSize.toString(),
+      },
+    });
+  }
+
+  renovar(id: string): Observable<Contract> {
+    return this.http.post<Contract>(`${this.baseUrl}/${id}/renovar`, {});
   }
 }

@@ -1,5 +1,6 @@
 import { ContractStatus } from './enums';
 import { CustomerScoring } from './customer.model';
+import { Page } from './page.model';
 
 export interface ContractOfferTarifa {
   energiaP1?: number | null;
@@ -51,6 +52,7 @@ export interface Contract {
   createdAt: string;
   updatedAt: string;
   ofertas?: ContractOffer[] | null;
+  contratoVinculadoId?: string | null;
 }
 
 export interface ContractFilter {
@@ -118,6 +120,12 @@ export interface ContractPayload {
   margenBeneficio?: number | null;
   margenOperacion?: number | null;
   ofertas?: ContractOffer[];
+}
+
+export interface ContractRenovaciones {
+  vencidos: Page<Contract>;
+  porVencer: Page<Contract>;
+  renovados: Page<Contract>;
 }
 
 export interface ChangeContractStatusPayload {

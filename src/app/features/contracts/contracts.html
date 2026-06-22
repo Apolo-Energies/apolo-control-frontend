@@ -683,18 +683,31 @@
 <!-- Editar contrato -->
 <app-form-dialog
   [open]="editOpen()"
-  title="Editar contrato"
-  subtitle="Modifica los datos del contrato"
-  icon="edit"
+  [title]="isRenovando() ? 'Renovar contrato' : 'Editar contrato'"
+  [subtitle]="isRenovando() ? 'Revisa los datos antes de confirmar la renovación' : isReadOnly() ? 'Este contrato ya fue renovado — solo lectura' : 'Modifica los datos del contrato'"
+  [icon]="isRenovando() ? 'repeat' : 'edit'"
   width="480px"
   [saving]="submitting()"
-  [canSave]="editForm.valid"
-  saveLabel="Guardar cambios"
+  [canSave]="isRenovando() ? true : editForm.valid"
+  [saveLabel]="isRenovando() ? 'Confirmar renovación' : 'Guardar cambios'"
+  [readOnly]="isReadOnly()"
   [errorMessage]="formError()"
   (cancel)="closeEdit()"
   (save)="submitEdit()"
 >
   @if (editingContract(); as c) {
+    @if (c.contratoVinculadoId) {
+      <button type="button"
+        (click)="verContrato(c.contratoVinculadoId!)"
+        class="w-full mb-3 flex items-center justify-between gap-2 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-xs text-primary hover:bg-primary/10 transition-colors">
+        <span class="flex items-center gap-1.5">
+          <ui-icon name="repeat" [size]="13" />
+          @if (c.estado === 'renovado') { Ver contrato de renovación }
+          @else { Ver contrato original }
+        </span>
+        <ui-icon name="arrow-up-right" [size]="13" />
+      </button>
+    }
     <div class="rounded-lg bg-background/60 border border-border/60 px-3 py-2 text-sm mb-4">
       <p class="font-medium text-foreground">{{ c.clienteNombre }}</p>
       @if (c.clienteNif) {

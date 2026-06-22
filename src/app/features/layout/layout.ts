@@ -36,7 +36,13 @@ export class Layout {
       {
         title: 'GESTIÓN',
         items: [
-          { label: 'Contratos', url: '/contracts', icon: 'file-text' },
+          {
+            label: 'Contratos', url: '/contracts', icon: 'file-text',
+            children: [
+              { label: 'Listado', url: '/contracts', icon: 'file-text' },
+              { label: 'Renovaciones', url: '/contracts/renovaciones', icon: 'repeat' },
+            ],
+          },
           { label: 'Clientes', url: '/customers', icon: 'users' },
           { label: 'Suministros', url: '/supplies', icon: 'bolt' },
           { label: 'Scoring', url: '/scoring', icon: 'sparkles' },

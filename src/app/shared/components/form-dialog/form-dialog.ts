@@ -38,6 +38,8 @@ export class FormDialog {
   readonly cancelLabel = input<string>('Cancelar');
   readonly width = input<string>('480px');
   readonly errorMessage = input<string | null>(null);
+  /** Cuando true, oculta el botón guardar y cambia "Cancelar" por "Cerrar" */
+  readonly readOnly = input<boolean>(false);
 
   readonly cancel = output<void>();
   readonly save = output<void>();

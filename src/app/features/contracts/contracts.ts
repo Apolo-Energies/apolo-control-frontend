@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { PageHeader } from '../../shared/components/page-header/page-header';
@@ -165,6 +166,8 @@ export class Contracts {
   private readonly fb = inject(FormBuilder);
   private readonly customerService = inject(CustomerService);
   private readonly pdfService = inject(ContratoPdfService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   // Filtros de la barra superior
   protected statusFilter: ContractStatus | '' = '';
@@ -200,6 +203,10 @@ export class Contracts {
 
   // PDF — descarga directa usando ofertas guardadas en el contrato
   protected readonly descargandoPdf = signal<string | null>(null);
+  /** ID del contrato que se está renovando — si está presente, el submit llama a renovar() en vez de update() */
+  protected readonly renovandoId = signal<string | null>(null);
+  protected readonly isReadOnly = computed(() => this.editingContract()?.estado === 'renovado');
+  protected readonly isRenovando = computed(() => !!this.renovandoId());
 
   // Ofertas en formulario de creación/edición (compartido, no pueden estar abiertos a la vez)
   protected readonly fOfertaTar20 = signal(false);
@@ -308,6 +315,22 @@ export class Contracts {
 
   constructor() {
     this.reload(0);
+    this.route.queryParams.subscribe(params => {
+      const id = params['id'] as string | undefined;
+      const renovar = params['renovar'] as string | undefined;
+      if (id || renovar) {
+        void this.router.navigate([], { replaceUrl: true, queryParams: {} });
+        this.service.getById((id ?? renovar)!).subscribe({
+          next: (c) => {
+            if (renovar) {
+              this.renovandoId.set(renovar);
+            }
+            this.openEdit(c);
+          },
+          error: () => {},
+        });
+      }
+    });
   }
 
   protected reload(page: number): void {
@@ -519,17 +542,54 @@ export class Contracts {
       this.fOfertaTar30.set(false);
       this.fOfertaTar61.set(false);
     }
+    // Read-only when renovado or when opening to confirm a renovation
+    if (contract.estado === 'renovado' || this.renovandoId()) {
+      this.editForm.disable();
+    } else {
+      this.editForm.enable();
+    }
     this.editOpen.set(true);
   }
 
   protected closeEdit(): void {
     this.editOpen.set(false);
     this.editingContract.set(null);
+    this.renovandoId.set(null);
+  }
+
+  protected verContrato(id: string): void {
+    this.closeEdit();
+    void this.router.navigate(['/contracts'], { queryParams: { id } });
   }
 
   protected submitEdit(): void {
     const contract = this.editingContract();
-    if (!contract || this.editForm.invalid) {
+    if (!contract) return;
+
+    const renovarId = this.renovandoId();
+    if (renovarId) {
+      this.submitting.set(true);
+      this.formError.set(null);
+      this.globalLoading.start('Renovando contrato', 'Creando el nuevo contrato…');
+      this.service.renovar(renovarId).subscribe({
+        next: (nuevo) => {
+          this.submitting.set(false);
+          this.globalLoading.stop();
+          this.closeEdit();
+          this.notify.success('Contrato renovado correctamente');
+          this.reload(this.page());
+          void this.router.navigate(['/contracts'], { queryParams: { id: nuevo.id } });
+        },
+        error: (err: HttpErrorResponse) => {
+          this.submitting.set(false);
+          this.globalLoading.stop();
+          this.formError.set(extractMessage(err));
+        },
+      });
+      return;
+    }
+
+    if (this.editForm.invalid) {
       this.editForm.markAllAsTouched();
       return;
     }

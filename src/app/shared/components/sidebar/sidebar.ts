@@ -3,12 +3,16 @@ import { NgClass } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { Icon, IconName } from '../../icons/icon';
 
-export interface SidebarItem {
+export interface SidebarChild {
   label: string;
   url: string;
   icon: IconName;
   badge?: string | number | null;
   badgeTone?: 'info' | 'warning' | 'danger';
+}
+
+export interface SidebarItem extends SidebarChild {
+  children?: SidebarChild[];
 }
 
 export interface SidebarSection {

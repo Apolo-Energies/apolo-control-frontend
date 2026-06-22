@@ -27,7 +27,17 @@ export const routes: Routes = [
       },
       {
         path: 'contracts',
-        loadComponent: () => import('./features/contracts/contracts').then((m) => m.Contracts),
+        children: [
+          {
+            path: '',
+            loadComponent: () => import('./features/contracts/contracts').then((m) => m.Contracts),
+          },
+          {
+            path: 'renovaciones',
+            loadComponent: () =>
+              import('./features/contracts/renovaciones/renovaciones').then((m) => m.Renovaciones),
+          },
+        ],
       },
       {
         path: 'supplies',

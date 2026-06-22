@@ -40,21 +40,23 @@
         (click)="cancel.emit()"
         class="h-9 px-3 rounded-lg border border-border text-sm text-foreground hover:bg-accent"
       >
-        {{ cancelLabel() }}
+        {{ readOnly() ? 'Cerrar' : cancelLabel() }}
       </button>
-      <button
-        type="button"
-        (click)="save.emit()"
-        [disabled]="!canSave() || saving()"
-        class="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        @if (saving()) {
-          <ui-icon name="refresh-cw" [size]="14" />
-          Guardando…
-        } @else {
-          {{ saveLabel() }}
-        }
-      </button>
+      @if (!readOnly()) {
+        <button
+          type="button"
+          (click)="save.emit()"
+          [disabled]="!canSave() || saving()"
+          class="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          @if (saving()) {
+            <ui-icon name="refresh-cw" [size]="14" />
+            Guardando…
+          } @else {
+            {{ saveLabel() }}
+          }
+        </button>
+      }
     </div>
   </ng-template>
 </p-dialog>
