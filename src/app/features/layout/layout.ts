@@ -48,6 +48,7 @@ export class Layout {
           { label: 'Scoring', url: '/scoring', icon: 'sparkles' },
           { label: 'Facturas Contab.', url: '/facturas-contabilidad', icon: 'receipt-x' },
           { label: 'Pagos y Liquid.', url: '/pagos-liquidacion', icon: 'wallet' },
+          { label: 'Rechazos e Incid.', url: '/rechazos', icon: 'alert-triangle' },
         ],
       },
       {

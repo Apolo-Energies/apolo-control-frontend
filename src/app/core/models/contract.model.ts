@@ -24,6 +24,14 @@ export interface ContractOffer {
   tarifas?: Record<string, ContractOfferTarifa>;
 }
 
+export interface ContractSuministro {
+  id: string;
+  cups: string;
+  tipo: string | null;
+  tarifa: string | null;
+  provincia: string | null;
+}
+
 export interface Contract {
   id: string;
   idExterno: string | null;
@@ -53,6 +61,7 @@ export interface Contract {
   updatedAt: string;
   ofertas?: ContractOffer[] | null;
   contratoVinculadoId?: string | null;
+  suministros?: ContractSuministro[] | null;
 }
 
 export interface ContractFilter {

@@ -61,6 +61,10 @@ export const routes: Routes = [
             (m) => m.PagosLiquidacion,
           ),
       },
+      {
+        path: 'rechazos',
+        loadComponent: () => import('./features/rechazos/rechazos').then((m) => m.Rechazos),
+      },
 
       // ── Organization ──
       {

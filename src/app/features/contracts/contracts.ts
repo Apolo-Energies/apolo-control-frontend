@@ -207,6 +207,7 @@ export class Contracts {
   protected readonly renovandoId = signal<string | null>(null);
   protected readonly isReadOnly = computed(() => this.editingContract()?.estado === 'renovado');
   protected readonly isRenovando = computed(() => !!this.renovandoId());
+  protected readonly editTab = signal<'form' | 'info'>('form');
 
   // Ofertas en formulario de creación/edición (compartido, no pueden estar abiertos a la vez)
   protected readonly fOfertaTar20 = signal(false);
@@ -520,6 +521,7 @@ export class Contracts {
 
   // ── Editar contrato ──
   protected openEdit(contract: Contract): void {
+    this.editTab.set('form');
     this.editingContract.set(contract);
     this.formError.set(null);
     this.editForm.patchValue({
