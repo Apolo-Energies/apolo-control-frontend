@@ -1,10 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 
 import { PageHeader } from '../../shared/components/page-header/page-header';
 import { Icon, IconName } from '../../shared/icons/icon';
 import { BarChart, BarChartItem } from '../../shared/components/bar-chart/bar-chart';
 import { DonutChart, DonutChartItem } from '../../shared/components/donut-chart/donut-chart';
+import { Pagination } from '../../shared/components/pagination/pagination';
+import { TableSkeleton } from '../../shared/components/table-skeleton/table-skeleton';
+import { LoadingOverlay } from '../../shared/components/loading-overlay/loading-overlay';
 import {
   ApoloDecimalPipe,
   ApoloEnergyPipe,
@@ -13,12 +17,15 @@ import {
   ApoloMwhPipe,
 } from '../../shared/pipes';
 import { DashboardService } from '../../core/services/dashboard.service';
+import { MasterDataService } from '../../core/services/master-data.service';
 import {
+  ActividadDelegacion,
   ApiErrorResponse,
   ContractStatus,
   CONTRACT_STATUS_LABEL,
   DashboardFilter,
   DashboardSummary,
+  Page,
 } from '../../core/models';
 import { formatEnergy, formatMonthShort, formatMwh } from '../../shared/utils/format';
 
@@ -27,6 +34,14 @@ type RangeId = 'today' | 'week' | 'month' | 'year' | 'all';
 interface RangeOption {
   id: RangeId;
   label: string;
+}
+
+/** Genera N colores HSL equidistantes en el círculo cromático — sin repeticiones. */
+function generatePalette(count: number): string[] {
+  return Array.from({ length: count }, (_, i) => {
+    const hue = Math.round((i * 360) / count);
+    return `hsl(${hue}, 70%, 55%)`;
+  });
 }
 
 interface StatusStripItem {
@@ -84,10 +99,14 @@ const STATUS_COLORS: Record<ContractStatus, { color: string; colorSoft: string; 
   selector: 'app-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    FormsModule,
     PageHeader,
     Icon,
     BarChart,
     DonutChart,
+    Pagination,
+    TableSkeleton,
+    LoadingOverlay,
     ApoloIntegerPipe,
     ApoloDecimalPipe,
     ApoloMwhPipe,
@@ -98,11 +117,24 @@ const STATUS_COLORS: Record<ContractStatus, { color: string; colorSoft: string; 
 })
 export class Dashboard {
   private readonly service = inject(DashboardService);
+  private readonly masterData = inject(MasterDataService);
 
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly data = signal<DashboardSummary | null>(null);
   protected readonly range = signal<RangeId>('all');
+
+  // ── Actividad por delegaciones ────────────────────────────────────────────
+  protected readonly actividadLoading = signal(false);
+  protected readonly actividadData = signal<Page<ActividadDelegacion> | null>(null);
+  protected readonly actividadPage = signal(0);
+  protected readonly actividadSize = signal(20);
+  protected actividadStartDate = '';
+  protected actividadEndDate = '';
+
+  protected readonly actividadRows = computed(() => this.actividadData()?.content ?? []);
+  protected readonly actividadTotal = computed(() => this.actividadData()?.totalElements ?? 0);
+  protected readonly actividadTotalPages = computed(() => this.actividadData()?.totalPages ?? 0);
 
   protected readonly ranges: RangeOption[] = [
     { id: 'today', label: 'Hoy' },
@@ -167,6 +199,19 @@ export class Dashboard {
     })),
   );
 
+  protected readonly koDonutData = computed<DonutChartItem[]>(() => {
+    const d = this.data();
+    if (!d?.kosPorMotivo) return [];
+    const entries = Object.entries(d.kosPorMotivo).sort(([, a], [, b]) => b - a);
+    const palette = generatePalette(entries.length);
+    return entries.map(([motivo, count], i) => ({
+      id: motivo,
+      label: motivo,
+      value: count,
+      color: palette[i],
+    }));
+  });
+
   protected readonly brutoChartData = computed<BarChartItem[]>(() => {
     const d = this.data();
     if (!d) return [];
@@ -199,6 +244,7 @@ export class Dashboard {
 
   constructor() {
     this.reload();
+    this.reloadActividad(0);
   }
 
   protected setRange(id: RangeId): void {
@@ -215,6 +261,7 @@ export class Dashboard {
     this.service.summary(this.buildFilter()).subscribe({
       next: (response) => {
         this.data.set(response);
+        this.masterData.mergeMotivos(Object.keys(response.kosPorMotivo ?? {}));
         this.loading.set(false);
       },
       error: (err: HttpErrorResponse) => {
@@ -222,6 +269,31 @@ export class Dashboard {
         this.loading.set(false);
       },
     });
+  }
+
+  protected reloadActividad(page: number): void {
+    this.actividadPage.set(page);
+    this.actividadLoading.set(true);
+    this.service
+      .actividadDelegaciones(
+        {
+          startDate: this.actividadStartDate || undefined,
+          endDate: this.actividadEndDate || undefined,
+        },
+        { page, size: this.actividadSize(), sort: 'fecha,desc' },
+      )
+      .subscribe({
+        next: (res) => {
+          this.actividadData.set(res);
+          this.actividadLoading.set(false);
+        },
+        error: () => this.actividadLoading.set(false),
+      });
+  }
+
+  protected onActividadSizeChange(size: number): void {
+    this.actividadSize.set(size);
+    this.reloadActividad(0);
   }
 
   protected count(d: DashboardSummary, status: ContractStatus): number {

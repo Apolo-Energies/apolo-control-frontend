@@ -31,6 +31,7 @@ export class DonutChart {
   readonly data = input.required<readonly DonutChartItem[]>();
   readonly centerLabel = input<string>('Total');
   readonly emptyLabel = input<string>('Sin datos');
+  readonly showLegend = input<boolean>(true);
 
   protected readonly hoveredId = signal<string | null>(null);
 

@@ -39,7 +39,7 @@
 }
 
 @if (loading() && rows().length === 0) {
-  <app-table-skeleton [cols]="8" [rows]="8" />
+  <app-table-skeleton [cols]="9" [rows]="8" />
 } @else {
   <div class="relative bg-card border border-border rounded-xl overflow-hidden">
     <app-loading-overlay [loading]="loading() && rows().length > 0" message="Actualizando…" />
@@ -54,6 +54,7 @@
             <th class="px-4 py-3 text-left font-semibold">Contacto</th>
             <th class="px-4 py-3 text-left font-semibold">Comercial</th>
             <th class="px-4 py-3 text-left font-semibold">Estado</th>
+            <th class="px-4 py-3 text-left font-semibold">Scoring</th>
             <th class="px-4 py-3 text-right font-semibold">Acciones</th>
           </tr>
         </thead>
@@ -90,6 +91,37 @@
                   {{ row.activo ? 'Activo' : 'Inactivo' }}
                 </app-status-badge>
               </td>
+              <td class="px-4 py-3">
+                @if (row.scoring != null) {
+                  <div class="flex items-start gap-2">
+                    <div class="flex flex-col items-start gap-1">
+                      <app-status-badge [tone]="scoringTone(row.scoring.puntuacion)">
+                        {{ row.scoring.puntuacion }}/10
+                      </app-status-badge>
+                      @if (row.scoring.vigilancia) {
+                        <app-status-badge tone="warning">Vigilancia</app-status-badge>
+                      }
+                    </div>
+                    <button
+                      type="button"
+                      (click)="openScoringEdit(row)"
+                      class="h-6 w-6 inline-flex items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground hover:bg-accent/40 shrink-0 mt-0.5"
+                      title="Editar scoring"
+                    >
+                      <ui-icon name="edit" [size]="12" />
+                    </button>
+                  </div>
+                } @else {
+                  <button
+                    type="button"
+                    (click)="openScoringCreate(row)"
+                    class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-dashed border-border text-muted-foreground hover:text-primary hover:border-primary hover:bg-accent/20 transition-colors"
+                    title="Añadir scoring"
+                  >
+                    <ui-icon name="plus" [size]="14" />
+                  </button>
+                }
+              </td>
               <td class="px-4 py-3 text-right">
                 @if (row.activo) {
                   <button
@@ -106,7 +138,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="8" class="px-4 py-10 text-center text-sm text-muted-foreground">
+              <td colspan="9" class="px-4 py-10 text-center text-sm text-muted-foreground">
                 Sin clientes que coincidan con los filtros.
               </td>
             </tr>
@@ -229,6 +261,60 @@
         class="h-4 w-4 rounded border-border accent-primary"
       />
       Cliente activo
+    </label>
+  </form>
+</app-form-dialog>
+
+<app-form-dialog
+  [open]="scoringModalOpen()"
+  [title]="isEditingScoring ? 'Editar scoring' : 'Añadir scoring'"
+  [subtitle]="scoringCustomerName"
+  icon="sparkles"
+  width="480px"
+  [saving]="scoringSubmitting()"
+  [canSave]="scoringForm.valid"
+  [saveLabel]="isEditingScoring ? 'Guardar cambios' : 'Crear scoring'"
+  [errorMessage]="scoringFormError()"
+  (cancel)="closeScoringModal()"
+  (save)="submitScoring()"
+>
+  <form [formGroup]="scoringForm" class="flex flex-col gap-4">
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Puntuación (1 mejor · 10 peor)</span>
+      <input
+        type="number"
+        formControlName="puntuacion"
+        min="1"
+        max="10"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Comentarios</span>
+      <textarea
+        formControlName="comentarios"
+        rows="3"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+      ></textarea>
+    </label>
+
+    <label class="inline-flex items-center gap-2 text-sm">
+      <input
+        type="checkbox"
+        formControlName="vigilancia"
+        class="h-4 w-4 rounded border-border accent-primary"
+      />
+      Vigilancia activa
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Fecha activación vigilancia</span>
+      <input
+        type="date"
+        formControlName="fechaActivacionVigilancia"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
     </label>
   </form>
 </app-form-dialog>

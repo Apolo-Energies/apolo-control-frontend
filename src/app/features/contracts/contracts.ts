@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { PageHeader } from '../../shared/components/page-header/page-header';
 import { StatusBadge, StatusTone } from '../../shared/components/status-badge/status-badge';
@@ -11,21 +12,24 @@ import { FormDialog } from '../../shared/components/form-dialog/form-dialog';
 import { RemoteSelect, RemoteOption } from '../../shared/components/remote-select/remote-select';
 import { Icon } from '../../shared/icons/icon';
 import { ContractService } from '../../core/services/contract.service';
-import { CustomerService } from '../../core/services/customer.service';
-import { SupplyService } from '../../core/services/supply.service';
+import { MasterDataService } from '../../core/services/master-data.service';
 import { GlobalLoadingService } from '../../core/services/global-loading.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { CustomerService } from '../../core/services/customer.service';
+import { ContratoPdfService, PdfContratoData } from '../../core/services/contrato-pdf.service';
 import {
   ApiErrorResponse,
   Contract,
+  ContractOffer,
+  ContractOfferTarifa,
   ContractStatus,
   CONTRACT_STATUS_LABEL,
   CONTRACT_STATUS_VALUES,
   Page,
+  SuministroPayload,
 } from '../../core/models';
 import { formatDate, formatEuro, safeText } from '../../shared/utils/format';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
 
 const STATUS_TONE: Record<ContractStatus, StatusTone> = {
   previo: 'info',
@@ -59,6 +63,84 @@ const ASSIGNABLE_STATUSES: ContractStatus[] = [
   'desestimado',
 ];
 
+// ── PDF dialog models ─────────────────────────────────────────────────────────
+interface OfertaPreciosTarifa {
+  energia: (number | null)[];
+  potencia: (number | null)[];
+}
+interface OfertaDlg {
+  nombre: string;
+  tipo: 'FIJO' | 'INDEXADO' | 'PASS_POOL';
+  t20: OfertaPreciosTarifa;
+  t30: OfertaPreciosTarifa;
+  t61: OfertaPreciosTarifa;
+}
+function mkPrecios(): OfertaPreciosTarifa {
+  return { energia: [null, null, null, null, null, null], potencia: [null, null, null, null, null, null] };
+}
+function mkOferta(): OfertaDlg {
+  return { nombre: '', tipo: 'FIJO', t20: mkPrecios(), t30: mkPrecios(), t61: mkPrecios() };
+}
+
+function dlgToContractOfertas(
+  offers: OfertaDlg[], tar20: boolean, tar30: boolean, tar61: boolean,
+): ContractOffer[] {
+  const keys: { key: string; tar: 't20' | 't30' | 't61' }[] = [];
+  if (tar20) keys.push({ key: '2.0TD', tar: 't20' });
+  if (tar30) keys.push({ key: '3.0TD', tar: 't30' });
+  if (tar61) keys.push({ key: '6.1TD', tar: 't61' });
+  if (keys.length === 0) return [];
+  return offers.map(o => ({
+    nombreProducto: o.nombre || undefined,
+    tipoOferta: o.tipo,
+    tarifas: Object.fromEntries(keys.map(({ key, tar }) => {
+      const p = o[tar];
+      const t: ContractOfferTarifa = {
+        energiaP1: p.energia[0] ?? undefined, energiaP2: p.energia[1] ?? undefined,
+        energiaP3: p.energia[2] ?? undefined, energiaP4: p.energia[3] ?? undefined,
+        energiaP5: p.energia[4] ?? undefined, energiaP6: p.energia[5] ?? undefined,
+        potenciaP1: p.potencia[0] ?? undefined, potenciaP2: p.potencia[1] ?? undefined,
+        potenciaP3: p.potencia[2] ?? undefined, potenciaP4: p.potencia[3] ?? undefined,
+        potenciaP5: p.potencia[4] ?? undefined, potenciaP6: p.potencia[5] ?? undefined,
+      };
+      return [key, t];
+    })),
+  }));
+}
+
+function contractOfertasToDlg(offers: ContractOffer[]): OfertaDlg[] {
+  return offers.map(o => {
+    const t20 = mkPrecios(); const t30 = mkPrecios(); const t61 = mkPrecios();
+    const fill = (t: OfertaPreciosTarifa, d: ContractOfferTarifa) => {
+      t.energia = [d.energiaP1 ?? null, d.energiaP2 ?? null, d.energiaP3 ?? null,
+                   d.energiaP4 ?? null, d.energiaP5 ?? null, d.energiaP6 ?? null];
+      t.potencia = [d.potenciaP1 ?? null, d.potenciaP2 ?? null, d.potenciaP3 ?? null,
+                    d.potenciaP4 ?? null, d.potenciaP5 ?? null, d.potenciaP6 ?? null];
+    };
+    if (o.tarifas?.['2.0TD']) fill(t20, o.tarifas['2.0TD']);
+    if (o.tarifas?.['3.0TD']) fill(t30, o.tarifas['3.0TD']);
+    if (o.tarifas?.['6.1TD']) fill(t61, o.tarifas['6.1TD']);
+    return { nombre: o.nombreProducto ?? '', tipo: (o.tipoOferta ?? 'FIJO') as 'FIJO'|'INDEXADO'|'PASS_POOL', t20, t30, t61 };
+  });
+}
+
+function contractOffersToPdfOfertas(offers: ContractOffer[]) {
+  return offers.map(o => ({
+    nombre_producto: o.nombreProducto ?? undefined,
+    tipo_oferta: o.tipoOferta ?? undefined,
+    tarifas: o.tarifas
+      ? Object.fromEntries(Object.entries(o.tarifas).map(([k, t]) => [k, {
+          energia_p1: t.energiaP1 ?? undefined, energia_p2: t.energiaP2 ?? undefined,
+          energia_p3: t.energiaP3 ?? undefined, energia_p4: t.energiaP4 ?? undefined,
+          energia_p5: t.energiaP5 ?? undefined, energia_p6: t.energiaP6 ?? undefined,
+          potencia_p1: t.potenciaP1 ?? undefined, potencia_p2: t.potenciaP2 ?? undefined,
+          potencia_p3: t.potenciaP3 ?? undefined, potencia_p4: t.potenciaP4 ?? undefined,
+          potencia_p5: t.potenciaP5 ?? undefined, potencia_p6: t.potenciaP6 ?? undefined,
+        }]))
+      : {},
+  }));
+}
+
 @Component({
   selector: 'app-contracts',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -78,15 +160,27 @@ const ASSIGNABLE_STATUSES: ContractStatus[] = [
 })
 export class Contracts {
   private readonly service = inject(ContractService);
-  private readonly customerService = inject(CustomerService);
-  private readonly supplyService = inject(SupplyService);
+  private readonly masterData = inject(MasterDataService);
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly notify = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
+  private readonly customerService = inject(CustomerService);
+  private readonly pdfService = inject(ContratoPdfService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
-  protected statusFilter: ContractStatus | null = null;
+  // Filtros de la barra superior
+  protected statusFilter: ContractStatus | '' = '';
+  protected q = '';
+  protected startDate = '';
+  protected endDate = '';
+  protected motivoRechazo = '';
+
   protected readonly statuses = CONTRACT_STATUS_VALUES;
   protected readonly assignableStatuses = ASSIGNABLE_STATUSES;
+
+  // Motivos de rechazo desde caché local (sin llamada HTTP)
+  protected readonly motivosRechazo = this.masterData.motivosRechazo;
 
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
@@ -96,43 +190,124 @@ export class Contracts {
 
   protected readonly createOpen = signal(false);
   protected readonly statusOpen = signal(false);
+  protected readonly editOpen = signal(false);
   protected readonly submitting = signal(false);
   protected readonly formError = signal<string | null>(null);
   protected readonly editingContract = signal<Contract | null>(null);
+  protected readonly selectedFiles = signal<File[]>([]);
 
-  // Búsqueda remota para los autocompletadores (arrow fn para conservar `this`)
-  protected readonly searchClientes = (q: string): Observable<RemoteOption[]> =>
-    this.customerService
-      .list({ q: q || undefined, activeOnly: true }, { size: 50, sort: 'nombre,asc' })
-      .pipe(
-        map((res) =>
-          res.content.map((c) => ({ id: c.id, label: c.nombre, sublabel: c.nif ?? undefined })),
-        ),
-      );
+  // Motivo KO: select + añadir nuevo
+  protected readonly motivoKoSelectVal = signal('');
+  protected readonly motivoKoAdding = signal(false);
+  protected readonly motivoKoNewText = signal('');
 
-  protected readonly searchSuministros = (q: string): Observable<RemoteOption[]> =>
-    this.supplyService
-      .list({ cups: q || undefined, activeOnly: true }, { size: 50, sort: 'cups,asc' })
-      .pipe(
-        map((res) =>
-          res.content.map((s) => ({ id: s.id, label: s.cups, sublabel: s.clienteNombre })),
-        ),
-      );
+  // PDF — descarga directa usando ofertas guardadas en el contrato
+  protected readonly descargandoPdf = signal<string | null>(null);
+  /** ID del contrato que se está renovando — si está presente, el submit llama a renovar() en vez de update() */
+  protected readonly renovandoId = signal<string | null>(null);
+  protected readonly isReadOnly = computed(() => this.editingContract()?.estado === 'renovado');
+  protected readonly isRenovando = computed(() => !!this.renovandoId());
+  protected readonly editTab = signal<'form' | 'info'>('form');
 
-  protected readonly createForm = this.fb.nonNullable.group({
-    clienteId: ['', [Validators.required]],
-    suministroId: ['', [Validators.required]],
-    servicio: [''],
-    campana: [''],
-    descuento: [null as number | null],
-    estado: ['para_estudio' as ContractStatus],
-    fechaInicio: [''],
-    fechaFinPrevista: [''],
+  // Ofertas en formulario de creación/edición (compartido, no pueden estar abiertos a la vez)
+  protected readonly fOfertaTar20 = signal(false);
+  protected readonly fOfertaTar30 = signal(false);
+  protected readonly fOfertaTar61 = signal(false);
+  protected readonly fOfertas = signal<OfertaDlg[]>([mkOferta()]);
+
+  // Búsqueda local contra el caché de IndexedDB — sin llamadas al backend
+  protected readonly searchClientes = (q: string): Observable<RemoteOption[]> => {
+    const query = q.trim().toLowerCase();
+    const results = this.masterData
+      .clientesActivos()
+      .filter(
+        (c) =>
+          !query ||
+          c.nombre.toLowerCase().includes(query) ||
+          (c.nif?.toLowerCase().includes(query) ?? false),
+      )
+      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+      .slice(0, 50)
+      .map((c) => ({ id: c.id, label: c.nombre, sublabel: c.nif ?? undefined }));
+    return of(results);
+  };
+
+  protected readonly searchSuministros = (q: string): Observable<RemoteOption[]> => {
+    const query = q.trim().toLowerCase();
+    const results = this.masterData
+      .suministrosActivos()
+      .filter(
+        (s) =>
+          !query ||
+          s.cups.toLowerCase().includes(query) ||
+          s.clienteNombre.toLowerCase().includes(query),
+      )
+      .sort((a, b) => a.cups.localeCompare(b.cups))
+      .slice(0, 50)
+      .map((s) => ({ id: s.id, label: s.cups, sublabel: s.clienteNombre }));
+    return of(results);
+  };
+
+  protected readonly createForm = this.fb.group({
+    clienteId: this.fb.nonNullable.control('', [Validators.required]),
+    suministros: this.fb.array([
+      this.fb.group({
+        mode: this.fb.nonNullable.control<'existing' | 'new'>('existing'),
+        id: this.fb.nonNullable.control(''),
+        cups: this.fb.nonNullable.control(''),
+        tipo: this.fb.nonNullable.control<'E' | 'G' | ''>(''),
+        tarifa: this.fb.nonNullable.control(''),
+        compra: this.fb.nonNullable.control(false),
+        consumoContrato: this.fb.control<number | null>(null),
+        consumoUltimos12Meses: this.fb.control<number | null>(null),
+        direccion: this.fb.nonNullable.control(''),
+        codigoPostal: this.fb.nonNullable.control(''),
+        ineProvincia: this.fb.nonNullable.control(''),
+        provincia: this.fb.nonNullable.control(''),
+        inePoblacion: this.fb.nonNullable.control(''),
+        poblacion: this.fb.nonNullable.control(''),
+        dirFacturacion: this.fb.nonNullable.control(''),
+        cpFacturacion: this.fb.nonNullable.control(''),
+        ineProvFacturacion: this.fb.nonNullable.control(''),
+        provFacturacion: this.fb.nonNullable.control(''),
+        inePobFacturacion: this.fb.nonNullable.control(''),
+        pobFacturacion: this.fb.nonNullable.control(''),
+        potenciaP1: this.fb.control<number | null>(null),
+        potenciaP2: this.fb.control<number | null>(null),
+        potenciaP3: this.fb.control<number | null>(null),
+        potenciaP4: this.fb.control<number | null>(null),
+        potenciaP5: this.fb.control<number | null>(null),
+        potenciaP6: this.fb.control<number | null>(null),
+      }),
+    ]),
+    servicio: this.fb.nonNullable.control(''),
+    campana: this.fb.nonNullable.control(''),
+    descuento: this.fb.control<number | null>(null),
+    estado: this.fb.nonNullable.control<ContractStatus>('para_estudio'),
+    fechaInicio: this.fb.nonNullable.control(''),
+    fechaFinPrevista: this.fb.nonNullable.control(''),
+  });
+
+  private readonly suministroVersion = signal(0);
+
+  protected readonly suministroControls = computed((): FormGroup[] => {
+    this.suministroVersion();
+    return (this.createForm.get('suministros') as FormArray).controls as FormGroup[];
+  });
+
+  protected readonly editForm = this.fb.group({
+    servicio: this.fb.nonNullable.control(''),
+    campana: this.fb.nonNullable.control(''),
+    descuento: this.fb.control<number | null>(null),
+    estado: this.fb.nonNullable.control<ContractStatus>('para_estudio'),
+    fechaInicio: this.fb.nonNullable.control(''),
+    fechaFinPrevista: this.fb.nonNullable.control(''),
   });
 
   protected readonly statusForm = this.fb.nonNullable.group({
     estado: ['activo' as ContractStatus, [Validators.required]],
     fechaEstado: [''],
+    motivoRechazo: [''],
   });
 
   protected readonly rows = computed(() => this.result()?.content ?? []);
@@ -141,6 +316,22 @@ export class Contracts {
 
   constructor() {
     this.reload(0);
+    this.route.queryParams.subscribe(params => {
+      const id = params['id'] as string | undefined;
+      const renovar = params['renovar'] as string | undefined;
+      if (id || renovar) {
+        void this.router.navigate([], { replaceUrl: true, queryParams: {} });
+        this.service.getById((id ?? renovar)!).subscribe({
+          next: (c) => {
+            if (renovar) {
+              this.renovandoId.set(renovar);
+            }
+            this.openEdit(c);
+          },
+          error: () => {},
+        });
+      }
+    });
   }
 
   protected reload(page: number): void {
@@ -149,7 +340,13 @@ export class Contracts {
     this.errorMessage.set(null);
     this.service
       .list(
-        { status: this.statusFilter ?? undefined },
+        {
+          status: this.statusFilter || undefined,
+          q: this.q.trim() || undefined,
+          startDate: this.startDate || undefined,
+          endDate: this.endDate || undefined,
+          motivoRechazo: this.motivoRechazo || undefined,
+        },
         { page, size: this.size(), sort: 'fechaCreacion,desc' },
       )
       .subscribe({
@@ -169,24 +366,73 @@ export class Contracts {
     this.reload(0);
   }
 
+  protected clearFilters(): void {
+    this.q = '';
+    this.statusFilter = '';
+    this.motivoRechazo = '';
+    this.startDate = '';
+    this.endDate = '';
+    this.reload(0);
+  }
+
   // ── Crear contrato ──
   protected openCreate(): void {
     this.formError.set(null);
-    this.createForm.reset({
+    const arr = this.createForm.get('suministros') as FormArray;
+    while (arr.length > 0) arr.removeAt(0);
+    arr.push(this.makeSuministroGroup());
+    this.suministroVersion.set(1);
+    this.createForm.patchValue({
       clienteId: '',
-      suministroId: '',
       servicio: '',
       campana: '',
       descuento: null,
-      estado: 'para_estudio',
+      estado: 'para_estudio' as ContractStatus,
       fechaInicio: '',
       fechaFinPrevista: '',
     });
+    this.createForm.markAsPristine();
+    this.createForm.markAsUntouched();
+    this.selectedFiles.set([]);
+    this.fOfertaTar20.set(false);
+    this.fOfertaTar30.set(false);
+    this.fOfertaTar61.set(false);
+    this.fOfertas.set([mkOferta()]);
     this.createOpen.set(true);
   }
 
+  protected addSuministro(): void {
+    (this.createForm.get('suministros') as FormArray).push(this.makeSuministroGroup());
+    this.suministroVersion.update(v => v + 1);
+  }
+
+  protected removeSuministro(index: number): void {
+    const arr = this.createForm.get('suministros') as FormArray;
+    if (arr.length > 1) {
+      arr.removeAt(index);
+      this.suministroVersion.update(v => v + 1);
+    }
+  }
+
   protected closeCreate(): void {
+    this.selectedFiles.set([]);
     this.createOpen.set(false);
+  }
+
+  protected onFilesSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    this.selectedFiles.update(files => [...files, ...Array.from(input.files!)]);
+    input.value = '';
+  }
+
+  protected removeFile(index: number): void {
+    this.selectedFiles.update(files => files.filter((_, i) => i !== index));
+  }
+
+  protected formatFileSize(bytes: number): string {
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   protected submitCreate(): void {
@@ -195,6 +441,52 @@ export class Contracts {
       return;
     }
     const v = this.createForm.getRawValue();
+    const rawRows = (this.createForm.get('suministros') as FormArray).getRawValue() as Array<{
+      mode: 'existing' | 'new';
+      id: string;
+      cups: string; tipo: string; tarifa: string; compra: boolean;
+      consumoContrato: number | null; consumoUltimos12Meses: number | null;
+      direccion: string; codigoPostal: string;
+      ineProvincia: string; provincia: string; inePoblacion: string; poblacion: string;
+      dirFacturacion: string; cpFacturacion: string;
+      ineProvFacturacion: string; provFacturacion: string;
+      inePobFacturacion: string; pobFacturacion: string;
+      potenciaP1: number | null; potenciaP2: number | null; potenciaP3: number | null;
+      potenciaP4: number | null; potenciaP5: number | null; potenciaP6: number | null;
+    }>;
+    const suministros: SuministroPayload[] = rawRows
+      .map((s): SuministroPayload | null => {
+        if (s.mode === 'existing') return s.id ? { id: s.id } : null;
+        if (!s.cups) return null;
+        return {
+          cups: s.cups,
+          tipo: (s.tipo as 'E' | 'G') || undefined,
+          tarifa: s.tarifa || undefined,
+          compra: s.compra || undefined,
+          consumoContrato: s.consumoContrato ?? undefined,
+          consumoUltimos12Meses: s.consumoUltimos12Meses ?? undefined,
+          direccion: s.direccion || undefined,
+          codigoPostal: s.codigoPostal || undefined,
+          ineProvincia: s.ineProvincia || undefined,
+          provincia: s.provincia || undefined,
+          inePoblacion: s.inePoblacion || undefined,
+          poblacion: s.poblacion || undefined,
+          dirFacturacion: s.dirFacturacion || undefined,
+          cpFacturacion: s.cpFacturacion || undefined,
+          ineProvFacturacion: s.ineProvFacturacion || undefined,
+          provFacturacion: s.provFacturacion || undefined,
+          inePobFacturacion: s.inePobFacturacion || undefined,
+          pobFacturacion: s.pobFacturacion || undefined,
+          potenciaP1: s.potenciaP1 ?? undefined,
+          potenciaP2: s.potenciaP2 ?? undefined,
+          potenciaP3: s.potenciaP3 ?? undefined,
+          potenciaP4: s.potenciaP4 ?? undefined,
+          potenciaP5: s.potenciaP5 ?? undefined,
+          potenciaP6: s.potenciaP6 ?? undefined,
+        };
+      })
+      .filter((s): s is SuministroPayload => s !== null);
+
     this.submitting.set(true);
     this.formError.set(null);
     this.globalLoading.start('Guardando contrato', 'Registrando el nuevo contrato.');
@@ -202,14 +494,15 @@ export class Contracts {
     this.service
       .create({
         clienteId: v.clienteId,
-        suministroId: v.suministroId,
+        suministros: suministros.length > 0 ? suministros : undefined,
         servicio: v.servicio || null,
         campana: v.campana || null,
         descuento: v.descuento,
         estado: v.estado || null,
         fechaInicio: v.fechaInicio || null,
         fechaFinPrevista: v.fechaFinPrevista || null,
-      })
+        ofertas: dlgToContractOfertas(this.fOfertas(), this.fOfertaTar20(), this.fOfertaTar30(), this.fOfertaTar61()),
+      }, this.selectedFiles())
       .subscribe({
         next: () => {
           this.submitting.set(false);
@@ -226,13 +519,130 @@ export class Contracts {
       });
   }
 
+  // ── Editar contrato ──
+  protected openEdit(contract: Contract): void {
+    this.editTab.set('form');
+    this.editingContract.set(contract);
+    this.formError.set(null);
+    this.editForm.patchValue({
+      servicio: contract.servicio ?? '',
+      campana: contract.campana ?? '',
+      descuento: contract.descuento,
+      estado: contract.estado,
+      fechaInicio: contract.fechaInicio ?? '',
+      fechaFinPrevista: contract.fechaFinPrevista ?? '',
+    });
+    const savedOfertas = contract.ofertas ?? [];
+    if (savedOfertas.length > 0) {
+      this.fOfertas.set(contractOfertasToDlg(savedOfertas));
+      this.fOfertaTar20.set(savedOfertas.some(o => !!o.tarifas?.['2.0TD']));
+      this.fOfertaTar30.set(savedOfertas.some(o => !!o.tarifas?.['3.0TD']));
+      this.fOfertaTar61.set(savedOfertas.some(o => !!o.tarifas?.['6.1TD']));
+    } else {
+      this.fOfertas.set([mkOferta()]);
+      this.fOfertaTar20.set(false);
+      this.fOfertaTar30.set(false);
+      this.fOfertaTar61.set(false);
+    }
+    // Read-only when renovado or when opening to confirm a renovation
+    if (contract.estado === 'renovado' || this.renovandoId()) {
+      this.editForm.disable();
+    } else {
+      this.editForm.enable();
+    }
+    this.editOpen.set(true);
+  }
+
+  protected closeEdit(): void {
+    this.editOpen.set(false);
+    this.editingContract.set(null);
+    this.renovandoId.set(null);
+  }
+
+  protected verContrato(id: string): void {
+    this.closeEdit();
+    void this.router.navigate(['/contracts'], { queryParams: { id } });
+  }
+
+  protected submitEdit(): void {
+    const contract = this.editingContract();
+    if (!contract) return;
+
+    const renovarId = this.renovandoId();
+    if (renovarId) {
+      this.submitting.set(true);
+      this.formError.set(null);
+      this.globalLoading.start('Renovando contrato', 'Creando el nuevo contrato…');
+      this.service.renovar(renovarId).subscribe({
+        next: (nuevo) => {
+          this.submitting.set(false);
+          this.globalLoading.stop();
+          this.closeEdit();
+          this.notify.success('Contrato renovado correctamente');
+          this.reload(this.page());
+          void this.router.navigate(['/contracts'], { queryParams: { id: nuevo.id } });
+        },
+        error: (err: HttpErrorResponse) => {
+          this.submitting.set(false);
+          this.globalLoading.stop();
+          this.formError.set(extractMessage(err));
+        },
+      });
+      return;
+    }
+
+    if (this.editForm.invalid) {
+      this.editForm.markAllAsTouched();
+      return;
+    }
+    const v = this.editForm.getRawValue();
+    this.submitting.set(true);
+    this.formError.set(null);
+    this.globalLoading.start('Guardando contrato', 'Actualizando el contrato.');
+
+    this.service
+      .update(contract.id, {
+        clienteId: contract.clienteId,
+        servicio: v.servicio || null,
+        campana: v.campana || null,
+        descuento: v.descuento,
+        estado: v.estado || null,
+        fechaInicio: v.fechaInicio || null,
+        fechaFinPrevista: v.fechaFinPrevista || null,
+        ofertas: dlgToContractOfertas(this.fOfertas(), this.fOfertaTar20(), this.fOfertaTar30(), this.fOfertaTar61()),
+      })
+      .subscribe({
+        next: () => {
+          this.submitting.set(false);
+          this.globalLoading.stop();
+          this.closeEdit();
+          this.notify.success('Contrato actualizado');
+          this.reload(this.page());
+        },
+        error: (err: HttpErrorResponse) => {
+          this.submitting.set(false);
+          this.globalLoading.stop();
+          this.formError.set(extractMessage(err));
+        },
+      });
+  }
+
   // ── Cambiar estado ──
   protected openStatus(contract: Contract): void {
     this.editingContract.set(contract);
     this.formError.set(null);
+    const motivo = contract.motivoRechazo ?? '';
+    // Si el motivo guardado no está en la lista local, lo añadimos para que aparezca en el select
+    if (motivo && !this.masterData.motivosRechazo().includes(motivo)) {
+      this.masterData.mergeMotivos([motivo]);
+    }
+    this.motivoKoSelectVal.set(motivo);
+    this.motivoKoAdding.set(false);
+    this.motivoKoNewText.set('');
     this.statusForm.reset({
       estado: ASSIGNABLE_STATUSES.includes(contract.estado) ? contract.estado : 'activo',
       fechaEstado: '',
+      motivoRechazo: motivo,
     });
     this.statusOpen.set(true);
   }
@@ -240,6 +650,29 @@ export class Contracts {
   protected closeStatus(): void {
     this.statusOpen.set(false);
     this.editingContract.set(null);
+    this.motivoKoSelectVal.set('');
+    this.motivoKoAdding.set(false);
+    this.motivoKoNewText.set('');
+  }
+
+  protected onMotivoKoSelect(val: string): void {
+    this.motivoKoSelectVal.set(val);
+    this.statusForm.patchValue({ motivoRechazo: val });
+  }
+
+  protected confirmMotivoKoNew(): void {
+    const text = this.motivoKoNewText().trim();
+    if (!text) return;
+    this.masterData.mergeMotivos([text]);
+    this.motivoKoSelectVal.set(text);
+    this.statusForm.patchValue({ motivoRechazo: text });
+    this.motivoKoAdding.set(false);
+    this.motivoKoNewText.set('');
+  }
+
+  protected cancelMotivoKoNew(): void {
+    this.motivoKoAdding.set(false);
+    this.motivoKoNewText.set('');
   }
 
   protected submitStatus(): void {
@@ -254,7 +687,11 @@ export class Contracts {
     this.globalLoading.start('Actualizando estado', 'Cambiando el estado del contrato.');
 
     this.service
-      .changeStatus(contract.id, { estado: v.estado, fechaEstado: v.fechaEstado || null })
+      .changeStatus(contract.id, {
+        estado: v.estado,
+        fechaEstado: v.fechaEstado || null,
+        motivoRechazo: v.estado === 'ko' ? (v.motivoRechazo || null) : null,
+      })
       .subscribe({
         next: () => {
           this.submitting.set(false);
@@ -271,8 +708,59 @@ export class Contracts {
       });
   }
 
+  protected makeSuministroGroup(): FormGroup {
+    return this.fb.group({
+      mode: this.fb.nonNullable.control<'existing' | 'new'>('existing'),
+      // existente
+      id: this.fb.nonNullable.control(''),
+      // nuevo — datos básicos
+      cups: this.fb.nonNullable.control(''),
+      tipo: this.fb.nonNullable.control<'E' | 'G' | ''>(''),
+      tarifa: this.fb.nonNullable.control(''),
+      compra: this.fb.nonNullable.control(false),
+      consumoContrato: this.fb.control<number | null>(null),
+      consumoUltimos12Meses: this.fb.control<number | null>(null),
+      // nuevo — ubicación
+      direccion: this.fb.nonNullable.control(''),
+      codigoPostal: this.fb.nonNullable.control(''),
+      ineProvincia: this.fb.nonNullable.control(''),
+      provincia: this.fb.nonNullable.control(''),
+      inePoblacion: this.fb.nonNullable.control(''),
+      poblacion: this.fb.nonNullable.control(''),
+      // nuevo — facturación
+      dirFacturacion: this.fb.nonNullable.control(''),
+      cpFacturacion: this.fb.nonNullable.control(''),
+      ineProvFacturacion: this.fb.nonNullable.control(''),
+      provFacturacion: this.fb.nonNullable.control(''),
+      inePobFacturacion: this.fb.nonNullable.control(''),
+      pobFacturacion: this.fb.nonNullable.control(''),
+      // nuevo — potencias
+      potenciaP1: this.fb.control<number | null>(null),
+      potenciaP2: this.fb.control<number | null>(null),
+      potenciaP3: this.fb.control<number | null>(null),
+      potenciaP4: this.fb.control<number | null>(null),
+      potenciaP5: this.fb.control<number | null>(null),
+      potenciaP6: this.fb.control<number | null>(null),
+    });
+  }
+
+  protected setSuministroMode(grp: FormGroup, mode: 'existing' | 'new'): void {
+    grp.get('mode')!.setValue(mode);
+    this.suministroVersion.update(v => v + 1);
+  }
+
+  protected asControl(ctrl: AbstractControl | null): FormControl {
+    return ctrl as FormControl;
+  }
+
   protected tone(status: ContractStatus): StatusTone {
     return STATUS_TONE[status];
+  }
+
+  protected scoringTone(score: number): 'success' | 'warning' | 'danger' {
+    if (score <= 3) return 'success';
+    if (score <= 6) return 'warning';
+    return 'danger';
   }
 
   protected label(status: ContractStatus): string {
@@ -289,6 +777,75 @@ export class Contracts {
 
   protected euro(value: number | null): string {
     return formatEuro(value);
+  }
+
+  // ── Ofertas (formulario compartido crear/editar) ────────────────────────────
+  protected fAgregarOferta(): void {
+    this.fOfertas.update(list => [...list, mkOferta()]);
+  }
+
+  protected fEliminarOferta(i: number): void {
+    this.fOfertas.update(list => list.filter((_, j) => j !== i));
+  }
+
+  protected fSetNombre(i: number, v: string): void {
+    this.fOfertas.update(list => list.map((o, j) => j === i ? { ...o, nombre: v } : o));
+  }
+
+  protected fSetTipo(i: number, v: 'FIJO' | 'INDEXADO' | 'PASS_POOL'): void {
+    this.fOfertas.update(list => list.map((o, j) => j === i ? { ...o, tipo: v } : o));
+  }
+
+  protected fSetPrecio(oi: number, tar: 't20' | 't30' | 't61', tipo: 'energia' | 'potencia', pi: number, v: string): void {
+    const raw = parseFloat(v);
+    const val: number | null = v === '' || Number.isNaN(raw) ? null : raw;
+    this.fOfertas.update(list =>
+      list.map((o, j) => {
+        if (j !== oi) return o;
+        const bloque = { ...o[tar] };
+        const arr = [...bloque[tipo]];
+        arr[pi] = val;
+        return { ...o, [tar]: { ...bloque, [tipo]: arr } };
+      }),
+    );
+  }
+
+  // ── Descarga PDF (usa ofertas guardadas en el contrato) ─────────────────────
+  protected descargarPdf(contrato: Contract): void {
+    if (this.descargandoPdf()) return;
+    this.descargandoPdf.set(contrato.id);
+    const ofertas = contractOffersToPdfOfertas(contrato.ofertas ?? []);
+
+    const run = (base: PdfContratoData) =>
+      this.pdfService.generarPdf({ ...base, ofertas })
+        .catch(err => { console.error('Error generando PDF:', err); this.notify.error('Error al generar el PDF'); })
+        .finally(() => { this.descargandoPdf.set(null); });
+
+    this.customerService.getById(contrato.clienteId).subscribe({
+      next: (cliente) => run({
+        id_propuesta:           contrato.idExterno ?? undefined,
+        fecha_contrato:         contrato.fechaEstado ?? contrato.fechaCreacion ?? undefined,
+        nombre_cliente:         contrato.clienteNombre,
+        cif:                    contrato.clienteNif ?? undefined,
+        cnae:                   cliente.cnae ?? undefined,
+        telefono:               cliente.telefono ?? undefined,
+        correo:                 cliente.email ?? undefined,
+        representante_legal:    cliente.titular ?? undefined,
+        numero_cuenta_bancaria: cliente.iban ?? undefined,
+        cups:                   contrato.cups ? [contrato.cups] : undefined,
+        tarifa:                 contrato.suministroTarifa ?? undefined,
+        provincia:              contrato.provincia ?? undefined,
+      }),
+      error: () => run({
+        id_propuesta:   contrato.idExterno ?? undefined,
+        fecha_contrato: contrato.fechaEstado ?? contrato.fechaCreacion ?? undefined,
+        nombre_cliente: contrato.clienteNombre,
+        cif:            contrato.clienteNif ?? undefined,
+        cups:           contrato.cups ? [contrato.cups] : undefined,
+        tarifa:         contrato.suministroTarifa ?? undefined,
+        provincia:      contrato.provincia ?? undefined,
+      }),
+    });
   }
 }
 

@@ -27,11 +27,43 @@ export const routes: Routes = [
       },
       {
         path: 'contracts',
-        loadComponent: () => import('./features/contracts/contracts').then((m) => m.Contracts),
+        children: [
+          {
+            path: '',
+            loadComponent: () => import('./features/contracts/contracts').then((m) => m.Contracts),
+          },
+          {
+            path: 'renovaciones',
+            loadComponent: () =>
+              import('./features/contracts/renovaciones/renovaciones').then((m) => m.Renovaciones),
+          },
+        ],
       },
       {
         path: 'supplies',
         loadComponent: () => import('./features/supplies/supplies').then((m) => m.Supplies),
+      },
+      {
+        path: 'scoring',
+        loadComponent: () => import('./features/scoring/scoring').then((m) => m.ScoringList),
+      },
+      {
+        path: 'facturas-contabilidad',
+        loadComponent: () =>
+          import('./features/facturas-contabilidad/facturas-contabilidad').then(
+            (m) => m.FacturasContabilidad,
+          ),
+      },
+      {
+        path: 'pagos-liquidacion',
+        loadComponent: () =>
+          import('./features/pagos-liquidacion/pagos-liquidacion').then(
+            (m) => m.PagosLiquidacion,
+          ),
+      },
+      {
+        path: 'rechazos',
+        loadComponent: () => import('./features/rechazos/rechazos').then((m) => m.Rechazos),
       },
 
       // ── Organization ──
@@ -50,6 +82,12 @@ export const routes: Routes = [
         data: { roles: ['admin', 'operaciones'] },
         canActivate: [authGuard],
         loadComponent: () => import('./features/users/users').then((m) => m.Users),
+      },
+      {
+        path: 'settings',
+        data: { roles: ['admin'] },
+        canActivate: [authGuard],
+        loadComponent: () => import('./features/settings/settings').then((m) => m.Settings),
       },
       // ── Legacy / placeholders (no backend yet) ──
       {

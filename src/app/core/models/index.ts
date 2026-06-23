@@ -9,3 +9,8 @@ export * from './supply.model';
 export * from './branch.model';
 export * from './group.model';
 export * from './dashboard.model';
+export * from './master-data.model';
+export * from './factura-contabilidad.model';
+export * from './pagos-liquidacion.model';
+export * from './setting.model';
+export * from './rechazo.model';

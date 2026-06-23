@@ -14,6 +14,7 @@ import { SupplyService } from '../../core/services/supply.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { GlobalLoadingService } from '../../core/services/global-loading.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { MasterDataService } from '../../core/services/master-data.service';
 import {
   ApiErrorResponse,
   Page,
@@ -54,6 +55,7 @@ export class Supplies {
   private readonly customerService = inject(CustomerService);
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly notify = inject(NotificationService);
+  private readonly masterData = inject(MasterDataService);
   private readonly fb = inject(FormBuilder);
 
   protected cups = '';
@@ -184,9 +186,10 @@ export class Supplies {
         activo: value.activo,
       })
       .subscribe({
-        next: () => {
+        next: (created: Supply) => {
           this.submitting.set(false);
           this.globalLoading.stop();
+          this.masterData.upsertSuministro(created);
           this.closeModal();
           this.notify.success('Suministro creado');
           this.reload(0);

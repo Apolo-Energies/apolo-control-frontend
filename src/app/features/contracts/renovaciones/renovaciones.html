@@ -1,0 +1,223 @@
+<app-page-header title="Renovaciones" subtitle="Contratos vencidos, próximos a vencer y ya renovados">
+  <button type="button" (click)="refresh()" [disabled]="loading()"
+    class="h-9 px-3 inline-flex items-center gap-2 rounded-lg border border-border text-sm text-muted-foreground hover:bg-accent/40 transition-colors disabled:opacity-40">
+    @if (loading()) { <ui-icon name="loader" [size]="14" class="animate-spin" /> }
+    @else { <ui-icon name="refresh-cw" [size]="14" /> }
+    Actualizar
+  </button>
+</app-page-header>
+
+@if (error(); as msg) {
+  <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm mb-4">{{ msg }}</div>
+}
+
+@if (loading() && !data()) {
+  <app-table-skeleton [cols]="7" [rows]="5" class="mb-4" />
+  <app-table-skeleton [cols]="7" [rows]="5" class="mb-4" />
+  <app-table-skeleton [cols]="7" [rows]="5" />
+} @else if (data(); as d) {
+
+  <!-- ── Ya vencidos ── -->
+  <section class="mb-4">
+    <button type="button" (click)="vOpen.set(!vOpen())"
+      class="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-danger/8 border border-danger/20 hover:bg-danger/12 transition-colors mb-1">
+      <div class="flex items-center gap-2">
+        <ui-icon name="alert-triangle" [size]="15" class="text-danger-fg" />
+        <span class="text-sm font-semibold text-foreground">Ya vencidos</span>
+        <span class="text-xs text-muted-foreground">({{ d.vencidos.totalElements }})</span>
+      </div>
+      <ui-icon name="chevron-down" [size]="15" [class]="vOpen() ? 'text-muted-foreground rotate-180 transition-transform' : 'text-muted-foreground transition-transform'" />
+    </button>
+
+    @if (vOpen()) {
+      @if (d.vencidos.content.length === 0) {
+        <p class="text-sm text-muted-foreground py-6 text-center">No hay contratos vencidos pendientes de renovar.</p>
+      } @else {
+        <div class="bg-card border border-border rounded-xl overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th class="px-4 py-3 text-left font-semibold">Cliente</th>
+                  <th class="px-4 py-3 text-left font-semibold">CUPS</th>
+                  <th class="px-4 py-3 text-left font-semibold">Servicio</th>
+                  <th class="px-4 py-3 text-left font-semibold">Estado</th>
+                  <th class="px-4 py-3 text-left font-semibold">F. inicio</th>
+                  <th class="px-4 py-3 text-left font-semibold">F. fin prevista</th>
+                  <th class="px-4 py-3 text-right font-semibold">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border/40">
+                @for (row of d.vencidos.content; track row.id) {
+                  <tr class="hover:bg-accent/20 transition-colors cursor-pointer" (click)="verContrato(row.id)">
+                    <td class="px-4 py-3">
+                      <p class="font-medium text-foreground">{{ row.clienteNombre }}</p>
+                      @if (row.clienteNif) { <p class="text-xs text-muted-foreground font-mono">{{ row.clienteNif }}</p> }
+                    </td>
+                    <td class="px-4 py-3 font-mono text-xs text-foreground/80">{{ text(row.cups) }}</td>
+                    <td class="px-4 py-3 text-foreground/80">{{ text(row.servicio) }}</td>
+                    <td class="px-4 py-3"><app-status-badge [tone]="tone(row.estado)">{{ label(row.estado) }}</app-status-badge></td>
+                    <td class="px-4 py-3 text-foreground/80 text-xs">{{ date(row.fechaInicio) }}</td>
+                    <td class="px-4 py-3 text-danger-fg font-semibold text-xs">{{ date(row.fechaFinPrevista) }}</td>
+                    <td class="px-4 py-3">
+                      <div class="flex justify-end">
+                        <button (click)="renovar(row); $event.stopPropagation()"
+                          class="h-7 px-2.5 inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground text-xs hover:opacity-90 transition-opacity">
+                          <ui-icon name="refresh-cw" [size]="12" />
+                          Renovar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+        @if (d.vencidos.totalPages > 1) {
+          <app-pagination
+            [page]="vPage()" [pageSize]="pageSize"
+            [totalElements]="d.vencidos.totalElements" [totalPages]="d.vencidos.totalPages"
+            [pageSizes]="[10, 25, 50]" (pageChange)="onVPage($event)" />
+        }
+      }
+    }
+  </section>
+
+  <!-- ── Por vencer ── -->
+  <section class="mb-4">
+    <button type="button" (click)="pvOpen.set(!pvOpen())"
+      class="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-warning/8 border border-warning/20 hover:bg-warning/12 transition-colors mb-1">
+      <div class="flex items-center gap-2">
+        <ui-icon name="clock" [size]="15" class="text-warning-fg" />
+        <span class="text-sm font-semibold text-foreground">Por vencer</span>
+        <span class="text-xs text-muted-foreground">({{ d.porVencer.totalElements }})</span>
+      </div>
+      <ui-icon name="chevron-down" [size]="15" [class]="pvOpen() ? 'text-muted-foreground rotate-180 transition-transform' : 'text-muted-foreground transition-transform'" />
+    </button>
+
+    @if (pvOpen()) {
+      @if (d.porVencer.content.length === 0) {
+        <p class="text-sm text-muted-foreground py-6 text-center">No hay contratos próximos a vencer en el rango configurado.</p>
+      } @else {
+        <div class="bg-card border border-border rounded-xl overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th class="px-4 py-3 text-left font-semibold">Cliente</th>
+                  <th class="px-4 py-3 text-left font-semibold">CUPS</th>
+                  <th class="px-4 py-3 text-left font-semibold">Servicio</th>
+                  <th class="px-4 py-3 text-left font-semibold">Estado</th>
+                  <th class="px-4 py-3 text-left font-semibold">F. inicio</th>
+                  <th class="px-4 py-3 text-left font-semibold">F. fin prevista</th>
+                  <th class="px-4 py-3 text-right font-semibold">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border/40">
+                @for (row of d.porVencer.content; track row.id) {
+                  <tr class="hover:bg-accent/20 transition-colors cursor-pointer" (click)="verContrato(row.id)">
+                    <td class="px-4 py-3">
+                      <p class="font-medium text-foreground">{{ row.clienteNombre }}</p>
+                      @if (row.clienteNif) { <p class="text-xs text-muted-foreground font-mono">{{ row.clienteNif }}</p> }
+                    </td>
+                    <td class="px-4 py-3 font-mono text-xs text-foreground/80">{{ text(row.cups) }}</td>
+                    <td class="px-4 py-3 text-foreground/80">{{ text(row.servicio) }}</td>
+                    <td class="px-4 py-3"><app-status-badge [tone]="tone(row.estado)">{{ label(row.estado) }}</app-status-badge></td>
+                    <td class="px-4 py-3 text-foreground/80 text-xs">{{ date(row.fechaInicio) }}</td>
+                    <td class="px-4 py-3 text-warning-fg font-semibold text-xs">{{ date(row.fechaFinPrevista) }}</td>
+                    <td class="px-4 py-3">
+                      <div class="flex justify-end">
+                        <button (click)="renovar(row); $event.stopPropagation()"
+                          class="h-7 px-2.5 inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground text-xs hover:opacity-90 transition-opacity">
+                          <ui-icon name="refresh-cw" [size]="12" />
+                          Renovar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+        @if (d.porVencer.totalPages > 1) {
+          <app-pagination
+            [page]="pvPage()" [pageSize]="pageSize"
+            [totalElements]="d.porVencer.totalElements" [totalPages]="d.porVencer.totalPages"
+            [pageSizes]="[10, 25, 50]" (pageChange)="onPvPage($event)" />
+        }
+      }
+    }
+  </section>
+
+  <!-- ── Renovados ── -->
+  <section class="mb-4">
+    <button type="button" (click)="rOpen.set(!rOpen())"
+      class="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-purple-500/8 border border-purple-500/20 hover:bg-purple-500/12 transition-colors mb-1">
+      <div class="flex items-center gap-2">
+        <ui-icon name="check-square" [size]="15" class="text-purple-500" />
+        <span class="text-sm font-semibold text-foreground">Renovados</span>
+        <span class="text-xs text-muted-foreground">({{ d.renovados.totalElements }})</span>
+      </div>
+      <ui-icon name="chevron-down" [size]="15" [class]="rOpen() ? 'text-muted-foreground rotate-180 transition-transform' : 'text-muted-foreground transition-transform'" />
+    </button>
+
+    @if (rOpen()) {
+      @if (d.renovados.content.length === 0) {
+        <p class="text-sm text-muted-foreground py-6 text-center">No hay contratos renovados registrados.</p>
+      } @else {
+        <div class="bg-card border border-border rounded-xl overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th class="px-4 py-3 text-left font-semibold">Cliente</th>
+                  <th class="px-4 py-3 text-left font-semibold">CUPS</th>
+                  <th class="px-4 py-3 text-left font-semibold">Servicio</th>
+                  <th class="px-4 py-3 text-left font-semibold">Estado</th>
+                  <th class="px-4 py-3 text-left font-semibold">Renovado el</th>
+                  <th class="px-4 py-3 text-left font-semibold">F. fin prevista</th>
+                  <th class="px-4 py-3 text-right font-semibold">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border/40">
+                @for (row of d.renovados.content; track row.id) {
+                  <tr class="hover:bg-accent/20 transition-colors cursor-pointer" (click)="verContrato(row.id)">
+                    <td class="px-4 py-3">
+                      <p class="font-medium text-foreground">{{ row.clienteNombre }}</p>
+                      @if (row.clienteNif) { <p class="text-xs text-muted-foreground font-mono">{{ row.clienteNif }}</p> }
+                    </td>
+                    <td class="px-4 py-3 font-mono text-xs text-foreground/80">{{ text(row.cups) }}</td>
+                    <td class="px-4 py-3 text-foreground/80">{{ text(row.servicio) }}</td>
+                    <td class="px-4 py-3"><app-status-badge [tone]="tone(row.estado)">{{ label(row.estado) }}</app-status-badge></td>
+                    <td class="px-4 py-3 text-foreground/80 text-xs">{{ date(row.fechaEstado) }}</td>
+                    <td class="px-4 py-3 text-foreground/80 text-xs">{{ date(row.fechaFinPrevista) }}</td>
+                    <td class="px-4 py-3">
+                      <div class="flex justify-end">
+                        @if (row.contratoVinculadoId) {
+                          <button (click)="verContrato(row.contratoVinculadoId); $event.stopPropagation()"
+                            class="h-7 px-2.5 inline-flex items-center gap-1 rounded-md border border-border text-xs text-muted-foreground hover:bg-accent/40 transition-colors">
+                            <ui-icon name="arrow-up-right" [size]="12" />
+                            Ver nuevo
+                          </button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+        @if (d.renovados.totalPages > 1) {
+          <app-pagination
+            [page]="rPage()" [pageSize]="pageSize"
+            [totalElements]="d.renovados.totalElements" [totalPages]="d.renovados.totalPages"
+            [pageSizes]="[10, 25, 50]" (pageChange)="onRPage($event)" />
+        }
+      }
+    }
+  </section>
+
+}

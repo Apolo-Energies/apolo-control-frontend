@@ -9,20 +9,81 @@
   </button>
 </app-page-header>
 
-<section class="bg-card border border-border rounded-xl p-4 mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
-  <label class="flex items-center gap-2 text-sm text-foreground">
+<section class="bg-card border border-border rounded-xl p-4 mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:flex-wrap">
+
+  <!-- Búsqueda libre -->
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">Búsqueda</span>
+    <input
+      type="text"
+      [(ngModel)]="q"
+      (ngModelChange)="reload(0)"
+      placeholder="Cliente, NIF, CUPS, servicio…"
+      class="rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground w-56 focus:outline-none focus:ring-2 focus:ring-primary/40"
+    />
+  </label>
+
+  <!-- Estado -->
+  <label class="flex flex-col gap-1">
     <span class="text-xs text-muted-foreground">Estado</span>
     <select
       [(ngModel)]="statusFilter"
       (ngModelChange)="reload(0)"
       class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
     >
-      <option [ngValue]="null">Todos</option>
+      <option value="">Todos</option>
       @for (status of statuses; track status) {
-        <option [ngValue]="status">{{ label(status) }}</option>
+        <option [value]="status">{{ label(status) }}</option>
       }
     </select>
   </label>
+
+  <!-- Motivo de rechazo (desde caché local de master-data) -->
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">Motivo rechazo</span>
+    <select
+      [(ngModel)]="motivoRechazo"
+      (ngModelChange)="reload(0)"
+      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+    >
+      <option value="">Todos</option>
+      @for (motivo of motivosRechazo(); track motivo) {
+        <option [value]="motivo">{{ motivo }}</option>
+      }
+    </select>
+  </label>
+
+  <!-- Rango de fechas -->
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">Fecha creación desde</span>
+    <input
+      type="date"
+      [(ngModel)]="startDate"
+      (ngModelChange)="reload(0)"
+      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+    />
+  </label>
+
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">hasta</span>
+    <input
+      type="date"
+      [(ngModel)]="endDate"
+      (ngModelChange)="reload(0)"
+      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+    />
+  </label>
+
+  <!-- Limpiar filtros -->
+  @if (q || statusFilter || motivoRechazo || startDate || endDate) {
+    <button
+      type="button"
+      (click)="clearFilters()"
+      class="h-8 px-3 rounded-lg border border-border text-xs text-muted-foreground hover:bg-accent/40 transition-colors self-end"
+    >
+      Limpiar filtros
+    </button>
+  }
 </section>
 
 @if (errorMessage(); as msg) {
@@ -32,7 +93,7 @@
 }
 
 @if (loading() && rows().length === 0) {
-  <app-table-skeleton [cols]="10" [rows]="8" />
+  <app-table-skeleton [cols]="11" [rows]="8" />
 } @else {
   <div class="relative bg-card border border-border rounded-xl overflow-hidden">
     <app-loading-overlay [loading]="loading() && rows().length > 0" message="Actualizando…" />
@@ -49,12 +110,13 @@
             <th class="px-4 py-3 text-left font-semibold">F. fin</th>
             <th class="px-4 py-3 text-right font-semibold">Margen bruto</th>
             <th class="px-4 py-3 text-right font-semibold">Margen neto</th>
+            <th class="px-4 py-3 text-left font-semibold">Scoring</th>
             <th class="px-4 py-3 text-right font-semibold">Acciones</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-border/40">
           @for (row of rows(); track row.id) {
-            <tr class="hover:bg-accent/20 transition-colors">
+            <tr class="hover:bg-accent/20 transition-colors cursor-pointer" (click)="openEdit(row)">
               <td class="px-4 py-3 font-mono text-xs text-foreground/80">
                 {{ text(row.idExterno) }}
               </td>
@@ -64,8 +126,16 @@
                   <p class="text-xs text-muted-foreground font-mono">{{ row.clienteNif }}</p>
                 }
               </td>
-              <td class="px-4 py-3 font-mono text-xs text-foreground/80">
-                {{ text(row.cups) }}
+              <td class="px-4 py-3">
+                @if (row.suministros && row.suministros.length > 0) {
+                  <div class="flex flex-col gap-0.5">
+                    @for (s of row.suministros; track s.id) {
+                      <span class="font-mono text-xs text-foreground/80">{{ s.cups }}</span>
+                    }
+                  </div>
+                } @else {
+                  <span class="font-mono text-xs text-foreground/80">{{ text(row.cups) }}</span>
+                }
               </td>
               <td class="px-4 py-3">
                 <p class="text-foreground/80">{{ text(row.servicio) }}</p>
@@ -86,21 +156,51 @@
               <td class="px-4 py-3 text-right font-medium text-foreground">
                 {{ euro(row.margenNeto) }}
               </td>
-              <td class="px-4 py-3 text-right">
-                <button
-                  type="button"
-                  (click)="openStatus(row)"
-                  class="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-md border border-border text-xs text-foreground hover:bg-accent/40"
-                  title="Cambiar estado"
-                >
-                  <ui-icon name="repeat" [size]="13" />
-                  Estado
-                </button>
+              <td class="px-4 py-3">
+                @if (row.scoring != null) {
+                  <div class="flex flex-col items-start gap-1">
+                    <app-status-badge [tone]="scoringTone(row.scoring.puntuacion)">
+                      {{ row.scoring.puntuacion }}/10
+                    </app-status-badge>
+                    @if (row.scoring.vigilancia) {
+                      <app-status-badge tone="warning">Vigilancia</app-status-badge>
+                    }
+                  </div>
+                } @else {
+                  <span class="text-muted-foreground">—</span>
+                }
+              </td>
+              <td class="px-4 py-3 text-right" (click)="$event.stopPropagation()">
+                <div class="inline-flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    (click)="openStatus(row)"
+                    class="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-md border border-border text-xs text-foreground hover:bg-accent/40"
+                    title="Cambiar estado"
+                  >
+                    <ui-icon name="repeat" [size]="13" />
+                    Estado
+                  </button>
+                  <button
+                    type="button"
+                    (click)="descargarPdf(row)"
+                    [disabled]="descargandoPdf() === row.id"
+                    class="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-md border border-border text-xs text-foreground hover:bg-accent/40 disabled:opacity-40"
+                    title="Descargar contrato PDF"
+                  >
+                    @if (descargandoPdf() === row.id) {
+                      <ui-icon name="loader" [size]="13" class="animate-spin" />
+                    } @else {
+                      <ui-icon name="download" [size]="13" />
+                    }
+                    PDF
+                  </button>
+                </div>
               </td>
             </tr>
           } @empty {
             <tr>
-              <td colspan="10" class="px-4 py-10 text-center text-sm text-muted-foreground">
+              <td colspan="11" class="px-4 py-10 text-center text-sm text-muted-foreground">
                 Sin contratos para los filtros seleccionados.
               </td>
             </tr>
@@ -146,14 +246,358 @@
       />
     </label>
 
-    <label class="flex flex-col gap-1.5 sm:col-span-2">
-      <span class="text-xs font-medium text-foreground/80">Suministro (CUPS)</span>
-      <app-remote-select
-        formControlName="suministroId"
-        placeholder="Escribe el CUPS…"
-        [searchFn]="searchSuministros"
-      />
-    </label>
+    <div class="flex flex-col gap-1.5 sm:col-span-2" formArrayName="suministros">
+      <span class="text-xs font-medium text-foreground/80">Suministros (CUPS)</span>
+      <div class="flex flex-col gap-2">
+        @for (grp of suministroControls(); track $index; let i = $index) {
+          <div class="flex flex-col gap-2 p-3 rounded-lg border border-border/60 bg-background/50">
+            <div class="flex items-center justify-between gap-2">
+              <!-- Toggle modo existente / nuevo -->
+              <div class="flex overflow-hidden rounded-md border border-border text-xs">
+                <button
+                  type="button"
+                  (click)="setSuministroMode(grp, 'existing')"
+                  [class]="grp.get('mode')?.value === 'existing'
+                    ? 'px-3 py-1.5 bg-primary text-primary-foreground font-medium'
+                    : 'px-3 py-1.5 text-muted-foreground hover:bg-accent/30 transition-colors'"
+                >Existente</button>
+                <button
+                  type="button"
+                  (click)="setSuministroMode(grp, 'new')"
+                  [class]="grp.get('mode')?.value === 'new'
+                    ? 'px-3 py-1.5 bg-primary text-primary-foreground font-medium'
+                    : 'px-3 py-1.5 text-muted-foreground hover:bg-accent/30 transition-colors'"
+                >Nuevo</button>
+              </div>
+              @if (suministroControls().length > 1) {
+                <button
+                  type="button"
+                  (click)="removeSuministro(i)"
+                  class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border text-danger-fg hover:bg-danger/10 transition-colors"
+                  title="Quitar suministro"
+                >
+                  <ui-icon name="x" [size]="12" />
+                </button>
+              }
+            </div>
+
+            @if (grp.get('mode')?.value === 'existing') {
+              <app-remote-select
+                [formControl]="asControl(grp.get('id'))"
+                placeholder="Buscar por CUPS o cliente…"
+                [searchFn]="searchSuministros"
+              />
+            } @else {
+              <div class="flex flex-col gap-3">
+
+                <!-- Datos básicos -->
+                <div class="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    [formControl]="asControl(grp.get('cups'))"
+                    placeholder="CUPS (ES0031…)"
+                    class="col-span-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <select
+                    [formControl]="asControl(grp.get('tipo'))"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="">Tipo…</option>
+                    <option value="E">Electricidad (E)</option>
+                    <option value="G">Gas (G)</option>
+                  </select>
+                  <input
+                    type="text"
+                    [formControl]="asControl(grp.get('tarifa'))"
+                    placeholder="Tarifa (2.0TD…)"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <input
+                    type="number"
+                    step="any"
+                    [formControl]="asControl(grp.get('consumoContrato'))"
+                    placeholder="Consumo contrato (kWh)"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <input
+                    type="number"
+                    step="any"
+                    [formControl]="asControl(grp.get('consumoUltimos12Meses'))"
+                    placeholder="Consumo últ. 12m (kWh)"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <label class="col-span-2 inline-flex items-center gap-2 text-sm text-foreground">
+                    <input
+                      type="checkbox"
+                      [formControl]="asControl(grp.get('compra'))"
+                      class="h-4 w-4 rounded border-border accent-primary"
+                    />
+                    En compra
+                  </label>
+                </div>
+
+                <!-- Ubicación -->
+                <div class="flex flex-col gap-1.5">
+                  <p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ubicación</p>
+                  <div class="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('direccion'))"
+                      placeholder="Dirección"
+                      class="col-span-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('codigoPostal'))"
+                      placeholder="C.P."
+                      class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('provincia'))"
+                      placeholder="Provincia"
+                      class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('poblacion'))"
+                      placeholder="Población"
+                      class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('ineProvincia'))"
+                      placeholder="INE provincia"
+                      class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('inePoblacion'))"
+                      placeholder="INE población"
+                      class="col-span-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                  </div>
+                </div>
+
+                <!-- Dirección facturación -->
+                <div class="flex flex-col gap-1.5">
+                  <p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Dirección facturación</p>
+                  <div class="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('dirFacturacion'))"
+                      placeholder="Dirección"
+                      class="col-span-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('cpFacturacion'))"
+                      placeholder="C.P."
+                      class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('provFacturacion'))"
+                      placeholder="Provincia"
+                      class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('pobFacturacion'))"
+                      placeholder="Población"
+                      class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('ineProvFacturacion'))"
+                      placeholder="INE provincia"
+                      class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      [formControl]="asControl(grp.get('inePobFacturacion'))"
+                      placeholder="INE población"
+                      class="col-span-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                  </div>
+                </div>
+
+                <!-- Potencias -->
+                <div class="flex flex-col gap-1.5">
+                  <p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Potencias (kW)</p>
+                  <div class="grid grid-cols-3 gap-2">
+                    @for (p of [1,2,3,4,5,6]; track p) {
+                      <input
+                        type="number"
+                        step="any"
+                        [formControl]="asControl(grp.get('potenciaP' + p))"
+                        [placeholder]="'P' + p"
+                        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    }
+                  </div>
+                </div>
+
+              </div>
+            }
+          </div>
+        }
+        <button
+          type="button"
+          (click)="addSuministro()"
+          class="h-9 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:text-primary hover:border-primary transition-colors"
+        >
+          <ui-icon name="plus" [size]="12" />
+          Añadir otro suministro
+        </button>
+      </div>
+    </div>
+
+    <!-- Ofertas económicas -->
+    <div class="flex flex-col gap-3 sm:col-span-2">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-medium text-foreground/80">Ofertas económicas</span>
+        <span class="text-xs text-muted-foreground">opcional — para el PDF</span>
+      </div>
+      <div class="flex gap-5">
+        <label class="inline-flex items-center gap-2 text-sm text-foreground cursor-pointer">
+          <input type="checkbox" [checked]="fOfertaTar20()" (change)="fOfertaTar20.set(!fOfertaTar20())" class="h-4 w-4 rounded border-border accent-primary" />
+          2.0TD
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm text-foreground cursor-pointer">
+          <input type="checkbox" [checked]="fOfertaTar30()" (change)="fOfertaTar30.set(!fOfertaTar30())" class="h-4 w-4 rounded border-border accent-primary" />
+          3.0TD
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm text-foreground cursor-pointer">
+          <input type="checkbox" [checked]="fOfertaTar61()" (change)="fOfertaTar61.set(!fOfertaTar61())" class="h-4 w-4 rounded border-border accent-primary" />
+          6.1TD
+        </label>
+      </div>
+      @if (fOfertaTar20() || fOfertaTar30() || fOfertaTar61()) {
+        <div class="flex flex-col gap-3">
+          @for (oferta of fOfertas(); track $index; let i = $index) {
+            <div class="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/50 p-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold text-foreground/70 shrink-0">Oferta {{ i + 1 }}</span>
+                <div class="flex-1 grid grid-cols-2 gap-2">
+                  <input type="text" [value]="oferta.nombre" (input)="fSetNombre(i, $any($event.target).value)" placeholder="Nombre del producto…"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                  <select [value]="oferta.tipo" (change)="fSetTipo(i, $any($event.target).value)"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+                    <option value="FIJO">Precio fijo</option>
+                    <option value="INDEXADO">Indexado</option>
+                    <option value="PASS_POOL">Pass Pool</option>
+                  </select>
+                </div>
+                @if (fOfertas().length > 1) {
+                  <button type="button" (click)="fEliminarOferta(i)"
+                    class="h-7 w-7 shrink-0 inline-flex items-center justify-center rounded-md border border-border text-danger-fg hover:bg-danger/10">
+                    <ui-icon name="x" [size]="12" />
+                  </button>
+                }
+              </div>
+              @if (fOfertaTar20()) {
+                <div class="flex flex-col gap-1">
+                  <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">2.0TD</p>
+                  <div class="overflow-x-auto rounded border border-border/40">
+                    <table class="w-full text-xs border-collapse">
+                      <thead><tr class="bg-accent/30">
+                        <th class="px-2 py-1.5 text-left font-semibold text-muted-foreground min-w-[130px]">Concepto</th>
+                        @for (p of [1,2,3,4,5,6]; track p) { <th class="px-1 py-1.5 text-center font-semibold text-muted-foreground w-[68px]">P{{p}}</th> }
+                      </tr></thead>
+                      <tbody>
+                        <tr class="border-t border-border/40">
+                          <td class="px-2 py-1 text-foreground/80 whitespace-nowrap">Energía (€/kWh)</td>
+                          @for (p of [0,1,2,3,4,5]; track p) {
+                            <td class="px-1 py-1"><input type="number" step="0.000001" [value]="oferta.t20.energia[p] ?? ''"
+                              (change)="fSetPrecio(i,'t20','energia',p,$any($event.target).value)"
+                              class="w-full rounded border border-border bg-background px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/40" /></td>
+                          }
+                        </tr>
+                        <tr class="border-t border-border/40">
+                          <td class="px-2 py-1 text-foreground/80 whitespace-nowrap">Potencia (€/kW/año)</td>
+                          @for (p of [0,1,2,3,4,5]; track p) {
+                            <td class="px-1 py-1"><input type="number" step="0.001" [value]="oferta.t20.potencia[p] ?? ''"
+                              (change)="fSetPrecio(i,'t20','potencia',p,$any($event.target).value)"
+                              class="w-full rounded border border-border bg-background px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/40" /></td>
+                          }
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
+              @if (fOfertaTar30()) {
+                <div class="flex flex-col gap-1">
+                  <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">3.0TD</p>
+                  <div class="overflow-x-auto rounded border border-border/40">
+                    <table class="w-full text-xs border-collapse">
+                      <thead><tr class="bg-accent/30">
+                        <th class="px-2 py-1.5 text-left font-semibold text-muted-foreground min-w-[130px]">Concepto</th>
+                        @for (p of [1,2,3,4,5,6]; track p) { <th class="px-1 py-1.5 text-center font-semibold text-muted-foreground w-[68px]">P{{p}}</th> }
+                      </tr></thead>
+                      <tbody>
+                        <tr class="border-t border-border/40">
+                          <td class="px-2 py-1 text-foreground/80 whitespace-nowrap">Energía (€/kWh)</td>
+                          @for (p of [0,1,2,3,4,5]; track p) {
+                            <td class="px-1 py-1"><input type="number" step="0.000001" [value]="oferta.t30.energia[p] ?? ''"
+                              (change)="fSetPrecio(i,'t30','energia',p,$any($event.target).value)"
+                              class="w-full rounded border border-border bg-background px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/40" /></td>
+                          }
+                        </tr>
+                        <tr class="border-t border-border/40">
+                          <td class="px-2 py-1 text-foreground/80 whitespace-nowrap">Potencia (€/kW/año)</td>
+                          @for (p of [0,1,2,3,4,5]; track p) {
+                            <td class="px-1 py-1"><input type="number" step="0.001" [value]="oferta.t30.potencia[p] ?? ''"
+                              (change)="fSetPrecio(i,'t30','potencia',p,$any($event.target).value)"
+                              class="w-full rounded border border-border bg-background px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/40" /></td>
+                          }
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
+              @if (fOfertaTar61()) {
+                <div class="flex flex-col gap-1">
+                  <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">6.1TD</p>
+                  <div class="overflow-x-auto rounded border border-border/40">
+                    <table class="w-full text-xs border-collapse">
+                      <thead><tr class="bg-accent/30">
+                        <th class="px-2 py-1.5 text-left font-semibold text-muted-foreground min-w-[130px]">Concepto</th>
+                        @for (p of [1,2,3,4,5,6]; track p) { <th class="px-1 py-1.5 text-center font-semibold text-muted-foreground w-[68px]">P{{p}}</th> }
+                      </tr></thead>
+                      <tbody>
+                        <tr class="border-t border-border/40">
+                          <td class="px-2 py-1 text-foreground/80 whitespace-nowrap">Energía (€/kWh)</td>
+                          @for (p of [0,1,2,3,4,5]; track p) {
+                            <td class="px-1 py-1"><input type="number" step="0.000001" [value]="oferta.t61.energia[p] ?? ''"
+                              (change)="fSetPrecio(i,'t61','energia',p,$any($event.target).value)"
+                              class="w-full rounded border border-border bg-background px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/40" /></td>
+                          }
+                        </tr>
+                        <tr class="border-t border-border/40">
+                          <td class="px-2 py-1 text-foreground/80 whitespace-nowrap">Potencia (€/kW/año)</td>
+                          @for (p of [0,1,2,3,4,5]; track p) {
+                            <td class="px-1 py-1"><input type="number" step="0.001" [value]="oferta.t61.potencia[p] ?? ''"
+                              (change)="fSetPrecio(i,'t61','potencia',p,$any($event.target).value)"
+                              class="w-full rounded border border-border bg-background px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/40" /></td>
+                          }
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+          <button type="button" (click)="fAgregarOferta()"
+            class="h-9 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:text-primary hover:border-primary transition-colors">
+            <ui-icon name="plus" [size]="12" /> Agregar oferta
+          </button>
+        </div>
+      }
+    </div>
 
     <label class="flex flex-col gap-1.5">
       <span class="text-xs font-medium text-foreground/80">Servicio</span>
@@ -212,7 +656,354 @@
         class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
       />
     </label>
+
+    <!-- Anexos -->
+    <div class="flex flex-col gap-1.5 sm:col-span-2">
+      <span class="text-xs font-medium text-foreground/80">Anexos</span>
+      <label class="h-9 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:text-primary hover:border-primary transition-colors cursor-pointer">
+        <ui-icon name="upload" [size]="13" />
+        Adjuntar archivos
+        <input type="file" multiple class="hidden" (change)="onFilesSelected($event)" />
+      </label>
+      @if (selectedFiles().length > 0) {
+        <div class="flex flex-col gap-1">
+          @for (file of selectedFiles(); track $index; let i = $index) {
+            <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-accent/40 text-xs">
+              <ui-icon name="file-text" [size]="12" class="text-muted-foreground shrink-0" />
+              <span class="flex-1 truncate text-foreground">{{ file.name }}</span>
+              <span class="text-muted-foreground shrink-0">{{ formatFileSize(file.size) }}</span>
+              <button
+                type="button"
+                (click)="removeFile(i)"
+                class="text-muted-foreground hover:text-danger-fg transition-colors"
+                title="Quitar archivo"
+              >
+                <ui-icon name="x" [size]="12" />
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
   </form>
+</app-form-dialog>
+
+<!-- Editar contrato -->
+<app-form-dialog
+  [open]="editOpen()"
+  [title]="isRenovando() ? 'Renovar contrato' : 'Editar contrato'"
+  [subtitle]="isRenovando() ? 'Revisa los datos antes de confirmar la renovación' : isReadOnly() ? 'Este contrato ya fue renovado — solo lectura' : 'Modifica los datos del contrato'"
+  [icon]="isRenovando() ? 'repeat' : 'edit'"
+  width="480px"
+  [saving]="submitting()"
+  [canSave]="isRenovando() ? true : editForm.valid"
+  [saveLabel]="isRenovando() ? 'Confirmar renovación' : 'Guardar cambios'"
+  [readOnly]="isReadOnly()"
+  [errorMessage]="formError()"
+  (cancel)="closeEdit()"
+  (save)="submitEdit()"
+>
+  @if (editingContract(); as c) {
+    <!-- Tab switcher -->
+    <div class="flex gap-1 mb-4 bg-accent/20 rounded-lg p-1">
+      <button type="button" (click)="editTab.set('form')"
+        [class]="editTab() === 'form'
+          ? 'flex-1 h-7 rounded-md bg-background text-xs font-semibold text-foreground shadow-sm'
+          : 'flex-1 h-7 rounded-md text-xs text-muted-foreground hover:text-foreground transition-colors'">
+        Editar
+      </button>
+      <button type="button" (click)="editTab.set('info')"
+        [class]="editTab() === 'info'
+          ? 'flex-1 h-7 rounded-md bg-background text-xs font-semibold text-foreground shadow-sm'
+          : 'flex-1 h-7 rounded-md text-xs text-muted-foreground hover:text-foreground transition-colors'">
+        Información
+      </button>
+    </div>
+
+    @if (editTab() === 'info') {
+      <!-- Info tab: client + all suministros -->
+      <div class="space-y-3">
+        <div class="rounded-lg bg-accent/10 border border-border/60 px-3 py-2.5">
+          <p class="text-xs text-muted-foreground mb-0.5">Cliente</p>
+          <p class="font-semibold text-foreground text-sm">{{ c.clienteNombre }}</p>
+          @if (c.clienteNif) { <p class="text-xs font-mono text-muted-foreground">{{ c.clienteNif }}</p> }
+          @if (c.clienteDelegacion) { <p class="text-xs text-muted-foreground mt-0.5">{{ c.clienteDelegacion }}</p> }
+        </div>
+
+        <div>
+          <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+            Suministros
+            <span class="ml-1 font-normal">({{ (c.suministros?.length ?? 0) || (c.cups ? 1 : 0) }})</span>
+          </p>
+          @if (c.suministros && c.suministros.length > 0) {
+            <div class="space-y-2">
+              @for (s of c.suministros; track s.id) {
+                <div class="rounded-lg border border-border/60 bg-background px-3 py-2">
+                  <p class="font-mono text-sm font-medium text-foreground">{{ s.cups }}</p>
+                  <div class="flex gap-3 mt-0.5">
+                    @if (s.tipo) { <span class="text-xs text-muted-foreground">Tipo: <strong>{{ s.tipo }}</strong></span> }
+                    @if (s.tarifa) { <span class="text-xs text-muted-foreground">Tarifa: <strong>{{ s.tarifa }}</strong></span> }
+                    @if (s.provincia) { <span class="text-xs text-muted-foreground">{{ s.provincia }}</span> }
+                  </div>
+                </div>
+              }
+            </div>
+          } @else if (c.cups) {
+            <div class="rounded-lg border border-border/60 bg-background px-3 py-2">
+              <p class="font-mono text-sm font-medium text-foreground">{{ c.cups }}</p>
+              @if (c.suministroTarifa) { <p class="text-xs text-muted-foreground">Tarifa: {{ c.suministroTarifa }}</p> }
+              @if (c.provincia) { <p class="text-xs text-muted-foreground">{{ c.provincia }}</p> }
+            </div>
+          } @else {
+            <p class="text-xs text-muted-foreground">Sin suministros vinculados.</p>
+          }
+        </div>
+
+        @if (c.contratoVinculadoId) {
+          <button type="button" (click)="verContrato(c.contratoVinculadoId!)"
+            class="w-full flex items-center justify-between gap-2 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-xs text-primary hover:bg-primary/10 transition-colors">
+            <span class="flex items-center gap-1.5">
+              <ui-icon name="repeat" [size]="13" />
+              @if (c.estado === 'renovado') { Ver contrato de renovación } @else { Ver contrato original }
+            </span>
+            <ui-icon name="arrow-up-right" [size]="13" />
+          </button>
+        }
+      </div>
+    }
+  }
+  @if (editTab() === 'form') {
+    @if (editingContract(); as c) {
+      @if (c.contratoVinculadoId) {
+        <button type="button" (click)="verContrato(c.contratoVinculadoId!)"
+          class="w-full mb-3 flex items-center justify-between gap-2 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-xs text-primary hover:bg-primary/10 transition-colors">
+          <span class="flex items-center gap-1.5">
+            <ui-icon name="repeat" [size]="13" />
+            @if (c.estado === 'renovado') { Ver contrato de renovación } @else { Ver contrato original }
+          </span>
+          <ui-icon name="arrow-up-right" [size]="13" />
+        </button>
+      }
+      <div class="rounded-lg bg-background/60 border border-border/60 px-3 py-2 text-sm mb-4">
+        <p class="font-medium text-foreground">{{ c.clienteNombre }}</p>
+        @if (c.clienteNif) { <p class="text-xs text-muted-foreground font-mono">{{ c.clienteNif }}</p> }
+        @if (c.suministros && c.suministros.length > 0) {
+          <div class="flex flex-wrap gap-1 mt-1">
+            @for (s of c.suministros; track s.id) {
+              <span class="font-mono text-xs text-muted-foreground bg-accent/30 rounded px-1.5 py-0.5">{{ s.cups }}</span>
+            }
+          </div>
+        } @else if (c.cups) {
+          <p class="text-xs text-muted-foreground font-mono mt-0.5">{{ c.cups }}</p>
+        }
+      </div>
+    }
+  <form [formGroup]="editForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Servicio</span>
+      <input
+        type="text"
+        formControlName="servicio"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Campaña</span>
+      <input
+        type="text"
+        formControlName="campana"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Estado</span>
+      <select
+        formControlName="estado"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      >
+        @for (s of assignableStatuses; track s) {
+          <option [value]="s">{{ label(s) }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Descuento (%)</span>
+      <input
+        type="number"
+        step="any"
+        formControlName="descuento"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Fecha inicio</span>
+      <input
+        type="date"
+        formControlName="fechaInicio"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Fecha fin prevista</span>
+      <input
+        type="date"
+        formControlName="fechaFinPrevista"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <!-- Ofertas económicas en edición -->
+    <div class="flex flex-col gap-3 sm:col-span-2">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-medium text-foreground/80">Ofertas económicas</span>
+        <span class="text-xs text-muted-foreground">para el PDF</span>
+      </div>
+      <div class="flex gap-5">
+        <label class="inline-flex items-center gap-2 text-sm text-foreground cursor-pointer">
+          <input type="checkbox" [checked]="fOfertaTar20()" (change)="fOfertaTar20.set(!fOfertaTar20())" class="h-4 w-4 rounded border-border accent-primary" />
+          2.0TD
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm text-foreground cursor-pointer">
+          <input type="checkbox" [checked]="fOfertaTar30()" (change)="fOfertaTar30.set(!fOfertaTar30())" class="h-4 w-4 rounded border-border accent-primary" />
+          3.0TD
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm text-foreground cursor-pointer">
+          <input type="checkbox" [checked]="fOfertaTar61()" (change)="fOfertaTar61.set(!fOfertaTar61())" class="h-4 w-4 rounded border-border accent-primary" />
+          6.1TD
+        </label>
+      </div>
+      @if (fOfertaTar20() || fOfertaTar30() || fOfertaTar61()) {
+        <div class="flex flex-col gap-3">
+          @for (oferta of fOfertas(); track $index; let i = $index) {
+            <div class="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/50 p-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold text-foreground/70 shrink-0">Oferta {{ i + 1 }}</span>
+                <div class="flex-1 grid grid-cols-2 gap-2">
+                  <input type="text" [value]="oferta.nombre" (input)="fSetNombre(i, $any($event.target).value)" placeholder="Nombre del producto…"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                  <select [value]="oferta.tipo" (change)="fSetTipo(i, $any($event.target).value)"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+                    <option value="FIJO">Precio fijo</option>
+                    <option value="INDEXADO">Indexado</option>
+                    <option value="PASS_POOL">Pass Pool</option>
+                  </select>
+                </div>
+                @if (fOfertas().length > 1) {
+                  <button type="button" (click)="fEliminarOferta(i)"
+                    class="h-7 w-7 shrink-0 inline-flex items-center justify-center rounded-md border border-border text-danger-fg hover:bg-danger/10">
+                    <ui-icon name="x" [size]="12" />
+                  </button>
+                }
+              </div>
+              @if (fOfertaTar20()) {
+                <div class="flex flex-col gap-1">
+                  <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">2.0TD</p>
+                  <div class="overflow-x-auto rounded border border-border/40">
+                    <table class="w-full text-xs border-collapse">
+                      <thead><tr class="bg-accent/30">
+                        <th class="px-2 py-1.5 text-left font-semibold text-muted-foreground min-w-[130px]">Concepto</th>
+                        @for (p of [1,2,3,4,5,6]; track p) { <th class="px-1 py-1.5 text-center font-semibold text-muted-foreground w-[68px]">P{{p}}</th> }
+                      </tr></thead>
+                      <tbody>
+                        <tr class="border-t border-border/40">
+                          <td class="px-2 py-1 text-foreground/80 whitespace-nowrap">Energía (€/kWh)</td>
+                          @for (p of [0,1,2,3,4,5]; track p) {
+                            <td class="px-1 py-1"><input type="number" step="0.000001" [value]="oferta.t20.energia[p] ?? ''"
+                              (change)="fSetPrecio(i,'t20','energia',p,$any($event.target).value)"
+                              class="w-full rounded border border-border bg-background px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/40" /></td>
+                          }
+                        </tr>
+                        <tr class="border-t border-border/40">
+                          <td class="px-2 py-1 text-foreground/80 whitespace-nowrap">Potencia (€/kW/año)</td>
+                          @for (p of [0,1,2,3,4,5]; track p) {
+                            <td class="px-1 py-1"><input type="number" step="0.001" [value]="oferta.t20.potencia[p] ?? ''"
+                              (change)="fSetPrecio(i,'t20','potencia',p,$any($event.target).value)"
+                              class="w-full rounded border border-border bg-background px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/40" /></td>
+                          }
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
+              @if (fOfertaTar30()) {
+                <div class="flex flex-col gap-1">
+                  <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">3.0TD</p>
+                  <div class="overflow-x-auto rounded border border-border/40">
+                    <table class="w-full text-xs border-collapse">
+                      <thead><tr class="bg-accent/30">
+                        <th class="px-2 py-1.5 text-left font-semibold text-muted-foreground min-w-[130px]">Concepto</th>
+                        @for (p of [1,2,3,4,5,6]; track p) { <th class="px-1 py-1.5 text-center font-semibold text-muted-foreground w-[68px]">P{{p}}</th> }
+                      </tr></thead>
+                      <tbody>
+                        <tr class="border-t border-border/40">
+                          <td class="px-2 py-1 text-foreground/80 whitespace-nowrap">Energía (€/kWh)</td>
+                          @for (p of [0,1,2,3,4,5]; track p) {
+                            <td class="px-1 py-1"><input type="number" step="0.000001" [value]="oferta.t30.energia[p] ?? ''"
+                              (change)="fSetPrecio(i,'t30','energia',p,$any($event.target).value)"
+                              class="w-full rounded border border-border bg-background px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/40" /></td>
+                          }
+                        </tr>
+                        <tr class="border-t border-border/40">
+                          <td class="px-2 py-1 text-foreground/80 whitespace-nowrap">Potencia (€/kW/año)</td>
+                          @for (p of [0,1,2,3,4,5]; track p) {
+                            <td class="px-1 py-1"><input type="number" step="0.001" [value]="oferta.t30.potencia[p] ?? ''"
+                              (change)="fSetPrecio(i,'t30','potencia',p,$any($event.target).value)"
+                              class="w-full rounded border border-border bg-background px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/40" /></td>
+                          }
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
+              @if (fOfertaTar61()) {
+                <div class="flex flex-col gap-1">
+                  <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">6.1TD</p>
+                  <div class="overflow-x-auto rounded border border-border/40">
+                    <table class="w-full text-xs border-collapse">
+                      <thead><tr class="bg-accent/30">
+                        <th class="px-2 py-1.5 text-left font-semibold text-muted-foreground min-w-[130px]">Concepto</th>
+                        @for (p of [1,2,3,4,5,6]; track p) { <th class="px-1 py-1.5 text-center font-semibold text-muted-foreground w-[68px]">P{{p}}</th> }
+                      </tr></thead>
+                      <tbody>
+                        <tr class="border-t border-border/40">
+                          <td class="px-2 py-1 text-foreground/80 whitespace-nowrap">Energía (€/kWh)</td>
+                          @for (p of [0,1,2,3,4,5]; track p) {
+                            <td class="px-1 py-1"><input type="number" step="0.000001" [value]="oferta.t61.energia[p] ?? ''"
+                              (change)="fSetPrecio(i,'t61','energia',p,$any($event.target).value)"
+                              class="w-full rounded border border-border bg-background px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/40" /></td>
+                          }
+                        </tr>
+                        <tr class="border-t border-border/40">
+                          <td class="px-2 py-1 text-foreground/80 whitespace-nowrap">Potencia (€/kW/año)</td>
+                          @for (p of [0,1,2,3,4,5]; track p) {
+                            <td class="px-1 py-1"><input type="number" step="0.001" [value]="oferta.t61.potencia[p] ?? ''"
+                              (change)="fSetPrecio(i,'t61','potencia',p,$any($event.target).value)"
+                              class="w-full rounded border border-border bg-background px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/40" /></td>
+                          }
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+          <button type="button" (click)="fAgregarOferta()"
+            class="h-9 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:text-primary hover:border-primary transition-colors">
+            <ui-icon name="plus" [size]="12" /> Agregar oferta
+          </button>
+        </div>
+      }
+    </div>
+  </form>
+  }
 </app-form-dialog>
 
 <!-- Cambiar estado -->
@@ -263,5 +1054,66 @@
         class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
       />
     </label>
+
+    @if (statusForm.get('estado')?.value === 'ko') {
+      <div class="flex flex-col gap-1.5">
+        <span class="text-xs font-medium text-foreground/80">
+          Motivo KO <span class="text-muted-foreground">(opcional)</span>
+        </span>
+
+        @if (!motivoKoAdding()) {
+          <div class="flex gap-2">
+            <div class="relative flex-1">
+              <select
+                [value]="motivoKoSelectVal()"
+                (change)="onMotivoKoSelect($any($event.target).value)"
+                class="w-full appearance-none rounded-lg border border-border bg-background px-3 py-2 pr-8 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                <option value="">Seleccionar motivo…</option>
+                @for (m of motivosRechazo(); track m) {
+                  <option [value]="m">{{ m }}</option>
+                }
+              </select>
+              <ui-icon name="chevron-down" [size]="14"
+                class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            </div>
+            <button
+              type="button"
+              (click)="motivoKoAdding.set(true)"
+              title="Añadir nuevo motivo"
+              class="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors"
+            >
+              <ui-icon name="plus" [size]="16" />
+            </button>
+          </div>
+        } @else {
+          <div class="flex gap-2">
+            <input
+              type="text"
+              [value]="motivoKoNewText()"
+              (input)="motivoKoNewText.set($any($event.target).value)"
+              (keydown.enter)="confirmMotivoKoNew()"
+              (keydown.escape)="cancelMotivoKoNew()"
+              placeholder="Nuevo motivo…"
+              class="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <button
+              type="button"
+              (click)="confirmMotivoKoNew()"
+              class="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+            >
+              OK
+            </button>
+            <button
+              type="button"
+              (click)="cancelMotivoKoNew()"
+              class="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors"
+            >
+              <ui-icon name="x" [size]="16" />
+            </button>
+          </div>
+        }
+      </div>
+    }
   </form>
 </app-form-dialog>
