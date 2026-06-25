@@ -41,6 +41,7 @@ export class Layout {
             children: [
               { label: 'Listado', url: '/contracts', icon: 'file-text' },
               { label: 'Renovaciones', url: '/contracts/renovaciones', icon: 'repeat' },
+              { label: 'Bajas', url: '/bajas', icon: 'trending-down' },
             ],
           },
           { label: 'Clientes', url: '/customers', icon: 'users' },

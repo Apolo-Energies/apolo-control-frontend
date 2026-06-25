@@ -14,3 +14,4 @@ export * from './factura-contabilidad.model';
 export * from './pagos-liquidacion.model';
 export * from './setting.model';
 export * from './rechazo.model';
+export * from './baja.model';

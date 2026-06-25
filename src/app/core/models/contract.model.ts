@@ -56,6 +56,7 @@ export interface Contract {
   margenBruto: number | null;
   margenNeto: number | null;
   motivoRechazo: string | null;
+  feedbackBaja: string | null;
   scoring?: CustomerScoring | null;
   createdAt: string;
   updatedAt: string;

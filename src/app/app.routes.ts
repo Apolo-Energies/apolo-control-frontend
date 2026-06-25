@@ -65,6 +65,10 @@ export const routes: Routes = [
         path: 'rechazos',
         loadComponent: () => import('./features/rechazos/rechazos').then((m) => m.Rechazos),
       },
+      {
+        path: 'bajas',
+        loadComponent: () => import('./features/bajas/bajas').then((m) => m.Bajas),
+      },
 
       // ── Organization ──
       {
