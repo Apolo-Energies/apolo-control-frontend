@@ -144,6 +144,11 @@ export class Rechazos {
     });
   }
 
+  protected onSizeChange(size: number): void {
+    this.size.set(size);
+    this.reload(0);
+  }
+
   protected applyFilters(): void { this.reload(0); }
   protected clearFilters(): void {
     this.q = ''; this.estadoFilter = ''; this.resultadoFilter = '';

@@ -120,7 +120,8 @@
   <app-pagination
     [page]="page()" [pageSize]="size()"
     [totalElements]="totalElements()" [totalPages]="totalPages()"
-    (pageChange)="reload($event)" />
+    (pageChange)="reload($event)"
+    (pageSizeChange)="onSizeChange($event)" />
 }
 
 <!-- Create/Edit Dialog -->

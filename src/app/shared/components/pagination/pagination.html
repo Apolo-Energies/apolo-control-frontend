@@ -17,7 +17,7 @@
         (change)="onSizeChange($event)"
       >
         @for (size of pageSizes(); track size) {
-          <option [value]="size">{{ size }}</option>
+          <option [value]="size" [selected]="size === pageSize()">{{ size }}</option>
         }
       </select>
     </label>

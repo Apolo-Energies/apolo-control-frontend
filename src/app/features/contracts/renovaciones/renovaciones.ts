@@ -60,7 +60,7 @@ export class Renovaciones {
   protected readonly pvOpen = signal(true);
   protected readonly rOpen = signal(true);
 
-  protected readonly pageSize = SIZE;
+  protected readonly pageSize = signal(SIZE);
 
   constructor() { this.load(); }
 
@@ -68,9 +68,9 @@ export class Renovaciones {
     this.loading.set(true);
     this.error.set(null);
     this.service.getRenovaciones({
-      vPage: this.vPage(), vSize: SIZE,
-      pvPage: this.pvPage(), pvSize: SIZE,
-      rPage: this.rPage(), rSize: SIZE,
+      vPage: this.vPage(), vSize: this.pageSize(),
+      pvPage: this.pvPage(), pvSize: this.pageSize(),
+      rPage: this.rPage(), rSize: this.pageSize(),
     }).subscribe({
       next: (d) => { this.data.set(d); this.loading.set(false); },
       error: (err: HttpErrorResponse) => { this.error.set(extractMessage(err)); this.loading.set(false); },
@@ -80,6 +80,12 @@ export class Renovaciones {
   protected onVPage(p: number): void { this.vPage.set(p); this.load(); }
   protected onPvPage(p: number): void { this.pvPage.set(p); this.load(); }
   protected onRPage(p: number): void { this.rPage.set(p); this.load(); }
+
+  protected onSizeChange(size: number): void {
+    this.pageSize.set(size);
+    this.vPage.set(0); this.pvPage.set(0); this.rPage.set(0);
+    this.load();
+  }
 
   protected refresh(): void {
     this.vPage.set(0); this.pvPage.set(0); this.rPage.set(0);

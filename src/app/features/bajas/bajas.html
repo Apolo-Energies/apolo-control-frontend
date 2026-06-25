@@ -170,6 +170,7 @@
               [totalElements]="totalElements()"
               [totalPages]="totalPages()"
               (pageChange)="reload($event)"
+              (pageSizeChange)="onSizeChange($event)"
             />
           </div>
         }

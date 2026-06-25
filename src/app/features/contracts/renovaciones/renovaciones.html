@@ -76,9 +76,10 @@
         </div>
         @if (d.vencidos.totalPages > 1) {
           <app-pagination
-            [page]="vPage()" [pageSize]="pageSize"
+            [page]="vPage()" [pageSize]="pageSize()"
             [totalElements]="d.vencidos.totalElements" [totalPages]="d.vencidos.totalPages"
-            [pageSizes]="[10, 25, 50]" (pageChange)="onVPage($event)" />
+            [pageSizes]="[10, 25, 50]" (pageChange)="onVPage($event)"
+            (pageSizeChange)="onSizeChange($event)" />
         }
       }
     }
@@ -143,9 +144,10 @@
         </div>
         @if (d.porVencer.totalPages > 1) {
           <app-pagination
-            [page]="pvPage()" [pageSize]="pageSize"
+            [page]="pvPage()" [pageSize]="pageSize()"
             [totalElements]="d.porVencer.totalElements" [totalPages]="d.porVencer.totalPages"
-            [pageSizes]="[10, 25, 50]" (pageChange)="onPvPage($event)" />
+            [pageSizes]="[10, 25, 50]" (pageChange)="onPvPage($event)"
+            (pageSizeChange)="onSizeChange($event)" />
         }
       }
     }
@@ -212,9 +214,10 @@
         </div>
         @if (d.renovados.totalPages > 1) {
           <app-pagination
-            [page]="rPage()" [pageSize]="pageSize"
+            [page]="rPage()" [pageSize]="pageSize()"
             [totalElements]="d.renovados.totalElements" [totalPages]="d.renovados.totalPages"
-            [pageSizes]="[10, 25, 50]" (pageChange)="onRPage($event)" />
+            [pageSizes]="[10, 25, 50]" (pageChange)="onRPage($event)"
+            (pageSizeChange)="onSizeChange($event)" />
         }
       }
     }

@@ -168,6 +168,11 @@ export class Bajas {
   }
 
   // ── List ────────────────────────────────────────────────────────────────────
+  protected onSizeChange(size: number): void {
+    this.size.set(size);
+    this.reload(0);
+  }
+
   protected reload(p: number): void {
     this.page.set(p);
     this.loading.set(true);
