@@ -12,7 +12,7 @@ import {
   ImportResult,
 } from '../../core/services/contratos-servicios-import.service';
 
-type Tab = 'contratos' | 'ventas';
+type Tab = 'contratos' | 'ventas' | 'rechazos';
 
 @Component({
   selector: 'app-import',
@@ -95,6 +95,43 @@ export class Import {
       },
       error: (err: HttpErrorResponse) => {
         this.ventaLoading.set(false);
+        this.notify.error((err.error as { message?: string })?.message ?? 'Error en la importación');
+      },
+    });
+  }
+
+  // ── Rechazos / Incidencias (CSV) ────────────────────────────────
+  protected readonly rechazoFile    = signal<File | null>(null);
+  protected readonly rechazoLoading = signal(false);
+  protected readonly rechazoResult  = signal<ImportResult | null>(null);
+
+  protected onRechazoFileChange(event: Event): void {
+    const f = (event.target as HTMLInputElement).files?.[0] ?? null;
+    this.rechazoFile.set(f); this.rechazoResult.set(null);
+  }
+  protected onRechazoDrop(event: DragEvent): void {
+    event.preventDefault();
+    const f = event.dataTransfer?.files?.[0] ?? null;
+    if (f) { this.rechazoFile.set(f); this.rechazoResult.set(null); }
+  }
+  protected clearRechazoFile(): void { this.rechazoFile.set(null); this.rechazoResult.set(null); }
+  protected previewRechazo(): void { this.runRechazo(true); }
+  protected importarRechazo(): void { this.runRechazo(false); }
+
+  private runRechazo(dryRun: boolean): void {
+    const f = this.rechazoFile();
+    if (!f) return;
+    this.rechazoLoading.set(true);
+    this.rechazoResult.set(null);
+    this.importService.importarRechazos(f, dryRun).subscribe({
+      next: (r) => {
+        this.rechazoLoading.set(false);
+        this.rechazoResult.set(r);
+        if (!dryRun && r.errors === 0)
+          this.notify.success(`Rechazos importados: ${r.created} creados, ${r.skipped} ya existían`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.rechazoLoading.set(false);
         this.notify.error((err.error as { message?: string })?.message ?? 'Error en la importación');
       },
     });

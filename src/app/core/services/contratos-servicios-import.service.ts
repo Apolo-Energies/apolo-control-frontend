@@ -18,6 +18,7 @@ export interface ImportResult {
 export class ContratosServiciosImportService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/contratos-servicios`;
+  private readonly rechazosBase = `${environment.apiUrl}/rechazos`;
 
   importar(file: File, dryRun: boolean): Observable<ImportResult> {
     const form = new FormData();
@@ -33,6 +34,15 @@ export class ContratosServiciosImportService {
     form.append('file', file);
     return this.http.post<ImportResult>(
       `${this.base}/ventas?dryRun=${dryRun}`,
+      form,
+    );
+  }
+
+  importarRechazos(file: File, dryRun: boolean): Observable<ImportResult> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<ImportResult>(
+      `${this.rechazosBase}/importar?dryRun=${dryRun}`,
       form,
     );
   }
