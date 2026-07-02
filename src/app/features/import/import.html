@@ -1,74 +1,186 @@
 <app-page-header
   title="Importar datos"
-  subtitle="Sube un Excel/CSV — el sistema detecta el tipo (remesa, altas, cambios)"
+  subtitle="Carga archivos exportados desde Base44 para sincronizar contratos, clientes y scoring."
 />
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-  <div class="lg:col-span-2 bg-card border border-border rounded-xl p-6">
-    <h3 class="text-base font-semibold text-foreground mb-1">Subir archivo</h3>
-    <p class="text-sm text-muted-foreground mb-4">CSV o Excel. Tamaño máximo 25 MB.</p>
+<div class="p-6 space-y-5 max-w-3xl">
 
-    <label
-      class="block border-2 border-dashed border-border hover:border-primary/40 rounded-xl p-10 text-center cursor-pointer transition-colors bg-input/30"
-    >
-      <div class="h-14 w-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
-        <ui-icon name="upload" [size]="22" />
+  <!-- Tabs -->
+  <div class="flex gap-1 rounded-xl bg-muted/40 p-1 w-fit border border-border">
+    <button type="button"
+      (click)="activeTab.set('contratos')"
+      [class.bg-background]="activeTab() === 'contratos'"
+      [class.shadow-sm]="activeTab() === 'contratos'"
+      [class.text-foreground]="activeTab() === 'contratos'"
+      [class.text-muted-foreground]="activeTab() !== 'contratos'"
+      class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all">
+      <ui-icon name="file-text" [size]="14" />
+      ContratosServicios
+    </button>
+    <button type="button"
+      (click)="activeTab.set('ventas')"
+      [class.bg-background]="activeTab() === 'ventas'"
+      [class.shadow-sm]="activeTab() === 'ventas'"
+      [class.text-foreground]="activeTab() === 'ventas'"
+      [class.text-muted-foreground]="activeTab() !== 'ventas'"
+      class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all">
+      <ui-icon name="sparkles" [size]="14" />
+      Ventas / Scoring
+    </button>
+  </div>
+
+  <!-- ══════════════ TAB: ContratosServicios ══════════════ -->
+  @if (activeTab() === 'contratos') {
+    @if (!contratoFile()) {
+      <label
+        class="flex flex-col items-center justify-center gap-3 h-44 rounded-xl border-2 border-dashed border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+        (dragover)="$event.preventDefault()" (drop)="onContratoDrop($event)">
+        <ui-icon name="upload" [size]="32" class="text-muted-foreground" />
+        <div class="text-center">
+          <p class="text-sm font-medium text-foreground">Arrastra el archivo Excel aquí</p>
+          <p class="text-xs text-muted-foreground mt-0.5">o haz clic para seleccionar — .xlsx</p>
+        </div>
+        <input type="file" accept=".xlsx,.xls" class="hidden" (change)="onContratoFileChange($event)" />
+      </label>
+    } @else {
+      <ng-container *ngTemplateOutlet="fileCard; context: { file: contratoFile(), clear: clearContratoFile.bind(this) }" />
+      <div class="flex items-center gap-2">
+        <ng-container *ngTemplateOutlet="btnPreview; context: { loading: contratoLoading(), preview: previewContrato.bind(this) }" />
+        <ng-container *ngTemplateOutlet="btnImport; context: { loading: contratoLoading(), label: 'Importar', import: importarContrato.bind(this) }" />
       </div>
-      <p class="text-sm font-medium text-foreground">Arrastra un archivo o haz clic para seleccionar</p>
-      <p class="text-xs text-muted-foreground mt-1">Formatos admitidos: .csv · .xlsx · .xls</p>
-      <input type="file" class="hidden" accept=".csv,.xlsx,.xls" />
-    </label>
-
-    <div class="mt-4 flex flex-col sm:flex-row gap-2">
-      <select class="h-10 px-3 rounded-md bg-input border border-border text-sm text-foreground focus:outline-none focus:border-primary flex-1">
-        <option>Detectar automáticamente</option>
-        <option>Remesa de impagos</option>
-        <option>Altas de ventas</option>
-        <option>Cambios (titularidad/cuenta/potencia)</option>
-        <option>Pagos & liquidaciones</option>
-      </select>
-      <button
-        class="h-10 px-4 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium flex items-center justify-center gap-2 transition-colors"
-        disabled
-      >
-        <ui-icon name="upload" [size]="14" />
-        Procesar archivo
-      </button>
+    }
+    <ng-container *ngTemplateOutlet="resultPanel; context: { r: contratoResult(), showCreated: true }" />
+    <div class="rounded-xl border border-border bg-card p-5 space-y-2">
+      <p class="text-sm font-semibold text-foreground flex items-center gap-2">
+        <ui-icon name="info" [size]="15" class="text-muted-foreground" /> Cómo funciona
+      </p>
+      <ul class="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+        <li>La columna <strong class="text-foreground">ID</strong> del Excel identifica cada contrato.</li>
+        <li>Si ya existe, se actualizan sus datos (cliente, suministro, ofertas).</li>
+        <li>Si no existe, se crea la cadena completa: delegación → grupo → cliente → suministro → contrato.</li>
+        <li>Usa <strong class="text-foreground">Vista previa</strong> para ver el impacto sin guardar nada.</li>
+      </ul>
     </div>
-  </div>
+  }
 
-  <div class="bg-card border border-border rounded-xl p-6">
-    <h3 class="text-base font-semibold text-foreground mb-1 flex items-center gap-2">
-      <ui-icon name="info" [size]="16" />
-      Integración HubSpot
-    </h3>
-    <p class="text-sm text-muted-foreground mb-4">Para automatizar la importación desde HubSpot:</p>
-    <ol class="text-sm text-foreground/80 space-y-3">
-      <li class="flex gap-3">
-        <span class="h-6 w-6 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center shrink-0">1</span>
-        <span>Exportar deals/facturas pendientes desde HubSpot como CSV</span>
-      </li>
-      <li class="flex gap-3">
-        <span class="h-6 w-6 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center shrink-0">2</span>
-        <span>Subirlo aquí para sincronizar automáticamente</span>
-      </li>
-      <li class="flex gap-3">
-        <span class="h-6 w-6 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center shrink-0">3</span>
-        <span>
-          Incluir el campo <code class="px-1.5 py-0.5 rounded bg-input border border-border text-xs">invoice_number</code>
-          para el matching exacto
-        </span>
-      </li>
-    </ol>
-  </div>
+  <!-- ══════════════ TAB: Ventas / Scoring ══════════════ -->
+  @if (activeTab() === 'ventas') {
+    @if (!ventaFile()) {
+      <label
+        class="flex flex-col items-center justify-center gap-3 h-44 rounded-xl border-2 border-dashed border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+        (dragover)="$event.preventDefault()" (drop)="onVentaDrop($event)">
+        <ui-icon name="sparkles" [size]="32" class="text-muted-foreground" />
+        <div class="text-center">
+          <p class="text-sm font-medium text-foreground">Arrastra el CSV de ventas aquí</p>
+          <p class="text-xs text-muted-foreground mt-0.5">o haz clic para seleccionar — Venta_export.csv</p>
+        </div>
+        <input type="file" accept=".csv" class="hidden" (change)="onVentaFileChange($event)" />
+      </label>
+    } @else {
+      <ng-container *ngTemplateOutlet="fileCard; context: { file: ventaFile(), clear: clearVentaFile.bind(this) }" />
+      <div class="flex items-center gap-2">
+        <ng-container *ngTemplateOutlet="btnPreview; context: { loading: ventaLoading(), preview: previewVenta.bind(this) }" />
+        <ng-container *ngTemplateOutlet="btnImport; context: { loading: ventaLoading(), label: 'Importar ventas', import: importarVenta.bind(this) }" />
+      </div>
+    }
+    <ng-container *ngTemplateOutlet="resultPanel; context: { r: ventaResult(), showCreated: true }" />
+    <div class="rounded-xl border border-border bg-card p-5 space-y-2">
+      <p class="text-sm font-semibold text-foreground flex items-center gap-2">
+        <ui-icon name="info" [size]="15" class="text-muted-foreground" /> Cómo funciona
+      </p>
+      <ul class="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+        <li>Match principal por <strong class="text-foreground">ID de contrato</strong> — actualiza estado, motivo KO y scoring del cliente.</li>
+        <li>Si el contrato no existe, busca el cliente por <strong class="text-foreground">CIF/NIF</strong> y actualiza su scoring.</li>
+        <li>Si el cliente tampoco existe, lo crea con la delegación indicada y le asigna el scoring.</li>
+        <li>Los contratos con estado <strong class="text-foreground">KO</strong> reciben su <strong class="text-foreground">motivo de rechazo</strong> del campo <em>motivo_ko</em>.</li>
+      </ul>
+    </div>
+  }
+
 </div>
 
-<section class="mt-6 bg-card border border-border rounded-xl">
-  <header class="px-5 py-4 border-b border-border/50 flex items-center justify-between">
-    <h3 class="text-base font-semibold text-foreground">Importaciones recientes</h3>
-    <span class="text-xs text-muted-foreground">Últimas 24h</span>
-  </header>
-  <div class="px-5 py-10 text-center text-sm text-muted-foreground">
-    Aún no hay importaciones recientes. Sube un archivo para comenzar.
+<!-- ════════ Shared templates ════════ -->
+<ng-template #fileCard let-file="file" let-clear="clear">
+  <div class="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20">
+    <div class="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+      <ui-icon name="file-text" [size]="18" class="text-primary" />
+    </div>
+    <div class="flex-1 min-w-0">
+      <p class="text-sm font-medium text-foreground truncate">{{ file.name }}</p>
+      <p class="text-xs text-muted-foreground">{{ formatBytes(file.size) }}</p>
+    </div>
+    <button type="button" (click)="clear()" class="text-muted-foreground hover:text-foreground transition-colors p-1">
+      <ui-icon name="x" [size]="16" />
+    </button>
   </div>
-</section>
+</ng-template>
+
+<ng-template #btnPreview let-loading="loading" let-preview="preview">
+  <button type="button" (click)="preview()" [disabled]="loading"
+    class="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-border text-sm text-foreground hover:bg-muted transition-colors disabled:opacity-50">
+    @if (loading) { <ui-icon name="loader" [size]="14" class="animate-spin" /> Analizando… }
+    @else { <ui-icon name="eye" [size]="14" /> Vista previa (sin guardar) }
+  </button>
+</ng-template>
+
+<ng-template #btnImport let-loading="loading" let-label="label" let-import="import">
+  <button type="button" (click)="import()" [disabled]="loading"
+    class="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
+    @if (loading) { <ui-icon name="loader" [size]="14" class="animate-spin" /> Importando… }
+    @else { <ui-icon name="upload" [size]="14" /> {{ label }} }
+  </button>
+</ng-template>
+
+<ng-template #resultPanel let-r="r" let-showCreated="showCreated">
+  @if (r) {
+    <div class="rounded-xl border overflow-hidden"
+      [class.border-success/40]="r.errors === 0"
+      [class.border-warning/40]="r.errors > 0 && (r.created + r.updated) > 0"
+      [class.border-destructive/40]="r.errors > 0 && (r.created + r.updated) === 0">
+
+      <div class="flex divide-x divide-border">
+        <div class="flex-1 px-4 py-4 text-center">
+          <p class="text-2xl font-bold text-foreground">{{ r.total }}</p>
+          <p class="text-xs text-muted-foreground mt-0.5">Total filas</p>
+        </div>
+        @if (showCreated) {
+          <div class="flex-1 px-4 py-4 text-center">
+            <p class="text-2xl font-bold text-success">{{ r.created }}</p>
+            <p class="text-xs text-muted-foreground mt-0.5">{{ r.dryRun ? 'Se crearán' : 'Creados' }}</p>
+          </div>
+        }
+        <div class="flex-1 px-4 py-4 text-center">
+          <p class="text-2xl font-bold text-primary">{{ r.updated }}</p>
+          <p class="text-xs text-muted-foreground mt-0.5">{{ r.dryRun ? 'Se actualizarán' : 'Actualizados' }}</p>
+        </div>
+        <div class="flex-1 px-4 py-4 text-center">
+          <p class="text-2xl font-bold text-muted-foreground">{{ r.skipped }}</p>
+          <p class="text-xs text-muted-foreground mt-0.5">Omitidos</p>
+        </div>
+        <div class="flex-1 px-4 py-4 text-center">
+          <p class="text-2xl font-bold" [class.text-destructive]="r.errors > 0" [class.text-muted-foreground]="r.errors === 0">{{ r.errors }}</p>
+          <p class="text-xs text-muted-foreground mt-0.5">Errores</p>
+        </div>
+      </div>
+
+      @if (r.dryRun) {
+        <div class="border-t border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground text-center">
+          Vista previa — ningún dato guardado. Haz clic en <strong>Importar</strong> para aplicar.
+        </div>
+      }
+
+      @if (r.errorDetails && r.errorDetails.length > 0) {
+        <div class="border-t border-border bg-destructive/5 px-4 py-3">
+          <p class="text-xs font-medium text-destructive mb-2">Detalle ({{ r.errorDetails.length }} filas):</p>
+          <ul class="space-y-1 max-h-64 overflow-y-auto">
+            @for (err of r.errorDetails; track $index) {
+              <li class="text-xs font-mono"
+                [class.text-destructive]="!err.startsWith('Omitido')"
+                [class.text-warning]="err.startsWith('Omitido')">{{ err }}</li>
+            }
+          </ul>
+        </div>
+      }
+    </div>
+  }
+</ng-template>

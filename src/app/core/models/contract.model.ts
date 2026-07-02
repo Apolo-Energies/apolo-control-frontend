@@ -119,6 +119,7 @@ export interface ContractPayload {
   fechaRenovacion?: string | null;
   estado?: ContractStatus | null;
   fechaEstado?: string | null;
+  motivoRechazo?: string | null;
   margenBruto?: number | null;
   margenNeto?: number | null;
   margenCobros?: number | null;

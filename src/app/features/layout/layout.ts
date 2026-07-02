@@ -66,7 +66,10 @@ export class Layout {
         title: 'ADMINISTRACIÓN',
         items: [
           { label: 'Usuarios', url: '/users', icon: 'user' as const },
-          ...(isAdmin ? [{ label: 'Configuración', url: '/settings', icon: 'sliders' as const }] : []),
+          ...(isAdmin ? [
+            { label: 'Configuración', url: '/settings', icon: 'sliders' as const },
+            { label: 'Importar datos', url: '/import', icon: 'upload' as const },
+          ] : []),
         ],
       });
     }

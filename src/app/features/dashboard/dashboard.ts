@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 
 import { PageHeader } from '../../shared/components/page-header/page-header';
 import { Icon, IconName } from '../../shared/icons/icon';
@@ -118,6 +119,7 @@ const STATUS_COLORS: Record<ContractStatus, { color: string; colorSoft: string; 
 export class Dashboard {
   private readonly service = inject(DashboardService);
   private readonly masterData = inject(MasterDataService);
+  private readonly router = inject(Router);
 
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
@@ -298,6 +300,12 @@ export class Dashboard {
 
   protected count(d: DashboardSummary, status: ContractStatus): number {
     return d.contratos.porEstado[status] ?? 0;
+  }
+
+  protected onKoChartClick(motivo: string): void {
+    void this.router.navigate(['/contracts'], {
+      queryParams: { status: 'ko', motivoRechazo: motivo },
+    });
   }
 
   private buildFilter(): DashboardFilter {

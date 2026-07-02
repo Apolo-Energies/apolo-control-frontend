@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -196,10 +197,15 @@ export class Contracts {
   protected readonly editingContract = signal<Contract | null>(null);
   protected readonly selectedFiles = signal<File[]>([]);
 
-  // Motivo KO: select + añadir nuevo
+  // Motivo KO en diálogo de cambio de estado
   protected readonly motivoKoSelectVal = signal('');
   protected readonly motivoKoAdding = signal(false);
   protected readonly motivoKoNewText = signal('');
+
+  // Motivo KO en formulario de edición
+  protected readonly editMotivoKoSelectVal = signal('');
+  protected readonly editMotivoKoAdding = signal(false);
+  protected readonly editMotivoKoNewText = signal('');
 
   // PDF — descarga directa usando ofertas guardadas en el contrato
   protected readonly descargandoPdf = signal<string | null>(null);
@@ -302,7 +308,13 @@ export class Contracts {
     estado: this.fb.nonNullable.control<ContractStatus>('para_estudio'),
     fechaInicio: this.fb.nonNullable.control(''),
     fechaFinPrevista: this.fb.nonNullable.control(''),
+    motivoRechazo: this.fb.nonNullable.control(''),
   });
+
+  protected readonly editEstado = toSignal(
+    this.editForm.controls.estado.valueChanges,
+    { initialValue: this.editForm.controls.estado.value },
+  );
 
   protected readonly statusForm = this.fb.nonNullable.group({
     estado: ['activo' as ContractStatus, [Validators.required]],
@@ -310,12 +322,29 @@ export class Contracts {
     motivoRechazo: [''],
   });
 
+  protected readonly statusEstado = toSignal(
+    this.statusForm.controls.estado.valueChanges,
+    { initialValue: this.statusForm.controls.estado.value },
+  );
+
   protected readonly rows = computed(() => this.result()?.content ?? []);
   protected readonly totalElements = computed(() => this.result()?.totalElements ?? 0);
   protected readonly totalPages = computed(() => this.result()?.totalPages ?? 0);
 
   constructor() {
+    // Pre-populate filters from query params (e.g. when coming from the dashboard chart)
+    const snap = this.route.snapshot.queryParams;
+    const snapStatus = snap['status'] as ContractStatus | undefined;
+    const snapMotivo = snap['motivoRechazo'] as string | undefined;
+    if (snapStatus) this.statusFilter = snapStatus;
+    if (snapMotivo) this.motivoRechazo = snapMotivo;
+    if (snapStatus || snapMotivo) {
+      void this.router.navigate([], { replaceUrl: true, queryParams: {} });
+    }
+
     this.reload(0);
+
+    // Reactive handler for id/renovar deep-links (can arrive after init)
     this.route.queryParams.subscribe(params => {
       const id = params['id'] as string | undefined;
       const renovar = params['renovar'] as string | undefined;
@@ -524,6 +553,13 @@ export class Contracts {
     this.editTab.set('form');
     this.editingContract.set(contract);
     this.formError.set(null);
+    const motivo = contract.motivoRechazo ?? '';
+    if (motivo && !this.masterData.motivosRechazo().includes(motivo)) {
+      this.masterData.mergeMotivos([motivo]);
+    }
+    this.editMotivoKoSelectVal.set(motivo);
+    this.editMotivoKoAdding.set(false);
+    this.editMotivoKoNewText.set('');
     this.editForm.patchValue({
       servicio: contract.servicio ?? '',
       campana: contract.campana ?? '',
@@ -531,6 +567,7 @@ export class Contracts {
       estado: contract.estado,
       fechaInicio: contract.fechaInicio ?? '',
       fechaFinPrevista: contract.fechaFinPrevista ?? '',
+      motivoRechazo: motivo,
     });
     const savedOfertas = contract.ofertas ?? [];
     if (savedOfertas.length > 0) {
@@ -557,6 +594,9 @@ export class Contracts {
     this.editOpen.set(false);
     this.editingContract.set(null);
     this.renovandoId.set(null);
+    this.editMotivoKoSelectVal.set('');
+    this.editMotivoKoAdding.set(false);
+    this.editMotivoKoNewText.set('');
   }
 
   protected verContrato(id: string): void {
@@ -607,6 +647,7 @@ export class Contracts {
         campana: v.campana || null,
         descuento: v.descuento,
         estado: v.estado || null,
+        motivoRechazo: v.estado === 'ko' ? (v.motivoRechazo || null) : null,
         fechaInicio: v.fechaInicio || null,
         fechaFinPrevista: v.fechaFinPrevista || null,
         ofertas: dlgToContractOfertas(this.fOfertas(), this.fOfertaTar20(), this.fOfertaTar30(), this.fOfertaTar61()),
@@ -658,6 +699,26 @@ export class Contracts {
   protected onMotivoKoSelect(val: string): void {
     this.motivoKoSelectVal.set(val);
     this.statusForm.patchValue({ motivoRechazo: val });
+  }
+
+  protected onEditMotivoKoSelect(val: string): void {
+    this.editMotivoKoSelectVal.set(val);
+    this.editForm.patchValue({ motivoRechazo: val });
+  }
+
+  protected confirmEditMotivoKoNew(): void {
+    const text = this.editMotivoKoNewText().trim();
+    if (!text) return;
+    this.masterData.mergeMotivos([text]);
+    this.editMotivoKoSelectVal.set(text);
+    this.editForm.patchValue({ motivoRechazo: text });
+    this.editMotivoKoAdding.set(false);
+    this.editMotivoKoNewText.set('');
+  }
+
+  protected cancelEditMotivoKoNew(): void {
+    this.editMotivoKoAdding.set(false);
+    this.editMotivoKoNewText.set('');
   }
 
   protected confirmMotivoKoNew(): void {

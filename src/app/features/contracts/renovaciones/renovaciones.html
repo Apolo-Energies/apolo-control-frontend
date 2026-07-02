@@ -7,6 +7,56 @@
   </button>
 </app-page-header>
 
+<!-- ── Filtros ── -->
+<div class="flex flex-wrap items-end gap-3 mb-4 p-4 rounded-xl border border-border bg-card">
+
+  <!-- Búsqueda texto -->
+  <div class="flex-1 min-w-48">
+    <label class="block text-xs font-medium text-muted-foreground mb-1">CUPS o nombre cliente</label>
+    <div class="relative">
+      <ui-icon name="search" [size]="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+      <input
+        type="text"
+        [ngModel]="q()"
+        (ngModelChange)="q.set($event); onQChange()"
+        placeholder="Buscar…"
+        class="w-full h-9 pl-8 pr-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+      />
+    </div>
+  </div>
+
+  <!-- Fecha desde -->
+  <div>
+    <label class="block text-xs font-medium text-muted-foreground mb-1">Fecha desde</label>
+    <input
+      type="date"
+      [ngModel]="fechaDesde()"
+      (ngModelChange)="fechaDesde.set($event); onDateChange()"
+      class="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+    />
+  </div>
+
+  <!-- Fecha hasta -->
+  <div>
+    <label class="block text-xs font-medium text-muted-foreground mb-1">Fecha hasta</label>
+    <input
+      type="date"
+      [ngModel]="fechaHasta()"
+      (ngModelChange)="fechaHasta.set($event); onDateChange()"
+      class="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+    />
+  </div>
+
+  <!-- Limpiar filtros -->
+  @if (hasFilters) {
+    <button type="button" (click)="clearFilters()"
+      class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:bg-accent/40 transition-colors">
+      <ui-icon name="x" [size]="13" />
+      Limpiar
+    </button>
+  }
+</div>
+
 @if (error(); as msg) {
   <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm mb-4">{{ msg }}</div>
 }

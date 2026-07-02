@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { formatNumber } from '../../utils/format';
 
 export interface DonutChartItem {
@@ -32,6 +32,8 @@ export class DonutChart {
   readonly centerLabel = input<string>('Total');
   readonly emptyLabel = input<string>('Sin datos');
   readonly showLegend = input<boolean>(true);
+
+  readonly segmentClick = output<string>();
 
   protected readonly hoveredId = signal<string | null>(null);
 
@@ -76,6 +78,10 @@ export class DonutChart {
 
   protected onLeave(): void {
     this.hoveredId.set(null);
+  }
+
+  protected onClick(id: string): void {
+    this.segmentClick.emit(id);
   }
 
   protected isHovered(id: string): boolean {

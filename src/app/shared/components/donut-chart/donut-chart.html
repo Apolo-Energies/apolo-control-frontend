@@ -14,6 +14,7 @@
             style="transform-origin: 100px 100px; transition: all 0.2s ease;"
             class="cursor-pointer"
             (mouseenter)="onEnter(seg.id)"
+            (click)="onClick(seg.id)"
           />
         }
       </svg>
@@ -40,6 +41,7 @@
           [class.bg-accent/30]="isHovered(seg.id)"
           (mouseenter)="onEnter(seg.id)"
           (mouseleave)="onLeave()"
+          (click)="onClick(seg.id)"
         >
           <span
             class="h-3 w-3 rounded-full shrink-0 transition-transform"

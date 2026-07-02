@@ -65,14 +65,17 @@ export class ContractService {
     vPage: number; vSize: number;
     pvPage: number; pvSize: number;
     rPage: number; rSize: number;
+    q?: string; fechaDesde?: string; fechaHasta?: string;
   } = { vPage: 0, vSize: 10, pvPage: 0, pvSize: 10, rPage: 0, rSize: 10 }): Observable<ContractRenovaciones> {
-    return this.http.get<ContractRenovaciones>(`${this.baseUrl}/renovaciones`, {
-      params: {
-        vPage: params.vPage.toString(), vSize: params.vSize.toString(),
-        pvPage: params.pvPage.toString(), pvSize: params.pvSize.toString(),
-        rPage: params.rPage.toString(), rSize: params.rSize.toString(),
-      },
-    });
+    const p: Record<string, string> = {
+      vPage: params.vPage.toString(), vSize: params.vSize.toString(),
+      pvPage: params.pvPage.toString(), pvSize: params.pvSize.toString(),
+      rPage: params.rPage.toString(), rSize: params.rSize.toString(),
+    };
+    if (params.q?.trim()) p['q'] = params.q.trim();
+    if (params.fechaDesde) p['fechaDesde'] = params.fechaDesde;
+    if (params.fechaHasta) p['fechaHasta'] = params.fechaHasta;
+    return this.http.get<ContractRenovaciones>(`${this.baseUrl}/renovaciones`, { params: p });
   }
 
   renovar(id: string): Observable<Contract> {

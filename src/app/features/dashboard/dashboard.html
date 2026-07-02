@@ -241,9 +241,9 @@
     <section class="bg-card border border-border rounded-xl p-5 mb-6">
       <header class="mb-4">
         <h2 class="text-base font-semibold text-foreground">KOs por motivo</h2>
-        <p class="text-xs text-muted-foreground">Contratos ko agrupados por causa de rechazo · pasa el cursor para ver detalle</p>
+        <p class="text-xs text-muted-foreground">Contratos ko agrupados por causa de rechazo · haz clic en un segmento para ver el listado</p>
       </header>
-      <app-donut-chart [data]="koDonutData()" centerLabel="KOs" />
+      <app-donut-chart [data]="koDonutData()" centerLabel="KOs" (segmentClick)="onKoChartClick($event)" />
     </section>
   }
 
