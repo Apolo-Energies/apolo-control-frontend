@@ -42,6 +42,9 @@ const TIPO_TONE: Record<TipoPago, StatusTone> = {
   bonus: 'success',
   multa: 'danger',
   penalizacion: 'danger',
+  adelanto: 'warning',
+  diferencia: 'warning',
+  embargo: 'danger',
   otro: 'neutral',
 };
 

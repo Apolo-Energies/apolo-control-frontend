@@ -12,7 +12,7 @@ import {
   ImportResult,
 } from '../../core/services/contratos-servicios-import.service';
 
-type Tab = 'contratos' | 'ventas' | 'rechazos';
+type Tab = 'contratos' | 'ventas' | 'rechazos' | 'pagos';
 
 @Component({
   selector: 'app-import',
@@ -132,6 +132,43 @@ export class Import {
       },
       error: (err: HttpErrorResponse) => {
         this.rechazoLoading.set(false);
+        this.notify.error((err.error as { message?: string })?.message ?? 'Error en la importación');
+      },
+    });
+  }
+
+  // ── Pagos / Liquidaciones (CSV) ─────────────────────────────────
+  protected readonly pagoFile    = signal<File | null>(null);
+  protected readonly pagoLoading = signal(false);
+  protected readonly pagoResult  = signal<ImportResult | null>(null);
+
+  protected onPagoFileChange(event: Event): void {
+    const f = (event.target as HTMLInputElement).files?.[0] ?? null;
+    this.pagoFile.set(f); this.pagoResult.set(null);
+  }
+  protected onPagoDrop(event: DragEvent): void {
+    event.preventDefault();
+    const f = event.dataTransfer?.files?.[0] ?? null;
+    if (f) { this.pagoFile.set(f); this.pagoResult.set(null); }
+  }
+  protected clearPagoFile(): void { this.pagoFile.set(null); this.pagoResult.set(null); }
+  protected previewPago(): void { this.runPago(true); }
+  protected importarPago(): void { this.runPago(false); }
+
+  private runPago(dryRun: boolean): void {
+    const f = this.pagoFile();
+    if (!f) return;
+    this.pagoLoading.set(true);
+    this.pagoResult.set(null);
+    this.importService.importarPagos(f, dryRun).subscribe({
+      next: (r) => {
+        this.pagoLoading.set(false);
+        this.pagoResult.set(r);
+        if (!dryRun && r.errors === 0)
+          this.notify.success(`Pagos importados: ${r.created} creados, ${r.skipped} ya existían`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.pagoLoading.set(false);
         this.notify.error((err.error as { message?: string })?.message ?? 'Error en la importación');
       },
     });

@@ -46,4 +46,13 @@ export class ContratosServiciosImportService {
       form,
     );
   }
+
+  importarPagos(file: File, dryRun: boolean): Observable<ImportResult> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<ImportResult>(
+      `${environment.apiUrl}/pagos-liquidacion/importar?dryRun=${dryRun}`,
+      form,
+    );
+  }
 }

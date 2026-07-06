@@ -1,5 +1,5 @@
 export type EstadoPago = 'pendiente' | 'pagado' | 'cancelado';
-export type TipoPago = 'comision' | 'liquidacion' | 'bonus' | 'multa' | 'penalizacion' | 'otro';
+export type TipoPago = 'comision' | 'liquidacion' | 'bonus' | 'multa' | 'penalizacion' | 'adelanto' | 'diferencia' | 'embargo' | 'otro';
 export type FormaPago = 'factura' | 'pago_unico';
 
 export const ESTADO_PAGO_LABEL: Record<EstadoPago, string> = {
@@ -14,6 +14,9 @@ export const TIPO_PAGO_LABEL: Record<TipoPago, string> = {
   bonus: 'Bonus',
   multa: 'Multa',
   penalizacion: 'Penalización',
+  adelanto: 'Adelanto',
+  diferencia: 'Diferencia',
+  embargo: 'Embargo',
   otro: 'Otro',
 };
 
@@ -23,7 +26,7 @@ export const FORMA_PAGO_LABEL: Record<FormaPago, string> = {
 };
 
 export const ESTADO_PAGO_VALUES: EstadoPago[] = ['pendiente', 'pagado', 'cancelado'];
-export const TIPO_PAGO_VALUES: TipoPago[] = ['comision', 'liquidacion', 'bonus', 'multa', 'penalizacion', 'otro'];
+export const TIPO_PAGO_VALUES: TipoPago[] = ['comision', 'liquidacion', 'bonus', 'multa', 'penalizacion', 'adelanto', 'diferencia', 'embargo', 'otro'];
 export const FORMA_PAGO_VALUES: FormaPago[] = ['factura', 'pago_unico'];
 
 export interface PagoLiquidacion {
