@@ -479,16 +479,6 @@
             <div class="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/50 p-3">
               <div class="flex items-center gap-2">
                 <span class="text-xs font-semibold text-foreground/70 shrink-0">Oferta {{ i + 1 }}</span>
-                <div class="flex-1 grid grid-cols-2 gap-2">
-                  <input type="text" [value]="oferta.nombre" (input)="fSetNombre(i, $any($event.target).value)" placeholder="Nombre del producto…"
-                    class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
-                  <select [value]="oferta.tipo" (change)="fSetTipo(i, $any($event.target).value)"
-                    class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
-                    <option value="FIJO">Precio fijo</option>
-                    <option value="INDEXADO">Indexado</option>
-                    <option value="PASS_POOL">Pass Pool</option>
-                  </select>
-                </div>
                 @if (fOfertas().length > 1) {
                   <button type="button" (click)="fEliminarOferta(i)"
                     class="h-7 w-7 shrink-0 inline-flex items-center justify-center rounded-md border border-border text-danger-fg hover:bg-danger/10">
@@ -498,7 +488,17 @@
               </div>
               @if (fOfertaTar20()) {
                 <div class="flex flex-col gap-1">
-                  <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">2.0TD</p>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide shrink-0">2.0TD</span>
+                    <input type="text" [value]="oferta.t20.nombre" (input)="fSetTarNombre(i,'t20',$any($event.target).value)" placeholder="Nombre…"
+                      class="w-40 rounded border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
+                    <select [value]="oferta.t20.tipo" (change)="fSetTarTipo(i,'t20',$any($event.target).value)"
+                      class="rounded border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40">
+                      <option value="FIJO">Precio fijo</option>
+                      <option value="INDEXADO">Indexado</option>
+                      <option value="PASS_POOL">Pass Pool</option>
+                    </select>
+                  </div>
                   <div class="overflow-x-auto rounded border border-border/40">
                     <table class="w-full text-xs border-collapse">
                       <thead><tr class="bg-accent/30">
@@ -529,7 +529,17 @@
               }
               @if (fOfertaTar30()) {
                 <div class="flex flex-col gap-1">
-                  <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">3.0TD</p>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide shrink-0">3.0TD</span>
+                    <input type="text" [value]="oferta.t30.nombre" (input)="fSetTarNombre(i,'t30',$any($event.target).value)" placeholder="Nombre…"
+                      class="w-40 rounded border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
+                    <select [value]="oferta.t30.tipo" (change)="fSetTarTipo(i,'t30',$any($event.target).value)"
+                      class="rounded border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40">
+                      <option value="FIJO">Precio fijo</option>
+                      <option value="INDEXADO">Indexado</option>
+                      <option value="PASS_POOL">Pass Pool</option>
+                    </select>
+                  </div>
                   <div class="overflow-x-auto rounded border border-border/40">
                     <table class="w-full text-xs border-collapse">
                       <thead><tr class="bg-accent/30">
@@ -560,7 +570,17 @@
               }
               @if (fOfertaTar61()) {
                 <div class="flex flex-col gap-1">
-                  <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">6.1TD</p>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide shrink-0">6.1TD</span>
+                    <input type="text" [value]="oferta.t61.nombre" (input)="fSetTarNombre(i,'t61',$any($event.target).value)" placeholder="Nombre…"
+                      class="w-40 rounded border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
+                    <select [value]="oferta.t61.tipo" (change)="fSetTarTipo(i,'t61',$any($event.target).value)"
+                      class="rounded border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40">
+                      <option value="FIJO">Precio fijo</option>
+                      <option value="INDEXADO">Indexado</option>
+                      <option value="PASS_POOL">Pass Pool</option>
+                    </select>
+                  </div>
                   <div class="overflow-x-auto rounded border border-border/40">
                     <table class="w-full text-xs border-collapse">
                       <thead><tr class="bg-accent/30">
@@ -938,16 +958,6 @@
             <div class="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/50 p-3">
               <div class="flex items-center gap-2">
                 <span class="text-xs font-semibold text-foreground/70 shrink-0">Oferta {{ i + 1 }}</span>
-                <div class="flex-1 grid grid-cols-2 gap-2">
-                  <input type="text" [value]="oferta.nombre" (input)="fSetNombre(i, $any($event.target).value)" placeholder="Nombre del producto…"
-                    class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
-                  <select [value]="oferta.tipo" (change)="fSetTipo(i, $any($event.target).value)"
-                    class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
-                    <option value="FIJO">Precio fijo</option>
-                    <option value="INDEXADO">Indexado</option>
-                    <option value="PASS_POOL">Pass Pool</option>
-                  </select>
-                </div>
                 @if (fOfertas().length > 1) {
                   <button type="button" (click)="fEliminarOferta(i)"
                     class="h-7 w-7 shrink-0 inline-flex items-center justify-center rounded-md border border-border text-danger-fg hover:bg-danger/10">
@@ -957,7 +967,17 @@
               </div>
               @if (fOfertaTar20()) {
                 <div class="flex flex-col gap-1">
-                  <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">2.0TD</p>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide shrink-0">2.0TD</span>
+                    <input type="text" [value]="oferta.t20.nombre" (input)="fSetTarNombre(i,'t20',$any($event.target).value)" placeholder="Nombre…"
+                      class="w-40 rounded border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
+                    <select [value]="oferta.t20.tipo" (change)="fSetTarTipo(i,'t20',$any($event.target).value)"
+                      class="rounded border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40">
+                      <option value="FIJO">Precio fijo</option>
+                      <option value="INDEXADO">Indexado</option>
+                      <option value="PASS_POOL">Pass Pool</option>
+                    </select>
+                  </div>
                   <div class="overflow-x-auto rounded border border-border/40">
                     <table class="w-full text-xs border-collapse">
                       <thead><tr class="bg-accent/30">
@@ -988,7 +1008,17 @@
               }
               @if (fOfertaTar30()) {
                 <div class="flex flex-col gap-1">
-                  <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">3.0TD</p>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide shrink-0">3.0TD</span>
+                    <input type="text" [value]="oferta.t30.nombre" (input)="fSetTarNombre(i,'t30',$any($event.target).value)" placeholder="Nombre…"
+                      class="w-40 rounded border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
+                    <select [value]="oferta.t30.tipo" (change)="fSetTarTipo(i,'t30',$any($event.target).value)"
+                      class="rounded border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40">
+                      <option value="FIJO">Precio fijo</option>
+                      <option value="INDEXADO">Indexado</option>
+                      <option value="PASS_POOL">Pass Pool</option>
+                    </select>
+                  </div>
                   <div class="overflow-x-auto rounded border border-border/40">
                     <table class="w-full text-xs border-collapse">
                       <thead><tr class="bg-accent/30">
@@ -1019,7 +1049,17 @@
               }
               @if (fOfertaTar61()) {
                 <div class="flex flex-col gap-1">
-                  <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">6.1TD</p>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide shrink-0">6.1TD</span>
+                    <input type="text" [value]="oferta.t61.nombre" (input)="fSetTarNombre(i,'t61',$any($event.target).value)" placeholder="Nombre…"
+                      class="w-40 rounded border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
+                    <select [value]="oferta.t61.tipo" (change)="fSetTarTipo(i,'t61',$any($event.target).value)"
+                      class="rounded border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40">
+                      <option value="FIJO">Precio fijo</option>
+                      <option value="INDEXADO">Indexado</option>
+                      <option value="PASS_POOL">Pass Pool</option>
+                    </select>
+                  </div>
                   <div class="overflow-x-auto rounded border border-border/40">
                     <table class="w-full text-xs border-collapse">
                       <thead><tr class="bg-accent/30">

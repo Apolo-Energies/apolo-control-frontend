@@ -3,6 +3,8 @@ import { CustomerScoring } from './customer.model';
 import { Page } from './page.model';
 
 export interface ContractOfferTarifa {
+  nombre?: string | null;
+  tipo?: string | null;
   energiaP1?: number | null;
   energiaP2?: number | null;
   energiaP3?: number | null;

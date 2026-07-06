@@ -66,6 +66,8 @@ const ASSIGNABLE_STATUSES: ContractStatus[] = [
 
 // ── PDF dialog models ─────────────────────────────────────────────────────────
 interface OfertaPreciosTarifa {
+  nombre: string;
+  tipo: 'FIJO' | 'INDEXADO' | 'PASS_POOL';
   energia: (number | null)[];
   potencia: (number | null)[];
 }
@@ -77,7 +79,7 @@ interface OfertaDlg {
   t61: OfertaPreciosTarifa;
 }
 function mkPrecios(): OfertaPreciosTarifa {
-  return { energia: [null, null, null, null, null, null], potencia: [null, null, null, null, null, null] };
+  return { nombre: '', tipo: 'FIJO', energia: [null, null, null, null, null, null], potencia: [null, null, null, null, null, null] };
 }
 function mkOferta(): OfertaDlg {
   return { nombre: '', tipo: 'FIJO', t20: mkPrecios(), t30: mkPrecios(), t61: mkPrecios() };
@@ -97,6 +99,8 @@ function dlgToContractOfertas(
     tarifas: Object.fromEntries(keys.map(({ key, tar }) => {
       const p = o[tar];
       const t: ContractOfferTarifa = {
+        nombre: p.nombre || undefined,
+        tipo: p.tipo || undefined,
         energiaP1: p.energia[0] ?? undefined, energiaP2: p.energia[1] ?? undefined,
         energiaP3: p.energia[2] ?? undefined, energiaP4: p.energia[3] ?? undefined,
         energiaP5: p.energia[4] ?? undefined, energiaP6: p.energia[5] ?? undefined,
@@ -113,6 +117,8 @@ function contractOfertasToDlg(offers: ContractOffer[]): OfertaDlg[] {
   return offers.map(o => {
     const t20 = mkPrecios(); const t30 = mkPrecios(); const t61 = mkPrecios();
     const fill = (t: OfertaPreciosTarifa, d: ContractOfferTarifa) => {
+      t.nombre = d.nombre ?? '';
+      t.tipo = (d.tipo ?? o.tipoOferta ?? 'FIJO') as 'FIJO' | 'INDEXADO' | 'PASS_POOL';
       t.energia = [d.energiaP1 ?? null, d.energiaP2 ?? null, d.energiaP3 ?? null,
                    d.energiaP4 ?? null, d.energiaP5 ?? null, d.energiaP6 ?? null];
       t.potencia = [d.potenciaP1 ?? null, d.potenciaP2 ?? null, d.potenciaP3 ?? null,
@@ -131,6 +137,8 @@ function contractOffersToPdfOfertas(offers: ContractOffer[]) {
     tipo_oferta: o.tipoOferta ?? undefined,
     tarifas: o.tarifas
       ? Object.fromEntries(Object.entries(o.tarifas).map(([k, t]) => [k, {
+          nombre: t.nombre ?? undefined,
+          tipo: t.tipo ?? undefined,
           energia_p1: t.energiaP1 ?? undefined, energia_p2: t.energiaP2 ?? undefined,
           energia_p3: t.energiaP3 ?? undefined, energia_p4: t.energiaP4 ?? undefined,
           energia_p5: t.energiaP5 ?? undefined, energia_p6: t.energiaP6 ?? undefined,
@@ -849,12 +857,12 @@ export class Contracts {
     this.fOfertas.update(list => list.filter((_, j) => j !== i));
   }
 
-  protected fSetNombre(i: number, v: string): void {
-    this.fOfertas.update(list => list.map((o, j) => j === i ? { ...o, nombre: v } : o));
+  protected fSetTarNombre(i: number, tar: 't20' | 't30' | 't61', v: string): void {
+    this.fOfertas.update(list => list.map((o, j) => j === i ? { ...o, [tar]: { ...o[tar], nombre: v } } : o));
   }
 
-  protected fSetTipo(i: number, v: 'FIJO' | 'INDEXADO' | 'PASS_POOL'): void {
-    this.fOfertas.update(list => list.map((o, j) => j === i ? { ...o, tipo: v } : o));
+  protected fSetTarTipo(i: number, tar: 't20' | 't30' | 't61', v: 'FIJO' | 'INDEXADO' | 'PASS_POOL'): void {
+    this.fOfertas.update(list => list.map((o, j) => j === i ? { ...o, [tar]: { ...o[tar], tipo: v } } : o));
   }
 
   protected fSetPrecio(oi: number, tar: 't20' | 't30' | 't61', tipo: 'energia' | 'potencia', pi: number, v: string): void {
