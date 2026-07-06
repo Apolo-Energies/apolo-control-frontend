@@ -93,6 +93,7 @@ const STATUS_COLORS: Record<ContractStatus, { color: string; colorSoft: string; 
   baja:          { color: '#94a3b8', colorSoft: 'rgba(148, 163, 184, 0.14)',  icon: 'trending-down' },
   ko:            { color: '#ef4444', colorSoft: 'rgba(239, 68, 68, 0.12)',    icon: 'x' },
   desestimado:   { color: '#f43f5e', colorSoft: 'rgba(244, 63, 94, 0.12)',    icon: 'x' },
+  anulado:       { color: '#6b7280', colorSoft: 'rgba(107, 114, 128, 0.12)',  icon: 'x' },
   sin_estado:    { color: '#9ca3af', colorSoft: 'rgba(156, 163, 175, 0.12)',  icon: 'info' },
 };
 

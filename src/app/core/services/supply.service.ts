@@ -34,4 +34,8 @@ export class SupplyService {
       params: buildParams(page),
     });
   }
+
+  delete(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }

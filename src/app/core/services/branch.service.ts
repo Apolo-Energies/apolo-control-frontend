@@ -24,4 +24,8 @@ export class BranchService {
   create(body: BranchPayload): Observable<Branch> {
     return this.http.post<Branch>(this.baseUrl, body);
   }
+
+  delete(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }

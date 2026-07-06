@@ -195,6 +195,14 @@
                     }
                     PDF
                   </button>
+                  <button
+                    type="button"
+                    (click)="confirmAnular(row)"
+                    class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-border text-danger-fg hover:bg-danger/10"
+                    title="Anular contrato"
+                  >
+                    <ui-icon name="trash" [size]="13" />
+                  </button>
                 </div>
               </td>
             </tr>

@@ -55,6 +55,7 @@
             <th class="px-4 py-3 text-right font-semibold">Consumo 12m</th>
             <th class="px-4 py-3 text-right font-semibold">Potencia P1</th>
             <th class="px-4 py-3 text-center font-semibold">Estado</th>
+            <th class="px-4 py-3 text-right font-semibold">Acciones</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-border/40">
@@ -97,10 +98,20 @@
                   {{ row.activo ? 'Activo' : 'Inactivo' }}
                 </app-status-badge>
               </td>
+              <td class="px-4 py-3 text-right">
+                <button
+                  type="button"
+                  (click)="confirmDelete(row)"
+                  class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-border text-danger-fg hover:bg-danger/10"
+                  title="Eliminar suministro"
+                >
+                  <ui-icon name="trash" [size]="13" />
+                </button>
+              </td>
             </tr>
           } @empty {
             <tr>
-              <td colspan="8" class="px-4 py-10 text-center text-sm text-muted-foreground">
+              <td colspan="9" class="px-4 py-10 text-center text-sm text-muted-foreground">
                 Sin suministros para los filtros seleccionados.
               </td>
             </tr>

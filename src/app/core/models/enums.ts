@@ -13,6 +13,7 @@ export type ContractStatus =
   | 'baja'
   | 'ko'
   | 'desestimado'
+  | 'anulado'
   | 'sin_estado';
 
 export type SupplyType = 'E' | 'G' | 'OTRO';
@@ -41,6 +42,7 @@ export const CONTRACT_STATUS_LABEL: Record<ContractStatus, string> = {
   baja: 'Baja',
   ko: 'KO',
   desestimado: 'Desestimado',
+  anulado: 'Anulado',
   sin_estado: 'Sin estado',
 };
 
@@ -70,6 +72,7 @@ export const CONTRACT_STATUS_VALUES: readonly ContractStatus[] = [
   'baja',
   'ko',
   'desestimado',
+  'anulado',
   'sin_estado',
 ] as const;
 

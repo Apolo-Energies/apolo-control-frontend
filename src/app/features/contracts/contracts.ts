@@ -16,6 +16,7 @@ import { ContractService } from '../../core/services/contract.service';
 import { MasterDataService } from '../../core/services/master-data.service';
 import { GlobalLoadingService } from '../../core/services/global-loading.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { ConfirmService } from '../../core/services/confirm.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { ContratoPdfService, PdfContratoData } from '../../core/services/contrato-pdf.service';
 import {
@@ -45,6 +46,7 @@ const STATUS_TONE: Record<ContractStatus, StatusTone> = {
   baja: 'neutral',
   ko: 'danger',
   desestimado: 'danger',
+  anulado: 'neutral',
   sin_estado: 'neutral',
 };
 
@@ -172,6 +174,7 @@ export class Contracts {
   private readonly masterData = inject(MasterDataService);
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly notify = inject(NotificationService);
+  private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
   private readonly customerService = inject(CustomerService);
   private readonly pdfService = inject(ContratoPdfService);
@@ -877,6 +880,30 @@ export class Contracts {
         return { ...o, [tar]: { ...bloque, [tipo]: arr } };
       }),
     );
+  }
+
+  // ── Anular contrato (soft delete) ──────────────────────────────────────────
+  protected async confirmAnular(row: Contract): Promise<void> {
+    const ok = await this.confirm.ask({
+      header: 'Anular contrato',
+      message: `¿Anular el contrato de <b>${row.clienteNombre ?? row.idExterno ?? row.id}</b>? Pasará a estado <b>Anulado</b>.`,
+      acceptLabel: 'Sí, anular',
+      rejectLabel: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    this.globalLoading.start('Anulando contrato', 'Cambiando el estado del contrato.');
+    this.service.changeStatus(row.id, { estado: 'anulado' }).subscribe({
+      next: () => {
+        this.globalLoading.stop();
+        this.notify.success('Contrato anulado');
+        this.reload(this.page());
+      },
+      error: (err: HttpErrorResponse) => {
+        this.globalLoading.stop();
+        this.notify.error(extractMessage(err));
+      },
+    });
   }
 
   // ── Descarga PDF (usa ofertas guardadas en el contrato) ─────────────────────

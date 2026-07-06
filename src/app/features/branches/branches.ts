@@ -12,6 +12,7 @@ import { Icon } from '../../shared/icons/icon';
 import { BranchService } from '../../core/services/branch.service';
 import { GlobalLoadingService } from '../../core/services/global-loading.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { ConfirmService } from '../../core/services/confirm.service';
 import { ApiErrorResponse, Branch, Page } from '../../core/models';
 import { formatDate, safeText } from '../../shared/utils/format';
 
@@ -34,6 +35,7 @@ export class Branches {
   private readonly service = inject(BranchService);
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly notify = inject(NotificationService);
+  private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
 
   protected readonly loading = signal(false);
@@ -121,6 +123,29 @@ export class Branches {
           this.formError.set(extractMessage(err));
         },
       });
+  }
+
+  protected async confirmDelete(row: Branch): Promise<void> {
+    const ok = await this.confirm.ask({
+      header: 'Eliminar delegación',
+      message: `¿Eliminar la delegación <b>${row.nombre}</b>? Esta acción es irreversible.`,
+      acceptLabel: 'Sí, eliminar',
+      rejectLabel: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    this.globalLoading.start('Eliminando delegación', 'Eliminando la delegación.');
+    this.service.delete(row.id).subscribe({
+      next: () => {
+        this.globalLoading.stop();
+        this.notify.success(`Delegación "${row.nombre}" eliminada`);
+        this.reload(0);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.globalLoading.stop();
+        this.errorMessage.set(extractMessage(err));
+      },
+    });
   }
 
   protected text(value: string | null): string {

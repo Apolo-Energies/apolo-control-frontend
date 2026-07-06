@@ -31,6 +31,7 @@
             <th class="px-4 py-3 text-left font-semibold">Descripción</th>
             <th class="px-4 py-3 text-center font-semibold">Estado</th>
             <th class="px-4 py-3 text-right font-semibold">Alta</th>
+            <th class="px-4 py-3 text-right font-semibold">Acciones</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-border/40">
@@ -46,10 +47,20 @@
               <td class="px-4 py-3 text-right text-xs text-muted-foreground">
                 {{ date(row.createdAt) }}
               </td>
+              <td class="px-4 py-3 text-right">
+                <button
+                  type="button"
+                  (click)="confirmDelete(row)"
+                  class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-border text-danger-fg hover:bg-danger/10"
+                  title="Eliminar delegación"
+                >
+                  <ui-icon name="trash" [size]="13" />
+                </button>
+              </td>
             </tr>
           } @empty {
             <tr>
-              <td colspan="4" class="px-4 py-10 text-center text-sm text-muted-foreground">
+              <td colspan="5" class="px-4 py-10 text-center text-sm text-muted-foreground">
                 No hay delegaciones registradas.
               </td>
             </tr>

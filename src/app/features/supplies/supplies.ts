@@ -14,6 +14,7 @@ import { SupplyService } from '../../core/services/supply.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { GlobalLoadingService } from '../../core/services/global-loading.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { ConfirmService } from '../../core/services/confirm.service';
 import { MasterDataService } from '../../core/services/master-data.service';
 import {
   ApiErrorResponse,
@@ -55,6 +56,7 @@ export class Supplies {
   private readonly customerService = inject(CustomerService);
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly notify = inject(NotificationService);
+  private readonly confirm = inject(ConfirmService);
   private readonly masterData = inject(MasterDataService);
   private readonly fb = inject(FormBuilder);
 
@@ -200,6 +202,29 @@ export class Supplies {
           this.formError.set(extractMessage(err));
         },
       });
+  }
+
+  protected async confirmDelete(row: Supply): Promise<void> {
+    const ok = await this.confirm.ask({
+      header: 'Eliminar suministro',
+      message: `¿Eliminar el suministro <b class="font-mono">${row.cups}</b>? Esta acción es irreversible.`,
+      acceptLabel: 'Sí, eliminar',
+      rejectLabel: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    this.globalLoading.start('Eliminando suministro', 'Eliminando el punto de suministro.');
+    this.service.delete(row.id).subscribe({
+      next: () => {
+        this.globalLoading.stop();
+        this.notify.success(`Suministro ${row.cups} eliminado`);
+        this.reload(this.page());
+      },
+      error: (err: HttpErrorResponse) => {
+        this.globalLoading.stop();
+        this.notify.error(extractMessage(err));
+      },
+    });
   }
 
   protected typeTone(type: SupplyType): StatusTone {
