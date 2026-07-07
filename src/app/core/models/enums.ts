@@ -12,6 +12,8 @@ export type ContractStatus =
   | 'finalizado'
   | 'baja'
   | 'ko'
+  | 'rechazado'
+  | 'incidencia'
   | 'desestimado'
   | 'anulado'
   | 'sin_estado';
@@ -41,6 +43,8 @@ export const CONTRACT_STATUS_LABEL: Record<ContractStatus, string> = {
   finalizado: 'Finalizado',
   baja: 'Baja',
   ko: 'KO',
+  rechazado: 'Rechazado',
+  incidencia: 'Incidencia',
   desestimado: 'Desestimado',
   anulado: 'Anulado',
   sin_estado: 'Sin estado',
@@ -71,6 +75,8 @@ export const CONTRACT_STATUS_VALUES: readonly ContractStatus[] = [
   'finalizado',
   'baja',
   'ko',
+  'rechazado',
+  'incidencia',
   'desestimado',
   'anulado',
   'sin_estado',

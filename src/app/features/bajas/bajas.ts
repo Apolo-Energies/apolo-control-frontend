@@ -70,6 +70,7 @@ export class Bajas {
   protected readonly totalPages = computed(() => this.result()?.totalPages ?? 0);
 
   // ── Filters ────────────────────────────────────────────────────────────────
+  protected readonly errorMessage = signal<string | null>(null);
   protected searchQ = '';
   protected selectedMonth = '';
   protected selectedColaborador = '';
@@ -114,6 +115,7 @@ export class Bajas {
   protected readonly contractSearching = signal(false);
   protected readonly contractDropdownOpen = signal(false);
   protected contractSearchTerm = '';
+  private listSearchDebounce: ReturnType<typeof setTimeout> | null = null;
   private searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly showPenalizacion = signal(false);
@@ -151,6 +153,11 @@ export class Bajas {
     this.applyFilters();
   }
 
+  protected onSearchChange(): void {
+    if (this.listSearchDebounce) clearTimeout(this.listSearchDebounce);
+    this.listSearchDebounce = setTimeout(() => this.reload(0), 350);
+  }
+
   protected applyFilters(): void {
     this.reload(0);
     this.loadTopDelegaciones();
@@ -176,12 +183,16 @@ export class Bajas {
   protected reload(p: number): void {
     this.page.set(p);
     this.loading.set(true);
+    this.errorMessage.set(null);
     this.service.listBajas(
       { q: this.searchQ || undefined, startDate: this.activeStartDate, endDate: this.activeEndDate },
       p, this.size(),
     ).subscribe({
       next: (res) => { this.result.set(res); this.loading.set(false); },
-      error: () => this.loading.set(false),
+      error: (err: HttpErrorResponse) => {
+        this.loading.set(false);
+        this.errorMessage.set((err.error as { message?: string })?.message ?? err.message ?? 'Error al cargar las bajas');
+      },
     });
   }
 

@@ -59,6 +59,10 @@ export interface Contract {
   margenNeto: number | null;
   motivoRechazo: string | null;
   feedbackBaja: string | null;
+  validado: boolean;
+  tienePenalizacion: boolean;
+  montoLiquidacion: number | null;
+  consumoTotal: number | null;
   scoring?: CustomerScoring | null;
   createdAt: string;
   updatedAt: string;

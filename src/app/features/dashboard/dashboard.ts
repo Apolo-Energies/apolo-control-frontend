@@ -69,6 +69,8 @@ const STATUS_DISPLAY_ORDER: ContractStatus[] = [
   'finalizado',
   'baja',
   'ko',
+  'rechazado',
+  'incidencia',
   'desestimado',
   'sin_estado',
 ];
@@ -92,6 +94,8 @@ const STATUS_COLORS: Record<ContractStatus, { color: string; colorSoft: string; 
   finalizado:    { color: '#6b7280', colorSoft: 'rgba(107, 114, 128, 0.12)',  icon: 'circle' },
   baja:          { color: '#94a3b8', colorSoft: 'rgba(148, 163, 184, 0.14)',  icon: 'trending-down' },
   ko:            { color: '#ef4444', colorSoft: 'rgba(239, 68, 68, 0.12)',    icon: 'x' },
+  rechazado:     { color: '#dc2626', colorSoft: 'rgba(220, 38, 38, 0.12)',    icon: 'x' },
+  incidencia:    { color: '#f97316', colorSoft: 'rgba(249, 115, 22, 0.12)',   icon: 'alert-triangle' },
   desestimado:   { color: '#f43f5e', colorSoft: 'rgba(244, 63, 94, 0.12)',    icon: 'x' },
   anulado:       { color: '#6b7280', colorSoft: 'rgba(107, 114, 128, 0.12)',  icon: 'x' },
   sin_estado:    { color: '#9ca3af', colorSoft: 'rgba(156, 163, 175, 0.12)',  icon: 'info' },

@@ -32,6 +32,8 @@ const STATUS_TONE: Record<ContractStatus, StatusTone> = {
   finalizado: 'neutral',
   baja: 'neutral',
   ko: 'danger',
+  rechazado: 'danger',
+  incidencia: 'warning',
   desestimado: 'danger',
   anulado: 'neutral',
   sin_estado: 'neutral',

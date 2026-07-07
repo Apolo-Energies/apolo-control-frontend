@@ -45,6 +45,8 @@ const STATUS_TONE: Record<ContractStatus, StatusTone> = {
   finalizado: 'neutral',
   baja: 'neutral',
   ko: 'danger',
+  rechazado: 'danger',
+  incidencia: 'warning',
   desestimado: 'danger',
   anulado: 'neutral',
   sin_estado: 'neutral',
@@ -63,6 +65,8 @@ const ASSIGNABLE_STATUSES: ContractStatus[] = [
   'finalizado',
   'baja',
   'ko',
+  'rechazado',
+  'incidencia',
   'desestimado',
 ];
 
@@ -615,6 +619,19 @@ export class Contracts {
     void this.router.navigate(['/contracts'], { queryParams: { id } });
   }
 
+  protected toggleValidado(row: Contract, event: MouseEvent): void {
+    event.stopPropagation();
+    this.service.toggleValidado(row.id).subscribe({
+      next: (updated) => {
+        this.result.update(r => r ? {
+          ...r,
+          content: r.content.map(c => c.id === updated.id ? { ...c, validado: updated.validado } : c),
+        } : r);
+      },
+      error: () => this.notify.error('No se pudo cambiar el estado de validación'),
+    });
+  }
+
   protected submitEdit(): void {
     const contract = this.editingContract();
     if (!contract) return;
@@ -845,6 +862,11 @@ export class Contracts {
 
   protected text(value: string | null): string {
     return safeText(value);
+  }
+
+  protected consumo(value: number | null): string {
+    if (value == null || value === 0) return '—';
+    return new Intl.NumberFormat('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
   }
 
   protected euro(value: number | null): string {

@@ -93,7 +93,7 @@
 }
 
 @if (loading() && rows().length === 0) {
-  <app-table-skeleton [cols]="11" [rows]="8" />
+  <app-table-skeleton [cols]="12" [rows]="8" />
 } @else {
   <div class="relative bg-card border border-border rounded-xl overflow-hidden">
     <app-loading-overlay [loading]="loading() && rows().length > 0" message="Actualizando…" />
@@ -101,13 +101,14 @@
       <table class="w-full text-sm">
         <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
-            <th class="px-4 py-3 text-left font-semibold">ID externo</th>
             <th class="px-4 py-3 text-left font-semibold">Cliente</th>
             <th class="px-4 py-3 text-left font-semibold">CUPS</th>
+            <th class="px-3 py-3 text-center font-semibold w-[90px]">Válido</th>
             <th class="px-4 py-3 text-left font-semibold">Servicio</th>
             <th class="px-4 py-3 text-left font-semibold">Estado</th>
             <th class="px-4 py-3 text-left font-semibold">F. inicio</th>
             <th class="px-4 py-3 text-left font-semibold">F. fin</th>
+            <th class="px-4 py-3 text-right font-semibold">Consumo (MWh)</th>
             <th class="px-4 py-3 text-right font-semibold">Margen bruto</th>
             <th class="px-4 py-3 text-right font-semibold">Margen neto</th>
             <th class="px-4 py-3 text-left font-semibold">Scoring</th>
@@ -117,9 +118,6 @@
         <tbody class="divide-y divide-border/40">
           @for (row of rows(); track row.id) {
             <tr class="hover:bg-accent/20 transition-colors cursor-pointer" (click)="openEdit(row)">
-              <td class="px-4 py-3 font-mono text-xs text-foreground/80">
-                {{ text(row.idExterno) }}
-              </td>
               <td class="px-4 py-3">
                 <p class="font-medium text-foreground">{{ row.clienteNombre }}</p>
                 @if (row.clienteNif) {
@@ -137,6 +135,19 @@
                   <span class="font-mono text-xs text-foreground/80">{{ text(row.cups) }}</span>
                 }
               </td>
+              <td class="px-3 py-3 text-center" (click)="$event.stopPropagation()">
+                <button
+                  type="button"
+                  (click)="toggleValidado(row, $event)"
+                  [class]="row.validado
+                    ? 'h-8 px-2.5 inline-flex items-center gap-1.5 rounded-md border border-success/40 bg-success/10 text-xs text-success-fg font-medium'
+                    : 'h-8 px-2.5 inline-flex items-center gap-1.5 rounded-md border border-border text-xs text-muted-foreground hover:bg-accent/40'"
+                  title="Marcar como validado"
+                >
+                  <ui-icon [name]="row.validado ? 'check-square' : 'circle'" [size]="13" />
+                  {{ row.validado ? 'Sí' : 'No' }}
+                </button>
+              </td>
               <td class="px-4 py-3">
                 <p class="text-foreground/80">{{ text(row.servicio) }}</p>
                 @if (row.campana) {
@@ -150,6 +161,9 @@
               </td>
               <td class="px-4 py-3 text-foreground/80">{{ date(row.fechaInicio) }}</td>
               <td class="px-4 py-3 text-foreground/80">{{ date(row.fechaFinPrevista) }}</td>
+              <td class="px-4 py-3 text-right text-sm text-foreground">
+                {{ consumo(row.consumoTotal) }}
+              </td>
               <td class="px-4 py-3 text-right font-medium text-foreground">
                 {{ euro(row.margenBruto) }}
               </td>
@@ -208,7 +222,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="11" class="px-4 py-10 text-center text-sm text-muted-foreground">
+              <td colspan="12" class="px-4 py-10 text-center text-sm text-muted-foreground">
                 Sin contratos para los filtros seleccionados.
               </td>
             </tr>

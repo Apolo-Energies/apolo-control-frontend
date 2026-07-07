@@ -81,4 +81,8 @@ export class ContractService {
   renovar(id: string): Observable<Contract> {
     return this.http.post<Contract>(`${this.baseUrl}/${id}/renovar`, {});
   }
+
+  toggleValidado(id: string): Observable<Contract> {
+    return this.http.patch<Contract>(`${this.baseUrl}/${id}/validado`, {});
+  }
 }
