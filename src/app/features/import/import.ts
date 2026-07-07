@@ -12,7 +12,7 @@ import {
   ImportResult,
 } from '../../core/services/contratos-servicios-import.service';
 
-type Tab = 'contratos' | 'ventas' | 'rechazos' | 'pagos';
+type Tab = 'contratos' | 'ventas' | 'rechazos' | 'pagos' | 'facturas';
 
 @Component({
   selector: 'app-import',
@@ -169,6 +169,43 @@ export class Import {
       },
       error: (err: HttpErrorResponse) => {
         this.pagoLoading.set(false);
+        this.notify.error((err.error as { message?: string })?.message ?? 'Error en la importación');
+      },
+    });
+  }
+
+  // ── Facturas Contabilidad (CSV) ─────────────────────────────────
+  protected readonly facturaFile    = signal<File | null>(null);
+  protected readonly facturaLoading = signal(false);
+  protected readonly facturaResult  = signal<ImportResult | null>(null);
+
+  protected onFacturaFileChange(event: Event): void {
+    const f = (event.target as HTMLInputElement).files?.[0] ?? null;
+    this.facturaFile.set(f); this.facturaResult.set(null);
+  }
+  protected onFacturaDrop(event: DragEvent): void {
+    event.preventDefault();
+    const f = event.dataTransfer?.files?.[0] ?? null;
+    if (f) { this.facturaFile.set(f); this.facturaResult.set(null); }
+  }
+  protected clearFacturaFile(): void { this.facturaFile.set(null); this.facturaResult.set(null); }
+  protected previewFactura(): void { this.runFactura(true); }
+  protected importarFactura(): void { this.runFactura(false); }
+
+  private runFactura(dryRun: boolean): void {
+    const f = this.facturaFile();
+    if (!f) return;
+    this.facturaLoading.set(true);
+    this.facturaResult.set(null);
+    this.importService.importarFacturas(f, dryRun).subscribe({
+      next: (r) => {
+        this.facturaLoading.set(false);
+        this.facturaResult.set(r);
+        if (!dryRun && r.errors === 0)
+          this.notify.success(`Facturas importadas: ${r.created} creadas, ${r.skipped} ya existían`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.facturaLoading.set(false);
         this.notify.error((err.error as { message?: string })?.message ?? 'Error en la importación');
       },
     });

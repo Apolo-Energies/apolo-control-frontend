@@ -55,4 +55,13 @@ export class ContratosServiciosImportService {
       form,
     );
   }
+
+  importarFacturas(file: File, dryRun: boolean): Observable<ImportResult> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<ImportResult>(
+      `${environment.apiUrl}/facturas-contabilidad/importar?dryRun=${dryRun}`,
+      form,
+    );
+  }
 }

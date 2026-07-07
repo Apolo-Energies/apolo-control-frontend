@@ -47,6 +47,16 @@
       <ui-icon name="wallet" [size]="14" />
       Pagos / Liquidaciones
     </button>
+    <button type="button"
+      (click)="activeTab.set('facturas')"
+      [class.bg-background]="activeTab() === 'facturas'"
+      [class.shadow-sm]="activeTab() === 'facturas'"
+      [class.text-foreground]="activeTab() === 'facturas'"
+      [class.text-muted-foreground]="activeTab() !== 'facturas'"
+      class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all">
+      <ui-icon name="file-text" [size]="14" />
+      Facturas
+    </button>
   </div>
 
   <!-- ══════════════ TAB: ContratosServicios ══════════════ -->
@@ -148,6 +158,40 @@
         <li>El colaborador se vincula por nombre a la <strong class="text-foreground">delegación</strong> si existe en el sistema.</li>
         <li>Tipos soportados: <em>liquidacion, adelanto, diferencia, embargo, comision, bonus, multa, penalizacion</em>.</li>
         <li>El mes de liquidación acepta formato <em>YYYY-MM</em> o nombre del mes en español.</li>
+      </ul>
+    </div>
+  }
+
+  <!-- ══════════════ TAB: Facturas Contabilidad ══════════════ -->
+  @if (activeTab() === 'facturas') {
+    @if (!facturaFile()) {
+      <label
+        class="flex flex-col items-center justify-center gap-3 h-44 rounded-xl border-2 border-dashed border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+        (dragover)="$event.preventDefault()" (drop)="onFacturaDrop($event)">
+        <ui-icon name="file-text" [size]="32" class="text-muted-foreground" />
+        <div class="text-center">
+          <p class="text-sm font-medium text-foreground">Arrastra el CSV de facturas aquí</p>
+          <p class="text-xs text-muted-foreground mt-0.5">o haz clic para seleccionar — FacturaContabilidad_export.csv</p>
+        </div>
+        <input type="file" accept=".csv" class="hidden" (change)="onFacturaFileChange($event)" />
+      </label>
+    } @else {
+      <ng-container *ngTemplateOutlet="fileCard; context: { file: facturaFile(), clear: clearFacturaFile.bind(this) }" />
+      <div class="flex items-center gap-2">
+        <ng-container *ngTemplateOutlet="btnPreview; context: { loading: facturaLoading(), preview: previewFactura.bind(this) }" />
+        <ng-container *ngTemplateOutlet="btnImport; context: { loading: facturaLoading(), label: 'Importar facturas', import: importarFactura.bind(this) }" />
+      </div>
+    }
+    <ng-container *ngTemplateOutlet="resultPanel; context: { r: facturaResult(), showCreated: true }" />
+    <div class="rounded-xl border border-border bg-card p-5 space-y-2">
+      <p class="text-sm font-semibold text-foreground flex items-center gap-2">
+        <ui-icon name="info" [size]="15" class="text-muted-foreground" /> Cómo funciona
+      </p>
+      <ul class="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+        <li>Deduplicación por <strong class="text-foreground">ID Base44</strong> — filas ya importadas se omiten automáticamente.</li>
+        <li>Campos importados: proveedor, CIF, concepto, total, base imponible, IVA, estado, fechas y número de factura.</li>
+        <li>Estados soportados: <em>PAGADO → pagado</em>, <em>COBRADO_EN_CUENTA → cobrado_en_cuenta</em>, resto → <em>enviado_a_pago</em>.</li>
+        <li>La fecha de factura es obligatoria; filas sin ella se omiten.</li>
       </ul>
     </div>
   }
