@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, forwardRef, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, forwardRef, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import {
@@ -42,6 +42,7 @@ export class RemoteSelect implements ControlValueAccessor {
   readonly placeholder = input<string>('Buscar…');
   readonly minLength = input<number>(0);
   readonly scrollHeight = input<string>('260px');
+  readonly initialOption = input<RemoteOption | null>(null);
 
   protected readonly suggestions = signal<RemoteOption[]>([]);
   protected readonly loading = signal(false);
@@ -50,6 +51,13 @@ export class RemoteSelect implements ControlValueAccessor {
 
   private onChange: (value: string | null) => void = () => {};
   private onTouched: () => void = () => {};
+
+  constructor() {
+    effect(() => {
+      const opt = this.initialOption();
+      if (opt) this.selectedModel = opt;
+    });
+  }
 
   protected search(event: AutoCompleteCompleteEvent): void {
     this.loading.set(true);

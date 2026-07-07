@@ -57,6 +57,16 @@
       <ui-icon name="file-text" [size]="14" />
       Facturas
     </button>
+    <button type="button"
+      (click)="activeTab.set('cambios')"
+      [class.bg-background]="activeTab() === 'cambios'"
+      [class.shadow-sm]="activeTab() === 'cambios'"
+      [class.text-foreground]="activeTab() === 'cambios'"
+      [class.text-muted-foreground]="activeTab() !== 'cambios'"
+      class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all">
+      <ui-icon name="refresh-cw" [size]="14" />
+      Cambios
+    </button>
   </div>
 
   <!-- ══════════════ TAB: ContratosServicios ══════════════ -->
@@ -192,6 +202,40 @@
         <li>Campos importados: proveedor, CIF, concepto, total, base imponible, IVA, estado, fechas y número de factura.</li>
         <li>Estados soportados: <em>PAGADO → pagado</em>, <em>COBRADO_EN_CUENTA → cobrado_en_cuenta</em>, resto → <em>enviado_a_pago</em>.</li>
         <li>La fecha de factura es obligatoria; filas sin ella se omiten.</li>
+      </ul>
+    </div>
+  }
+
+  <!-- ══════════════ TAB: Cambios ══════════════ -->
+  @if (activeTab() === 'cambios') {
+    @if (!cambioFile()) {
+      <label
+        class="flex flex-col items-center justify-center gap-3 h-44 rounded-xl border-2 border-dashed border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+        (dragover)="$event.preventDefault()" (drop)="onCambioDrop($event)">
+        <ui-icon name="refresh-cw" [size]="32" class="text-muted-foreground" />
+        <div class="text-center">
+          <p class="text-sm font-medium text-foreground">Arrastra el CSV de cambios aquí</p>
+          <p class="text-xs text-muted-foreground mt-0.5">o haz clic para seleccionar — Cambio_export.csv</p>
+        </div>
+        <input type="file" accept=".csv" class="hidden" (change)="onCambioFileChange($event)" />
+      </label>
+    } @else {
+      <ng-container *ngTemplateOutlet="fileCard; context: { file: cambioFile(), clear: clearCambioFile.bind(this) }" />
+      <div class="flex items-center gap-2">
+        <ng-container *ngTemplateOutlet="btnPreview; context: { loading: cambioLoading(), preview: previewCambio.bind(this) }" />
+        <ng-container *ngTemplateOutlet="btnImport; context: { loading: cambioLoading(), label: 'Importar cambios', import: importarCambio.bind(this) }" />
+      </div>
+    }
+    <ng-container *ngTemplateOutlet="resultPanel; context: { r: cambioResult(), showCreated: true }" />
+    <div class="rounded-xl border border-border bg-card p-5 space-y-2">
+      <p class="text-sm font-semibold text-foreground flex items-center gap-2">
+        <ui-icon name="info" [size]="15" class="text-muted-foreground" /> Cómo funciona
+      </p>
+      <ul class="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+        <li>Deduplicación por <strong class="text-foreground">ID Base44</strong> — filas ya importadas se omiten automáticamente.</li>
+        <li>Campos importados: cliente, CUPS, tipo de solicitud, resultado, gestionado y todas las fechas.</li>
+        <li>Tipos soportados: cambio_potencia, cambio_titularidad, cambio_cuenta_bancaria, cambio_oferta, baja_por_cese, otra.</li>
+        <li>Filas sin tipo de solicitud válido se omiten y se detallan en el resumen de errores.</li>
       </ul>
     </div>
   }

@@ -64,4 +64,13 @@ export class ContratosServiciosImportService {
       form,
     );
   }
+
+  importarCambios(file: File, dryRun: boolean): Observable<ImportResult> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<ImportResult>(
+      `${environment.apiUrl}/cambios/importar?dryRun=${dryRun}`,
+      form,
+    );
+  }
 }

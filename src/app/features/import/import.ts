@@ -12,7 +12,7 @@ import {
   ImportResult,
 } from '../../core/services/contratos-servicios-import.service';
 
-type Tab = 'contratos' | 'ventas' | 'rechazos' | 'pagos' | 'facturas';
+type Tab = 'contratos' | 'ventas' | 'rechazos' | 'pagos' | 'facturas' | 'cambios';
 
 @Component({
   selector: 'app-import',
@@ -206,6 +206,43 @@ export class Import {
       },
       error: (err: HttpErrorResponse) => {
         this.facturaLoading.set(false);
+        this.notify.error((err.error as { message?: string })?.message ?? 'Error en la importación');
+      },
+    });
+  }
+
+  // ── Cambios (CSV) ───────────────────────────────────────────────────────
+  protected readonly cambioFile    = signal<File | null>(null);
+  protected readonly cambioLoading = signal(false);
+  protected readonly cambioResult  = signal<ImportResult | null>(null);
+
+  protected onCambioFileChange(event: Event): void {
+    const f = (event.target as HTMLInputElement).files?.[0] ?? null;
+    this.cambioFile.set(f); this.cambioResult.set(null);
+  }
+  protected onCambioDrop(event: DragEvent): void {
+    event.preventDefault();
+    const f = event.dataTransfer?.files?.[0] ?? null;
+    if (f) { this.cambioFile.set(f); this.cambioResult.set(null); }
+  }
+  protected clearCambioFile(): void { this.cambioFile.set(null); this.cambioResult.set(null); }
+  protected previewCambio(): void { this.runCambio(true); }
+  protected importarCambio(): void { this.runCambio(false); }
+
+  private runCambio(dryRun: boolean): void {
+    const f = this.cambioFile();
+    if (!f) return;
+    this.cambioLoading.set(true);
+    this.cambioResult.set(null);
+    this.importService.importarCambios(f, dryRun).subscribe({
+      next: (r: ImportResult) => {
+        this.cambioLoading.set(false);
+        this.cambioResult.set(r);
+        if (!dryRun && r.errors === 0)
+          this.notify.success(`Cambios importados: ${r.created} creados, ${r.skipped} ya existían`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.cambioLoading.set(false);
         this.notify.error((err.error as { message?: string })?.message ?? 'Error en la importación');
       },
     });

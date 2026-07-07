@@ -1,0 +1,244 @@
+<app-page-header title="Cambios" subtitle="Solicitudes de cambio de potencia, titularidad, cuenta bancaria, oferta y baja">
+  <button type="button" (click)="openCreate()"
+    class="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
+    <ui-icon name="plus" [size]="15" />
+    Nuevo
+  </button>
+</app-page-header>
+
+<!-- Filtros -->
+<div class="flex flex-wrap gap-2 mb-4">
+  <input type="text" [(ngModel)]="q" placeholder="Buscar por cliente o CUPS…"
+    class="h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-48" />
+
+  <select [(ngModel)]="tipoFilter"
+    class="h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+    <option value="">Todos los tipos</option>
+    @for (t of tipoValues; track t) {
+      <option [value]="t">{{ tipoLabel[t] }}</option>
+    }
+  </select>
+
+  <select [(ngModel)]="resultadoFilter"
+    class="h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+    <option value="">Todos los resultados</option>
+    @for (r of resultadoValues; track r) {
+      <option [value]="r">{{ resultadoLabel[r] }}</option>
+    }
+  </select>
+
+  <select [(ngModel)]="gestionadoFilter"
+    class="h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+    <option value="">Gestionado: todos</option>
+    <option value="true">Gestionado</option>
+    <option value="false">Sin gestionar</option>
+  </select>
+
+  <button type="button" (click)="applyFilters()"
+    class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
+    <ui-icon name="search" [size]="14" />
+    Buscar
+  </button>
+  <button type="button" (click)="clearFilters()"
+    class="h-9 px-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
+    Limpiar
+  </button>
+</div>
+
+<!-- Tabla -->
+@if (loading() && !result()) {
+  <app-table-skeleton [cols]="7" [rows]="8" />
+} @else if (error(); as msg) {
+  <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm">{{ msg }}</div>
+} @else {
+  <div class="bg-card border border-border rounded-xl overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">Cliente</th>
+            <th class="px-4 py-3 text-left font-semibold">CUPS</th>
+            <th class="px-4 py-3 text-left font-semibold">Tipo</th>
+            <th class="px-4 py-3 text-left font-semibold">Resultado</th>
+            <th class="px-4 py-3 text-left font-semibold">Gestionado</th>
+            <th class="px-4 py-3 text-left font-semibold">F. Solicitud</th>
+            <th class="px-4 py-3 text-left font-semibold">F. Activo</th>
+            <th class="px-4 py-3 text-right font-semibold">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          @if (rows().length === 0) {
+            <tr>
+              <td colspan="8" class="px-4 py-10 text-center text-muted-foreground text-sm">
+                No se encontraron registros.
+              </td>
+            </tr>
+          }
+          @for (row of rows(); track row.id) {
+            <tr class="hover:bg-accent/20 transition-colors cursor-pointer" (click)="openEdit(row)">
+              <td class="px-4 py-3">
+                <p class="font-medium text-foreground">{{ row.clienteNombre }}</p>
+                @if (row.clienteNif) {
+                  <p class="text-xs text-muted-foreground font-mono">{{ row.clienteNif }}</p>
+                }
+              </td>
+              <td class="px-4 py-3">
+                @if (row.cups) {
+                  <span class="font-mono text-xs text-foreground/80">{{ row.cups }}</span>
+                } @else {
+                  <span class="text-muted-foreground text-xs">—</span>
+                }
+              </td>
+              <td class="px-4 py-3">
+                <app-status-badge [tone]="tipoTone[row.tipoSolicitud]">{{ tipoLabel[row.tipoSolicitud] }}</app-status-badge>
+              </td>
+              <td class="px-4 py-3">
+                @if (row.resultado) {
+                  <app-status-badge [tone]="resultadoTone[row.resultado]">{{ resultadoLabel[row.resultado] }}</app-status-badge>
+                } @else {
+                  <span class="text-muted-foreground text-xs">—</span>
+                }
+              </td>
+              <td class="px-4 py-3">
+                @if (row.gestionado) {
+                  <span class="inline-flex items-center gap-1 text-success-fg text-xs font-medium">
+                    <ui-icon name="check" [size]="13" />
+                    Sí
+                  </span>
+                } @else {
+                  <span class="text-muted-foreground text-xs">No</span>
+                }
+              </td>
+              <td class="px-4 py-3 text-muted-foreground text-xs">
+                {{ row.fechaSolicitud ? formatDate(row.fechaSolicitud) : '—' }}
+              </td>
+              <td class="px-4 py-3 text-muted-foreground text-xs">
+                {{ row.fechaActivo ? formatDate(row.fechaActivo) : '—' }}
+              </td>
+              <td class="px-4 py-3 text-right" (click)="$event.stopPropagation()">
+                <button type="button" (click)="confirmDelete(row)"
+                  class="p-1.5 rounded-md text-muted-foreground hover:text-danger hover:bg-danger/10 transition-colors"
+                  title="Eliminar">
+                  <ui-icon name="trash" [size]="15" />
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginación -->
+    @if (totalPages() > 1) {
+      <div class="border-t border-border/40 px-4 py-3">
+        <app-pagination
+          [page]="page()"
+          [totalPages]="totalPages()"
+          [totalElements]="totalElements()"
+          [pageSize]="size()"
+          (pageChange)="reload($event)"
+          (pageSizeChange)="onSizeChange($event)" />
+      </div>
+    }
+  </div>
+}
+
+<!-- Dialog crear / editar -->
+<app-form-dialog
+  [open]="dialogOpen()"
+  [title]="editing() ? 'Editar cambio' : 'Nuevo cambio'"
+  [saving]="submitting()"
+  [errorMessage]="formError()"
+  (cancel)="closeDialog()"
+  (save)="submit()">
+
+  <form [formGroup]="form" class="grid grid-cols-1 gap-4">
+
+    <!-- Cliente -->
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Cliente *</span>
+      <app-remote-select
+        formControlName="clienteId"
+        placeholder="Escribe nombre o NIF del cliente…"
+        [searchFn]="searchClientes"
+        [initialOption]="selectedClienteOption()"
+      />
+      @if (form.get('clienteNombre')?.invalid && form.get('clienteNombre')?.touched) {
+        <p class="text-xs text-danger-fg mt-1">El cliente es obligatorio</p>
+      }
+    </label>
+
+    <!-- CUPS -->
+    <div>
+      <label class="block text-xs font-medium text-muted-foreground mb-1">CUPS</label>
+      <input formControlName="cups" type="text" placeholder="ES0021…"
+        class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" />
+    </div>
+
+    <!-- Tipo solicitud + Resultado -->
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Tipo solicitud *</label>
+        <select formControlName="tipoSolicitud"
+          class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+          <option value="">Seleccionar…</option>
+          @for (t of tipoValues; track t) {
+            <option [value]="t">{{ tipoLabel[t] }}</option>
+          }
+        </select>
+        @if (form.get('tipoSolicitud')?.invalid && form.get('tipoSolicitud')?.touched) {
+          <p class="text-xs text-danger-fg mt-1">Obligatorio</p>
+        }
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Resultado</label>
+        <select formControlName="resultado"
+          class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+          <option value="">Sin resultado</option>
+          @for (r of resultadoValues; track r) {
+            <option [value]="r">{{ resultadoLabel[r] }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <!-- Gestionado -->
+    <div class="flex items-center gap-2">
+      <input formControlName="gestionado" type="checkbox" id="gestionado"
+        class="h-4 w-4 rounded border-border text-primary focus:ring-primary/40" />
+      <label for="gestionado" class="text-sm text-foreground cursor-pointer">Gestionado</label>
+    </div>
+
+    <!-- Fechas -->
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Fecha solicitud</label>
+        <input formControlName="fechaSolicitud" type="date"
+          class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Fecha envío documentación</label>
+        <input formControlName="fechaEnvioDocumentacion" type="date"
+          class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Fecha documento firma</label>
+        <input formControlName="fechaDocumentoFirma" type="date"
+          class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Fecha activo</label>
+        <input formControlName="fechaActivo" type="date"
+          class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+      </div>
+    </div>
+
+    <!-- Comentarios -->
+    <div>
+      <label class="block text-xs font-medium text-muted-foreground mb-1">Comentarios</label>
+      <textarea formControlName="comentarios" rows="3" placeholder="Notas adicionales…"
+        class="w-full px-3 py-2 rounded-lg border border-border text-sm bg-background text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"></textarea>
+    </div>
+
+  </form>
+</app-form-dialog>
