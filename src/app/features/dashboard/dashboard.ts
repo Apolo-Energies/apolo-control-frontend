@@ -131,6 +131,18 @@ export class Dashboard {
   protected readonly data = signal<DashboardSummary | null>(null);
   protected readonly range = signal<RangeId>('all');
 
+  protected readonly selectedWeek  = signal(toIsoWeek(new Date()));
+  protected readonly selectedMonth = signal(toIsoMonth(new Date()));
+  protected readonly selectedYear  = signal(new Date().getFullYear());
+  protected readonly availableYears = Array.from(
+    { length: new Date().getFullYear() - 2020 + 1 },
+    (_, i) => new Date().getFullYear() - i,
+  );
+  protected readonly weekRangeLabel = computed(() => {
+    const { start, end } = weekBounds(this.selectedWeek());
+    return `${formatDayMonth(start)} – ${formatDayMonth(end)} ${start.getFullYear()}`;
+  });
+
   // ── Actividad por delegaciones ────────────────────────────────────────────
   protected readonly actividadLoading = signal(false);
   protected readonly actividadData = signal<Page<ActividadDelegacion> | null>(null);
@@ -255,10 +267,27 @@ export class Dashboard {
   }
 
   protected setRange(id: RangeId): void {
-    if (this.range() === id) {
-      return;
-    }
+    if (this.range() === id) return;
     this.range.set(id);
+    const now = new Date();
+    if (id === 'week')  this.selectedWeek.set(toIsoWeek(now));
+    if (id === 'month') this.selectedMonth.set(toIsoMonth(now));
+    if (id === 'year')  this.selectedYear.set(now.getFullYear());
+    this.reload();
+  }
+
+  protected onWeekChange(e: Event): void {
+    this.selectedWeek.set((e.target as HTMLInputElement).value);
+    this.reload();
+  }
+
+  protected onMonthChange(e: Event): void {
+    this.selectedMonth.set((e.target as HTMLInputElement).value);
+    this.reload();
+  }
+
+  protected onYearChange(e: Event): void {
+    this.selectedYear.set(+(e.target as HTMLSelectElement).value);
     this.reload();
   }
 
@@ -315,33 +344,26 @@ export class Dashboard {
 
   private buildFilter(): DashboardFilter {
     const range = this.range();
-    if (range === 'all') {
-      return {};
-    }
-    const now = new Date();
-    let start: Date;
-    let end: Date;
+    if (range === 'all') return {};
+    const today = new Date();
     switch (range) {
-      case 'today':
-        start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        break;
-      case 'week': {
-        const day = now.getDay() === 0 ? 6 : now.getDay() - 1;
-        start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
-        end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (6 - day));
-        break;
+      case 'today': {
+        const d = toIsoDate(today);
+        return { startDate: d, endDate: d };
       }
-      case 'month':
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        break;
-      case 'year':
-        start = new Date(now.getFullYear(), 0, 1);
-        end = new Date(now.getFullYear(), 11, 31);
-        break;
+      case 'week': {
+        const { start, end } = weekBounds(this.selectedWeek());
+        return { startDate: toIsoDate(start), endDate: toIsoDate(end) };
+      }
+      case 'month': {
+        const [y, mo] = this.selectedMonth().split('-').map(Number);
+        return { startDate: `${this.selectedMonth()}-01`, endDate: toIsoDate(new Date(y, mo, 0)) };
+      }
+      case 'year': {
+        const y = this.selectedYear();
+        return { startDate: `${y}-01-01`, endDate: `${y}-12-31` };
+      }
     }
-    return { startDate: toIsoDate(start), endDate: toIsoDate(end) };
   }
 }
 
@@ -362,6 +384,38 @@ function toIsoDate(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+function toIsoWeek(date: Date): string {
+  const d = new Date(date);
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+  const year = d.getFullYear();
+  const jan1 = new Date(year, 0, 1);
+  const week = Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7);
+  return `${year}-W${String(week).padStart(2, '0')}`;
+}
+
+function toIsoMonth(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function weekBounds(isoWeek: string): { start: Date; end: Date } {
+  const [yearStr, wStr] = isoWeek.split('-W');
+  const year = +yearStr, week = +wStr;
+  const jan4 = new Date(year, 0, 4);
+  const dow = jan4.getDay() || 7;
+  const mondayW1 = new Date(jan4);
+  mondayW1.setDate(jan4.getDate() - dow + 1);
+  const start = new Date(mondayW1);
+  start.setDate(mondayW1.getDate() + (week - 1) * 7);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return { start, end };
+}
+
+function formatDayMonth(d: Date): string {
+  const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${d.getDate()} ${months[d.getMonth()]}`;
 }
 
 function extractMessage(error: HttpErrorResponse): string {
