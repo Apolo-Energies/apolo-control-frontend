@@ -56,6 +56,7 @@ export class Layout {
       },
       {
         title: 'IMPAGOS',
+        collapsible: true,
         items: [
           { label: 'Dashboard', url: '/collections/dashboard', icon: 'bar-chart-2' as const },
           { label: 'Todos los impagos', url: '/collections/unpaid', icon: 'receipt-x' as const },
