@@ -36,4 +36,8 @@ export class FacturaContabilidadService {
   create(payload: FacturaContabilidadPayload): Observable<FacturaContabilidad> {
     return this.http.post<FacturaContabilidad>(this.baseUrl, payload);
   }
+
+  update(id: string, payload: FacturaContabilidadPayload): Observable<FacturaContabilidad> {
+    return this.http.put<FacturaContabilidad>(`${this.baseUrl}/${id}`, payload);
+  }
 }

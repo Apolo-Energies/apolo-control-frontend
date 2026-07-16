@@ -30,13 +30,10 @@ export class Layout {
 
     const base: SidebarSection[] = [
       {
-        title: 'PRINCIPAL',
-        items: [{ label: 'Dashboard', url: '/dashboard', icon: 'layout-dashboard' }],
-      },
-      {
         title: 'CONTROL',
         collapsible: true,
         items: [
+          { label: 'Dashboard', url: '/dashboard', icon: 'layout-dashboard' },
           {
             label: 'Contratos', url: '/contracts', icon: 'file-text',
             children: [

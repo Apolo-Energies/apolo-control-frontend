@@ -113,7 +113,7 @@
         </thead>
         <tbody class="divide-y divide-border/40">
           @for (row of rows(); track row.id) {
-            <tr class="hover:bg-accent/20 transition-colors">
+            <tr class="hover:bg-accent/20 transition-colors cursor-pointer" (click)="openEdit(row)">
               <td class="px-4 py-3 text-foreground/80 whitespace-nowrap">{{ date(row.fechaFactura) }}</td>
               <td class="px-4 py-3 font-mono text-xs text-foreground/80">
                 {{ row.numeroFactura ?? '—' }}
@@ -179,16 +179,16 @@
   />
 </div>
 
-<!-- Nueva factura -->
+<!-- Nueva / Editar factura -->
 <app-form-dialog
   [open]="createOpen()"
-  title="Nueva factura"
-  subtitle="Registra una factura de contabilidad"
+  [title]="editId() ? 'Editar factura' : 'Nueva factura'"
+  [subtitle]="editId() ? 'Modifica los datos de la factura' : 'Registra una factura de contabilidad'"
   icon="receipt-x"
   width="600px"
   [saving]="submitting()"
   [canSave]="createForm.valid"
-  saveLabel="Crear factura"
+  [saveLabel]="editId() ? 'Guardar cambios' : 'Crear factura'"
   [errorMessage]="formError()"
   (cancel)="closeCreate()"
   (save)="submitCreate()"
@@ -249,7 +249,7 @@
 
     <!-- Importes -->
     <label class="flex flex-col gap-1.5">
-      <span class="text-xs font-medium text-foreground/80">Base imponible (€) <span class="text-danger-fg">*</span></span>
+      <span class="text-xs font-medium text-foreground/80">Base imponible (€)</span>
       <input
         type="number"
         step="0.01"

@@ -60,7 +60,7 @@ export interface FacturaContabilidadPayload {
   proveedor: string;
   cifProveedor?: string | null;
   concepto?: string | null;
-  baseImponible: number;
+  baseImponible?: number | null;
   ivaPct: number;
   total: number;
   estado: FacturaContabilidadEstado;

@@ -67,8 +67,9 @@ export class FacturasContabilidad {
   protected readonly size = signal(20);
 
   protected readonly createOpen = signal(false);
+  protected readonly editId     = signal<string | null>(null);
   protected readonly submitting = signal(false);
-  protected readonly formError = signal<string | null>(null);
+  protected readonly formError  = signal<string | null>(null);
 
   protected readonly resumen = computed(() => this.result()?.resumen ?? null);
   protected readonly rows = computed(() => this.result()?.rows ?? []);
@@ -81,7 +82,7 @@ export class FacturasContabilidad {
     proveedor: this.fb.nonNullable.control('', [Validators.required]),
     cifProveedor: this.fb.nonNullable.control(''),
     concepto: this.fb.nonNullable.control(''),
-    baseImponible: this.fb.control<number | null>(null, [Validators.required]),
+    baseImponible: this.fb.control<number | null>(null),
     ivaPct: this.fb.control<number | null>(21),
     total: this.fb.control<number | null>(null, [Validators.required]),
     estado: this.fb.nonNullable.control<FacturaContabilidadEstado>('enviado_a_pago', [Validators.required]),
@@ -158,6 +159,7 @@ export class FacturasContabilidad {
 
   protected openCreate(): void {
     this.formError.set(null);
+    this.editId.set(null);
     this.createForm.reset({
       fechaFactura: '',
       numeroFactura: '',
@@ -176,8 +178,30 @@ export class FacturasContabilidad {
     this.createOpen.set(true);
   }
 
+  protected openEdit(row: FacturaContabilidad): void {
+    this.formError.set(null);
+    this.editId.set(row.id);
+    this.createForm.reset({
+      fechaFactura: row.fechaFactura ?? '',
+      numeroFactura: row.numeroFactura ?? '',
+      proveedor: row.proveedor,
+      cifProveedor: row.cifProveedor ?? '',
+      concepto: row.concepto ?? '',
+      baseImponible: row.baseImponible,
+      ivaPct: row.ivaPct,
+      total: row.total,
+      estado: row.estado,
+      fechaVencimiento: row.fechaVencimiento ?? '',
+      transferencia: row.transferencia ?? false,
+      fechaPago: row.fechaPago ?? '',
+      comentarios: row.comentarios ?? '',
+    });
+    this.createOpen.set(true);
+  }
+
   protected closeCreate(): void {
     this.createOpen.set(false);
+    this.editId.set(null);
   }
 
   protected submitCreate(): void {
@@ -186,41 +210,46 @@ export class FacturasContabilidad {
       return;
     }
     const v = this.createForm.getRawValue();
+    const payload = {
+      fechaFactura: v.fechaFactura,
+      numeroFactura: v.numeroFactura || null,
+      proveedor: v.proveedor,
+      cifProveedor: v.cifProveedor || null,
+      concepto: v.concepto || null,
+      baseImponible: v.baseImponible ?? null,
+      ivaPct: v.ivaPct ?? 0,
+      total: v.total!,
+      estado: v.estado,
+      fechaVencimiento: v.fechaVencimiento || null,
+      transferencia: v.transferencia,
+      fechaPago: v.fechaPago || null,
+      delegacionId: null,
+      comentarios: v.comentarios || null,
+    };
+
+    const id = this.editId();
     this.submitting.set(true);
     this.formError.set(null);
-    this.globalLoading.start('Guardando factura', 'Registrando la nueva factura de contabilidad.');
+    this.globalLoading.start(id ? 'Guardando cambios' : 'Guardando factura', '');
 
-    this.service
-      .create({
-        fechaFactura: v.fechaFactura,
-        numeroFactura: v.numeroFactura || null,
-        proveedor: v.proveedor,
-        cifProveedor: v.cifProveedor || null,
-        concepto: v.concepto || null,
-        baseImponible: v.baseImponible!,
-        ivaPct: v.ivaPct ?? 0,
-        total: v.total!,
-        estado: v.estado,
-        fechaVencimiento: v.fechaVencimiento || null,
-        transferencia: v.transferencia,
-        fechaPago: v.fechaPago || null,
-        delegacionId: null,
-        comentarios: v.comentarios || null,
-      })
-      .subscribe({
-        next: () => {
-          this.submitting.set(false);
-          this.globalLoading.stop();
-          this.closeCreate();
-          this.notify.success('Factura creada');
-          this.reload(0);
-        },
-        error: (err: HttpErrorResponse) => {
-          this.submitting.set(false);
-          this.globalLoading.stop();
-          this.formError.set(extractMessage(err));
-        },
-      });
+    const request$ = id
+      ? this.service.update(id, payload)
+      : this.service.create(payload);
+
+    request$.subscribe({
+      next: () => {
+        this.submitting.set(false);
+        this.globalLoading.stop();
+        this.closeCreate();
+        this.notify.success(id ? 'Factura actualizada' : 'Factura creada');
+        this.reload(this.page());
+      },
+      error: (err: HttpErrorResponse) => {
+        this.submitting.set(false);
+        this.globalLoading.stop();
+        this.formError.set(extractMessage(err));
+      },
+    });
   }
 
   protected estatusTone(estado: FacturaContabilidadEstado): StatusTone {
