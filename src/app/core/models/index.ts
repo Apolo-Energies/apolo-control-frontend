@@ -16,3 +16,4 @@ export * from './setting.model';
 export * from './rechazo.model';
 export * from './baja.model';
 export * from './cambio.model';
+export * from './gestion-impago.model';

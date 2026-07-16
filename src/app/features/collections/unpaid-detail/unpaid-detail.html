@@ -1,0 +1,451 @@
+@let imp = impago();
+
+@if (loading()) {
+  <div class="flex items-center justify-center h-64 text-muted-foreground">
+    <ui-icon name="loader" [size]="24" class="animate-spin mr-2" />
+    Cargando...
+  </div>
+} @else if (error()) {
+  <div class="bg-danger-soft border border-danger/30 rounded-xl p-6 text-center text-danger-fg">
+    {{ error() }}
+  </div>
+} @else if (imp) {
+
+<app-page-header
+  [title]="(imp.nombreCliente ?? imp.clienteNombre ?? 'Impago') + ' · ' + (imp.numeroFactura ?? '')"
+  subtitle="Gestión de impago · detalle completo"
+>
+  <a
+    routerLink="/collections/unpaid"
+    class="h-9 px-3 rounded-md bg-card border border-border hover:bg-accent text-sm font-medium flex items-center gap-2 transition-colors"
+  >
+    <ui-icon name="chevron-left" [size]="14" />
+    Volver
+  </a>
+  <button
+    class="h-9 px-3 rounded-md bg-card border border-border hover:bg-accent text-sm font-medium flex items-center gap-2 transition-colors"
+    (click)="openEstadoDialog()"
+  >
+    <ui-icon name="edit" [size]="14" />
+    Cambiar estado
+  </button>
+  <button
+    class="h-9 px-3 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium flex items-center gap-2 transition-colors"
+    (click)="openContactoDialog()"
+  >
+    <ui-icon name="phone" [size]="14" />
+    Registrar contacto
+  </button>
+</app-page-header>
+
+<!-- Summary cards -->
+<section class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+  <div class="bg-card border border-border rounded-xl p-4">
+    <p class="text-xs text-muted-foreground uppercase tracking-wide mb-1">Importe total</p>
+    <p class="text-xl font-bold text-foreground">{{ formatEur(imp.importe) }}</p>
+  </div>
+  <div class="bg-card border border-border rounded-xl p-4">
+    <p class="text-xs text-muted-foreground uppercase tracking-wide mb-1">Pendiente</p>
+    <p class="text-xl font-bold text-danger-fg">{{ formatEur(imp.importePendiente) }}</p>
+  </div>
+  <div class="bg-card border border-border rounded-xl p-4">
+    <p class="text-xs text-muted-foreground uppercase tracking-wide mb-1">Cobrado</p>
+    <p class="text-xl font-bold text-success-fg">{{ formatEur(imp.parcialPagado) }}</p>
+  </div>
+  <div class="bg-card border border-border rounded-xl p-4">
+    <p class="text-xs text-muted-foreground uppercase tracking-wide mb-1">Estado</p>
+    <app-status-badge [tone]="estadoTone()">{{ estadoLabel[imp.estado] }}</app-status-badge>
+  </div>
+</section>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+
+  <!-- Left: Details -->
+  <div class="lg:col-span-2 space-y-4">
+
+    <!-- Datos generales -->
+    <div class="bg-card border border-border rounded-xl p-5">
+      <h3 class="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+        <ui-icon name="file-text" [size]="14" />
+        Datos del impago
+      </h3>
+      <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+        <div>
+          <p class="text-xs text-muted-foreground">Cliente</p>
+          <p class="font-medium">{{ imp.nombreCliente ?? imp.clienteNombre ?? '—' }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-muted-foreground">NIF</p>
+          <p class="font-medium">{{ imp.clienteNif ?? '—' }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-muted-foreground">Factura</p>
+          <p class="font-mono">{{ imp.numeroFactura ?? '—' }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-muted-foreground">Moneda</p>
+          <p class="font-medium">{{ imp.moneda }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-muted-foreground">Fec. Vencimiento</p>
+          <p>{{ fmt(imp.fechaVencimiento) }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-muted-foreground">Fec. Devolución</p>
+          <p>{{ fmt(imp.fechaDevolucion) }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-muted-foreground">Días vencido</p>
+          <p class="font-semibold" [class.text-danger-fg]="(imp.diasVencido ?? 0) > 0">
+            {{ imp.diasVencido ?? 0 }} días
+          </p>
+        </div>
+        <div>
+          <p class="text-xs text-muted-foreground">Prioridad</p>
+          <p class="font-medium">{{ imp.prioridad }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-muted-foreground">Colaborador</p>
+          <p>{{ imp.colaborador ?? '—' }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-muted-foreground">Motivo devolución</p>
+          <p>{{ imp.motivoDevolucion ?? '—' }}</p>
+        </div>
+        @if (imp.observaciones) {
+          <div class="col-span-2">
+            <p class="text-xs text-muted-foreground">Observaciones</p>
+            <p class="text-sm">{{ imp.observaciones }}</p>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Historial de contactos -->
+    @if (imp.contactoHistory.length > 0) {
+      <div class="bg-card border border-border rounded-xl p-5">
+        <h3 class="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+          <ui-icon name="phone" [size]="14" />
+          Historial de contacto ({{ imp.contactoStep }}/5)
+        </h3>
+        <ol class="relative border-l border-border/50 space-y-4 pl-4">
+          @for (h of imp.contactoHistory; track h.step) {
+            <li class="relative">
+              <span class="absolute -left-[22px] top-0.5 h-4 w-4 rounded-full bg-primary/10 border border-primary/40 flex items-center justify-center text-[9px] font-bold text-primary">
+                {{ h.step }}
+              </span>
+              <div>
+                <p class="text-sm font-medium text-foreground">{{ h.action }}</p>
+                <p class="text-xs text-muted-foreground">{{ fmt(h.date) }}</p>
+                @if (h.notes) {
+                  <p class="text-xs text-foreground/80 mt-0.5">{{ h.notes }}</p>
+                }
+                @if (h.promesaFecha) {
+                  <p class="text-xs text-success-fg mt-0.5">
+                    Promesa: {{ formatEur(h.promesaImporte) }} el {{ fmt(h.promesaFecha) }}
+                  </p>
+                }
+              </div>
+            </li>
+          }
+        </ol>
+      </div>
+    }
+
+    <!-- Pagos fraccionados -->
+    @if (imp.pagoFraccionado && imp.pagosFraccionados.length > 0) {
+      <div class="bg-card border border-border rounded-xl p-5">
+        <h3 class="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+          <ui-icon name="wallet" [size]="14" />
+          Pagos fraccionados
+        </h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th class="px-3 py-2 text-left">#</th>
+                <th class="px-3 py-2 text-right">Importe</th>
+                <th class="px-3 py-2 text-left">Fecha</th>
+                <th class="px-3 py-2 text-center">Cobrado</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border/40">
+              @for (p of imp.pagosFraccionados; track p.numero) {
+                <tr [class.bg-success-soft]="p.cobrado" class="hover:bg-accent/20">
+                  <td class="px-3 py-2 text-muted-foreground">{{ p.numero }}</td>
+                  <td class="px-3 py-2 text-right font-mono">{{ formatEur(p.importe) }}</td>
+                  <td class="px-3 py-2">{{ fmt(p.fecha) }}</td>
+                  <td class="px-3 py-2 text-center">
+                    @if (p.cobrado) {
+                      <ui-icon name="check" [size]="14" class="text-success-fg" />
+                    } @else {
+                      <span class="text-muted-foreground">—</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+
+    <!-- Acciones de cobranza -->
+    <div class="bg-card border border-border rounded-xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-semibold text-foreground flex items-center gap-2">
+          <ui-icon name="clock" [size]="14" />
+          Acciones de cobranza
+        </h3>
+        <button
+          class="h-8 px-3 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium flex items-center gap-1.5 transition-colors"
+          (click)="openAccionDialog()"
+        >
+          <ui-icon name="plus" [size]="12" />
+          Nueva acción
+        </button>
+      </div>
+      @if (acciones().length === 0) {
+        <p class="text-sm text-muted-foreground text-center py-6">Sin acciones registradas</p>
+      } @else {
+        <div class="space-y-2">
+          @for (a of acciones(); track a.id) {
+            <div class="flex gap-3 p-3 bg-accent/20 rounded-lg text-sm">
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium">{{ tipoAccionLabel[a.tipoAccion] }}</span>
+                  @if (a.resultado) {
+                    <span class="text-xs text-muted-foreground">→ {{ resultadoLabel[a.resultado] }}</span>
+                  }
+                </div>
+                @if (a.notas) {
+                  <p class="text-xs text-muted-foreground mt-0.5">{{ a.notas }}</p>
+                }
+                @if (a.importeCobrado) {
+                  <p class="text-xs text-success-fg">Cobrado: {{ formatEur(a.importeCobrado) }}</p>
+                }
+              </div>
+              <p class="text-xs text-muted-foreground whitespace-nowrap">{{ fmt(a.createdAt) }}</p>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Right: Status flags -->
+  <div class="space-y-4">
+
+    <!-- Flags OVC / Demanda / Promesas -->
+    <div class="bg-card border border-border rounded-xl p-5">
+      <h3 class="text-sm font-semibold text-foreground mb-4">Flags de gestión</h3>
+      <ul class="space-y-3 text-sm">
+        <li class="flex items-center justify-between">
+          <span class="text-muted-foreground">OVC activo</span>
+          <ui-icon [name]="imp.ovcCheck ? 'check' : 'x'" [size]="14" [class]="imp.ovcCheck ? 'text-success-fg' : 'text-muted-foreground'" />
+        </li>
+        @if (imp.ovcStartDate) {
+          <li class="flex items-center justify-between">
+            <span class="text-muted-foreground">Inicio OVC</span>
+            <span>{{ fmt(imp.ovcStartDate) }}</span>
+          </li>
+        }
+        <li class="flex items-center justify-between">
+          <span class="text-muted-foreground">Demanda</span>
+          <ui-icon [name]="imp.demandaCheck ? 'check' : 'x'" [size]="14" [class]="imp.demandaCheck ? 'text-danger-fg' : 'text-muted-foreground'" />
+        </li>
+        <li class="flex items-center justify-between">
+          <span class="text-muted-foreground">Demanda preparada</span>
+          <ui-icon [name]="imp.demandaPreparada ? 'check' : 'x'" [size]="14" [class]="imp.demandaPreparada ? 'text-success-fg' : 'text-muted-foreground'" />
+        </li>
+        <li class="flex items-center justify-between">
+          <span class="text-muted-foreground">Demanda enviada</span>
+          <ui-icon [name]="imp.demandaEnviada ? 'check' : 'x'" [size]="14" [class]="imp.demandaEnviada ? 'text-success-fg' : 'text-muted-foreground'" />
+        </li>
+        <li class="flex items-center justify-between">
+          <span class="text-muted-foreground">Burofax aviso corte</span>
+          <ui-icon [name]="imp.burofaxAvisoCorte ? 'check' : 'x'" [size]="14" [class]="imp.burofaxAvisoCorte ? 'text-warning-fg' : 'text-muted-foreground'" />
+        </li>
+        <li class="flex items-center justify-between">
+          <span class="text-muted-foreground">ASNEF</span>
+          <ui-icon [name]="imp.asnef ? 'check' : 'x'" [size]="14" [class]="imp.asnef ? 'text-danger-fg' : 'text-muted-foreground'" />
+        </li>
+      </ul>
+    </div>
+
+    <!-- Promesa de pago -->
+    @if (imp.promesaFecha) {
+      <div class="bg-success-soft border border-success/20 rounded-xl p-5">
+        <h3 class="text-sm font-semibold text-success-fg mb-3 flex items-center gap-2">
+          <ui-icon name="calendar-check" [size]="14" />
+          Promesa de pago
+        </h3>
+        <p class="text-sm"><span class="text-muted-foreground">Fecha:</span> {{ fmt(imp.promesaFecha) }}</p>
+        @if (imp.promesaImporte) {
+          <p class="text-sm"><span class="text-muted-foreground">Importe:</span> {{ formatEur(imp.promesaImporte) }}</p>
+        }
+        <p class="text-sm">
+          <span class="text-muted-foreground">Cumplida:</span>
+          <ui-icon [name]="imp.promesaCumplida ? 'check' : 'x'" [size]="12" class="inline ml-1" />
+        </p>
+      </div>
+    }
+
+    <!-- Corte alert -->
+    @if (imp.corteAlertDate) {
+      <div class="bg-warning-soft border border-warning/20 rounded-xl p-5">
+        <h3 class="text-sm font-semibold text-warning-fg mb-2 flex items-center gap-2">
+          <ui-icon name="scissors" [size]="14" />
+          Alerta de corte
+        </h3>
+        <p class="text-sm">Programada: {{ fmt(imp.corteAlertDate) }}</p>
+        @if (imp.skipCorteAlert) {
+          <p class="text-xs text-muted-foreground mt-1">Omitida</p>
+        }
+      </div>
+    }
+
+    <!-- Next action -->
+    @if (imp.nextActionDate) {
+      <div class="bg-info-soft border border-info/20 rounded-xl p-5">
+        <h3 class="text-sm font-semibold text-info-fg mb-2 flex items-center gap-2">
+          <ui-icon name="clock" [size]="14" />
+          Próxima acción
+        </h3>
+        <p class="text-sm">{{ fmt(imp.nextActionDate) }}</p>
+      </div>
+    }
+  </div>
+</div>
+
+}
+
+<!-- Estado dialog -->
+<app-form-dialog
+  [open]="estadoDialogOpen()"
+  title="Cambiar estado"
+  icon="edit"
+  [saving]="estadoSubmitting()"
+  [canSave]="estadoForm.valid"
+  [errorMessage]="estadoError()"
+  saveLabel="Guardar"
+  (cancel)="estadoDialogOpen.set(false)"
+  (save)="submitEstado()"
+>
+  <form [formGroup]="estadoForm" class="space-y-4">
+    <div>
+      <label class="block text-sm font-medium text-foreground mb-1">Estado *</label>
+      <select formControlName="estado"
+        class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary">
+        @for (s of estadoValues; track s) {
+          <option [value]="s">{{ estadoLabel[s] }}</option>
+        }
+      </select>
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-foreground mb-1">Notas</label>
+      <textarea formControlName="notas" rows="3"
+        class="w-full px-3 py-2 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary resize-none">
+      </textarea>
+    </div>
+  </form>
+</app-form-dialog>
+
+<!-- Contacto dialog -->
+<app-form-dialog
+  [open]="contactoDialogOpen()"
+  title="Registrar contacto"
+  icon="phone"
+  [saving]="contactoSubmitting()"
+  [canSave]="contactoForm.valid"
+  [errorMessage]="contactoError()"
+  saveLabel="Registrar"
+  (cancel)="contactoDialogOpen.set(false)"
+  (save)="submitContacto()"
+>
+  <form [formGroup]="contactoForm" class="space-y-4">
+    <div>
+      <label class="block text-sm font-medium text-foreground mb-1">Tipo de acción *</label>
+      <select formControlName="actionKey"
+        class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary">
+        <option value="llamada">Llamada</option>
+        <option value="email">Email</option>
+        <option value="whatsapp">WhatsApp</option>
+        <option value="aviso_corte">Aviso de corte</option>
+        <option value="promesa">Promesa de pago</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-foreground mb-1">Notas</label>
+      <textarea formControlName="notes" rows="3"
+        class="w-full px-3 py-2 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary resize-none">
+      </textarea>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium text-foreground mb-1">Fecha promesa</label>
+        <input type="date" formControlName="promesaFecha"
+          class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-foreground mb-1">Importe promesa</label>
+        <input type="number" formControlName="promesaImporte" min="0" step="0.01"
+          class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary" />
+      </div>
+    </div>
+  </form>
+</app-form-dialog>
+
+<!-- Acción dialog -->
+<app-form-dialog
+  [open]="accionDialogOpen()"
+  title="Nueva acción de cobranza"
+  icon="clock"
+  [saving]="accionSubmitting()"
+  [canSave]="accionForm.valid"
+  [errorMessage]="accionError()"
+  saveLabel="Registrar"
+  (cancel)="accionDialogOpen.set(false)"
+  (save)="submitAccion()"
+>
+  <form [formGroup]="accionForm" class="space-y-4">
+    <div>
+      <label class="block text-sm font-medium text-foreground mb-1">Tipo *</label>
+      <select formControlName="tipoAccion"
+        class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary">
+        @for (t of tipoAccionValues; track t) {
+          <option [value]="t">{{ tipoAccionLabel[t] }}</option>
+        }
+      </select>
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-foreground mb-1">Resultado</label>
+      <select formControlName="resultado"
+        class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary">
+        <option value="">—</option>
+        @for (r of resultadoValues; track r) {
+          <option [value]="r">{{ resultadoLabel[r] }}</option>
+        }
+      </select>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium text-foreground mb-1">Importe cobrado</label>
+        <input type="number" formControlName="importeCobrado" min="0" step="0.01"
+          class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-foreground mb-1">Próxima acción</label>
+        <input type="date" formControlName="nextActionDate"
+          class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary" />
+      </div>
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-foreground mb-1">Notas</label>
+      <textarea formControlName="notas" rows="3"
+        class="w-full px-3 py-2 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary resize-none">
+      </textarea>
+    </div>
+  </form>
+</app-form-dialog>

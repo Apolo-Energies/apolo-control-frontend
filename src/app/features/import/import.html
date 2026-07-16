@@ -67,6 +67,16 @@
       <ui-icon name="refresh-cw" [size]="14" />
       Cambios
     </button>
+    <button type="button"
+      (click)="activeTab.set('impagos')"
+      [class.bg-background]="activeTab() === 'impagos'"
+      [class.shadow-sm]="activeTab() === 'impagos'"
+      [class.text-foreground]="activeTab() === 'impagos'"
+      [class.text-muted-foreground]="activeTab() !== 'impagos'"
+      class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all">
+      <ui-icon name="receipt-x" [size]="14" />
+      Impagos Base44
+    </button>
   </div>
 
   <!-- ══════════════ TAB: ContratosServicios ══════════════ -->
@@ -275,6 +285,127 @@
   }
 
 </div>
+
+  <!-- ══════════════ TAB: Impagos Base44 ══════════════ -->
+  @if (activeTab() === 'impagos') {
+    <!-- Fichero 1: Clientes -->
+    <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">1. Client_export.csv</p>
+    @if (!clientesFile()) {
+      <label class="flex flex-col items-center justify-center gap-3 h-36 rounded-xl border-2 border-dashed border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+        (dragover)="$event.preventDefault()" (drop)="onClientesDrop($event)">
+        <ui-icon name="users" [size]="28" class="text-muted-foreground" />
+        <div class="text-center">
+          <p class="text-sm font-medium text-foreground">Clientes deudores</p>
+          <p class="text-xs text-muted-foreground mt-0.5">Client_export.csv</p>
+        </div>
+        <input type="file" accept=".csv" class="hidden" (change)="onClientesFileChange($event)" />
+      </label>
+    } @else {
+      <ng-container *ngTemplateOutlet="fileCard; context: { file: clientesFile(), clear: clientesFile.set.bind(clientesFile, null) }" />
+    }
+
+    <!-- Fichero 2: Impagos -->
+    <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">2. Unpaid_export.csv</p>
+    @if (!impagoFile()) {
+      <label class="flex flex-col items-center justify-center gap-3 h-36 rounded-xl border-2 border-dashed border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+        (dragover)="$event.preventDefault()" (drop)="onImpagoDrop($event)">
+        <ui-icon name="receipt-x" [size]="28" class="text-muted-foreground" />
+        <div class="text-center">
+          <p class="text-sm font-medium text-foreground">Impagos</p>
+          <p class="text-xs text-muted-foreground mt-0.5">Unpaid_export.csv</p>
+        </div>
+        <input type="file" accept=".csv" class="hidden" (change)="onImpagoFileChange($event)" />
+      </label>
+    } @else {
+      <ng-container *ngTemplateOutlet="fileCard; context: { file: impagoFile(), clear: impagoFile.set.bind(impagoFile, null) }" />
+    }
+
+    <!-- Fichero 3: Acciones -->
+    <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">3. CollectionAction_export.csv</p>
+    @if (!accionesFile()) {
+      <label class="flex flex-col items-center justify-center gap-3 h-36 rounded-xl border-2 border-dashed border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+        (dragover)="$event.preventDefault()" (drop)="onAccionesDrop($event)">
+        <ui-icon name="calendar-check" [size]="28" class="text-muted-foreground" />
+        <div class="text-center">
+          <p class="text-sm font-medium text-foreground">Acciones de cobranza</p>
+          <p class="text-xs text-muted-foreground mt-0.5">CollectionAction_export.csv</p>
+        </div>
+        <input type="file" accept=".csv" class="hidden" (change)="onAccionesFileChange($event)" />
+      </label>
+    } @else {
+      <ng-container *ngTemplateOutlet="fileCard; context: { file: accionesFile(), clear: accionesFile.set.bind(accionesFile, null) }" />
+    }
+
+    <!-- Botón importar -->
+    <button type="button" (click)="ejecutarImportImpagos()"
+      [disabled]="impagosLoading() || !clientesFile() || !impagoFile() || !accionesFile()"
+      class="inline-flex items-center gap-2 h-9 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
+      @if (impagosLoading()) {
+        <ui-icon name="loader" [size]="14" class="animate-spin" /> Importando…
+      } @else {
+        <ui-icon name="upload" [size]="14" /> Importar impagos Base44
+      }
+    </button>
+
+    @if (impagosError()) {
+      <div class="rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+        {{ impagosError() }}
+      </div>
+    }
+
+    @if (impagosResults()) {
+      <div class="space-y-3">
+        @for (r of impagosResults()!; track r.entityName) {
+          <div class="rounded-xl border overflow-hidden"
+            [class.border-success/40]="r.status === 'SUCCESS'"
+            [class.border-warning/40]="r.status === 'PARTIAL'"
+            [class.border-destructive/40]="r.status === 'FAILED'">
+            <div class="flex items-center justify-between px-4 py-2 bg-muted/30 border-b border-border">
+              <p class="text-sm font-semibold text-foreground">{{ r.entityName }}</p>
+              <span class="text-xs font-medium" [class]="impagosStatusClass(r.status)">{{ r.status }}</span>
+            </div>
+            <div class="flex divide-x divide-border">
+              <div class="flex-1 px-3 py-3 text-center">
+                <p class="text-xl font-bold text-foreground">{{ r.totalRecords }}</p>
+                <p class="text-xs text-muted-foreground mt-0.5">Total</p>
+              </div>
+              <div class="flex-1 px-3 py-3 text-center">
+                <p class="text-xl font-bold text-success">{{ r.successCount }}</p>
+                <p class="text-xs text-muted-foreground mt-0.5">Importados</p>
+              </div>
+              <div class="flex-1 px-3 py-3 text-center">
+                <p class="text-xl font-bold text-muted-foreground">{{ r.skippedCount }}</p>
+                <p class="text-xs text-muted-foreground mt-0.5">Omitidos</p>
+              </div>
+              <div class="flex-1 px-3 py-3 text-center">
+                <p class="text-xl font-bold" [class.text-destructive]="r.errorCount > 0" [class.text-muted-foreground]="r.errorCount === 0">{{ r.errorCount }}</p>
+                <p class="text-xs text-muted-foreground mt-0.5">Errores</p>
+              </div>
+              <div class="flex-1 px-3 py-3 text-center">
+                <p class="text-sm font-medium text-muted-foreground">{{ r.durationMs }}ms</p>
+                <p class="text-xs text-muted-foreground mt-0.5">Duración</p>
+              </div>
+            </div>
+            @if (r.errorMessage) {
+              <div class="border-t border-border bg-destructive/5 px-4 py-2 text-xs text-destructive font-mono">
+                {{ r.errorMessage }}
+              </div>
+            }
+            @if (r.clientesCreados && r.clientesCreados.length > 0) {
+              <div class="border-t border-border bg-warning/5 px-4 py-2">
+                <p class="text-xs font-medium text-warning mb-1">Clientes creados automáticamente ({{ r.clientesCreados.length }}):</p>
+                <ul class="space-y-0.5 max-h-32 overflow-y-auto">
+                  @for (c of r.clientesCreados; track $index) {
+                    <li class="text-xs font-mono text-muted-foreground">{{ c }}</li>
+                  }
+                </ul>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  }
 
 <!-- ════════ Shared templates ════════ -->
 <ng-template #fileCard let-file="file" let-clear="clear">

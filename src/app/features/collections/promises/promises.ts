@@ -17,7 +17,7 @@ import { GlobalLoadingService } from '../../../core/services/global-loading.serv
 import {
   GestionImpago,
   EstadoGestionImpago, GestionImpagoActualizarEstadoPayload,
-  ESTADO_GESTION_IMPAGO_LABEL,
+  ESTADO_GESTION_IMPAGO_LABEL, PRIORIDAD_GESTION_IMPAGO_LABEL,
 } from '../../../core/models';
 
 function extractMessage(err: HttpErrorResponse): string {
@@ -25,12 +25,12 @@ function extractMessage(err: HttpErrorResponse): string {
 }
 
 @Component({
-  selector: 'app-formal-agreement',
+  selector: 'app-promises',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [PageHeader, TableSkeleton, StatusBadge, KpiCard, EmptyState, Icon, RouterLink],
-  templateUrl: './formal-agreement.html',
+  templateUrl: './promises.html',
 })
-export class FormalAgreement {
+export class Promises {
   private readonly service       = inject(GestionImpagoService);
   private readonly notify        = inject(NotificationService);
   private readonly globalLoading = inject(GlobalLoadingService);
@@ -40,70 +40,69 @@ export class FormalAgreement {
   protected readonly rows       = signal<GestionImpago[]>([]);
   protected readonly error      = signal<string | null>(null);
   protected updatingId          = signal<string | null>(null);
-  protected enviandoId          = signal<string | null>(null);
 
-  // ── Derived ───────────────────────────────────────────────────────────────
-  protected readonly pendientesEnvio = computed(() =>
-    this.rows().filter(r => !r.ovcEnviado)
-  );
+  // ── Today for overdue check ───────────────────────────────────────────────
+  protected readonly today = new Date().toISOString().slice(0, 10);
 
   // ── Constants ─────────────────────────────────────────────────────────────
-  protected readonly estadoLabel = ESTADO_GESTION_IMPAGO_LABEL;
+  protected readonly estadoLabel    = ESTADO_GESTION_IMPAGO_LABEL;
+  protected readonly prioridadLabel = PRIORIDAD_GESTION_IMPAGO_LABEL;
+
+  // ── Computed KPIs ─────────────────────────────────────────────────────────
+  protected readonly vencidas     = computed(() =>
+    this.rows().filter(r => r.promesaFecha && r.promesaFecha < this.today && !r.promesaCumplida).length,
+  );
+  protected readonly cumplidas    = computed(() => this.rows().filter(r => r.promesaCumplida).length);
+  protected readonly totalImporte = computed(() =>
+    this.rows().reduce((s, r) => s + (r.promesaImporte ?? r.importePendiente), 0),
+  );
 
   constructor() { this.load(); }
 
   // ── Load ──────────────────────────────────────────────────────────────────
   protected load(): void {
     this.loading.set(true);
-    this.service.ovc().subscribe({
+    this.service.promesas().subscribe({
       next:  (list) => { this.rows.set(list); this.loading.set(false); },
       error: (err: HttpErrorResponse) => { this.error.set(extractMessage(err)); this.loading.set(false); },
     });
   }
 
-  // ── Estado update ─────────────────────────────────────────────────────────
-  protected actualizarEstado(r: GestionImpago, estado: EstadoGestionImpago): void {
+  // ── Mark fulfilled ────────────────────────────────────────────────────────
+  protected marcarPagado(r: GestionImpago): void {
     this.updatingId.set(r.id);
-    const payload: GestionImpagoActualizarEstadoPayload = { estado };
+    const payload: GestionImpagoActualizarEstadoPayload = { estado: 'pagado' };
     this.globalLoading.start('Actualizando', '');
     this.service.actualizarEstado(r.id, payload).subscribe({
       next: (updated) => {
         this.updatingId.set(null);
         this.globalLoading.stop();
-        this.notify.success('Estado actualizado');
+        this.notify.success('Marcado como pagado');
         this.rows.update(list => list.map(item => item.id === updated.id ? updated : item));
       },
       error: (err: HttpErrorResponse) => {
         this.updatingId.set(null);
         this.globalLoading.stop();
-        this.notify.error(extractMessage(err));
-      },
-    });
-  }
-
-  // ── Marcar enviado ────────────────────────────────────────────────────────
-  protected marcarEnviado(r: GestionImpago): void {
-    this.enviandoId.set(r.id);
-    this.service.marcarOvcEnviado(r.id).subscribe({
-      next: (updated) => {
-        this.enviandoId.set(null);
-        this.rows.update(list => list.map(item => item.id === updated.id ? updated : item));
-        this.notify.success('OVC marcado como enviado');
-      },
-      error: (err: HttpErrorResponse) => {
-        this.enviandoId.set(null);
         this.notify.error(extractMessage(err));
       },
     });
   }
 
   // ── Display helpers ───────────────────────────────────────────────────────
+  protected isOverdue(r: GestionImpago): boolean {
+    return !!r.promesaFecha && r.promesaFecha < this.today && !r.promesaCumplida;
+  }
+
   protected estadoTone(estado: EstadoGestionImpago): StatusTone {
     switch (estado) {
-      case 'ovc':     return 'purple';
-      case 'pagado':  return 'success';
-      case 'demanda': return 'danger';
-      default:        return 'neutral';
+      case 'pagado':       return 'success';
+      case 'va_a_pagar':  return 'info';
+      case 'acuerdo_pago':return 'info';
+      case 'aviso_corte': return 'warning';
+      case 'cortado':     return 'danger';
+      case 'ovc':         return 'purple';
+      case 'demanda':     return 'danger';
+      default:            return 'neutral';
     }
   }
 
@@ -113,9 +112,5 @@ export class FormalAgreement {
 
   protected fmt(v: string | null): string {
     return v ? new Date(v).toLocaleDateString('es-ES') : '—';
-  }
-
-  protected get totalDeuda(): number {
-    return this.rows().reduce((s, r) => s + r.importePendiente, 0);
   }
 }

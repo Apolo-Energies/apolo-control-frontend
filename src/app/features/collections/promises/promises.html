@@ -1,4 +1,4 @@
-<app-page-header title="Demandas" subtitle="Casos en proceso judicial — seguimiento de expedientes">
+<app-page-header title="Promesas de Pago" subtitle="Seguimiento de compromisos de pago acordados con clientes">
   <button type="button" (click)="load()"
     class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
     <ui-icon name="refresh-cw" [size]="14" />
@@ -8,19 +8,19 @@
 
 <!-- KPI row -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-  <app-kpi-card label="Total demandas" [value]="rows().length" icon="scale" tone="danger" />
-  <app-kpi-card label="Deuda en litigio" [value]="formatEur(totalDeuda())" icon="euro" tone="danger" />
-  <app-kpi-card label="Demandas preparadas" [value]="preparadas()" icon="file-text" tone="warning" />
-  <app-kpi-card label="Demandas enviadas" [value]="enviadas()" icon="check" tone="success" />
+  <app-kpi-card label="Total promesas" [value]="rows().length" icon="calendar-check" tone="info" />
+  <app-kpi-card label="Vencidas sin cumplir" [value]="vencidas()" icon="alert-triangle" tone="danger" />
+  <app-kpi-card label="Cumplidas" [value]="cumplidas()" icon="check" tone="success" />
+  <app-kpi-card label="Importe total" [value]="formatEur(totalImporte())" icon="euro" tone="warning" />
 </div>
 
 <!-- Table -->
 @if (loading()) {
-  <app-table-skeleton [cols]="8" [rows]="8" />
+  <app-table-skeleton [cols]="7" [rows]="8" />
 } @else if (error(); as msg) {
   <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm">{{ msg }}</div>
 } @else if (rows().length === 0) {
-  <app-empty-state icon="scale" title="Sin demandas" description="No hay expedientes en proceso judicial actualmente." />
+  <app-empty-state icon="calendar-check" title="Sin promesas" description="No hay promesas de pago registradas actualmente." />
 } @else {
   <div class="bg-card border border-border rounded-xl overflow-hidden">
     <div class="overflow-x-auto">
@@ -29,17 +29,18 @@
           <tr>
             <th class="px-4 py-3 text-left font-semibold">Cliente</th>
             <th class="px-4 py-3 text-left font-semibold">Factura</th>
-            <th class="px-4 py-3 text-right font-semibold">Pendiente</th>
-            <th class="px-4 py-3 text-center font-semibold">Preparada</th>
-            <th class="px-4 py-3 text-center font-semibold">Enviada</th>
-            <th class="px-4 py-3 text-center font-semibold">M+1</th>
-            <th class="px-4 py-3 text-center font-semibold">Judicial</th>
+            <th class="px-4 py-3 text-right font-semibold">Importe</th>
+            <th class="px-4 py-3 text-right font-semibold">Prometido</th>
+            <th class="px-4 py-3 text-left font-semibold">Fecha promesa</th>
+            <th class="px-4 py-3 text-left font-semibold">Estado</th>
             <th class="px-4 py-3 text-right font-semibold w-28">Acciones</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-border/40">
           @for (r of rows(); track r.id) {
-            <tr class="hover:bg-accent/20 transition-colors">
+            <tr class="hover:bg-accent/20 transition-colors"
+              [class.bg-danger-soft]="isOverdue(r)"
+              [class.bg-success-soft]="r.promesaCumplida">
               <td class="px-4 py-3 max-w-[200px]">
                 <p class="font-medium text-foreground truncate" [title]="r.clienteNombre ?? r.clienteId">
                   {{ r.clienteNombre ?? r.clienteId }}
@@ -49,35 +50,31 @@
                 }
               </td>
               <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">{{ r.numeroFactura ?? '—' }}</td>
+              <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">{{ formatEur(r.importePendiente) }}</td>
               <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">
-                <span class="text-danger-fg font-semibold">{{ formatEur(r.importePendiente) }}</span>
-              </td>
-              <td class="px-4 py-3 text-center text-sm">
-                @if (r.demandaPreparada) {
-                  <span class="text-success-fg font-semibold">✓</span>
+                @if (r.promesaImporte) {
+                  <span class="font-semibold">{{ formatEur(r.promesaImporte) }}</span>
                 } @else {
                   <span class="text-muted-foreground">—</span>
                 }
               </td>
-              <td class="px-4 py-3 text-center text-sm">
-                @if (r.demandaEnviada) {
-                  <span class="text-success-fg font-semibold">✓</span>
+              <td class="px-4 py-3 text-xs whitespace-nowrap">
+                @if (r.promesaFecha) {
+                  <span [class.text-danger-fg]="isOverdue(r)" [class.font-semibold]="isOverdue(r)">
+                    {{ fmt(r.promesaFecha) }}
+                  </span>
+                  @if (isOverdue(r)) {
+                    <span class="block text-danger-fg text-[10px]">Vencida</span>
+                  }
                 } @else {
                   <span class="text-muted-foreground">—</span>
                 }
               </td>
-              <td class="px-4 py-3 text-center text-sm">
-                @if (r.demandaM1) {
-                  <span class="text-warning-fg font-semibold">✓</span>
+              <td class="px-4 py-3">
+                @if (r.promesaCumplida) {
+                  <app-status-badge tone="success">Cumplida</app-status-badge>
                 } @else {
-                  <span class="text-muted-foreground">—</span>
-                }
-              </td>
-              <td class="px-4 py-3 text-center text-sm">
-                @if (r.procesoJudicialGestionado) {
-                  <span class="text-purple-fg font-semibold">✓</span>
-                } @else {
-                  <span class="text-muted-foreground">—</span>
+                  <app-status-badge [tone]="estadoTone(r.estado)">{{ estadoLabel[r.estado] }}</app-status-badge>
                 }
               </td>
               <td class="px-4 py-3">
@@ -86,11 +83,13 @@
                     class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
                     <ui-icon name="eye" [size]="13" />
                   </a>
-                  <button type="button" (click)="actualizarEstado(r, 'pagado')"
-                    [disabled]="updatingId() === r.id"
-                    class="h-7 px-2 inline-flex items-center gap-1 rounded-md border border-success/30 text-success-fg hover:bg-success-soft transition-colors text-xs disabled:opacity-40">
-                    Pagado
-                  </button>
+                  @if (!r.promesaCumplida) {
+                    <button type="button" (click)="marcarPagado(r)"
+                      [disabled]="updatingId() === r.id"
+                      class="h-7 px-2 inline-flex items-center gap-1 rounded-md border border-success/30 text-success-fg hover:bg-success-soft transition-colors text-xs disabled:opacity-40">
+                      Pagado
+                    </button>
+                  }
                 </div>
               </td>
             </tr>

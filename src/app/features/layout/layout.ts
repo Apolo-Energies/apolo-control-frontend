@@ -34,7 +34,8 @@ export class Layout {
         items: [{ label: 'Dashboard', url: '/dashboard', icon: 'layout-dashboard' }],
       },
       {
-        title: 'GESTIÓN',
+        title: 'CONTROL',
+        collapsible: true,
         items: [
           {
             label: 'Contratos', url: '/contracts', icon: 'file-text',
@@ -51,6 +52,24 @@ export class Layout {
           { label: 'Pagos y Liquid.', url: '/pagos-liquidacion', icon: 'wallet' },
           { label: 'Rechazos e Incid.', url: '/rechazos', icon: 'alert-triangle' },
           { label: 'Cambios', url: '/cambios', icon: 'refresh-cw' },
+        ],
+      },
+      {
+        title: 'IMPAGOS',
+        items: [
+          { label: 'Dashboard', url: '/collections/dashboard', icon: 'bar-chart-2' as const },
+          { label: 'Todos los impagos', url: '/collections/unpaid', icon: 'receipt-x' as const },
+          {
+            label: 'Por estado', url: '/collections/verbal-agreement', icon: 'folder-open' as const,
+            children: [
+              { label: 'Acuerdo Verbal', url: '/collections/verbal-agreement', icon: 'handshake' as const },
+              { label: 'Aviso / Corte', url: '/collections/disconnection', icon: 'scissors' as const },
+              { label: 'OVC', url: '/collections/formal-agreement', icon: 'shield' as const },
+              { label: 'Demanda', url: '/collections/lawsuits', icon: 'scale' as const },
+            ],
+          },
+          { label: 'Promesas de pago', url: '/collections/promises', icon: 'calendar-check' as const },
+          { label: 'Clientes deudores', url: '/collections/clients', icon: 'users' as const },
         ],
       },
       {

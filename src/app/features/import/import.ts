@@ -2,7 +2,7 @@ import {
   ChangeDetectionStrategy, Component, inject, signal,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 
 import { PageHeader } from '../../shared/components/page-header/page-header';
 import { Icon } from '../../shared/icons/icon';
@@ -11,8 +11,21 @@ import {
   ContratosServiciosImportService,
   ImportResult,
 } from '../../core/services/contratos-servicios-import.service';
+import { environment } from '../../../environments/environment';
 
-type Tab = 'contratos' | 'ventas' | 'rechazos' | 'pagos' | 'facturas' | 'cambios';
+type Tab = 'contratos' | 'ventas' | 'rechazos' | 'pagos' | 'facturas' | 'cambios' | 'impagos';
+
+interface MigrationResult {
+  entityName: string;
+  totalRecords: number;
+  successCount: number;
+  errorCount: number;
+  skippedCount: number;
+  durationMs: number;
+  status: string;
+  errorMessage?: string;
+  clientesCreados?: string[];
+}
 
 @Component({
   selector: 'app-import',
@@ -22,7 +35,8 @@ type Tab = 'contratos' | 'ventas' | 'rechazos' | 'pagos' | 'facturas' | 'cambios
 })
 export class Import {
   private readonly importService = inject(ContratosServiciosImportService);
-  private readonly notify = inject(NotificationService);
+  private readonly http          = inject(HttpClient);
+  private readonly notify        = inject(NotificationService);
 
   protected readonly activeTab = signal<Tab>('contratos');
 
@@ -246,6 +260,74 @@ export class Import {
         this.notify.error((err.error as { message?: string })?.message ?? 'Error en la importación');
       },
     });
+  }
+
+  // ── Impagos Base44 (multipart) ───────────────────────────────────
+  protected readonly clientesFile   = signal<File | null>(null);
+  protected readonly impagoFile     = signal<File | null>(null);
+  protected readonly accionesFile   = signal<File | null>(null);
+  protected readonly impagosLoading = signal(false);
+  protected readonly impagosResults = signal<MigrationResult[] | null>(null);
+  protected readonly impagosError   = signal<string | null>(null);
+
+  protected onClientesFileChange(e: Event): void {
+    const f = (e.target as HTMLInputElement).files?.[0] ?? null;
+    this.clientesFile.set(f); this.impagosResults.set(null);
+  }
+  protected onImpagoFileChange(e: Event): void {
+    const f = (e.target as HTMLInputElement).files?.[0] ?? null;
+    this.impagoFile.set(f); this.impagosResults.set(null);
+  }
+  protected onAccionesFileChange(e: Event): void {
+    const f = (e.target as HTMLInputElement).files?.[0] ?? null;
+    this.accionesFile.set(f); this.impagosResults.set(null);
+  }
+
+  protected onClientesDrop(e: DragEvent): void {
+    e.preventDefault();
+    const f = e.dataTransfer?.files?.[0] ?? null;
+    if (f) { this.clientesFile.set(f); this.impagosResults.set(null); }
+  }
+  protected onImpagoDrop(e: DragEvent): void {
+    e.preventDefault();
+    const f = e.dataTransfer?.files?.[0] ?? null;
+    if (f) { this.impagoFile.set(f); this.impagosResults.set(null); }
+  }
+  protected onAccionesDrop(e: DragEvent): void {
+    e.preventDefault();
+    const f = e.dataTransfer?.files?.[0] ?? null;
+    if (f) { this.accionesFile.set(f); this.impagosResults.set(null); }
+  }
+
+  protected ejecutarImportImpagos(): void {
+    const c = this.clientesFile(), imp = this.impagoFile(), acc = this.accionesFile();
+    if (!c || !imp || !acc) return;
+    this.impagosLoading.set(true);
+    this.impagosResults.set(null);
+    this.impagosError.set(null);
+    const fd = new FormData();
+    fd.append('clientes', c);
+    fd.append('impagos', imp);
+    fd.append('acciones', acc);
+    this.http.post<MigrationResult[]>(`${environment.apiUrl}/admin/migration/execute-gestion-impago-base44`, fd).subscribe({
+      next: (results) => {
+        this.impagosLoading.set(false);
+        this.impagosResults.set(results);
+        const total = results.reduce((s, r) => s + r.successCount, 0);
+        const errs  = results.reduce((s, r) => s + r.errorCount, 0);
+        if (errs === 0) this.notify.success(`Importación completada: ${total} registros importados`);
+        else this.notify.error(`Importación con errores: ${errs} fallos, ${total} importados`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.impagosLoading.set(false);
+        this.impagosError.set((err.error as { message?: string })?.message ?? 'Error en la importación');
+        this.notify.error('Error al importar datos de impagos');
+      },
+    });
+  }
+
+  protected impagosStatusClass(status: string): string {
+    return status === 'SUCCESS' ? 'text-success' : status === 'PARTIAL' ? 'text-warning' : 'text-destructive';
   }
 
   // ── Utilities ───────────────────────────────────────────────────

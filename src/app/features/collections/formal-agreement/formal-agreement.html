@@ -1,17 +1,120 @@
-<app-placeholder-page
-  title="Acuerdo Formal (OVC)"
-  subtitle="Gestión de casos OVC — predemanda formal"
-  icon="shield"
-  [highlights]="[
-    { label: 'Total casos',    value: 74 },
-    { label: 'Pdte. enviar',   value: 2,  hint: 'Acción requerida' },
-    { label: 'Enviados',       value: 72 },
-    { label: 'Deuda total',    value: '67.395,39 €' }
-  ]"
-  [capabilities]="[
-    'Bandeja de pendientes con CTA Marcar enviado',
-    'Listado completo con filtros por colaborador y fecha',
-    'Exportación a CSV',
-    'Estado dual: Predemanda · Demanda M+1'
-  ]"
-/>
+<app-page-header title="Acuerdo Formal (OVC)" subtitle="Casos en acuerdo formal con orden de vía de cobro">
+  <button type="button" (click)="load()"
+    class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
+    <ui-icon name="refresh-cw" [size]="14" />
+    Actualizar
+  </button>
+</app-page-header>
+
+<!-- KPI row -->
+<div class="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+  <app-kpi-card label="Total casos OVC" [value]="rows().length" icon="shield" tone="purple" />
+  <app-kpi-card label="Deuda pendiente" [value]="formatEur(totalDeuda)" icon="euro" tone="danger" />
+  <app-kpi-card label="Con predemanda" [value]="rows().filter(r => r.ovcPredemanda).length" icon="alert-triangle" tone="warning" />
+</div>
+
+<!-- Banner: OVC pendientes de enviar -->
+@if (!loading() && pendientesEnvio().length > 0) {
+  <div class="mb-5 rounded-xl border border-warning/40 bg-warning-soft p-4">
+    <p class="flex items-center gap-2 text-sm font-semibold text-warning-fg mb-3">
+      <ui-icon name="alert-triangle" [size]="16" />
+      OVC pendientes de enviar ({{ pendientesEnvio().length }})
+    </p>
+    <div class="space-y-2">
+      @for (r of pendientesEnvio(); track r.id) {
+        <div class="flex items-center gap-3 rounded-lg bg-card border border-warning/20 px-4 py-2.5">
+          <span class="flex-1 font-medium text-sm text-foreground truncate">
+            {{ r.clienteNombre ?? r.clienteId }}
+          </span>
+          <span class="font-mono text-xs text-muted-foreground whitespace-nowrap">
+            {{ r.numeroFactura ?? '—' }}
+          </span>
+          <span class="font-mono text-xs text-foreground font-semibold whitespace-nowrap">
+            {{ formatEur(r.importe) }}
+          </span>
+          <button type="button"
+            (click)="marcarEnviado(r)"
+            [disabled]="enviandoId() === r.id"
+            class="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-40 whitespace-nowrap">
+            <ui-icon name="mail" [size]="13" />
+            Marcar enviado
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<!-- Table -->
+@if (loading()) {
+  <app-table-skeleton [cols]="7" [rows]="8" />
+} @else if (error(); as msg) {
+  <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm">{{ msg }}</div>
+} @else if (rows().length === 0) {
+  <app-empty-state icon="shield" title="Sin casos OVC" description="No hay expedientes en acuerdo formal actualmente." />
+} @else {
+  <div class="bg-card border border-border rounded-xl overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">Cliente</th>
+            <th class="px-4 py-3 text-left font-semibold">Factura</th>
+            <th class="px-4 py-3 text-right font-semibold">Importe</th>
+            <th class="px-4 py-3 text-right font-semibold">Pendiente</th>
+            <th class="px-4 py-3 text-left font-semibold">Inicio OVC</th>
+            <th class="px-4 py-3 text-left font-semibold">Predemanda</th>
+            <th class="px-4 py-3 text-right font-semibold w-36">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          @for (r of rows(); track r.id) {
+            <tr class="hover:bg-accent/20 transition-colors">
+              <td class="px-4 py-3 max-w-[200px]">
+                <p class="font-medium text-foreground truncate" [title]="r.clienteNombre ?? r.clienteId">
+                  {{ r.clienteNombre ?? r.clienteId }}
+                </p>
+                @if (r.clienteNif) {
+                  <p class="text-xs text-muted-foreground font-mono">{{ r.clienteNif }}</p>
+                }
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">{{ r.numeroFactura ?? '—' }}</td>
+              <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">{{ formatEur(r.importe) }}</td>
+              <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">
+                <span class="text-danger-fg font-semibold">{{ formatEur(r.importePendiente) }}</span>
+              </td>
+              <td class="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                {{ fmt(r.ovcStartDate) }}
+              </td>
+              <td class="px-4 py-3">
+                @if (r.ovcPredemanda) {
+                  <app-status-badge tone="warning">Predemanda</app-status-badge>
+                } @else {
+                  <span class="text-xs text-muted-foreground">—</span>
+                }
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex justify-end gap-1.5">
+                  <a [routerLink]="['/collections/unpaid', r.id]"
+                    class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
+                    <ui-icon name="eye" [size]="13" />
+                  </a>
+                  <button type="button" (click)="actualizarEstado(r, 'demanda')"
+                    [disabled]="updatingId() === r.id"
+                    class="h-7 px-2 inline-flex items-center gap-1 rounded-md border border-danger/30 text-danger-fg hover:bg-danger-soft transition-colors text-xs disabled:opacity-40">
+                    Demanda
+                  </button>
+                  <button type="button" (click)="actualizarEstado(r, 'pagado')"
+                    [disabled]="updatingId() === r.id"
+                    class="h-7 px-2 inline-flex items-center gap-1 rounded-md border border-success/30 text-success-fg hover:bg-success-soft transition-colors text-xs disabled:opacity-40">
+                    Pagado
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}

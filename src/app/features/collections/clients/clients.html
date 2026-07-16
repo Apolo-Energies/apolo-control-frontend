@@ -1,0 +1,182 @@
+<app-page-header title="Clientes Deudores" subtitle="Gestión de clientes con facturas impagadas">
+  <button type="button" (click)="openCreate()"
+    class="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
+    <ui-icon name="plus" [size]="15" />
+    Nuevo cliente
+  </button>
+</app-page-header>
+
+<!-- Filters -->
+<div class="flex flex-wrap gap-2 mb-4">
+  <input type="text" [(ngModel)]="q" placeholder="Buscar por nombre, empresa o NIF…"
+    class="h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-48" />
+  <button type="button" (click)="applyFilters()"
+    class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
+    <ui-icon name="search" [size]="14" />
+    Buscar
+  </button>
+  <button type="button" (click)="clearFilters()"
+    class="h-9 px-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
+    Limpiar
+  </button>
+</div>
+
+<!-- Table -->
+@if (loading() && !result()) {
+  <app-table-skeleton [cols]="8" [rows]="8" />
+} @else if (error(); as msg) {
+  <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm">{{ msg }}</div>
+} @else {
+  <div class="bg-card border border-border rounded-xl overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">Nombre</th>
+            <th class="px-4 py-3 text-left font-semibold">Empresa</th>
+            <th class="px-4 py-3 text-left font-semibold">NIF</th>
+            <th class="px-4 py-3 text-left font-semibold">Email</th>
+            <th class="px-4 py-3 text-left font-semibold">Teléfono</th>
+            <th class="px-4 py-3 text-left font-semibold">Nivel riesgo</th>
+            <th class="px-4 py-3 text-right font-semibold">Deuda total</th>
+            <th class="px-4 py-3 text-center font-semibold">Activo</th>
+            <th class="px-4 py-3 text-right font-semibold w-24">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          @if (rows().length === 0) {
+            <tr>
+              <td colspan="9" class="px-4 py-10 text-center text-muted-foreground text-sm">
+                No se encontraron clientes.
+              </td>
+            </tr>
+          }
+          @for (c of rows(); track c.id) {
+            <tr class="hover:bg-accent/20 transition-colors">
+              <td class="px-4 py-3">
+                <p class="font-medium text-foreground">{{ c.nombre }}</p>
+              </td>
+              <td class="px-4 py-3 text-xs text-muted-foreground">{{ c.empresa ?? '—' }}</td>
+              <td class="px-4 py-3 font-mono text-xs text-muted-foreground">{{ c.nif ?? '—' }}</td>
+              <td class="px-4 py-3 text-xs text-muted-foreground">{{ c.email ?? '—' }}</td>
+              <td class="px-4 py-3 text-xs text-muted-foreground">{{ c.telefono ?? '—' }}</td>
+              <td class="px-4 py-3">
+                <app-status-badge [tone]="nivelTone(c.nivelRiesgo)">{{ nivelLabel[c.nivelRiesgo] }}</app-status-badge>
+              </td>
+              <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">
+                <span [class.text-danger-fg]="c.deudaTotal > 0" [class.font-semibold]="c.deudaTotal > 0">
+                  {{ formatEur(c.deudaTotal) }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-center text-sm">
+                @if (c.activo) {
+                  <span class="text-success-fg font-semibold">✓</span>
+                } @else {
+                  <span class="text-muted-foreground">—</span>
+                }
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex justify-end gap-1.5">
+                  <button type="button" (click)="openEdit(c)"
+                    class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
+                    <ui-icon name="edit" [size]="13" />
+                  </button>
+                  <button type="button" (click)="confirmDelete(c)"
+                    class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-danger/30 text-danger-fg hover:bg-danger-soft transition-colors">
+                    <ui-icon name="trash" [size]="13" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <app-pagination
+    [page]="page()" [pageSize]="size()"
+    [totalElements]="totalElements()" [totalPages]="totalPages()"
+    (pageChange)="reload($event)"
+    (pageSizeChange)="onSizeChange($event)" />
+}
+
+<!-- Create / Edit Dialog -->
+<app-form-dialog
+  [open]="dialogOpen()"
+  [title]="editing() ? 'Editar cliente' : 'Nuevo cliente deudor'"
+  [subtitle]="editing() ? 'Actualiza los datos del cliente' : 'Registra un nuevo cliente deudor'"
+  icon="user"
+  width="580px"
+  [saving]="submitting()"
+  [canSave]="form.valid"
+  [saveLabel]="editing() ? 'Guardar cambios' : 'Crear'"
+  [errorMessage]="formError()"
+  (cancel)="closeDialog()"
+  (save)="submit()"
+>
+  <form [formGroup]="form" class="space-y-4">
+
+    <div>
+      <label class="block text-xs font-medium text-muted-foreground mb-1">Nombre <span class="text-danger-fg">*</span></label>
+      <input formControlName="nombre" type="text" placeholder="Nombre completo del cliente"
+        class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Empresa</label>
+        <input formControlName="empresa" type="text" placeholder="Razón social"
+          class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">NIF / CIF</label>
+        <input formControlName="nif" type="text" placeholder="Ej: 12345678A"
+          class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" />
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Email</label>
+        <input formControlName="email" type="email" placeholder="cliente@ejemplo.com"
+          class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Teléfono</label>
+        <input formControlName="telefono" type="tel" placeholder="+34 600 000 000"
+          class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-xs font-medium text-muted-foreground mb-1">Dirección</label>
+      <input formControlName="direccion" type="text" placeholder="Calle, número, ciudad…"
+        class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Nivel de riesgo</label>
+        <select formControlName="nivelRiesgo"
+          class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+          @for (n of nivelValues; track n) {
+            <option [value]="n">{{ nivelLabel[n] }}</option>
+          }
+        </select>
+      </div>
+      <div class="flex items-center gap-3 pt-5">
+        <input formControlName="activo" type="checkbox" id="activo"
+          class="h-4 w-4 rounded border-border text-primary focus:ring-primary" />
+        <label for="activo" class="text-sm text-foreground">Cliente activo</label>
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-xs font-medium text-muted-foreground mb-1">Notas</label>
+      <textarea formControlName="notas" rows="3" placeholder="Observaciones internas…"
+        class="w-full px-3 py-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"></textarea>
+    </div>
+
+  </form>
+</app-form-dialog>

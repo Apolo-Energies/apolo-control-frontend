@@ -130,10 +130,25 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/sales/multicups/multicups').then((m) => m.Multicups),
       },
+      // ── Cobros / Gestión de Impagos ──
+      {
+        path: 'collections/dashboard',
+        loadComponent: () =>
+          import('./features/collections/gestion-dashboard/gestion-dashboard').then(
+            (m) => m.GestionDashboard,
+          ),
+      },
       {
         path: 'collections/unpaid',
         loadComponent: () =>
           import('./features/collections/unpaid/unpaid').then((m) => m.Unpaid),
+      },
+      {
+        path: 'collections/unpaid/:id',
+        loadComponent: () =>
+          import('./features/collections/unpaid-detail/unpaid-detail').then(
+            (m) => m.UnpaidDetail,
+          ),
       },
       {
         path: 'collections/verbal-agreement',
@@ -160,6 +175,16 @@ export const routes: Routes = [
         path: 'collections/lawsuits',
         loadComponent: () =>
           import('./features/collections/lawsuits/lawsuits').then((m) => m.Lawsuits),
+      },
+      {
+        path: 'collections/promises',
+        loadComponent: () =>
+          import('./features/collections/promises/promises').then((m) => m.Promises),
+      },
+      {
+        path: 'collections/clients',
+        loadComponent: () =>
+          import('./features/collections/clients/clients').then((m) => m.GestionClients),
       },
       {
         path: 'finance/payments',

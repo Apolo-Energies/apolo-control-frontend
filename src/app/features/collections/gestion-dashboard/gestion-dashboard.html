@@ -1,0 +1,178 @@
+<app-page-header title="Dashboard de Cobros" subtitle="Resumen ejecutivo de la gestión de impagados">
+  <button type="button" (click)="loadStats()"
+    class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
+    <ui-icon name="refresh-cw" [size]="14" />
+    Actualizar
+  </button>
+</app-page-header>
+
+<!-- Stats section -->
+@if (statsLoading()) {
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    @for (_ of [1,2,3,4]; track $index) {
+      <div class="bg-card border border-border rounded-xl h-24 animate-pulse"></div>
+    }
+  </div>
+} @else if (statsError(); as msg) {
+  <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm mb-6">{{ msg }}</div>
+} @else if (stats(); as s) {
+
+  <!-- Top KPIs -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
+    <app-kpi-card
+      label="Deuda total activa"
+      [value]="formatEur(s.deudaTotal)"
+      icon="trending-down"
+      tone="danger"
+      sublabel="Suma de importes pendientes" />
+    <app-kpi-card
+      label="Total cobrado"
+      [value]="formatEur(s.cobrado)"
+      icon="euro"
+      tone="success"
+      sublabel="Recuperado en el período" />
+    <app-kpi-card
+      label="Tasa de recuperación"
+      [value]="formatPct(s.tasaRecuperacion)"
+      icon="bar-chart-2"
+      tone="info"
+      sublabel="Cobrado / Deuda original" />
+  </div>
+
+  <!-- KPIs per estado -->
+  <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+    <div class="bg-card border border-border rounded-xl p-4">
+      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Nuevo</p>
+      <p class="text-2xl font-bold text-foreground">{{ s.countNuevo }}</p>
+      <p class="text-xs text-muted-foreground mt-0.5">{{ formatEur(s.importeNuevo) }}</p>
+    </div>
+    <div class="bg-card border border-border rounded-xl p-4">
+      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Acuerdo Verbal</p>
+      <p class="text-2xl font-bold text-info-fg">{{ s.countVaAPagar }}</p>
+      <p class="text-xs text-muted-foreground mt-0.5">{{ formatEur(s.importeVaAPagar) }}</p>
+    </div>
+    <div class="bg-card border border-border rounded-xl p-4">
+      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Acuerdo de Pago</p>
+      <p class="text-2xl font-bold text-info-fg">{{ s.countAcuerdoPago }}</p>
+      <p class="text-xs text-muted-foreground mt-0.5">{{ formatEur(s.importeAcuerdoPago) }}</p>
+    </div>
+    <div class="bg-card border border-border rounded-xl p-4">
+      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Aviso de Corte</p>
+      <p class="text-2xl font-bold text-warning-fg">{{ s.countAvisoCorte }}</p>
+      <p class="text-xs text-muted-foreground mt-0.5">{{ formatEur(s.importeAvisoCorte) }}</p>
+    </div>
+    <div class="bg-card border border-border rounded-xl p-4">
+      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Cortado</p>
+      <p class="text-2xl font-bold text-danger-fg">{{ s.countCortado }}</p>
+      <p class="text-xs text-muted-foreground mt-0.5">{{ formatEur(s.importeCortado) }}</p>
+    </div>
+    <div class="bg-card border border-border rounded-xl p-4">
+      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">OVC</p>
+      <p class="text-2xl font-bold text-purple-fg">{{ s.countOvc }}</p>
+      <p class="text-xs text-muted-foreground mt-0.5">{{ formatEur(s.importeOvc) }}</p>
+    </div>
+    <div class="bg-card border border-border rounded-xl p-4">
+      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Demanda</p>
+      <p class="text-2xl font-bold text-danger-fg">{{ s.countDemanda }}</p>
+      <p class="text-xs text-muted-foreground mt-0.5">{{ formatEur(s.importeDemanda) }}</p>
+    </div>
+    <div class="bg-card border border-border rounded-xl p-4">
+      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Remesar nuevamente</p>
+      <p class="text-2xl font-bold text-warning-fg">{{ s.countRemesarNuevamente }}</p>
+      <p class="text-xs text-muted-foreground mt-0.5">{{ formatEur(s.importeRemesarNuevamente) }}</p>
+    </div>
+    <div class="bg-card border border-border rounded-xl p-4">
+      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Otros</p>
+      <p class="text-2xl font-bold text-muted-foreground">{{ s.countOtros }}</p>
+      <p class="text-xs text-muted-foreground mt-0.5">{{ formatEur(s.importeOtros) }}</p>
+    </div>
+    <div class="bg-card border border-border rounded-xl p-4">
+      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Pagado</p>
+      <p class="text-2xl font-bold text-success-fg">{{ s.countPagado }}</p>
+      <p class="text-xs text-muted-foreground mt-0.5">{{ formatEur(s.importePagado) }}</p>
+    </div>
+  </div>
+}
+
+<!-- Tareas pendientes -->
+<div class="bg-card border border-border rounded-xl overflow-hidden">
+  <div class="px-5 py-3 border-b border-border flex items-center justify-between gap-3">
+    <div class="flex items-center gap-2">
+      <ui-icon name="calendar-check" [size]="16" class="text-primary" />
+      <h2 class="text-sm font-semibold text-foreground">Tareas pendientes</h2>
+      <span class="text-xs text-muted-foreground">({{ tareas().length }})</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <input type="text" [(ngModel)]="tareasQ" placeholder="Buscar tarea…"
+        class="h-8 px-3 rounded-lg border border-border text-xs bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 w-48" />
+      <button type="button" (click)="searchTareas()"
+        class="h-8 px-3 inline-flex items-center gap-1 rounded-lg border border-border text-xs hover:bg-accent/40 transition-colors">
+        <ui-icon name="search" [size]="13" />
+        Buscar
+      </button>
+      <button type="button" (click)="clearTareas()"
+        class="h-8 px-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+        Limpiar
+      </button>
+    </div>
+  </div>
+
+  @if (tareasLoading()) {
+    <div class="p-6 text-center text-muted-foreground text-sm">Cargando tareas…</div>
+  } @else if (tareasError(); as msg) {
+    <div class="p-4 text-danger-fg text-sm">{{ msg }}</div>
+  } @else if (tareas().length === 0) {
+    <div class="p-8">
+      <app-empty-state icon="check" title="Sin tareas pendientes" description="No hay acciones de cobranza pendientes." />
+    </div>
+  } @else {
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">Cliente</th>
+            <th class="px-4 py-3 text-left font-semibold">Factura</th>
+            <th class="px-4 py-3 text-right font-semibold">Pendiente</th>
+            <th class="px-4 py-3 text-left font-semibold">Estado</th>
+            <th class="px-4 py-3 text-left font-semibold">Prioridad</th>
+            <th class="px-4 py-3 text-left font-semibold">Próxima acción</th>
+            <th class="px-4 py-3 text-right font-semibold w-16">Ver</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          @for (t of tareas(); track t.id) {
+            <tr class="hover:bg-accent/20 transition-colors">
+              <td class="px-4 py-3 max-w-[180px]">
+                <p class="font-medium text-foreground truncate" [title]="t.clienteNombre ?? t.clienteId">
+                  {{ t.clienteNombre ?? t.clienteId }}
+                </p>
+                @if (t.colaborador) {
+                  <p class="text-xs text-muted-foreground">{{ t.colaborador }}</p>
+                }
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap font-mono text-xs text-muted-foreground">{{ t.numeroFactura ?? '—' }}</td>
+              <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">
+                <span class="text-danger-fg font-semibold">
+                  {{ formatEur(t.importePendiente) }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <app-status-badge [tone]="estadoTone(t.estado)">{{ estadoLabel[t.estado] }}</app-status-badge>
+              </td>
+              <td class="px-4 py-3 text-xs text-muted-foreground">{{ prioridadLabel[t.prioridad] }}</td>
+              <td class="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{{ fmt(t.nextActionDate) }}</td>
+              <td class="px-4 py-3">
+                <div class="flex justify-end">
+                  <a [routerLink]="['/collections/unpaid', t.id]"
+                    class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
+                    <ui-icon name="eye" [size]="13" />
+                  </a>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

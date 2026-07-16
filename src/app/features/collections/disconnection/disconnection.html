@@ -1,17 +1,162 @@
-<app-placeholder-page
-  title="Corte"
-  subtitle="Avisos de corte y suministros cortados"
-  icon="scissors"
-  [highlights]="[
-    { label: 'Total registros', value: 26 },
-    { label: 'Aviso de corte', value: 5 },
-    { label: 'Cortados',       value: 19 },
-    { label: 'Plazo vencido',  value: 1, hint: 'Requiere acción inmediata' }
-  ]"
-  [capabilities]="[
-    'Generación automática de envío a corte (lunes)',
-    'Marca de OVC predemanda y Demanda M+1',
-    'Trazabilidad de contactos 1º a 5º',
-    'Vinculación a expediente OVC al ejecutar'
-  ]"
-/>
+<app-page-header title="Corte de Suministro" subtitle="Avisos de corte y suministros cortados">
+</app-page-header>
+
+<!-- KPI row -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+  <app-kpi-card label="Total registros" [value]="totalElements()" icon="receipt-x" tone="info" />
+  <app-kpi-card label="Aviso de corte" [value]="countAvisoCorte()" icon="alert-triangle" tone="warning" />
+  <app-kpi-card label="Cortados" [value]="countCortado()" icon="scissors" tone="danger" />
+  <app-kpi-card label="Alertas pendientes" [value]="alerts().length" icon="bell" tone="warning" />
+</div>
+
+<!-- Alert banner -->
+@if (alerts().length > 0) {
+  <section class="bg-warning-soft border border-warning/30 rounded-xl mb-6">
+    <header class="px-5 py-3 flex items-center gap-2 border-b border-warning/20">
+      <ui-icon name="alert-triangle" [size]="16" class="text-warning-fg" />
+      <h3 class="text-sm font-semibold text-warning-fg">
+        {{ alerts().length }} impago(s) pendiente(s) de aviso de corte
+      </h3>
+    </header>
+    <ul class="divide-y divide-warning/10">
+      @for (a of alerts(); track a.id) {
+        <li class="px-5 py-3 flex flex-wrap items-center gap-3 hover:bg-warning/5 transition-colors">
+          <span class="h-9 w-9 rounded-md bg-warning-soft text-warning-fg flex items-center justify-center shrink-0">
+            <ui-icon name="scissors" [size]="16" />
+          </span>
+          <div class="flex-1 min-w-[200px]">
+            <p class="text-sm font-medium text-foreground">{{ a.clienteNombre ?? a.clienteId }}</p>
+            <p class="text-xs text-muted-foreground">
+              {{ a.numeroFactura ?? '—' }} ·
+              <span class="font-semibold text-foreground">{{ formatEur(a.importePendiente) }}</span>
+            </p>
+            @if (a.corteAlertDate) {
+              <p class="text-xs text-warning-fg mt-0.5">Fecha corte: {{ fmt(a.corteAlertDate) }}</p>
+            }
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button type="button" (click)="skipAlert(a)"
+              class="h-8 px-3 rounded-md bg-card border border-border hover:bg-accent text-xs font-medium flex items-center gap-1.5 transition-colors">
+              <ui-icon name="x" [size]="12" />
+              Omitir alerta
+            </button>
+            <a [routerLink]="['/collections/unpaid', a.id]"
+              class="h-8 px-3 rounded-md bg-warning text-white hover:opacity-90 text-xs font-medium flex items-center gap-1.5 transition-opacity">
+              <ui-icon name="eye" [size]="12" />
+              Ver detalle
+            </a>
+          </div>
+        </li>
+      }
+    </ul>
+  </section>
+}
+
+<!-- Filters -->
+<div class="flex flex-wrap gap-2 mb-4">
+  <input type="text" [(ngModel)]="q" placeholder="Buscar por cliente o factura…"
+    class="h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-48" />
+
+  <select [(ngModel)]="estadoFilter"
+    class="h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+    <option value="">Aviso corte + Cortado</option>
+    <option value="aviso_corte">Solo Aviso de Corte</option>
+    <option value="cortado">Solo Cortado</option>
+  </select>
+
+  <button type="button" (click)="applyFilters()"
+    class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
+    <ui-icon name="search" [size]="14" />
+    Buscar
+  </button>
+  <button type="button" (click)="clearFilters()"
+    class="h-9 px-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
+    Limpiar
+  </button>
+</div>
+
+<!-- Table -->
+@if (loading() && !result()) {
+  <app-table-skeleton [cols]="7" [rows]="8" />
+} @else if (error(); as msg) {
+  <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm">{{ msg }}</div>
+} @else {
+  <div class="bg-card border border-border rounded-xl overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">Cliente</th>
+            <th class="px-4 py-3 text-left font-semibold">Factura</th>
+            <th class="px-4 py-3 text-right font-semibold">Importe</th>
+            <th class="px-4 py-3 text-right font-semibold">Pendiente</th>
+            <th class="px-4 py-3 text-left font-semibold">Estado</th>
+            <th class="px-4 py-3 text-left font-semibold">Fecha corte</th>
+            <th class="px-4 py-3 text-right font-semibold w-36">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          @if (rows().length === 0) {
+            <tr>
+              <td colspan="7" class="px-4 py-10 text-center text-muted-foreground text-sm">
+                No hay registros de corte.
+              </td>
+            </tr>
+          }
+          @for (r of rows(); track r.id) {
+            <tr class="hover:bg-accent/20 transition-colors"
+              [class.bg-warning-soft]="r.estado === 'aviso_corte'"
+              [class.bg-danger-soft]="r.estado === 'cortado'">
+              <td class="px-4 py-3 max-w-[200px]">
+                <p class="font-medium text-foreground truncate" [title]="r.clienteNombre ?? r.clienteId">
+                  {{ r.clienteNombre ?? r.clienteId }}
+                </p>
+                @if (r.clienteNif) {
+                  <p class="text-xs text-muted-foreground font-mono">{{ r.clienteNif }}</p>
+                }
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">{{ r.numeroFactura ?? '—' }}</td>
+              <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">{{ formatEur(r.importe) }}</td>
+              <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">
+                <span class="text-danger-fg font-semibold">{{ formatEur(r.importePendiente) }}</span>
+              </td>
+              <td class="px-4 py-3">
+                <app-status-badge [tone]="estadoTone(r.estado)">{{ estadoLabel[r.estado] }}</app-status-badge>
+              </td>
+              <td class="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                {{ fmt(r.corteAlertDate) }}
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex justify-end gap-1.5">
+                  <a [routerLink]="['/collections/unpaid', r.id]"
+                    class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
+                    <ui-icon name="eye" [size]="13" />
+                  </a>
+                  @if (r.estado === 'aviso_corte') {
+                    <button type="button" (click)="actualizarEstado(r, 'cortado')"
+                      [disabled]="updatingId() === r.id"
+                      class="h-7 px-2 inline-flex items-center gap-1 rounded-md border border-danger/30 text-danger-fg hover:bg-danger-soft transition-colors text-xs disabled:opacity-40">
+                      Cortar
+                    </button>
+                  } @else {
+                    <button type="button" (click)="actualizarEstado(r, 'pagado')"
+                      [disabled]="updatingId() === r.id"
+                      class="h-7 px-2 inline-flex items-center gap-1 rounded-md border border-success/30 text-success-fg hover:bg-success-soft transition-colors text-xs disabled:opacity-40">
+                      Pagado
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <app-pagination
+    [page]="page()" [pageSize]="size()"
+    [totalElements]="totalElements()" [totalPages]="totalPages()"
+    (pageChange)="reload($event)"
+    (pageSizeChange)="onSizeChange($event)" />
+}

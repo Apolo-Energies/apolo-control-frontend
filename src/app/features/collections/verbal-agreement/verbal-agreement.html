@@ -1,17 +1,105 @@
-<app-placeholder-page
-  title="Acuerdo Verbal"
-  subtitle="Promesas de pago — seguimiento de compromisos"
-  icon="handshake"
-  [highlights]="[
-    { label: 'Total activas', value: 32 },
-    { label: 'Vencidas',      value: 17, hint: 'Requieren acción' },
-    { label: 'Vencen hoy',    value: 4 },
-    { label: 'Próximas',      value: 11 }
-  ]"
-  [capabilities]="[
-    'Marcar promesa como pagada/no pagada con un clic',
-    'Comentarios libres por promesa',
-    'Filtro por antigüedad y cliente',
-    'Notificación automática a colaborador asignado'
-  ]"
-/>
+<app-page-header title="Acuerdo Verbal" subtitle="Clientes con promesa verbal de pago (va_a_pagar)">
+</app-page-header>
+
+<!-- Filters -->
+<div class="flex flex-wrap gap-2 mb-4">
+  <input type="text" [(ngModel)]="q" placeholder="Buscar por cliente o factura…"
+    class="h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-48" />
+  <button type="button" (click)="applyFilters()"
+    class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
+    <ui-icon name="search" [size]="14" />
+    Buscar
+  </button>
+  <button type="button" (click)="clearFilters()"
+    class="h-9 px-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
+    Limpiar
+  </button>
+</div>
+
+<!-- Table -->
+@if (loading() && !result()) {
+  <app-table-skeleton [cols]="7" [rows]="8" />
+} @else if (error(); as msg) {
+  <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm">{{ msg }}</div>
+} @else {
+  <div class="bg-card border border-border rounded-xl overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">Cliente</th>
+            <th class="px-4 py-3 text-left font-semibold">Factura</th>
+            <th class="px-4 py-3 text-right font-semibold">Importe</th>
+            <th class="px-4 py-3 text-right font-semibold">Pendiente</th>
+            <th class="px-4 py-3 text-left font-semibold">Estado</th>
+            <th class="px-4 py-3 text-left font-semibold">Promesa</th>
+            <th class="px-4 py-3 text-right font-semibold w-44">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          @if (rows().length === 0) {
+            <tr>
+              <td colspan="7" class="px-4 py-10 text-center text-muted-foreground text-sm">
+                No hay registros con acuerdo verbal.
+              </td>
+            </tr>
+          }
+          @for (r of rows(); track r.id) {
+            <tr class="hover:bg-accent/20 transition-colors">
+              <td class="px-4 py-3 max-w-[200px]">
+                <p class="font-medium text-foreground truncate" [title]="r.clienteNombre ?? r.clienteId">
+                  {{ r.clienteNombre ?? r.clienteId }}
+                </p>
+                @if (r.clienteNif) {
+                  <p class="text-xs text-muted-foreground font-mono">{{ r.clienteNif }}</p>
+                }
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">{{ r.numeroFactura ?? '—' }}</td>
+              <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">{{ formatEur(r.importe) }}</td>
+              <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">
+                <span class="text-danger-fg font-semibold">{{ formatEur(r.importePendiente) }}</span>
+              </td>
+              <td class="px-4 py-3">
+                <app-status-badge [tone]="estadoTone(r.estado)">{{ estadoLabel[r.estado] }}</app-status-badge>
+              </td>
+              <td class="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                @if (r.promesaFecha) {
+                  <span class="text-info-fg font-medium">{{ fmt(r.promesaFecha) }}</span>
+                  @if (r.promesaImporte) {
+                    <span class="block">{{ formatEur(r.promesaImporte) }}</span>
+                  }
+                } @else {
+                  —
+                }
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex justify-end gap-1.5">
+                  <a [routerLink]="['/collections/unpaid', r.id]"
+                    class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
+                    <ui-icon name="eye" [size]="13" />
+                  </a>
+                  <button type="button" (click)="actualizarEstado(r, 'acuerdo_pago')"
+                    [disabled]="updatingId() === r.id"
+                    class="h-7 px-2 inline-flex items-center gap-1 rounded-md border border-info/30 text-info-fg hover:bg-info-soft transition-colors text-xs disabled:opacity-40">
+                    Acuerdo
+                  </button>
+                  <button type="button" (click)="actualizarEstado(r, 'pagado')"
+                    [disabled]="updatingId() === r.id"
+                    class="h-7 px-2 inline-flex items-center gap-1 rounded-md border border-success/30 text-success-fg hover:bg-success-soft transition-colors text-xs disabled:opacity-40">
+                    Pagado
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <app-pagination
+    [page]="page()" [pageSize]="size()"
+    [totalElements]="totalElements()" [totalPages]="totalPages()"
+    (pageChange)="reload($event)"
+    (pageSizeChange)="onSizeChange($event)" />
+}

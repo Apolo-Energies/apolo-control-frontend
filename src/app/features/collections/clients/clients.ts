@@ -3,83 +3,64 @@ import {
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-import { PageHeader } from '../../../shared/components/page-header/page-header';
+
+import { PageHeader }    from '../../../shared/components/page-header/page-header';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { StatusBadge, StatusTone } from '../../../shared/components/status-badge/status-badge';
-import { Pagination } from '../../../shared/components/pagination/pagination';
-import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
-import { KpiCard } from '../../../shared/components/kpi-card/kpi-card';
-import { Icon } from '../../../shared/icons/icon';
+import { Pagination }    from '../../../shared/components/pagination/pagination';
+import { FormDialog }    from '../../../shared/components/form-dialog/form-dialog';
+import { Icon }          from '../../../shared/icons/icon';
 
-import { GestionImpagoService } from '../../../core/services/gestion-impago.service';
-import { NotificationService } from '../../../core/services/notification.service';
-import { GlobalLoadingService } from '../../../core/services/global-loading.service';
+import { GestionImpagoClienteService } from '../../../core/services/gestion-impago-cliente.service';
+import { NotificationService }         from '../../../core/services/notification.service';
+import { GlobalLoadingService }        from '../../../core/services/global-loading.service';
 import {
-  GestionImpago, GestionImpagoPayload, GestionImpagoFilter,
-  EstadoGestionImpago, PrioridadGestionImpago,
-  ESTADO_GESTION_IMPAGO_VALUES, ESTADO_GESTION_IMPAGO_LABEL,
-  PRIORIDAD_GESTION_IMPAGO_LABEL, Page,
+  GestionImpagoCliente, GestionImpagoClientePayload,
+  NivelRiesgoGestionCliente, NIVEL_RIESGO_LABEL, Page,
 } from '../../../core/models';
 
 function extractMessage(err: HttpErrorResponse): string {
   return (err.error as { message?: string })?.message ?? err.message ?? 'Error inesperado';
 }
 
-function estadoToneFn(estado: EstadoGestionImpago): StatusTone {
-  switch (estado) {
-    case 'pagado':          return 'success';
-    case 'va_a_pagar':      return 'info';
-    case 'acuerdo_pago':    return 'info';
-    case 'aviso_corte':     return 'warning';
-    case 'cortado':         return 'danger';
-    case 'ovc':             return 'purple';
-    case 'demanda':         return 'danger';
-    case 'nuevo':           return 'neutral';
-    default:                return 'neutral';
-  }
-}
-
-function prioridadToneFn(prioridad: PrioridadGestionImpago): StatusTone {
-  switch (prioridad) {
-    case 'urgente': return 'danger';
-    case 'alta':    return 'warning';
-    case 'media':   return 'info';
+function nivelToneFn(nivel: NivelRiesgoGestionCliente): StatusTone {
+  switch (nivel) {
+    case 'bajo':    return 'success';
+    case 'medio':   return 'info';
+    case 'alto':    return 'warning';
+    case 'critico': return 'danger';
     default:        return 'neutral';
   }
 }
 
 @Component({
-  selector: 'app-unpaid',
+  selector: 'app-gestion-clients',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     PageHeader, TableSkeleton, StatusBadge, Pagination, FormDialog,
-    KpiCard, Icon, FormsModule, ReactiveFormsModule, RouterLink,
+    Icon, FormsModule, ReactiveFormsModule,
   ],
-  templateUrl: './unpaid.html',
+  templateUrl: './clients.html',
 })
-export class Unpaid {
-  private readonly service       = inject(GestionImpagoService);
+export class GestionClients {
+  private readonly service       = inject(GestionImpagoClienteService);
   private readonly notify        = inject(NotificationService);
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly fb            = inject(FormBuilder);
 
   // ── List state ────────────────────────────────────────────────────────────
   protected readonly loading       = signal(false);
-  protected readonly result        = signal<Page<GestionImpago> | null>(null);
+  protected readonly result        = signal<Page<GestionImpagoCliente> | null>(null);
   protected readonly error         = signal<string | null>(null);
   protected readonly page          = signal(0);
   protected readonly size          = signal(20);
 
   // ── Filters ───────────────────────────────────────────────────────────────
-  protected q             = '';
-  protected estadoFilter: EstadoGestionImpago | '' = '';
+  protected q = '';
 
   // ── Constants ─────────────────────────────────────────────────────────────
-  protected readonly estadoValues    = ESTADO_GESTION_IMPAGO_VALUES;
-  protected readonly estadoLabel     = ESTADO_GESTION_IMPAGO_LABEL;
-  protected readonly prioridadLabel  = PRIORIDAD_GESTION_IMPAGO_LABEL;
-  protected readonly prioridadValues: PrioridadGestionImpago[] = ['baja', 'media', 'alta', 'urgente'];
+  protected readonly nivelLabel  = NIVEL_RIESGO_LABEL;
+  protected readonly nivelValues: NivelRiesgoGestionCliente[] = ['bajo', 'medio', 'alto', 'critico'];
 
   protected readonly rows          = computed(() => this.result()?.content ?? []);
   protected readonly totalElements = computed(() => this.result()?.totalElements ?? 0);
@@ -87,21 +68,20 @@ export class Unpaid {
 
   // ── Dialog state ──────────────────────────────────────────────────────────
   protected readonly dialogOpen  = signal(false);
-  protected readonly editing     = signal<GestionImpago | null>(null);
+  protected readonly editing     = signal<GestionImpagoCliente | null>(null);
   protected readonly submitting  = signal(false);
   protected readonly formError   = signal<string | null>(null);
 
   protected readonly form = this.fb.group({
-    clienteId:        ['', Validators.required],
-    numeroFactura:    [''],
-    importe:          [0],
-    fechaVencimiento: [''],
-    fechaDevolucion:  [''],
-    estado:           ['nuevo'],
-    prioridad:        ['media'],
-    colaborador:      [''],
-    motivoDevolucion: [''],
-    observaciones:    [''],
+    nombre:     ['', Validators.required],
+    empresa:    [''],
+    nif:        [''],
+    email:      [''],
+    telefono:   [''],
+    direccion:  [''],
+    nivelRiesgo:['medio'],
+    activo:     [true],
+    notas:      [''],
   });
 
   constructor() { this.reload(0); }
@@ -110,11 +90,7 @@ export class Unpaid {
   protected reload(p: number): void {
     this.page.set(p);
     this.loading.set(true);
-    const filter: GestionImpagoFilter = {
-      q:      this.q || undefined,
-      estado: this.estadoFilter || undefined,
-    };
-    this.service.list(filter, { page: p, size: this.size() }).subscribe({
+    this.service.list({ q: this.q || undefined }, { page: p, size: this.size() }).subscribe({
       next:  (res) => { this.result.set(res); this.loading.set(false); },
       error: (err: HttpErrorResponse) => { this.error.set(extractMessage(err)); this.loading.set(false); },
     });
@@ -122,30 +98,29 @@ export class Unpaid {
 
   protected onSizeChange(size: number): void { this.size.set(size); this.reload(0); }
   protected applyFilters(): void { this.reload(0); }
-  protected clearFilters(): void { this.q = ''; this.estadoFilter = ''; this.reload(0); }
+  protected clearFilters(): void { this.q = ''; this.reload(0); }
 
   // ── Create / Edit ─────────────────────────────────────────────────────────
   protected openCreate(): void {
     this.editing.set(null);
     this.formError.set(null);
-    this.form.reset({ estado: 'nuevo', prioridad: 'media', importe: 0 });
+    this.form.reset({ nivelRiesgo: 'medio', activo: true });
     this.dialogOpen.set(true);
   }
 
-  protected openEdit(r: GestionImpago): void {
-    this.editing.set(r);
+  protected openEdit(c: GestionImpagoCliente): void {
+    this.editing.set(c);
     this.formError.set(null);
     this.form.patchValue({
-      clienteId:        r.clienteId,
-      numeroFactura:    r.numeroFactura ?? '',
-      importe:          r.importe,
-      fechaVencimiento: r.fechaVencimiento ?? '',
-      fechaDevolucion:  r.fechaDevolucion ?? '',
-      estado:           r.estado,
-      prioridad:        r.prioridad,
-      colaborador:      r.colaborador ?? '',
-      motivoDevolucion: r.motivoDevolucion ?? '',
-      observaciones:    r.observaciones ?? '',
+      nombre:      c.nombre,
+      empresa:     c.empresa     ?? '',
+      nif:         c.nif         ?? '',
+      email:       c.email       ?? '',
+      telefono:    c.telefono    ?? '',
+      direccion:   c.direccion   ?? '',
+      nivelRiesgo: c.nivelRiesgo,
+      activo:      c.activo,
+      notas:       c.notas       ?? '',
     });
     this.dialogOpen.set(true);
   }
@@ -155,30 +130,29 @@ export class Unpaid {
   protected submit(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     const v = this.form.getRawValue();
-    const payload: GestionImpagoPayload = {
-      clienteId:        v.clienteId!,
-      numeroFactura:    v.numeroFactura   || null,
-      importe:          v.importe         ?? 0,
-      fechaVencimiento: v.fechaVencimiento || null,
-      fechaDevolucion:  v.fechaDevolucion  || null,
-      estado:           (v.estado    as EstadoGestionImpago)     || 'nuevo',
-      prioridad:        (v.prioridad as PrioridadGestionImpago)  || 'media',
-      colaborador:      v.colaborador      || null,
-      motivoDevolucion: v.motivoDevolucion || null,
-      observaciones:    v.observaciones    || null,
+    const payload: GestionImpagoClientePayload = {
+      nombre:      v.nombre!,
+      empresa:     v.empresa     || null,
+      nif:         v.nif         || null,
+      email:       v.email       || null,
+      telefono:    v.telefono    || null,
+      direccion:   v.direccion   || null,
+      nivelRiesgo: (v.nivelRiesgo as NivelRiesgoGestionCliente) || 'medio',
+      activo:      v.activo      ?? true,
+      notas:       v.notas       || null,
     };
     this.submitting.set(true);
     this.formError.set(null);
-    this.globalLoading.start('Guardando', 'Procesando impago…');
+    this.globalLoading.start('Guardando', '');
 
-    const r   = this.editing();
-    const obs = r ? this.service.update(r.id, payload) : this.service.create(payload);
+    const c   = this.editing();
+    const obs = c ? this.service.update(c.id, payload) : this.service.create(payload);
     obs.subscribe({
       next: () => {
         this.submitting.set(false);
         this.globalLoading.stop();
         this.closeDialog();
-        this.notify.success(r ? 'Actualizado correctamente' : 'Creado correctamente');
+        this.notify.success(c ? 'Cliente actualizado' : 'Cliente creado');
         this.reload(this.page());
       },
       error: (err: HttpErrorResponse) => {
@@ -190,22 +164,18 @@ export class Unpaid {
   }
 
   // ── Delete ────────────────────────────────────────────────────────────────
-  protected confirmDelete(r: GestionImpago): void {
-    if (!confirm(`¿Eliminar el impago "${r.numeroFactura ?? r.id}"?`)) return;
+  protected confirmDelete(c: GestionImpagoCliente): void {
+    if (!confirm(`¿Eliminar el cliente "${c.nombre}"?`)) return;
     this.globalLoading.start('Eliminando', '');
-    this.service.delete(r.id).subscribe({
+    this.service.delete(c.id).subscribe({
       next:  () => { this.globalLoading.stop(); this.notify.success('Eliminado'); this.reload(this.page()); },
       error: (err: HttpErrorResponse) => { this.globalLoading.stop(); this.notify.error(extractMessage(err)); },
     });
   }
 
   // ── Display helpers ───────────────────────────────────────────────────────
-  protected estadoTone(estado: EstadoGestionImpago): StatusTone     { return estadoToneFn(estado); }
-  protected prioridadTone(p: PrioridadGestionImpago): StatusTone    { return prioridadToneFn(p); }
+  protected nivelTone(nivel: NivelRiesgoGestionCliente): StatusTone { return nivelToneFn(nivel); }
   protected formatEur(v: number): string {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(v);
-  }
-  protected fmt(v: string | null): string {
-    return v ? new Date(v).toLocaleDateString('es-ES') : '—';
   }
 }

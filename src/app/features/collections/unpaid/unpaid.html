@@ -1,114 +1,48 @@
-<app-page-header
-  title="Impagos"
-  [subtitle]="filtered().length + ' de ' + rows.length + ' registros · gestión integral de deuda'"
->
-  <button class="h-9 px-3 rounded-md bg-card border border-border hover:bg-accent text-sm font-medium flex items-center gap-2 transition-colors">
-    <ui-icon name="download" [size]="14" />
-    Exportar
-  </button>
-  <button class="h-9 px-3 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium flex items-center gap-2 transition-colors">
-    <ui-icon name="plus" [size]="14" />
+<app-page-header title="Impagos" subtitle="Gestión integral de facturas devueltas e impagadas">
+  <button type="button" (click)="openCreate()"
+    class="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
+    <ui-icon name="plus" [size]="15" />
     Nuevo impago
   </button>
 </app-page-header>
 
-<section class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-  <app-kpi-card label="Total registros" [value]="rows.length" icon="receipt-x" tone="info" sublabel="200 activos · 210 pagados" />
-  <app-kpi-card label="Aviso de corte" value="7" icon="alert-triangle" tone="warning" sublabel="2.271,33 € pendientes" />
-  <app-kpi-card label="Cortados" value="19" icon="scissors" tone="danger" sublabel="4.855,46 €" />
-  <app-kpi-card label="OVC" value="85" icon="shield" tone="purple" sublabel="73.952,72 €" />
-</section>
-
-@if (pendingDisconnections.length > 0) {
-  <section class="bg-warning-soft border border-warning/30 rounded-xl mb-6">
-    <header class="px-5 py-3 flex items-center gap-2 border-b border-warning/20">
-      <ui-icon name="alert-triangle" [size]="16" />
-      <h3 class="text-sm font-semibold text-warning-fg">
-        {{ pendingDisconnections.length }} impagos pendientes de Aviso de Corte
-      </h3>
-    </header>
-    <ul class="divide-y divide-warning/10">
-      @for (a of pendingDisconnections; track a.cliente) {
-        <li class="px-5 py-3 flex flex-wrap items-center gap-3 hover:bg-warning/5 transition-colors">
-          <span class="h-9 w-9 rounded-md bg-warning-soft text-warning-fg flex items-center justify-center shrink-0">
-            <ui-icon name="scissors" [size]="16" />
-          </span>
-          <div class="flex-1 min-w-[220px]">
-            <p class="text-sm font-medium text-foreground">{{ a.cliente }}</p>
-            <p class="text-xs text-muted-foreground">
-              {{ a.invoices }} facturas pendientes · Total:
-              <span class="font-semibold text-foreground">{{ formatEur(a.total) }}</span>
-            </p>
-            <p class="text-xs text-warning-fg mt-0.5">
-              {{ a.profile }} · {{ a.contact }} · {{ a.target }}
-            </p>
-          </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <button class="h-8 px-3 rounded-md bg-card border border-border hover:bg-accent text-xs font-medium flex items-center gap-1.5 transition-colors">
-              <ui-icon name="bell" [size]="12" />
-              Saltar alerta
-            </button>
-            <button class="h-8 px-3 rounded-md bg-red-600 hover:bg-red-500 text-white text-xs font-medium flex items-center gap-1.5 transition-colors">
-              <ui-icon name="scissors" [size]="12" />
-              Ejecutar Aviso
-            </button>
-          </div>
-        </li>
-      }
-    </ul>
-  </section>
-}
-
-<div class="bg-card border border-border rounded-xl p-4 mb-4">
-  <app-filter-bar
-    [searchValue]="search()"
-    searchPlaceholder="Buscar por cliente o factura..."
-    (searchChange)="search.set($event)"
-  >
-    <select
-      class="h-10 px-3 rounded-md bg-input border border-border text-sm text-foreground focus:outline-none focus:border-primary"
-      [value]="status()"
-      (change)="onStatus($event)"
-    >
-      <option value="">Todos los estados</option>
-      @for (s of statuses; track s) {
-        <option [value]="s">{{ s }}</option>
-      }
-    </select>
-    <select
-      class="h-10 px-3 rounded-md bg-input border border-border text-sm text-foreground focus:outline-none focus:border-primary"
-      [value]="onlyOverdue() ? '1' : ''"
-      (change)="onOverdueChange($event)"
-    >
-      <option value="">Vencimiento: todos</option>
-      <option value="1">Solo vencidos</option>
-    </select>
-    <button
-      type="button"
-      class="h-10 px-3 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center gap-1.5"
-      (click)="clearFilters()"
-    >
-      <ui-icon name="x" [size]="14" />
-      Limpiar
-    </button>
-  </app-filter-bar>
+<!-- KPI row -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+  <app-kpi-card label="Total registros" [value]="totalElements()" icon="receipt-x" tone="info" />
+  <app-kpi-card label="Importe total" [value]="formatEur(rows().reduce((s, r) => s + r.importe, 0))" icon="euro" tone="warning" />
+  <app-kpi-card label="Pendiente" [value]="formatEur(rows().reduce((s, r) => s + r.importePendiente, 0))" icon="alert-triangle" tone="danger" />
+  <app-kpi-card label="Página actual" [value]="rows().length + ' registros'" icon="layers" tone="neutral" />
 </div>
 
-@if (filtered().length === 0) {
-  <div class="bg-card border border-border rounded-xl">
-    <app-empty-state
-      icon="search"
-      title="Sin coincidencias"
-      description="Ajusta los filtros para ver impagos."
-    >
-      <button
-        class="h-9 px-3 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium"
-        (click)="clearFilters()"
-      >
-        Limpiar filtros
-      </button>
-    </app-empty-state>
-  </div>
+<!-- Filters -->
+<div class="flex flex-wrap gap-2 mb-4">
+  <input type="text" [(ngModel)]="q" placeholder="Buscar por cliente o factura…"
+    class="h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-48" />
+
+  <select [(ngModel)]="estadoFilter"
+    class="h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+    <option value="">Todos los estados</option>
+    @for (e of estadoValues; track e) {
+      <option [value]="e">{{ estadoLabel[e] }}</option>
+    }
+  </select>
+
+  <button type="button" (click)="applyFilters()"
+    class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
+    <ui-icon name="search" [size]="14" />
+    Buscar
+  </button>
+  <button type="button" (click)="clearFilters()"
+    class="h-9 px-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
+    Limpiar
+  </button>
+</div>
+
+<!-- Table -->
+@if (loading() && !result()) {
+  <app-table-skeleton [cols]="9" [rows]="8" />
+} @else if (error(); as msg) {
+  <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm">{{ msg }}</div>
 } @else {
   <div class="bg-card border border-border rounded-xl overflow-hidden">
     <div class="overflow-x-auto">
@@ -119,64 +53,65 @@
             <th class="px-4 py-3 text-left font-semibold">Cliente</th>
             <th class="px-4 py-3 text-left font-semibold">Factura</th>
             <th class="px-4 py-3 text-right font-semibold">Importe</th>
-            <th class="px-4 py-3 text-left font-semibold">Vencim.</th>
+            <th class="px-4 py-3 text-right font-semibold">Pendiente</th>
             <th class="px-4 py-3 text-left font-semibold">Estado</th>
-            <th class="px-4 py-3 text-left font-semibold">Colaborador</th>
-            <th class="px-4 py-3 text-left font-semibold">Motivo</th>
-            <th class="px-4 py-3 text-left font-semibold">Contacto</th>
+            <th class="px-4 py-3 text-left font-semibold">Prioridad</th>
             <th class="px-4 py-3 text-right font-semibold">Días</th>
-            <th class="px-4 py-3 text-right font-semibold w-16"></th>
+            <th class="px-4 py-3 text-right font-semibold w-28">Acciones</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-border/40">
-          @for (r of filtered(); track r.invoice) {
-            <tr class="hover:bg-accent/20 transition-colors" [class.bg-warning-soft]="r.status === 'Aviso de corte'">
-              <td class="px-4 py-3 whitespace-nowrap text-muted-foreground">{{ r.returnDate }}</td>
-              <td class="px-4 py-3 max-w-[220px] truncate font-medium" [title]="r.cliente">{{ r.cliente }}</td>
-              <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">{{ r.invoice }}</td>
-              <td class="px-4 py-3 text-right whitespace-nowrap font-mono">
-                {{ r.amount | number:'1.2-2':'es-ES' }} €
+          @if (rows().length === 0) {
+            <tr>
+              <td colspan="9" class="px-4 py-10 text-center text-muted-foreground text-sm">
+                No se encontraron registros.
               </td>
-              <td class="px-4 py-3 whitespace-nowrap text-xs">
-                @if (r.dueDate) {
-                  <span class="text-muted-foreground">{{ r.dueDate }}</span>
-                  @if (r.overdueDays && r.overdueDays > 0) {
-                    <span class="block text-danger-fg font-semibold">{{ r.overdueDays }}d vencido</span>
-                  }
+            </tr>
+          }
+          @for (r of rows(); track r.id) {
+            <tr class="hover:bg-accent/20 transition-colors">
+              <td class="px-4 py-3 whitespace-nowrap text-muted-foreground text-xs">{{ fmt(r.fechaDevolucion) }}</td>
+              <td class="px-4 py-3 max-w-[200px]">
+                <p class="font-medium text-foreground truncate" [title]="r.clienteNombre ?? r.clienteId">
+                  {{ r.clienteNombre ?? r.clienteId }}
+                </p>
+                @if (r.clienteNif) {
+                  <p class="text-xs text-muted-foreground font-mono">{{ r.clienteNif }}</p>
+                }
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">{{ r.numeroFactura ?? '—' }}</td>
+              <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">{{ formatEur(r.importe) }}</td>
+              <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">
+                <span [class.text-danger-fg]="r.importePendiente > 0" [class.font-semibold]="r.importePendiente > 0">
+                  {{ formatEur(r.importePendiente) }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <app-status-badge [tone]="estadoTone(r.estado)">{{ estadoLabel[r.estado] }}</app-status-badge>
+              </td>
+              <td class="px-4 py-3">
+                <app-status-badge [tone]="prioridadTone(r.prioridad)">{{ prioridadLabel[r.prioridad] }}</app-status-badge>
+              </td>
+              <td class="px-4 py-3 text-right whitespace-nowrap text-xs">
+                @if (r.diasVencido && r.diasVencido > 0) {
+                  <span class="text-danger-fg font-semibold">{{ r.diasVencido }}d</span>
                 } @else {
                   <span class="text-muted-foreground">—</span>
                 }
               </td>
               <td class="px-4 py-3">
-                <app-status-badge [tone]="toneFor(r.status)">{{ r.status }}</app-status-badge>
-              </td>
-              <td class="px-4 py-3 whitespace-nowrap text-muted-foreground text-xs">{{ r.partner }}</td>
-              <td class="px-4 py-3 max-w-[180px] truncate text-xs text-muted-foreground" [title]="r.returnReason || ''">
-                {{ r.returnReason || '—' }}
-              </td>
-              <td class="px-4 py-3">
-                <div class="flex flex-col gap-1">
-                  <app-contact-dots [current]="r.contacts" />
-                  <span class="text-[10px] text-muted-foreground">{{ r.lastStatus }}</span>
-                  @if (r.promiseDate) {
-                    <span class="inline-flex items-center gap-1 text-[10px] text-success-fg">
-                      <ui-icon name="check" [size]="10" />
-                      Promesa {{ r.promiseDate }}
-                    </span>
-                  }
-                </div>
-              </td>
-              <td class="px-4 py-3 text-right whitespace-nowrap">
-                @if (r.overdueDays && r.overdueDays > 0) {
-                  <span class="text-danger-fg font-semibold">{{ r.overdueDays }}d</span>
-                } @else {
-                  <span class="text-muted-foreground">—</span>
-                }
-              </td>
-              <td class="px-4 py-3">
-                <div class="flex items-center justify-end gap-1">
-                  <button class="h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center" aria-label="Ver">
-                    <ui-icon name="eye" [size]="14" />
+                <div class="flex justify-end gap-1.5">
+                  <a [routerLink]="['/collections/unpaid', r.id]"
+                    class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
+                    <ui-icon name="eye" [size]="13" />
+                  </a>
+                  <button type="button" (click)="openEdit(r)"
+                    class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
+                    <ui-icon name="edit" [size]="13" />
+                  </button>
+                  <button type="button" (click)="confirmDelete(r)"
+                    class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-danger/30 text-danger-fg hover:bg-danger-soft transition-colors">
+                    <ui-icon name="trash" [size]="13" />
                   </button>
                 </div>
               </td>
@@ -185,18 +120,101 @@
         </tbody>
       </table>
     </div>
+  </div>
 
-    <div class="flex items-center justify-between px-4 py-3 border-t border-border/50 text-xs text-muted-foreground">
-      <span>Mostrando {{ filtered().length }} de {{ rows.length }}</span>
-      <div class="flex items-center gap-1">
-        <button class="h-7 w-7 rounded-md hover:bg-accent flex items-center justify-center" aria-label="Anterior">
-          <ui-icon name="chevron-left" [size]="14" />
-        </button>
-        <span class="px-2">1 / 1</span>
-        <button class="h-7 w-7 rounded-md hover:bg-accent flex items-center justify-center" aria-label="Siguiente">
-          <ui-icon name="chevron-right" [size]="14" />
-        </button>
+  <app-pagination
+    [page]="page()" [pageSize]="size()"
+    [totalElements]="totalElements()" [totalPages]="totalPages()"
+    (pageChange)="reload($event)"
+    (pageSizeChange)="onSizeChange($event)" />
+}
+
+<!-- Create / Edit Dialog -->
+<app-form-dialog
+  [open]="dialogOpen()"
+  [title]="editing() ? 'Editar impago' : 'Nuevo impago'"
+  [subtitle]="editing() ? 'Actualiza los datos del impago' : 'Registra una nueva factura devuelta'"
+  icon="receipt-x"
+  width="600px"
+  [saving]="submitting()"
+  [canSave]="form.valid"
+  [saveLabel]="editing() ? 'Guardar cambios' : 'Crear'"
+  [errorMessage]="formError()"
+  (cancel)="closeDialog()"
+  (save)="submit()"
+>
+  <form [formGroup]="form" class="space-y-4">
+
+    <div>
+      <label class="block text-xs font-medium text-muted-foreground mb-1">ID Cliente <span class="text-danger-fg">*</span></label>
+      <input formControlName="clienteId" type="text" placeholder="ID del cliente deudor"
+        class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Nº Factura</label>
+        <input formControlName="numeroFactura" type="text" placeholder="Ej: 260001234"
+          class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Importe (€)</label>
+        <input formControlName="importe" type="number" min="0" step="0.01"
+          class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
       </div>
     </div>
-  </div>
-}
+
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Fecha Vencimiento</label>
+        <input formControlName="fechaVencimiento" type="date"
+          class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Fecha Devolución</label>
+        <input formControlName="fechaDevolucion" type="date"
+          class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Estado</label>
+        <select formControlName="estado"
+          class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+          @for (e of estadoValues; track e) {
+            <option [value]="e">{{ estadoLabel[e] }}</option>
+          }
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Prioridad</label>
+        <select formControlName="prioridad"
+          class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+          @for (p of prioridadValues; track p) {
+            <option [value]="p">{{ prioridadLabel[p] }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-xs font-medium text-muted-foreground mb-1">Colaborador</label>
+      <input formControlName="colaborador" type="text" placeholder="Nombre del colaborador"
+        class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+    </div>
+
+    <div>
+      <label class="block text-xs font-medium text-muted-foreground mb-1">Motivo Devolución</label>
+      <input formControlName="motivoDevolucion" type="text" placeholder="Ej: Saldo insuficiente"
+        class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+    </div>
+
+    <div>
+      <label class="block text-xs font-medium text-muted-foreground mb-1">Observaciones</label>
+      <textarea formControlName="observaciones" rows="3" placeholder="Notas adicionales…"
+        class="w-full px-3 py-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"></textarea>
+    </div>
+
+  </form>
+</app-form-dialog>

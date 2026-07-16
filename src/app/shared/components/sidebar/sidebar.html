@@ -33,79 +33,92 @@
   <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
     @for (section of sections(); track $index) {
       <div>
-        @if (section.title) {
+        @if (section.title && section.collapsible) {
+          <button type="button" (click)="toggleSection($index)"
+            class="w-full flex items-center gap-2 px-3 mb-2 group">
+            <span class="flex-1 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70 group-hover:text-muted-foreground transition-colors">
+              {{ section.title }}
+            </span>
+            <ui-icon
+              [name]="isCollapsed($index) ? 'chevron-right' : 'chevron-down'"
+              [size]="11"
+              class="text-muted-foreground/50 group-hover:text-muted-foreground/80 transition-colors" />
+          </button>
+        } @else if (section.title) {
           <h3 class="px-3 mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
             {{ section.title }}
           </h3>
         }
-        <ul class="space-y-0.5">
-          @for (item of section.items; track item.url) {
-            <li>
-              @if (item.children && item.children.length > 0) {
-                <!-- Parent group label -->
-                <div class="flex items-center gap-3 px-3 py-1.5 mt-1">
-                  <span class="text-muted-foreground/60"><ui-icon [name]="item.icon" [size]="15" /></span>
-                  <span class="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/60">{{ item.label }}</span>
-                </div>
-                <!-- Children -->
-                <ul class="space-y-0.5 pl-3 ml-3 border-l border-border/40">
-                  @for (child of item.children; track child.url) {
-                    <li>
-                      <a
-                        [routerLink]="child.url"
-                        routerLinkActive="bg-accent/60 text-foreground"
-                        [routerLinkActiveOptions]="{ exact: true }"
-                        #crla="routerLinkActive"
-                        class="group relative flex items-center gap-2.5 px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-accent/40 hover:text-foreground transition-colors"
-                      >
-                        <span class="text-muted-foreground group-hover:text-foreground" [ngClass]="{ '!text-primary': crla.isActive }">
-                          <ui-icon [name]="child.icon" [size]="16" />
-                        </span>
-                        <span class="flex-1 truncate">{{ child.label }}</span>
-                        @if (child.badge != null && child.badge !== '') {
-                          <span class="ml-auto inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 rounded-full text-[10px] font-semibold border"
-                            [ngClass]="{
-                              'bg-info-soft text-info-fg border-info/30': child.badgeTone === 'info' || !child.badgeTone,
-                              'bg-warning-soft text-warning-fg border-warning/30': child.badgeTone === 'warning',
-                              'bg-danger-soft text-danger-fg border-danger/30': child.badgeTone === 'danger'
-                            }">{{ child.badge }}</span>
-                        }
-                        @if (crla.isActive) {
-                          <span class="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full bg-primary"></span>
-                        }
-                      </a>
-                    </li>
-                  }
-                </ul>
-              } @else {
-                <!-- Regular flat item -->
-                <a
-                  [routerLink]="item.url"
-                  routerLinkActive="bg-accent/60 text-foreground"
-                  [routerLinkActiveOptions]="{ exact: false }"
-                  #rla="routerLinkActive"
-                  class="group relative flex items-center gap-3 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-accent/40 hover:text-foreground transition-colors"
-                >
-                  <span class="text-muted-foreground group-hover:text-foreground" [ngClass]="{ '!text-primary': rla.isActive }">
-                    <ui-icon [name]="item.icon" [size]="18" />
-                  </span>
-                  <span class="flex-1 truncate">{{ item.label }}</span>
-                  @if (item.badge != null && item.badge !== '') {
-                    <span class="ml-auto inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 rounded-full text-[10px] font-semibold border"
-                      [ngClass]="{
-                        'bg-info-soft text-info-fg border-info/30': item.badgeTone === 'info' || !item.badgeTone,
-                        'bg-warning-soft text-warning-fg border-warning/30': item.badgeTone === 'warning',
-                        'bg-danger-soft text-danger-fg border-danger/30': item.badgeTone === 'danger'
-                      }">{{ item.badge }}</span>
-                  }
-                  @if (rla.isActive) {
-                    <span class="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-primary"></span>
-                  }
-                </a>
-              }
-            </li>
-          }
-        </ul>
+        @if (!section.collapsible || !isCollapsed($index)) {
+          <ul class="space-y-0.5">
+            @for (item of section.items; track item.url) {
+              <li>
+                @if (item.children && item.children.length > 0) {
+                  <!-- Parent group label -->
+                  <div class="flex items-center gap-3 px-3 py-1.5 mt-1">
+                    <span class="text-muted-foreground/60"><ui-icon [name]="item.icon" [size]="15" /></span>
+                    <span class="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/60">{{ item.label }}</span>
+                  </div>
+                  <!-- Children -->
+                  <ul class="space-y-0.5 pl-3 ml-3 border-l border-border/40">
+                    @for (child of item.children; track child.url) {
+                      <li>
+                        <a
+                          [routerLink]="child.url"
+                          routerLinkActive="bg-accent/60 text-foreground"
+                          [routerLinkActiveOptions]="{ exact: true }"
+                          #crla="routerLinkActive"
+                          class="group relative flex items-center gap-2.5 px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-accent/40 hover:text-foreground transition-colors"
+                        >
+                          <span class="text-muted-foreground group-hover:text-foreground" [ngClass]="{ '!text-primary': crla.isActive }">
+                            <ui-icon [name]="child.icon" [size]="16" />
+                          </span>
+                          <span class="flex-1 truncate">{{ child.label }}</span>
+                          @if (child.badge != null && child.badge !== '') {
+                            <span class="ml-auto inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 rounded-full text-[10px] font-semibold border"
+                              [ngClass]="{
+                                'bg-info-soft text-info-fg border-info/30': child.badgeTone === 'info' || !child.badgeTone,
+                                'bg-warning-soft text-warning-fg border-warning/30': child.badgeTone === 'warning',
+                                'bg-danger-soft text-danger-fg border-danger/30': child.badgeTone === 'danger'
+                              }">{{ child.badge }}</span>
+                          }
+                          @if (crla.isActive) {
+                            <span class="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full bg-primary"></span>
+                          }
+                        </a>
+                      </li>
+                    }
+                  </ul>
+                } @else {
+                  <!-- Regular flat item -->
+                  <a
+                    [routerLink]="item.url"
+                    routerLinkActive="bg-accent/60 text-foreground"
+                    [routerLinkActiveOptions]="{ exact: false }"
+                    #rla="routerLinkActive"
+                    class="group relative flex items-center gap-3 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-accent/40 hover:text-foreground transition-colors"
+                  >
+                    <span class="text-muted-foreground group-hover:text-foreground" [ngClass]="{ '!text-primary': rla.isActive }">
+                      <ui-icon [name]="item.icon" [size]="18" />
+                    </span>
+                    <span class="flex-1 truncate">{{ item.label }}</span>
+                    @if (item.badge != null && item.badge !== '') {
+                      <span class="ml-auto inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 rounded-full text-[10px] font-semibold border"
+                        [ngClass]="{
+                          'bg-info-soft text-info-fg border-info/30': item.badgeTone === 'info' || !item.badgeTone,
+                          'bg-warning-soft text-warning-fg border-warning/30': item.badgeTone === 'warning',
+                          'bg-danger-soft text-danger-fg border-danger/30': item.badgeTone === 'danger'
+                        }">{{ item.badge }}</span>
+                    }
+                    @if (rla.isActive) {
+                      <span class="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-primary"></span>
+                    }
+                  </a>
+                }
+              </li>
+            }
+          </ul>
+        }
       </div>
     }
   </nav>
