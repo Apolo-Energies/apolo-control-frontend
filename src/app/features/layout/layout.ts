@@ -31,7 +31,8 @@ export class Layout {
     const base: SidebarSection[] = [
       {
         title: 'CONTROL',
-        collapsible: true,
+        switchable: true,
+        switchIcon: 'layout-dashboard',
         items: [
           { label: 'Dashboard', url: '/dashboard', icon: 'layout-dashboard' },
           {
@@ -53,7 +54,8 @@ export class Layout {
       },
       {
         title: 'IMPAGOS',
-        collapsible: true,
+        switchable: true,
+        switchIcon: 'alert-triangle',
         items: [
           { label: 'Dashboard', url: '/collections/dashboard', icon: 'bar-chart-2' as const },
           { label: 'Todos los impagos', url: '/collections/unpaid', icon: 'receipt-x' as const },

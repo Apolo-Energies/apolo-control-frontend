@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { NgClass } from '@angular/common';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs';
 import { Icon, IconName } from '../../icons/icon';
 
 export interface SidebarChild {
@@ -17,6 +19,8 @@ export interface SidebarItem extends SidebarChild {
 
 export interface SidebarSection {
   title?: string;
+  switchable?: boolean;
+  switchIcon?: IconName;
   items: SidebarItem[];
   collapsible?: boolean;
 }
@@ -34,15 +38,55 @@ export class Sidebar {
   readonly closeMobile = output<void>();
   readonly logoutClick = output<void>();
 
-  private readonly _collapsed = signal(new Set<number>());
+  private readonly router = inject(Router);
 
-  protected isCollapsed(i: number): boolean {
-    return this._collapsed().has(i);
+  private readonly currentUrl = toSignal(
+    this.router.events.pipe(
+      filter(e => e instanceof NavigationEnd),
+      map(e => (e as NavigationEnd).urlAfterRedirects),
+    ),
+    { initialValue: this.router.url },
+  );
+
+  protected readonly switchableSections = computed(() =>
+    this.sections().filter(s => s.switchable),
+  );
+
+  protected readonly staticSections = computed(() =>
+    this.sections().filter(s => !s.switchable),
+  );
+
+  protected readonly activeSwitchable = computed(() => {
+    const url = this.currentUrl();
+    const switchable = this.switchableSections();
+    for (const section of switchable) {
+      if (this.urlMatchesSection(url, section)) return section;
+    }
+    return switchable[0] ?? null;
+  });
+
+  protected isActiveSection(section: SidebarSection): boolean {
+    return this.activeSwitchable() === section;
   }
 
-  protected toggleSection(i: number): void {
-    const next = new Set(this._collapsed());
-    next.has(i) ? next.delete(i) : next.add(i);
-    this._collapsed.set(next);
+  protected navigateTo(section: SidebarSection): void {
+    const firstUrl = section.items[0]?.url;
+    if (firstUrl) void this.router.navigateByUrl(firstUrl);
+  }
+
+  private urlMatchesSection(url: string, section: SidebarSection): boolean {
+    for (const item of section.items) {
+      if (this.urlMatchesItem(url, item.url)) return true;
+      if (item.children) {
+        for (const child of item.children) {
+          if (this.urlMatchesItem(url, child.url)) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private urlMatchesItem(url: string, itemUrl: string): boolean {
+    return url === itemUrl || url.startsWith(itemUrl + '/') || url.startsWith(itemUrl + '?');
   }
 }
