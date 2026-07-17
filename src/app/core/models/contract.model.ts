@@ -45,6 +45,7 @@ export interface Contract {
   fechaFinReal: string | null;
   campana: string | null;
   servicio: string | null;
+  idOferta: string | null;
   descuento: number | null;
   clienteId: string;
   clienteNombre: string;
