@@ -74,6 +74,7 @@ export class Bajas {
   protected searchQ = '';
   protected selectedMonth = '';
   protected selectedColaborador = '';
+  protected selectedProducto = '';
   protected startDate = '';
   protected endDate = '';
 
@@ -167,6 +168,7 @@ export class Bajas {
     this.searchQ = '';
     this.selectedMonth = '';
     this.selectedColaborador = '';
+    this.selectedProducto = '';
     this.startDate = '';
     this.endDate = '';
     this.activeStartDate = undefined;
@@ -185,7 +187,7 @@ export class Bajas {
     this.loading.set(true);
     this.errorMessage.set(null);
     this.service.listBajas(
-      { q: this.searchQ || undefined, startDate: this.activeStartDate, endDate: this.activeEndDate },
+      { q: this.searchQ || undefined, startDate: this.activeStartDate, endDate: this.activeEndDate, idOferta: this.selectedProducto || undefined },
       p, this.size(),
     ).subscribe({
       next: (res) => { this.result.set(res); this.loading.set(false); },
