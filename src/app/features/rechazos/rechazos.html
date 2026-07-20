@@ -213,11 +213,17 @@
                 @for (c of contractResults(); track c.id) {
                   <button type="button"
                     (mousedown)="selectContract(c)"
-                    class="w-full text-left px-3 py-2 hover:bg-accent/50 transition-colors border-b border-border/40 last:border-0">
-                    <p class="text-sm font-medium text-foreground">
-                      {{ c.idExterno ?? '—' }}
-                      @if (c.cups) { <span class="text-xs text-muted-foreground font-mono ml-1.5">{{ c.cups }}</span> }
-                    </p>
+                    class="w-full text-left px-3 py-2.5 hover:bg-accent/50 transition-colors border-b border-border/40 last:border-0">
+                    <div class="flex items-center justify-between gap-2">
+                      <p class="text-sm font-medium text-foreground truncate">
+                        {{ c.idExterno ?? '—' }}
+                        @if (c.cups) { <span class="text-xs text-muted-foreground font-mono ml-1.5">{{ c.cups }}</span> }
+                      </p>
+                      <span class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                        [class]="contratoEstadoClass(c.estado)">
+                        {{ contratoEstadoLabel(c.estado) }}
+                      </span>
+                    </div>
                     <p class="text-xs text-muted-foreground mt-0.5">{{ c.clienteNombre }}</p>
                   </button>
                 }

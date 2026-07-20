@@ -22,7 +22,7 @@ import {
   RECHAZO_ESTADO_LABEL, RECHAZO_RESULTADO_LABEL,
   RECHAZO_ESTADO_VALUES, RECHAZO_RESULTADO_VALUES,
 } from '../../core/models/rechazo.model';
-import { Contract, Page } from '../../core/models';
+import { Contract, ContractStatus, CONTRACT_STATUS_LABEL, Page } from '../../core/models';
 import { formatDate, safeText } from '../../shared/utils/format';
 
 const ESTADO_TONE: Record<RechazoEstado, StatusTone> = {
@@ -341,6 +341,27 @@ export class Rechazos {
   // ── Display helpers ───────────────────────────────────────────────────────
   protected estadoTone(estado: RechazoEstado): StatusTone { return ESTADO_TONE[estado] ?? 'neutral'; }
   protected estadoLabel(estado: RechazoEstado): string { return RECHAZO_ESTADO_LABEL[estado] ?? estado; }
+  protected contratoEstadoLabel(estado: ContractStatus | null): string { return estado ? (CONTRACT_STATUS_LABEL[estado] ?? estado) : ''; }
+  protected contratoEstadoClass(estado: ContractStatus | null): string {
+    const map: Partial<Record<ContractStatus, string>> = {
+      activo: 'bg-success/15 text-success-fg',
+      confirmado: 'bg-info/15 text-info-fg',
+      valido: 'bg-success/15 text-success-fg',
+      para_firma: 'bg-warning/15 text-warning-fg',
+      para_tramitar: 'bg-warning/15 text-warning-fg',
+      para_estudio: 'bg-info/15 text-info-fg',
+      previo: 'bg-info/15 text-info-fg',
+      renovado: 'bg-purple/15 text-purple-fg',
+      ko: 'bg-danger/15 text-danger-fg',
+      rechazado: 'bg-danger/15 text-danger-fg',
+      incidencia: 'bg-warning/15 text-warning-fg',
+      desestimado: 'bg-danger/15 text-danger-fg',
+      baja: 'bg-muted text-muted-foreground',
+      finalizado: 'bg-muted text-muted-foreground',
+      anulado: 'bg-muted text-muted-foreground',
+    };
+    return (estado ? map[estado] : null) ?? 'bg-muted text-muted-foreground';
+  }
   protected resultadoTone(res: RechazoResultado | null): StatusTone { return res ? (RESULTADO_TONE[res] ?? 'neutral') : 'neutral'; }
   protected resultadoLabel(res: RechazoResultado | null): string { return res ? (RECHAZO_RESULTADO_LABEL[res] ?? res) : '—'; }
   protected date(v: string | null): string { return formatDate(v); }
