@@ -109,6 +109,7 @@ export class Bajas {
   protected readonly dialogOpen = signal(false);
   protected readonly submitting = signal(false);
   protected readonly formError = signal<string | null>(null);
+  protected readonly editingRow = signal<Contract | null>(null);
 
   // ── Contract search ─────────────────────────────────────────────────────────
   protected readonly selectedContract = signal<{ id: string; label: string } | null>(null);
@@ -209,6 +210,7 @@ export class Bajas {
 
   // ── Dialog ──────────────────────────────────────────────────────────────────
   protected openDialog(): void {
+    this.editingRow.set(null);
     this.formError.set(null);
     this.showPenalizacion.set(false);
     this.resetContractSearch();
@@ -216,8 +218,24 @@ export class Bajas {
     this.dialogOpen.set(true);
   }
 
+  protected openEdit(row: Contract): void {
+    this.editingRow.set(row);
+    this.formError.set(null);
+    this.showPenalizacion.set(row.tienePenalizacion ?? false);
+    this.resetContractSearch();
+    this.form.reset({
+      contratoId: row.id,
+      feedbackCliente: row.feedbackBaja ?? '',
+      tienePenalizacion: row.tienePenalizacion ?? false,
+      montoLiquidacion: row.montoLiquidacion ?? null,
+      fechaBaja: row.fechaEstado ?? '',
+    });
+    this.dialogOpen.set(true);
+  }
+
   protected closeDialog(): void {
     this.dialogOpen.set(false);
+    this.editingRow.set(null);
     this.resetContractSearch();
   }
 
@@ -227,7 +245,8 @@ export class Bajas {
   }
 
   protected submit(): void {
-    if (this.form.invalid || !this.selectedContract()) {
+    const editing = this.editingRow();
+    if (!editing && (this.form.invalid || !this.selectedContract())) {
       this.form.markAllAsTouched();
       if (!this.selectedContract()) this.formError.set('Selecciona un contrato');
       return;
@@ -235,28 +254,51 @@ export class Bajas {
     const v = this.form.getRawValue();
     this.submitting.set(true);
     this.formError.set(null);
-    this.globalLoading.start('Procesando', 'Registrando baja…');
 
-    this.service.registrar({
-      contratoId: v.contratoId!,
-      feedbackCliente: v.feedbackCliente || null,
-      tienePenalizacion: v.tienePenalizacion ?? false,
-      montoLiquidacion: v.montoLiquidacion ?? null,
-      fechaBaja: v.fechaBaja || null,
-    }).subscribe({
-      next: () => {
-        this.submitting.set(false);
-        this.globalLoading.stop();
-        this.closeDialog();
-        this.notify.success('Baja registrada correctamente');
-        this.applyFilters();
-      },
-      error: (err: HttpErrorResponse) => {
-        this.submitting.set(false);
-        this.globalLoading.stop();
-        this.formError.set(extractMessage(err));
-      },
-    });
+    if (editing) {
+      this.globalLoading.start('Procesando', 'Guardando cambios…');
+      this.service.update(editing.id, {
+        feedbackCliente: v.feedbackCliente || null,
+        tienePenalizacion: v.tienePenalizacion ?? false,
+        montoLiquidacion: v.montoLiquidacion ?? null,
+        fechaBaja: v.fechaBaja || null,
+      }).subscribe({
+        next: () => {
+          this.submitting.set(false);
+          this.globalLoading.stop();
+          this.closeDialog();
+          this.notify.success('Baja actualizada correctamente');
+          this.applyFilters();
+        },
+        error: (err: HttpErrorResponse) => {
+          this.submitting.set(false);
+          this.globalLoading.stop();
+          this.formError.set(extractMessage(err));
+        },
+      });
+    } else {
+      this.globalLoading.start('Procesando', 'Registrando baja…');
+      this.service.registrar({
+        contratoId: v.contratoId!,
+        feedbackCliente: v.feedbackCliente || null,
+        tienePenalizacion: v.tienePenalizacion ?? false,
+        montoLiquidacion: v.montoLiquidacion ?? null,
+        fechaBaja: v.fechaBaja || null,
+      }).subscribe({
+        next: () => {
+          this.submitting.set(false);
+          this.globalLoading.stop();
+          this.closeDialog();
+          this.notify.success('Baja registrada correctamente');
+          this.applyFilters();
+        },
+        error: (err: HttpErrorResponse) => {
+          this.submitting.set(false);
+          this.globalLoading.stop();
+          this.formError.set(extractMessage(err));
+        },
+      });
+    }
   }
 
   // ── Contract search ─────────────────────────────────────────────────────────

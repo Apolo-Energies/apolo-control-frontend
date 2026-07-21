@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { BajaPayload, Contract, DelegacionBajaStats, Page } from '../models';
+import { BajaPayload, BajaUpdatePayload, Contract, DelegacionBajaStats, Page } from '../models';
 import { buildParams } from '../http/http-params.util';
 
 @Injectable({ providedIn: 'root' })
@@ -23,6 +23,10 @@ export class BajaService {
 
   registrar(payload: BajaPayload): Observable<Contract> {
     return this.http.post<Contract>(this.baseUrl, payload);
+  }
+
+  update(id: string, payload: BajaUpdatePayload): Observable<Contract> {
+    return this.http.patch<Contract>(`${this.baseUrl}/${id}`, payload);
   }
 
   topDelegaciones(
