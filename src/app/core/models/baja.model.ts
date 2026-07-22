@@ -4,6 +4,8 @@ export interface BajaPayload {
   tienePenalizacion: boolean;
   montoLiquidacion?: number | null;
   fechaBaja?: string | null;
+  tarifaId?: string | null;
+  tienePrevioAviso?: boolean | null;
 }
 
 export interface BajaUpdatePayload {
@@ -11,6 +13,8 @@ export interface BajaUpdatePayload {
   tienePenalizacion: boolean;
   montoLiquidacion?: number | null;
   fechaBaja?: string | null;
+  tarifaId?: string | null;
+  tienePrevioAviso?: boolean | null;
 }
 
 export interface DelegacionBajaStats {

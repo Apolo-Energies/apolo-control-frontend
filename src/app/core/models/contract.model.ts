@@ -63,6 +63,9 @@ export interface Contract {
   validado: boolean;
   tienePenalizacion: boolean;
   montoLiquidacion: number | null;
+  tarifaPenalizacionId: string | null;
+  tarifaPenalizacionNombre: string | null;
+  tienePrevioAviso: boolean | null;
   consumoTotal: number | null;
   scoring?: CustomerScoring | null;
   createdAt: string;

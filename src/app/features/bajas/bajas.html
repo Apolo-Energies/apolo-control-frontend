@@ -1,7 +1,7 @@
 <app-page-header title="Bajas" subtitle="Registro de contratos dados de baja">
   <button
     type="button"
-    (click)="openDialog()"
+    (click)="openAddDialog()"
     class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
   >
     <ui-icon name="plus" [size]="16" />
@@ -39,7 +39,6 @@
 
   <!-- Filter bar -->
   <section class="bg-card border border-border rounded-xl p-4 mb-2 flex flex-col gap-3 lg:flex-row lg:items-end lg:flex-wrap">
-    <!-- Search -->
     <label class="flex flex-col gap-1">
       <span class="text-xs text-muted-foreground">Búsqueda</span>
       <input
@@ -51,7 +50,6 @@
       />
     </label>
 
-    <!-- Product filter -->
     <label class="flex flex-col gap-1">
       <span class="text-xs text-muted-foreground">Producto</span>
       <input
@@ -63,7 +61,6 @@
       />
     </label>
 
-    <!-- Month filter -->
     <label class="flex flex-col gap-1">
       <span class="text-xs text-muted-foreground">Mes</span>
       <select
@@ -78,7 +75,6 @@
       </select>
     </label>
 
-    <!-- Date range -->
     <label class="flex flex-col gap-1">
       <span class="text-xs text-muted-foreground">Fecha baja desde</span>
       <input
@@ -101,7 +97,6 @@
       />
     </label>
 
-    <!-- Colaborador filter (top tab only) -->
     @if (activeTab() === 'top' && colaboradorOptions().length > 0) {
       <label class="flex flex-col gap-1">
         <span class="text-xs text-muted-foreground">Colaborador</span>
@@ -117,7 +112,6 @@
       </label>
     }
 
-    <!-- Clear filters -->
     @if (searchQ || selectedProducto || selectedMonth || startDate || endDate || selectedColaborador) {
       <button
         type="button"
@@ -135,7 +129,7 @@
     </div>
   }
 
-  <!-- ── LIST TAB ─────────────────────────────────────────────────────────── -->
+  <!-- ── LIST TAB ───────────────────────────────────────────────────────────── -->
   @if (activeTab() === 'list') {
     <div class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
       <div class="flex items-center justify-between px-5 py-3 border-b border-border">
@@ -236,7 +230,7 @@
     </div>
   }
 
-  <!-- ── TOP COLABORADORES TAB ────────────────────────────────────────────── -->
+  <!-- ── TOP COLABORADORES TAB ─────────────────────────────────────────────── -->
   @if (activeTab() === 'top') {
     <div class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
       <div class="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -295,115 +289,10 @@
 
 </div>
 
-<!-- Register / edit baja dialog -->
-<app-form-dialog
-  [open]="dialogOpen()"
-  [title]="editingRow() ? 'Editar baja' : 'Registrar baja'"
-  icon="trending-down"
-  [saving]="submitting()"
-  [errorMessage]="formError()"
-  (cancel)="closeDialog()"
-  (save)="submit()"
->
-  <form [formGroup]="form" class="space-y-5">
-
-    <!-- Contract info (edit mode) or search (create mode) -->
-    @if (editingRow(); as row) {
-      <div class="flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-muted/40 text-sm">
-        <ui-icon name="file-text" [size]="14" class="text-muted-foreground shrink-0" />
-        <span class="flex-1 truncate font-medium text-foreground">
-          {{ row.idExterno ?? row.id }}
-          @if (row.cups) { <span class="text-muted-foreground font-normal"> · {{ row.cups }}</span> }
-        </span>
-      </div>
-    } @else {
-      <div class="space-y-1.5">
-        <label class="text-sm font-medium text-foreground">Contrato <span class="text-destructive">*</span></label>
-        @if (selectedContract(); as sc) {
-          <div class="flex items-center gap-2 h-9 px-3 rounded-lg border border-primary/40 bg-primary/5 text-sm">
-            <ui-icon name="file-text" [size]="14" class="text-primary shrink-0" />
-            <span class="flex-1 truncate font-medium text-foreground">{{ sc.label }}</span>
-            <button type="button" (click)="clearContract()"
-              class="text-muted-foreground hover:text-foreground transition-colors">
-              <ui-icon name="x" [size]="14" />
-            </button>
-          </div>
-        } @else {
-          <div class="relative">
-            <input
-              type="text"
-              [value]="contractSearchTerm"
-              (input)="onContractInput($any($event.target).value)"
-              (blur)="contractDropdownOpen.set(false)"
-              placeholder="Buscar por ID externo o CUP…"
-              class="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            @if (contractSearching()) {
-              <div class="absolute right-3 top-2.5">
-                <ui-icon name="loader" [size]="14" class="text-muted-foreground animate-spin" />
-              </div>
-            }
-            @if (contractDropdownOpen() && contractResults().length > 0) {
-              <div class="absolute z-50 w-full mt-1 rounded-lg border border-border bg-popover shadow-lg overflow-hidden">
-                @for (c of contractResults(); track c.id) {
-                  <button type="button" (mousedown)="selectContract(c)"
-                    class="w-full text-left px-3 py-2.5 text-sm hover:bg-muted transition-colors flex items-start gap-3">
-                    <div class="min-w-0 flex-1">
-                      <div class="font-medium text-foreground truncate">{{ c.idExterno ?? c.id }}</div>
-                      @if (c.cups || c.clienteNombre) {
-                        <div class="text-xs text-muted-foreground mt-0.5 truncate">
-                          {{ c.cups }}{{ c.cups && c.clienteNombre ? ' · ' : '' }}{{ c.clienteNombre }}
-                        </div>
-                      }
-                    </div>
-                  </button>
-                }
-              </div>
-            }
-          </div>
-        }
-      </div>
-    }
-
-    <!-- Fecha baja -->
-    <div class="space-y-1.5">
-      <label class="text-sm font-medium text-foreground">Fecha de baja</label>
-      <input type="date" formControlName="fechaBaja"
-        class="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
-      <p class="text-xs text-muted-foreground">Si no se indica, se usa la fecha de hoy</p>
-    </div>
-
-    <!-- Feedback cliente -->
-    <div class="space-y-1.5">
-      <label class="text-sm font-medium text-foreground">Motivo / Feedback del cliente</label>
-      <textarea formControlName="feedbackCliente" rows="3"
-        placeholder="¿Por qué se da de baja? Feedback del cliente…"
-        class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none">
-      </textarea>
-    </div>
-
-    <!-- Penalización -->
-    <div class="space-y-3 rounded-lg border border-border p-4">
-      <label class="flex items-center gap-3 cursor-pointer">
-        <input type="checkbox" formControlName="tienePenalizacion"
-          (change)="onTienePenalizacionChange($any($event.target).checked)"
-          class="h-4 w-4 rounded border-input accent-primary cursor-pointer" />
-        <span class="text-sm font-medium text-foreground">Tiene penalización</span>
-      </label>
-
-      @if (showPenalizacion()) {
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium text-foreground">
-            Monto de liquidación (€) <span class="text-destructive">*</span>
-          </label>
-          <input type="number" formControlName="montoLiquidacion" min="0.01" step="0.01" placeholder="0.00"
-            class="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
-          <p class="text-xs text-muted-foreground">
-            Se creará un registro de penalización en Pagos y Liquidaciones
-          </p>
-        </div>
-      }
-    </div>
-
-  </form>
-</app-form-dialog>
+<app-baja-dialog
+  [open]="bajaDialogOpen()"
+  [editingBaja]="bajaEditingRow()"
+  [preselectedContract]="bajaPreselected()"
+  (saved)="onBajaSaved()"
+  (cancelled)="closeDialog()"
+/>

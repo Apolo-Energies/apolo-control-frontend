@@ -12,6 +12,7 @@ import { LoadingOverlay } from '../../shared/components/loading-overlay/loading-
 import { FormDialog } from '../../shared/components/form-dialog/form-dialog';
 import { RemoteSelect, RemoteOption } from '../../shared/components/remote-select/remote-select';
 import { Icon } from '../../shared/icons/icon';
+import { BajaDialog } from '../../shared/components/baja-dialog/baja-dialog';
 import { ContractService } from '../../core/services/contract.service';
 import { MasterDataService } from '../../core/services/master-data.service';
 import { GlobalLoadingService } from '../../core/services/global-loading.service';
@@ -170,6 +171,7 @@ function contractOffersToPdfOfertas(offers: ContractOffer[]) {
     FormDialog,
     RemoteSelect,
     Icon,
+    BajaDialog,
   ],
   templateUrl: './contracts.html',
 })
@@ -204,9 +206,11 @@ export class Contracts {
   protected readonly page = signal(0);
   protected readonly size = signal(20);
 
-  protected readonly createOpen = signal(false);
-  protected readonly statusOpen = signal(false);
-  protected readonly editOpen = signal(false);
+  protected readonly createOpen    = signal(false);
+  protected readonly statusOpen    = signal(false);
+  protected readonly editOpen      = signal(false);
+  protected readonly bajaDialogOpen  = signal(false);
+  protected readonly bajaForContract = signal<Contract | null>(null);
   protected readonly submitting = signal(false);
   protected readonly formError = signal<string | null>(null);
   protected readonly editingContract = signal<Contract | null>(null);
@@ -724,6 +728,27 @@ export class Contracts {
     this.motivoKoNewText.set('');
   }
 
+  protected closeBajaDialog(): void {
+    this.bajaDialogOpen.set(false);
+    this.bajaForContract.set(null);
+  }
+
+  protected onBajaSaved(): void {
+    this.closeBajaDialog();
+    this.reload(this.page());
+  }
+
+  protected onEditEstadoChange(estado: string): void {
+    if (estado === 'baja') {
+      const contract = this.editingContract();
+      if (contract) {
+        this.closeEdit();
+        this.bajaForContract.set(contract);
+        this.bajaDialogOpen.set(true);
+      }
+    }
+  }
+
   protected onMotivoKoSelect(val: string): void {
     this.motivoKoSelectVal.set(val);
     this.statusForm.patchValue({ motivoRechazo: val });
@@ -771,6 +796,14 @@ export class Contracts {
       return;
     }
     const v = this.statusForm.getRawValue();
+
+    if (v.estado === 'baja') {
+      this.closeStatus();
+      this.bajaForContract.set(contract);
+      this.bajaDialogOpen.set(true);
+      return;
+    }
+
     this.submitting.set(true);
     this.formError.set(null);
     this.globalLoading.start('Actualizando estado', 'Cambiando el estado del contrato.');

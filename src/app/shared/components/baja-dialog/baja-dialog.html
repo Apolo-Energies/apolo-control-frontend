@@ -1,0 +1,301 @@
+<app-form-dialog
+  [open]="open()"
+  [title]="editingBaja() ? 'Editar baja' : 'Registrar baja'"
+  icon="trending-down"
+  [saving]="submitting()"
+  [errorMessage]="formError()"
+  saveLabel="Continuar"
+  (cancel)="cancel()"
+  (save)="requestConfirm()"
+>
+  <form [formGroup]="form" class="space-y-5">
+
+    <!-- Contract chip (edit or preselect) or search -->
+    @if (chipContract(); as cc) {
+      <div class="flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-muted/40 text-sm">
+        <ui-icon name="file-text" [size]="14" class="text-muted-foreground shrink-0" />
+        <span class="flex-1 truncate font-medium text-foreground">
+          {{ cc.idExterno ?? cc.id }}
+          @if (cc.cups) {
+            <span class="text-muted-foreground font-normal"> · {{ cc.cups }}</span>
+          }
+        </span>
+      </div>
+    } @else if (selectedContract(); as sc) {
+      <div class="flex items-center gap-2 h-9 px-3 rounded-lg border border-primary/40 bg-primary/5 text-sm">
+        <ui-icon name="file-text" [size]="14" class="text-primary shrink-0" />
+        <span class="flex-1 truncate font-medium text-foreground">{{ sc.label }}</span>
+        <button type="button" (click)="clearContract()"
+          class="text-muted-foreground hover:text-foreground transition-colors">
+          <ui-icon name="x" [size]="14" />
+        </button>
+      </div>
+    } @else {
+      <div class="space-y-1.5">
+        <label class="text-sm font-medium text-foreground">Contrato <span class="text-destructive">*</span></label>
+        <div class="relative">
+          <input
+            type="text"
+            [value]="contractSearchTerm"
+            (input)="onContractInput($any($event.target).value)"
+            (blur)="contractDropdownOpen.set(false)"
+            placeholder="Buscar por ID externo o CUPS…"
+            class="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          @if (contractSearching()) {
+            <div class="absolute right-3 top-2.5">
+              <ui-icon name="loader" [size]="14" class="text-muted-foreground animate-spin" />
+            </div>
+          }
+          @if (contractDropdownOpen() && contractResults().length > 0) {
+            <div class="absolute z-50 w-full mt-1 rounded-lg border border-border bg-popover shadow-lg overflow-hidden">
+              @for (c of contractResults(); track c.id) {
+                <button type="button" (mousedown)="selectContract(c)"
+                  class="w-full text-left px-3 py-2.5 text-sm hover:bg-muted transition-colors flex items-start gap-3">
+                  <div class="min-w-0 flex-1">
+                    <div class="font-medium text-foreground truncate">{{ c.idExterno ?? c.id }}</div>
+                    @if (c.cups || c.clienteNombre) {
+                      <div class="text-xs text-muted-foreground mt-0.5 truncate">
+                        {{ c.cups }}{{ c.cups && c.clienteNombre ? ' · ' : '' }}{{ c.clienteNombre }}
+                      </div>
+                    }
+                  </div>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Fecha de inicio (editable) -->
+    <div class="space-y-1.5">
+      <label class="flex items-center gap-2 text-sm font-medium text-foreground">
+        Fecha de inicio del contrato
+        @if (!fechaInicioEdit()) {
+          <span class="inline-flex items-center rounded-full bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning-fg">Pendiente</span>
+        }
+      </label>
+      <input
+        type="date"
+        [value]="fechaInicioEdit()"
+        (change)="fechaInicioEdit.set($any($event.target).value); calculo.set(null)"
+        [class]="'w-full h-9 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 transition-colors ' +
+                 (fechaInicioEdit() ? 'border-input bg-background focus:ring-ring' : 'border-warning/60 bg-warning/5 focus:ring-warning/30')"
+      />
+      @if (!fechaInicioEdit()) {
+        <p class="text-xs text-warning-fg">Introduce la fecha de inicio para poder calcular la penalización</p>
+      }
+    </div>
+
+    <!-- Fecha de baja (editable) -->
+    <div class="space-y-1.5">
+      <label class="flex items-center gap-2 text-sm font-medium text-foreground">
+        Fecha de baja
+        @if (fechaBajaEmpty()) {
+          <span class="inline-flex items-center rounded-full bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning-fg">Pendiente</span>
+        }
+      </label>
+      <input
+        type="date"
+        formControlName="fechaBaja"
+        (change)="fechaBajaEmpty.set(!$any($event.target).value); calculo.set(null)"
+        [class]="'w-full h-9 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 transition-colors ' +
+                 (fechaBajaEmpty() ? 'border-warning/60 bg-warning/5 focus:ring-warning/30' : 'border-input bg-background focus:ring-ring')"
+      />
+      @if (fechaBajaEmpty()) {
+        <p class="text-xs text-warning-fg">Introduce la fecha real de baja</p>
+      } @else {
+        <p class="text-xs text-muted-foreground">Si no se indica, se usa la fecha de hoy</p>
+      }
+    </div>
+
+    <!-- Feedback cliente -->
+    <div class="space-y-1.5">
+      <label class="text-sm font-medium text-foreground">Motivo / Feedback del cliente</label>
+      <textarea formControlName="feedbackCliente" rows="3"
+        placeholder="¿Por qué se da de baja? Feedback del cliente…"
+        class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none">
+      </textarea>
+    </div>
+
+    <!-- Penalización -->
+    <div class="space-y-4 rounded-lg border border-border p-4">
+      <label class="flex items-center gap-3 cursor-pointer">
+        <input type="checkbox" formControlName="tienePenalizacion"
+          (change)="onTienePenalizacionChange($any($event.target).checked)"
+          class="h-4 w-4 rounded border-input accent-primary cursor-pointer" />
+        <span class="text-sm font-medium text-foreground">Tiene penalización</span>
+      </label>
+
+      @if (showPenalizacion()) {
+        <!-- Consumo anual -->
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 text-sm font-medium text-foreground">
+            Consumo anual del contrato (MWh)
+            @if (!consumoEdit()) {
+              <span class="inline-flex items-center rounded-full bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning-fg">Pendiente</span>
+            }
+          </label>
+          <input
+            type="number"
+            [value]="consumoEdit()"
+            (change)="consumoEdit.set($any($event.target).value); calculo.set(null)"
+            min="0" step="0.01" placeholder="0.00"
+            [class]="'w-full h-9 rounded-lg border px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 transition-colors ' +
+                     (consumoEdit() ? 'border-input bg-background focus:ring-ring' : 'border-warning/60 bg-warning/5 focus:ring-warning/30')"
+          />
+          @if (!consumoEdit()) {
+            <p class="text-xs text-warning-fg">Introduce el consumo para poder calcular la penalización</p>
+          }
+        </div>
+
+        <!-- Tarifa selector -->
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-foreground">Tarifa</label>
+          <select [(ngModel)]="selectedTarifaId" [ngModelOptions]="{standalone: true}"
+            (change)="calculo.set(null)"
+            class="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+            <option value="">— Selecciona tarifa —</option>
+            @for (t of tarifas(); track t.id) {
+              <option [value]="t.id">{{ t.nombre }} · +{{ t.recargoSinAviso.toFixed(0) }} € sin preaviso</option>
+            }
+          </select>
+        </div>
+
+        <!-- Preaviso -->
+        @if (selectedTarifaId) {
+          <div class="flex items-center gap-3">
+            <button type="button"
+              (click)="tienePrevioAviso = true; calculo.set(null)"
+              class="flex-1 h-9 rounded-lg border text-sm font-medium transition-colors"
+              [class.border-primary]="tienePrevioAviso"
+              [class.bg-primary]="tienePrevioAviso"
+              [class.text-primary-foreground]="tienePrevioAviso"
+              [class.border-border]="!tienePrevioAviso"
+              [class.text-muted-foreground]="!tienePrevioAviso">
+              Con preaviso
+            </button>
+            <button type="button"
+              (click)="tienePrevioAviso = false; calculo.set(null)"
+              class="flex-1 h-9 rounded-lg border text-sm font-medium transition-colors"
+              [class.border-primary]="!tienePrevioAviso"
+              [class.bg-primary]="!tienePrevioAviso"
+              [class.text-primary-foreground]="!tienePrevioAviso"
+              [class.border-border]="tienePrevioAviso"
+              [class.text-muted-foreground]="tienePrevioAviso">
+              Sin preaviso
+            </button>
+          </div>
+
+          <!-- Calcular -->
+          <button type="button" (click)="calcularPenalizacion()"
+            [disabled]="calculando()"
+            class="w-full h-9 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            @if (calculando()) {
+              <ui-icon name="loader" [size]="14" class="animate-spin" />
+              Calculando…
+            } @else {
+              <ui-icon name="scale" [size]="14" />
+              Calcular penalización sugerida
+            }
+          </button>
+
+          <!-- Resultado -->
+          @if (calculo(); as c) {
+            <div class="rounded-lg bg-muted/50 border border-border p-3 space-y-1.5 text-sm">
+              <div class="flex justify-between text-muted-foreground">
+                <span>Consumo anual</span>
+                <span class="font-mono text-foreground">{{ c.consumo12m.toFixed(2) }} MWh</span>
+              </div>
+              <div class="flex justify-between text-muted-foreground">
+                <span>Días pendientes</span>
+                <span class="font-mono text-foreground">{{ c.diasPendientes }} días</span>
+              </div>
+              <div class="flex justify-between text-muted-foreground">
+                <span>Base penalización</span>
+                <span class="font-mono text-foreground">{{ c.basePenalizacion.toFixed(2) }} €</span>
+              </div>
+              @if (c.recargo > 0) {
+                <div class="flex justify-between text-muted-foreground">
+                  <span>Recargo sin preaviso</span>
+                  <span class="font-mono text-danger-fg">+ {{ c.recargo.toFixed(2) }} €</span>
+                </div>
+              }
+              <div class="flex justify-between font-semibold text-foreground border-t border-border pt-1.5 mt-1.5">
+                <span>Total sugerido</span>
+                <span class="font-mono text-primary">{{ c.totalSugerido.toFixed(2) }} €</span>
+              </div>
+            </div>
+          }
+        }
+
+        <!-- Monto final (editable) -->
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-foreground">
+            Monto de liquidación (€) <span class="text-destructive">*</span>
+          </label>
+          <input type="number" formControlName="montoLiquidacion" min="0.01" step="0.01" placeholder="0.00"
+            class="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          <p class="text-xs text-muted-foreground">Puedes ajustar el monto antes de confirmar.</p>
+        </div>
+      }
+    </div>
+
+  </form>
+</app-form-dialog>
+
+<!-- Confirmation overlay -->
+@if (confirming()) {
+  <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div class="bg-card border border-border rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+      <div class="flex flex-col items-center gap-3 text-center">
+        <div class="h-12 w-12 rounded-full bg-warning/15 flex items-center justify-center">
+          <ui-icon name="alert-triangle" [size]="22" class="text-warning-fg" />
+        </div>
+        <h3 class="text-base font-semibold text-foreground">
+          {{ editingBaja() ? 'Confirmar actualización' : 'Confirmar baja' }}
+        </h3>
+        <p class="text-sm text-muted-foreground">
+          {{ editingBaja() ? 'Se guardarán los cambios en la baja del contrato.' : 'El contrato pasará al estado de baja. Esta acción no se puede deshacer.' }}
+        </p>
+      </div>
+
+      @if (showPenalizacion() && form.get('montoLiquidacion')?.value) {
+        <div class="rounded-lg border border-border bg-muted/40 p-3 space-y-1 text-sm">
+          @if (selectedTarifaId) {
+            <div class="flex justify-between text-muted-foreground">
+              <span>Tarifa</span>
+              <span class="font-medium text-foreground">{{ getTarifaNombre(selectedTarifaId) }}</span>
+            </div>
+            <div class="flex justify-between text-muted-foreground">
+              <span>Preaviso</span>
+              <span class="font-medium" [class.text-success-fg]="tienePrevioAviso" [class.text-danger-fg]="!tienePrevioAviso">
+                {{ tienePrevioAviso ? 'Con preaviso' : 'Sin preaviso' }}
+              </span>
+            </div>
+          }
+          <div class="flex justify-between font-semibold border-t border-border pt-1.5 mt-1">
+            <span class="text-foreground">Penalización</span>
+            <span class="font-mono text-primary">{{ montoDisplay(form.get('montoLiquidacion')?.value) }} €</span>
+          </div>
+        </div>
+      }
+
+      <div class="flex gap-2">
+        <button type="button" (click)="cancelConfirm()"
+          class="flex-1 h-10 rounded-lg border border-border text-sm text-muted-foreground hover:bg-accent transition-colors">
+          Volver
+        </button>
+        <button type="button" (click)="submit()"
+          [disabled]="submitting()"
+          class="flex-1 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+          @if (submitting()) {
+            <ui-icon name="loader" [size]="14" class="animate-spin" />
+          }
+          {{ editingBaja() ? 'Guardar' : 'Confirmar baja' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

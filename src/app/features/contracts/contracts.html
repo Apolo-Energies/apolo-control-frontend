@@ -863,6 +863,7 @@
       <span class="text-xs font-medium text-foreground/80">Estado</span>
       <select
         formControlName="estado"
+        (change)="onEditEstadoChange($any($event.target).value)"
         class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
       >
         @for (s of assignableStatuses; track s) {
@@ -1234,3 +1235,10 @@
     }
   </form>
 </app-form-dialog>
+
+<app-baja-dialog
+  [open]="bajaDialogOpen()"
+  [preselectedContract]="bajaForContract()"
+  (saved)="onBajaSaved()"
+  (cancelled)="closeBajaDialog()"
+/>

@@ -6,8 +6,9 @@ import { PageHeader } from '../../shared/components/page-header/page-header';
 import { LoadingOverlay } from '../../shared/components/loading-overlay/loading-overlay';
 import { Icon } from '../../shared/icons/icon';
 import { SettingService } from '../../core/services/setting.service';
+import { TarifaPenalizacionService } from '../../core/services/tarifa-penalizacion.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { AppSetting, ApiErrorResponse } from '../../core/models';
+import { AppSetting, ApiErrorResponse, TarifaPenalizacion, TarifaPenalizacionPayload } from '../../core/models';
 
 @Component({
   selector: 'app-settings',
@@ -17,6 +18,7 @@ import { AppSetting, ApiErrorResponse } from '../../core/models';
 })
 export class Settings {
   private readonly service = inject(SettingService);
+  private readonly tarifaService = inject(TarifaPenalizacionService);
   private readonly notify = inject(NotificationService);
 
   protected readonly loading = signal(false);
@@ -29,8 +31,22 @@ export class Settings {
   // Copia local de los valores editados (clave → valor string)
   protected readonly draftValues = signal<Record<string, string>>({});
 
+  // ── Tarifas de penalización ────────────────────────────────────────────────
+  protected readonly tarifas = signal<TarifaPenalizacion[]>([]);
+  protected readonly tarifaFormOpen = signal(false);
+  protected readonly editingTarifa = signal<TarifaPenalizacion | null>(null);
+  protected readonly tarifaSaving = signal(false);
+  protected readonly tarifaDeleteId = signal<string | null>(null);
+
+  protected tarifaDraft: TarifaPenalizacionPayload = this.emptyTarifa();
+
+  private emptyTarifa(): TarifaPenalizacionPayload {
+    return { nombre: '', pctPenalizacion: 0, precioMega: 140, diasPrevioAviso: 15, recargoSinAviso: 0, activa: true };
+  }
+
   constructor() {
     this.load();
+    this.loadTarifas();
   }
 
   protected load(): void {
@@ -94,6 +110,82 @@ export class Settings {
 
   protected isDirty(setting: AppSetting): boolean {
     return (this.draftValues()[setting.clave] ?? '') !== (setting.valor ?? '');
+  }
+
+  // ── Tarifas ─────────────────────────────────────────────────────────────────
+  protected loadTarifas(): void {
+    this.tarifaService.list().subscribe({
+      next: (list) => this.tarifas.set(list),
+      error: () => {},
+    });
+  }
+
+  protected openTarifaCreate(): void {
+    this.editingTarifa.set(null);
+    this.tarifaDraft = this.emptyTarifa();
+    this.tarifaFormOpen.set(true);
+  }
+
+  protected openTarifaEdit(t: TarifaPenalizacion): void {
+    this.editingTarifa.set(t);
+    this.tarifaDraft = {
+      nombre: t.nombre,
+      pctPenalizacion: t.pctPenalizacion,
+      precioMega: t.precioMega,
+      diasPrevioAviso: t.diasPrevioAviso,
+      recargoSinAviso: t.recargoSinAviso,
+      activa: t.activa,
+    };
+    this.tarifaFormOpen.set(true);
+  }
+
+  protected closeTarifaForm(): void {
+    this.tarifaFormOpen.set(false);
+    this.editingTarifa.set(null);
+  }
+
+  protected saveTarifa(): void {
+    const editing = this.editingTarifa();
+    this.tarifaSaving.set(true);
+    const op = editing
+      ? this.tarifaService.update(editing.id, this.tarifaDraft)
+      : this.tarifaService.create(this.tarifaDraft);
+
+    op.subscribe({
+      next: (t) => {
+        this.tarifaSaving.set(false);
+        this.closeTarifaForm();
+        if (editing) {
+          this.tarifas.update(list => list.map(x => x.id === t.id ? t : x));
+        } else {
+          this.tarifas.update(list => [...list, t]);
+        }
+        this.notify.success(editing ? 'Tarifa actualizada' : 'Tarifa creada');
+      },
+      error: (err: HttpErrorResponse) => {
+        this.tarifaSaving.set(false);
+        this.notify.error(extractMessage(err));
+      },
+    });
+  }
+
+  protected deleteTarifa(id: string): void {
+    this.tarifaDeleteId.set(id);
+    this.tarifaService.delete(id).subscribe({
+      next: () => {
+        this.tarifaDeleteId.set(null);
+        this.tarifas.update(list => list.filter(t => t.id !== id));
+        this.notify.success('Tarifa eliminada');
+      },
+      error: (err: HttpErrorResponse) => {
+        this.tarifaDeleteId.set(null);
+        this.notify.error(extractMessage(err));
+      },
+    });
+  }
+
+  protected pctDisplay(v: number): string {
+    return (v * 100).toFixed(2) + '%';
   }
 }
 

@@ -15,5 +15,6 @@ export * from './pagos-liquidacion.model';
 export * from './setting.model';
 export * from './rechazo.model';
 export * from './baja.model';
+export * from './tarifa-penalizacion.model';
 export * from './cambio.model';
 export * from './gestion-impago.model';
