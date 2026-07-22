@@ -7,43 +7,55 @@
 </app-page-header>
 
 <!-- Filtros -->
-<div class="flex flex-wrap gap-2 mb-4">
-  <input type="text" [(ngModel)]="q" placeholder="Buscar por cliente o CUPS…"
-    class="h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-48" />
+<section class="bg-card border border-border rounded-xl p-4 mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:flex-wrap">
 
-  <select [(ngModel)]="tipoFilter"
-    class="h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
-    <option value="">Todos los tipos</option>
-    @for (t of tipoValues; track t) {
-      <option [value]="t">{{ tipoLabel[t] }}</option>
-    }
-  </select>
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">Búsqueda</span>
+    <input type="text" [(ngModel)]="q" (ngModelChange)="applyFilters()"
+      placeholder="Cliente, NIF, CUPS…"
+      class="rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground w-56 focus:outline-none focus:ring-2 focus:ring-primary/40" />
+  </label>
 
-  <select [(ngModel)]="resultadoFilter"
-    class="h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
-    <option value="">Todos los resultados</option>
-    @for (r of resultadoValues; track r) {
-      <option [value]="r">{{ resultadoLabel[r] }}</option>
-    }
-  </select>
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">Tipo</span>
+    <select [(ngModel)]="tipoFilter" (ngModelChange)="applyFilters()"
+      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+      <option value="">Todos</option>
+      @for (t of tipoValues; track t) {
+        <option [value]="t">{{ tipoLabel[t] }}</option>
+      }
+    </select>
+  </label>
 
-  <select [(ngModel)]="gestionadoFilter"
-    class="h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
-    <option value="">Gestionado: todos</option>
-    <option value="true">Gestionado</option>
-    <option value="false">Sin gestionar</option>
-  </select>
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">Resultado</span>
+    <select [(ngModel)]="resultadoFilter" (ngModelChange)="applyFilters()"
+      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+      <option value="">Todos</option>
+      @for (r of resultadoValues; track r) {
+        <option [value]="r">{{ resultadoLabel[r] }}</option>
+      }
+    </select>
+  </label>
 
-  <button type="button" (click)="applyFilters()"
-    class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
-    <ui-icon name="search" [size]="14" />
-    Buscar
-  </button>
-  <button type="button" (click)="clearFilters()"
-    class="h-9 px-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
-    Limpiar
-  </button>
-</div>
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">Gestión</span>
+    <select [(ngModel)]="gestionadoFilter" (ngModelChange)="applyFilters()"
+      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+      <option value="">Todos</option>
+      <option value="true">Gestionado</option>
+      <option value="false">Sin gestionar</option>
+    </select>
+  </label>
+
+  @if (q || tipoFilter || resultadoFilter || gestionadoFilter) {
+    <button type="button" (click)="clearFilters()"
+      class="h-8 px-3 rounded-lg border border-border text-xs text-muted-foreground hover:bg-accent/40 transition-colors self-end">
+      Limpiar filtros
+    </button>
+  }
+
+</section>
 
 <!-- Tabla -->
 @if (loading() && !result()) {
