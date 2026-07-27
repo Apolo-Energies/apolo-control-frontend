@@ -158,7 +158,7 @@
             class="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
             <option value="">— Selecciona tarifa —</option>
             @for (t of tarifas(); track t.id) {
-              <option [value]="t.id">{{ t.nombre }} · +{{ t.recargoSinAviso.toFixed(0) }} € sin preaviso</option>
+              <option [value]="t.id">{{ t.nombre }}</option>
             }
           </select>
         </div>
@@ -218,7 +218,7 @@
               </div>
               @if (c.recargo > 0) {
                 <div class="flex justify-between text-muted-foreground">
-                  <span>Recargo sin preaviso</span>
+                  <span>Recargo sin preaviso <span class="text-xs font-medium text-danger-fg">(+50%)</span></span>
                   <span class="font-mono text-danger-fg">+ {{ c.recargo.toFixed(2) }} €</span>
                 </div>
               }
