@@ -1,24 +1,27 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { SlicePipe } from '@angular/common';
 
 import { PageHeader } from '../../shared/components/page-header/page-header';
 import { LoadingOverlay } from '../../shared/components/loading-overlay/loading-overlay';
 import { Icon } from '../../shared/icons/icon';
 import { SettingService } from '../../core/services/setting.service';
 import { TarifaPenalizacionService } from '../../core/services/tarifa-penalizacion.service';
+import { EeSyncService } from '../../core/services/ee-sync.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { AppSetting, ApiErrorResponse, TarifaPenalizacion, TarifaPenalizacionPayload } from '../../core/models';
+import { AppSetting, ApiErrorResponse, JobEjecucion, TarifaPenalizacion, TarifaPenalizacionPayload } from '../../core/models';
 
 @Component({
   selector: 'app-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, PageHeader, LoadingOverlay, Icon],
+  imports: [FormsModule, SlicePipe, PageHeader, LoadingOverlay, Icon],
   templateUrl: './settings.html',
 })
 export class Settings {
   private readonly service = inject(SettingService);
   private readonly tarifaService = inject(TarifaPenalizacionService);
+  private readonly eeSyncSvc = inject(EeSyncService);
   private readonly notify = inject(NotificationService);
 
   protected readonly loading = signal(false);
@@ -30,6 +33,11 @@ export class Settings {
 
   // Copia local de los valores editados (clave → valor string)
   protected readonly draftValues = signal<Record<string, string>>({});
+
+  // ── Sincronización EE ─────────────────────────────────────────────────────
+  protected readonly eeSyncHistorial  = signal<JobEjecucion[]>([]);
+  protected readonly eeSyncCargando   = signal(false);
+  protected readonly eeSyncEjecutando = signal(false);
 
   // ── Tarifas de penalización ────────────────────────────────────────────────
   protected readonly tarifas = signal<TarifaPenalizacion[]>([]);
@@ -47,6 +55,7 @@ export class Settings {
   constructor() {
     this.load();
     this.loadTarifas();
+    this.loadEeSyncHistorial();
   }
 
   protected load(): void {
@@ -110,6 +119,39 @@ export class Settings {
 
   protected isDirty(setting: AppSetting): boolean {
     return (this.draftValues()[setting.clave] ?? '') !== (setting.valor ?? '');
+  }
+
+  // ── Sincronización EE ─────────────────────────────────────────────────────
+  protected loadEeSyncHistorial(): void {
+    this.eeSyncCargando.set(true);
+    this.eeSyncSvc.historial().subscribe({
+      next: (data) => { this.eeSyncHistorial.set(data); this.eeSyncCargando.set(false); },
+      error: () => this.eeSyncCargando.set(false),
+    });
+  }
+
+  protected ejecutarEeSync(): void {
+    this.eeSyncEjecutando.set(true);
+    this.eeSyncSvc.ejecutar().subscribe({
+      next: (res) => {
+        this.eeSyncEjecutando.set(false);
+        this.notify.success('Sincronización completada');
+        this.loadEeSyncHistorial();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.eeSyncEjecutando.set(false);
+        this.notify.error(extractMessage(err));
+      },
+    });
+  }
+
+  protected resultadoBadgeClass(resultado: string): string {
+    switch (resultado) {
+      case 'OK':      return 'bg-success/15 text-success-fg';
+      case 'ERROR':   return 'bg-danger/15 text-danger-fg';
+      case 'OMITIDO': return 'bg-muted text-muted-foreground';
+      default:        return 'bg-muted text-muted-foreground';
+    }
   }
 
   // ── Tarifas ─────────────────────────────────────────────────────────────────

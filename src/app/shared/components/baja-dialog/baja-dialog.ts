@@ -196,7 +196,11 @@ export class BajaDialog {
       return;
     }
     this.formError.set(null);
-    this.confirming.set(true);
+    if (this.editingBaja()) {
+      this.submit();
+    } else {
+      this.confirming.set(true);
+    }
   }
 
   protected cancelConfirm(): void {

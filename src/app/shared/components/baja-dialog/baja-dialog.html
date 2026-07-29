@@ -4,7 +4,7 @@
   icon="trending-down"
   [saving]="submitting()"
   [errorMessage]="formError()"
-  saveLabel="Continuar"
+  [saveLabel]="editingBaja() ? 'Guardar' : 'Continuar'"
   (cancel)="cancel()"
   (save)="requestConfirm()"
 >
