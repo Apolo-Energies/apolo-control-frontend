@@ -60,6 +60,7 @@ export class Disconnection {
   // ── Filters ───────────────────────────────────────────────────────────────
   protected q             = '';
   protected estadoFilter: 'aviso_corte' | 'cortado' | '' = '';
+  protected sortOption    = 'nombreCliente,asc';
 
   // KPI counts from backend totals (not just current page)
   protected readonly totalAvisoCorte = signal(0);
@@ -139,7 +140,7 @@ export class Disconnection {
     this.loading.set(true);
     this.service.corteList(
       { q: this.q || undefined, estado: this.estadoFilter || undefined },
-      { page: p, size: this.size() },
+      { page: p, size: this.size(), sort: this.sortOption },
     ).subscribe({
       next: (res) => {
         this.result.set(res);
@@ -161,7 +162,7 @@ export class Disconnection {
 
   protected onSizeChange(size: number): void { this.size.set(size); this.reload(0); }
   protected applyFilters(): void { this.reload(0); }
-  protected clearFilters(): void { this.q = ''; this.estadoFilter = ''; this.reload(0); }
+  protected clearFilters(): void { this.q = ''; this.estadoFilter = ''; this.sortOption = 'nombreCliente,asc'; this.reload(0); }
 
   // ── Patch any fields ──────────────────────────────────────────────────────
   private buildPayload(r: GestionImpago, patch: Partial<GestionImpagoPayload> = {}): GestionImpagoPayload {

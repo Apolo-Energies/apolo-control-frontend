@@ -85,6 +85,15 @@
     <option value="cortado">Solo Cortado</option>
   </select>
 
+  <select [(ngModel)]="sortOption" (ngModelChange)="reload(0)"
+    class="h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+    <option value="nombreCliente,asc">A-Z cliente</option>
+    <option value="importe,desc">Mayor importe</option>
+    <option value="importe,asc">Menor importe</option>
+    <option value="fechaDevolucion,desc">Fecha dev. más reciente</option>
+    <option value="fechaDevolucion,asc">Fecha dev. más antigua</option>
+  </select>
+
   <button type="button" (click)="applyFilters()"
     class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
     <ui-icon name="search" [size]="14" />
