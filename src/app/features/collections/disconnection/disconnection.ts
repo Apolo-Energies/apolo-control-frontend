@@ -7,7 +7,7 @@ import { RouterLink } from '@angular/router';
 
 import { PageHeader }    from '../../../shared/components/page-header/page-header';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
-import { StatusBadge, StatusTone } from '../../../shared/components/status-badge/status-badge';
+import { StatusTone } from '../../../shared/components/status-badge/status-badge';
 import { Pagination }    from '../../../shared/components/pagination/pagination';
 import { KpiCard }       from '../../../shared/components/kpi-card/kpi-card';
 import { Icon }          from '../../../shared/icons/icon';
@@ -16,7 +16,7 @@ import { GestionImpagoService } from '../../../core/services/gestion-impago.serv
 import { NotificationService }  from '../../../core/services/notification.service';
 import { GlobalLoadingService } from '../../../core/services/global-loading.service';
 import {
-  GestionImpago, GestionImpagoFilter,
+  GestionImpago, GestionImpagoFilter, GestionImpagoPayload,
   EstadoGestionImpago, GestionImpagoActualizarEstadoPayload,
   ESTADO_GESTION_IMPAGO_LABEL, Page,
 } from '../../../core/models';
@@ -37,7 +37,7 @@ function estadoToneFn(estado: EstadoGestionImpago): StatusTone {
 @Component({
   selector: 'app-disconnection',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PageHeader, TableSkeleton, StatusBadge, Pagination, KpiCard, Icon, FormsModule, RouterLink],
+  imports: [PageHeader, TableSkeleton, Pagination, KpiCard, Icon, FormsModule, RouterLink],
   templateUrl: './disconnection.html',
 })
 export class Disconnection {
@@ -74,6 +74,10 @@ export class Disconnection {
   // ── Update ────────────────────────────────────────────────────────────────
   protected updatingId = signal<string | null>(null);
 
+  // ── Motivo editing ────────────────────────────────────────────────────────
+  protected readonly editingMotivoId = signal<string | null>(null);
+  protected editingMotivoValue = '';
+
   constructor() {
     this.loadAlerts();
     this.reload(0);
@@ -100,6 +104,31 @@ export class Disconnection {
     });
   }
 
+  protected ejecutarCorte(r: GestionImpago): void {
+    this.updatingId.set(r.id);
+    this.globalLoading.start('Procesando', 'Marcando como cortado…');
+    this.service.actualizarEstado(r.id, { estado: 'cortado' }).subscribe({
+      next: () => {
+        this.updatingId.set(null);
+        this.globalLoading.stop();
+        this.alerts.update(list => list.filter(a => a.id !== r.id));
+        this.notify.success('Corte ejecutado');
+        this.reload(this.page());
+      },
+      error: (err: HttpErrorResponse) => {
+        this.updatingId.set(null);
+        this.globalLoading.stop();
+        this.notify.error(extractMessage(err));
+      },
+    });
+  }
+
+  protected alertDays(dateStr: string | null | undefined): number {
+    if (!dateStr) return 0;
+    const diff = Date.now() - new Date(dateStr).getTime();
+    return Math.floor(diff / 86_400_000);
+  }
+
   // ── List ──────────────────────────────────────────────────────────────────
   protected reload(p: number): void {
     this.page.set(p);
@@ -117,6 +146,73 @@ export class Disconnection {
   protected onSizeChange(size: number): void { this.size.set(size); this.reload(0); }
   protected applyFilters(): void { this.reload(0); }
   protected clearFilters(): void { this.q = ''; this.estadoFilter = ''; this.reload(0); }
+
+  // ── Patch any fields ──────────────────────────────────────────────────────
+  private buildPayload(r: GestionImpago, patch: Partial<GestionImpagoPayload> = {}): GestionImpagoPayload {
+    return {
+      clienteId: r.clienteId,
+      numeroFactura: r.numeroFactura,
+      importe: r.importe,
+      parcialPagado: r.parcialPagado,
+      moneda: r.moneda,
+      fechaVencimiento: r.fechaVencimiento,
+      fechaDevolucion: r.fechaDevolucion,
+      estado: r.estado,
+      prioridad: r.prioridad,
+      colaborador: r.colaborador,
+      motivoDevolucion: r.motivoDevolucion,
+      asnef: r.asnef,
+      burofaxAvisoCorte: r.burofaxAvisoCorte,
+      ovcPredemanda: r.ovcPredemanda,
+      demandaM1: r.demandaM1,
+      nextActionDate: r.nextActionDate,
+      skipCorteAlert: r.skipCorteAlert,
+      observaciones: r.observaciones,
+      hubspotDealId: r.hubspotDealId,
+      ...patch,
+    };
+  }
+
+  protected patchRecord(r: GestionImpago, patch: Partial<GestionImpagoPayload>): void {
+    this.updatingId.set(r.id);
+    this.service.update(r.id, this.buildPayload(r, patch)).subscribe({
+      next:  () => { this.updatingId.set(null); this.reload(this.page()); },
+      error: (err: HttpErrorResponse) => {
+        this.updatingId.set(null);
+        this.notify.error(extractMessage(err));
+      },
+    });
+  }
+
+  // ── Contacto stepper ──────────────────────────────────────────────────────
+  protected advanceContacto(r: GestionImpago): void {
+    if (r.contactoStep >= 5) return;
+    this.updatingId.set(r.id);
+    this.service.registrarContacto(r.id, { actionKey: 'contacto' }).subscribe({
+      next:  () => { this.updatingId.set(null); this.reload(this.page()); },
+      error: (err: HttpErrorResponse) => {
+        this.updatingId.set(null);
+        this.notify.error(extractMessage(err));
+      },
+    });
+  }
+
+  // ── Motivo editing ────────────────────────────────────────────────────────
+  protected startEditMotivo(r: GestionImpago): void {
+    this.editingMotivoId.set(r.id);
+    this.editingMotivoValue = r.motivoDevolucion ?? '';
+  }
+
+  protected saveMotivo(r: GestionImpago): void {
+    if (this.editingMotivoId() !== r.id) return;
+    const current = r.motivoDevolucion ?? '';
+    this.editingMotivoId.set(null);
+    if (this.editingMotivoValue !== current) {
+      this.patchRecord(r, { motivoDevolucion: this.editingMotivoValue || null });
+    }
+  }
+
+  protected cancelEditMotivo(): void { this.editingMotivoId.set(null); }
 
   // ── Estado update ─────────────────────────────────────────────────────────
   protected actualizarEstado(r: GestionImpago, estado: EstadoGestionImpago): void {
@@ -145,5 +241,16 @@ export class Disconnection {
   }
   protected fmt(v: string | null): string {
     return v ? new Date(v).toLocaleDateString('es-ES') : '—';
+  }
+  protected fmtShort(v: string | null): string {
+    if (!v) return '—';
+    const d = new Date(v);
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    return `${dd}/${mm}`;
+  }
+  protected contactoLabel(step: number): string {
+    const ordinals = ['', '1er', '2do', '3er', '4to', '5to'];
+    return step > 0 ? `${ordinals[step] ?? step + 'º'} Contacto` : '';
   }
 }

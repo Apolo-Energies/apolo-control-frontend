@@ -9,56 +9,64 @@
   <app-kpi-card label="Alertas pendientes" [value]="alerts().length" icon="bell" tone="warning" />
 </div>
 
-<!-- Alert banner -->
+<!-- Alert banner: solo impagos con corteAlertDate vencida -->
 @if (alerts().length > 0) {
-  <section class="bg-warning-soft border border-warning/30 rounded-xl mb-6">
-    <header class="px-5 py-3 flex items-center gap-2 border-b border-warning/20">
-      <ui-icon name="alert-triangle" [size]="16" class="text-warning-fg shrink-0" />
+  <section class="border border-warning/30 rounded-xl mb-6 overflow-hidden">
+    <header class="px-5 py-3.5 flex items-center gap-2.5 bg-gradient-to-r from-warning/10 to-amber-50 dark:to-warning/5 border-b border-warning/20">
+      <ui-icon name="clock" [size]="15" class="text-warning-fg shrink-0" />
       <h3 class="text-sm font-semibold text-warning-fg flex-1">
-        {{ alerts().length }} impago(s) pendiente(s) de aviso de corte
+        Alertas de corte activas ({{ alerts().length }})
       </h3>
     </header>
-    <ul class="divide-y divide-warning/10">
+
+    <div class="divide-y divide-warning/10 bg-card">
       @for (a of (alertsExpanded() ? alerts() : alerts().slice(0, 5)); track a.id) {
-        <li class="px-5 py-3 flex flex-wrap items-center gap-3 hover:bg-warning/5 transition-colors">
-          <span class="h-9 w-9 rounded-md bg-warning-soft text-warning-fg flex items-center justify-center shrink-0">
-            <ui-icon name="scissors" [size]="16" />
-          </span>
-          <div class="flex-1 min-w-[200px]">
-            <p class="text-sm font-medium text-foreground">{{ a.clienteNombre ?? a.clienteId }}</p>
-            <p class="text-xs text-muted-foreground">
-              {{ a.numeroFactura ?? '—' }} ·
-              <span class="font-semibold text-foreground">{{ formatEur(a.importePendiente) }}</span>
-            </p>
-            @if (a.corteAlertDate) {
-              <p class="text-xs text-warning-fg mt-0.5">Fecha corte: {{ fmt(a.corteAlertDate) }}</p>
+        <div class="px-4 py-2.5 flex items-center justify-between gap-4 hover:bg-warning/5 transition-colors">
+          <!-- Info -->
+          <div class="min-w-0">
+            <span class="text-sm font-semibold text-foreground">{{ a.clienteNombre ?? a.clienteId }}</span>
+            @if (a.numeroFactura) {
+              <span class="text-xs text-muted-foreground ml-2">{{ a.numeroFactura }}</span>
             }
           </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <button type="button" (click)="skipAlert(a)"
-              class="h-8 px-3 rounded-md bg-card border border-border hover:bg-accent text-xs font-medium flex items-center gap-1.5 transition-colors">
-              <ui-icon name="x" [size]="12" />
-              Omitir alerta
-            </button>
+          <!-- Badge + acciones -->
+          <div class="flex items-center gap-2.5 shrink-0">
+            <!-- Días vencido -->
+            @if (a.corteAlertDate) {
+              @let days = alertDays(a.corteAlertDate);
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold"
+                [class]="days > 0
+                  ? 'bg-danger/10 text-danger-fg'
+                  : days === 0
+                    ? 'bg-warning/15 text-warning-fg'
+                    : 'bg-muted text-muted-foreground'">
+                <ui-icon name="clock" [size]="10" />
+                {{ days > 0 ? days + 'd vencido' : days === 0 ? 'Hoy' : (-days) + 'd restantes' }}
+              </span>
+            }
             <a [routerLink]="['/collections/unpaid', a.id]"
-              class="h-8 px-3 rounded-md bg-warning text-white hover:opacity-90 text-xs font-medium flex items-center gap-1.5 transition-opacity">
-              <ui-icon name="eye" [size]="12" />
-              Ver detalle
+              class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
+              <ui-icon name="eye" [size]="13" />
             </a>
+            <button type="button"
+              (click)="ejecutarCorte(a)"
+              [disabled]="updatingId() === a.id"
+              class="h-7 px-2.5 inline-flex items-center gap-1 rounded-md bg-danger text-white hover:bg-danger/90 text-xs font-semibold transition-colors disabled:opacity-40">
+              <ui-icon name="check" [size]="12" />
+              Corte ejecutado
+            </button>
           </div>
-        </li>
+        </div>
       }
-    </ul>
+    </div>
+
     @if (alerts().length > 5) {
       <button type="button"
         (click)="alertsExpanded.set(!alertsExpanded())"
-        class="w-full px-5 py-2.5 flex items-center justify-center gap-1.5 text-xs font-medium text-warning-fg hover:bg-warning/10 transition-colors border-t border-warning/20">
-        <ui-icon
-          name="chevron-down"
-          [size]="13"
+        class="w-full px-5 py-2 flex items-center justify-center gap-1.5 text-xs font-medium text-warning-fg bg-warning/5 hover:bg-warning/10 transition-colors border-t border-warning/20">
+        <ui-icon name="chevron-down" [size]="13"
           class="transition-transform duration-200"
-          [class.rotate-180]="alertsExpanded()"
-        />
+          [class.rotate-180]="alertsExpanded()" />
         {{ alertsExpanded() ? 'Ver menos' : 'Ver ' + (alerts().length - 5) + ' más' }}
       </button>
     }
@@ -90,7 +98,7 @@
 
 <!-- Table -->
 @if (loading() && !result()) {
-  <app-table-skeleton [cols]="7" [rows]="8" />
+  <app-table-skeleton [cols]="9" [rows]="8" />
 } @else if (error(); as msg) {
   <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm">{{ msg }}</div>
 } @else {
@@ -103,23 +111,27 @@
             <th class="px-4 py-3 text-left font-semibold">Factura</th>
             <th class="px-4 py-3 text-right font-semibold">Importe</th>
             <th class="px-4 py-3 text-right font-semibold">Pendiente</th>
-            <th class="px-4 py-3 text-left font-semibold">Estado</th>
+            <th class="px-4 py-3 text-left font-semibold min-w-[180px]">Estado</th>
+            <th class="px-4 py-3 text-left font-semibold min-w-[130px]">Contacto</th>
+            <th class="px-4 py-3 text-left font-semibold min-w-[120px]">Motivo Dev.</th>
             <th class="px-4 py-3 text-left font-semibold">Fecha corte</th>
-            <th class="px-4 py-3 text-right font-semibold w-36">Acciones</th>
+            <th class="px-4 py-3 text-right font-semibold w-16">Ver</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-border/40">
           @if (rows().length === 0) {
             <tr>
-              <td colspan="7" class="px-4 py-10 text-center text-muted-foreground text-sm">
+              <td colspan="9" class="px-4 py-10 text-center text-muted-foreground text-sm">
                 No hay registros de corte.
               </td>
             </tr>
           }
           @for (r of rows(); track r.id) {
-            <tr class="hover:bg-accent/20 transition-colors"
+            <tr class="hover:bg-accent/20 transition-colors align-top"
               [class.bg-warning-soft]="r.estado === 'aviso_corte'"
               [class.bg-danger-soft]="r.estado === 'cortado'">
+
+              <!-- Cliente -->
               <td class="px-4 py-3 max-w-[200px]">
                 <p class="font-medium text-foreground truncate" [title]="r.clienteNombre ?? r.clienteId">
                   {{ r.clienteNombre ?? r.clienteId }}
@@ -128,36 +140,136 @@
                   <p class="text-xs text-muted-foreground font-mono">{{ r.clienteNif }}</p>
                 }
               </td>
+
+              <!-- Factura -->
               <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">{{ r.numeroFactura ?? '—' }}</td>
+
+              <!-- Importe -->
               <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">{{ formatEur(r.importe) }}</td>
+
+              <!-- Pendiente -->
               <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">
                 <span class="text-danger-fg font-semibold">{{ formatEur(r.importePendiente) }}</span>
               </td>
-              <td class="px-4 py-3">
-                <app-status-badge [tone]="estadoTone(r.estado)">{{ estadoLabel[r.estado] }}</app-status-badge>
+
+              <!-- Estado (inline select + conditional checkboxes) -->
+              <td class="px-3 py-2.5">
+                <select
+                  [value]="r.estado"
+                  (change)="actualizarEstado(r, $any($event.target).value)"
+                  [disabled]="updatingId() === r.id"
+                  class="h-7 w-full px-2 rounded-md border border-border text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 disabled:opacity-50">
+                  <option value="nuevo">Nuevo</option>
+                  <option value="aviso_corte">Aviso de Corte</option>
+                  <option value="cortado">Cortado</option>
+                  <option value="va_a_pagar">Va a pagar</option>
+                  <option value="acuerdo_pago">Acuerdo de Pago</option>
+                  <option value="pagado">Pagado</option>
+                </select>
+
+                @if (r.estado === 'aviso_corte') {
+                  <div class="flex flex-col gap-1 mt-2">
+                    <label class="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                      <input type="checkbox" [checked]="r.asnef"
+                        (change)="patchRecord(r, {asnef: !r.asnef})"
+                        [disabled]="updatingId() === r.id"
+                        class="rounded" />
+                      Asnef
+                    </label>
+                    <label class="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                      <input type="checkbox" [checked]="r.burofaxAvisoCorte"
+                        (change)="patchRecord(r, {burofaxAvisoCorte: !r.burofaxAvisoCorte})"
+                        [disabled]="updatingId() === r.id"
+                        class="rounded" />
+                      Burofax Aviso
+                    </label>
+                  </div>
+                }
+
+                @if (r.estado === 'cortado') {
+                  <div class="flex flex-col gap-1 mt-2">
+                    <label class="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                      <input type="checkbox" [checked]="r.ovcPredemanda"
+                        (change)="patchRecord(r, {ovcPredemanda: !r.ovcPredemanda})"
+                        [disabled]="updatingId() === r.id"
+                        class="rounded" />
+                      OVC Predemanda
+                    </label>
+                    <label class="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                      <input type="checkbox" [checked]="r.demandaM1"
+                        (change)="patchRecord(r, {demandaM1: !r.demandaM1})"
+                        [disabled]="updatingId() === r.id"
+                        class="rounded" />
+                      Demanda M+1
+                    </label>
+                  </div>
+                }
               </td>
+
+              <!-- Contacto stepper (1–5) -->
+              <td class="px-3 py-2.5">
+                <div class="flex items-center gap-1">
+                  @for (step of [1,2,3,4,5]; track step) {
+                    <button type="button"
+                      [disabled]="step !== r.contactoStep + 1 || updatingId() === r.id"
+                      (click)="advanceContacto(r)"
+                      class="w-6 h-6 rounded-full text-[10px] font-bold flex items-center justify-center transition-colors"
+                      [class]="step <= r.contactoStep
+                        ? 'bg-primary text-primary-foreground'
+                        : step === r.contactoStep + 1
+                          ? 'border-2 border-primary text-primary hover:bg-primary/10 cursor-pointer'
+                          : 'border border-border text-muted-foreground/40 cursor-default'">
+                      {{ step }}
+                    </button>
+                  }
+                </div>
+                @if (r.contactoStep > 0) {
+                  <p class="text-[10px] text-muted-foreground mt-1.5 whitespace-nowrap font-medium">
+                    {{ contactoLabel(r.contactoStep) }}
+                  </p>
+                }
+                @if (r.promesaFecha) {
+                  <p class="text-[10px] text-muted-foreground mt-0.5 whitespace-nowrap">
+                    Promesa {{ fmtShort(r.promesaFecha) }}
+                  </p>
+                }
+              </td>
+
+              <!-- Motivo Dev. (click-to-edit) -->
+              <td class="px-3 py-2.5 max-w-[140px]">
+                @if (editingMotivoId() === r.id) {
+                  <input type="text"
+                    [value]="editingMotivoValue"
+                    (input)="editingMotivoValue = $any($event.target).value"
+                    (blur)="saveMotivo(r)"
+                    (keydown.enter)="saveMotivo(r)"
+                    (keydown.escape)="cancelEditMotivo()"
+                    autofocus
+                    class="w-full h-7 px-2 rounded border border-primary/60 text-xs bg-background focus:outline-none focus:ring-1 focus:ring-primary" />
+                } @else {
+                  <button type="button" (click)="startEditMotivo(r)"
+                    class="w-full text-left group flex items-start gap-1 min-h-[1.5rem]">
+                    <span class="text-xs text-muted-foreground group-hover:text-foreground transition-colors truncate flex-1">
+                      {{ r.motivoDevolucion || '—' }}
+                    </span>
+                    <ui-icon name="edit" [size]="10"
+                      class="shrink-0 mt-0.5 text-muted-foreground opacity-0 group-hover:opacity-60 transition-opacity" />
+                  </button>
+                }
+              </td>
+
+              <!-- Fecha corte -->
               <td class="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                 {{ fmt(r.corteAlertDate) }}
               </td>
+
+              <!-- Ver -->
               <td class="px-4 py-3">
-                <div class="flex justify-end gap-1.5">
+                <div class="flex justify-end">
                   <a [routerLink]="['/collections/unpaid', r.id]"
                     class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
                     <ui-icon name="eye" [size]="13" />
                   </a>
-                  @if (r.estado === 'aviso_corte') {
-                    <button type="button" (click)="actualizarEstado(r, 'cortado')"
-                      [disabled]="updatingId() === r.id"
-                      class="h-7 px-2 inline-flex items-center gap-1 rounded-md border border-danger/30 text-danger-fg hover:bg-danger-soft transition-colors text-xs disabled:opacity-40">
-                      Cortar
-                    </button>
-                  } @else {
-                    <button type="button" (click)="actualizarEstado(r, 'pagado')"
-                      [disabled]="updatingId() === r.id"
-                      class="h-7 px-2 inline-flex items-center gap-1 rounded-md border border-success/30 text-success-fg hover:bg-success-soft transition-colors text-xs disabled:opacity-40">
-                      Pagado
-                    </button>
-                  }
                 </div>
               </td>
             </tr>

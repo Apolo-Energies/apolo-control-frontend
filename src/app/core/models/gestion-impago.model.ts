@@ -202,6 +202,7 @@ export interface GestionImpagoPayload {
   numPagos?: number | null;
   burofaxAvisoCorte?: boolean;
   asnef?: boolean;
+  demandaM1?: boolean;
 }
 
 export interface GestionImpagoFilter {
