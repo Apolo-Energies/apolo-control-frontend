@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, inject, signal,
+  ChangeDetectionStrategy, Component, computed, inject, signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -10,6 +10,9 @@ import { KpiCard }       from '../../../shared/components/kpi-card/kpi-card';
 import { StatusBadge, StatusTone } from '../../../shared/components/status-badge/status-badge';
 import { EmptyState }    from '../../../shared/components/empty-state/empty-state';
 import { Icon }          from '../../../shared/icons/icon';
+import { BarChart, BarChartItem } from '../../../shared/components/bar-chart/bar-chart';
+import { DonutChart, DonutChartItem } from '../../../shared/components/donut-chart/donut-chart';
+import { LineChart, LineChartSeries } from '../../../shared/components/line-chart/line-chart';
 
 import { GestionImpagoService } from '../../../core/services/gestion-impago.service';
 import {
@@ -34,7 +37,7 @@ function estadoToneFn(estado: EstadoGestionImpago): StatusTone {
 @Component({
   selector: 'app-gestion-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PageHeader, KpiCard, StatusBadge, EmptyState, Icon, FormsModule, RouterLink],
+  imports: [PageHeader, KpiCard, StatusBadge, EmptyState, Icon, FormsModule, RouterLink, BarChart, DonutChart, LineChart],
   templateUrl: './gestion-dashboard.html',
 })
 export class GestionDashboard {
@@ -56,6 +59,75 @@ export class GestionDashboard {
   // ── Constants ─────────────────────────────────────────────────────────────
   protected readonly estadoLabel    = ESTADO_GESTION_IMPAGO_LABEL;
   protected readonly prioridadLabel = PRIORIDAD_GESTION_IMPAGO_LABEL;
+
+  // ── Bar chart: Deuda por estado ───────────────────────────────────────────
+  private readonly BAR_ROWS: { label: string; color: string; getValue: (s: GestionImpagoStats) => number }[] = [
+    { label: 'Pagado',         color: '#10b981', getValue: s => s.importePagado            ?? 0 },
+    { label: 'Otros',          color: '#6b7280', getValue: s => s.importeOtros             ?? 0 },
+    { label: 'Acuerdo Formal', color: '#8b5cf6', getValue: s => s.importeOvc               ?? 0 },
+    { label: 'Acuerdo de Pago',color: '#3b82f6', getValue: s => s.importeAcuerdoPago       ?? 0 },
+    { label: 'Acuerdo Verbal', color: '#0ea5e9', getValue: s => s.importeVaAPagar          ?? 0 },
+    { label: 'Aviso corte',    color: '#f59e0b', getValue: s => s.importeAvisoCorte        ?? 0 },
+    { label: 'Corte',          color: '#ef4444', getValue: s => s.importeCortado           ?? 0 },
+    { label: 'Remesar nueva.', color: '#eab308', getValue: s => s.importeRemesarNuevamente ?? 0 },
+    { label: 'Demanda',        color: '#dc2626', getValue: s => s.importeDemanda           ?? 0 },
+    { label: 'Nuevo',          color: '#94a3b8', getValue: s => s.importeNuevo             ?? 0 },
+  ];
+
+  private readonly barRowsSorted = computed(() => {
+    const s = this.stats();
+    if (!s) return [];
+    return this.BAR_ROWS
+      .map(r => ({ ...r, value: r.getValue(s) }))
+      .filter(r => r.value > 0)
+      .sort((a, b) => b.value - a.value);
+  });
+
+  protected readonly barChartData = computed<BarChartItem[]>(() =>
+    this.barRowsSorted().map(r => ({ label: r.label, value: r.value, formattedValue: this.formatEur(r.value) }))
+  );
+
+  protected readonly barChartColors = computed<string[]>(() =>
+    this.barRowsSorted().map(r => r.color)
+  );
+
+  protected readonly barChartLegend = computed(() =>
+    this.barRowsSorted().map(r => ({ label: r.label, value: r.value, color: r.color }))
+  );
+
+  // ── Donut chart: Antigüedad de deuda ─────────────────────────────────────
+  protected readonly antiguedadData = computed<DonutChartItem[]>(() => {
+    const s = this.stats();
+    if (!s) return [];
+    const buckets: DonutChartItem[] = [
+      { id: '0a30',   label: '0-30 días',   value: s.importe0a30   ?? 0, color: '#3b82f6' },
+      { id: '31a60',  label: '31-60 días',  value: s.importe31a60  ?? 0, color: '#06b6d4' },
+      { id: '61a90',  label: '61-90 días',  value: s.importe61a90  ?? 0, color: '#f59e0b' },
+      { id: '91a180', label: '91-180 días', value: s.importe91a180 ?? 0, color: '#ef4444' },
+      { id: 'mas180', label: '+180 días',   value: s.importeMas180 ?? 0, color: '#8b5cf6' },
+    ];
+    return buckets.filter(b => b.value > 0);
+  });
+
+  // ── Line chart: Histórico mensual ─────────────────────────────────────────
+  protected readonly lineLabels = computed<string[]>(() => {
+    const hist = this.stats()?.historicoMensual ?? [];
+    return hist.map(h => this.formatMes(h.mes));
+  });
+
+  protected readonly lineSeries = computed<LineChartSeries[]>(() => {
+    const hist = this.stats()?.historicoMensual ?? [];
+    return [
+      { label: 'Impagos', color: '#3b82f6', values: hist.map(h => h.impagos ?? 0) },
+      { label: 'Cobrado', color: '#10b981', values: hist.map(h => h.cobrado ?? 0) },
+    ];
+  });
+
+  private formatMes(yyyymm: string): string {
+    const [y, m] = yyyymm.split('-');
+    const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    return `${months[parseInt(m, 10) - 1]} ${y.slice(2)}`;
+  }
 
   constructor() {
     this.loadStats();

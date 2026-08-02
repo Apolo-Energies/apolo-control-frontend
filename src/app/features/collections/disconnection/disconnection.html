@@ -13,13 +13,13 @@
 @if (alerts().length > 0) {
   <section class="bg-warning-soft border border-warning/30 rounded-xl mb-6">
     <header class="px-5 py-3 flex items-center gap-2 border-b border-warning/20">
-      <ui-icon name="alert-triangle" [size]="16" class="text-warning-fg" />
-      <h3 class="text-sm font-semibold text-warning-fg">
+      <ui-icon name="alert-triangle" [size]="16" class="text-warning-fg shrink-0" />
+      <h3 class="text-sm font-semibold text-warning-fg flex-1">
         {{ alerts().length }} impago(s) pendiente(s) de aviso de corte
       </h3>
     </header>
     <ul class="divide-y divide-warning/10">
-      @for (a of alerts(); track a.id) {
+      @for (a of (alertsExpanded() ? alerts() : alerts().slice(0, 5)); track a.id) {
         <li class="px-5 py-3 flex flex-wrap items-center gap-3 hover:bg-warning/5 transition-colors">
           <span class="h-9 w-9 rounded-md bg-warning-soft text-warning-fg flex items-center justify-center shrink-0">
             <ui-icon name="scissors" [size]="16" />
@@ -49,6 +49,19 @@
         </li>
       }
     </ul>
+    @if (alerts().length > 5) {
+      <button type="button"
+        (click)="alertsExpanded.set(!alertsExpanded())"
+        class="w-full px-5 py-2.5 flex items-center justify-center gap-1.5 text-xs font-medium text-warning-fg hover:bg-warning/10 transition-colors border-t border-warning/20">
+        <ui-icon
+          name="chevron-down"
+          [size]="13"
+          class="transition-transform duration-200"
+          [class.rotate-180]="alertsExpanded()"
+        />
+        {{ alertsExpanded() ? 'Ver menos' : 'Ver ' + (alerts().length - 5) + ' más' }}
+      </button>
+    }
   </section>
 }
 

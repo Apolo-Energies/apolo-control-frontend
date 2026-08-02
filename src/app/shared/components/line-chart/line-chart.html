@@ -1,0 +1,113 @@
+@if (series().length === 0 || labels().length === 0) {
+  <p class="text-sm text-muted-foreground py-6 text-center">{{ emptyLabel() }}</p>
+} @else {
+  <div class="w-full" (mouseleave)="onLeave()">
+    <svg
+      [attr.viewBox]="viewBox()"
+      class="w-full overflow-visible"
+      [attr.height]="height()"
+      preserveAspectRatio="none"
+    >
+      <!-- Grid lines + Y labels -->
+      @for (tick of yTicks(); track tick; let i = $index) {
+        <line
+          x1="52" [attr.x2]="460 - 16"
+          [attr.y1]="yPos(tick)" [attr.y2]="yPos(tick)"
+          stroke="currentColor" stroke-opacity="0.08" stroke-width="1"
+        />
+        <text
+          x="48" [attr.y]="yPos(tick) + 4"
+          text-anchor="end" font-size="10"
+          fill="currentColor" class="text-muted-foreground"
+        >{{ formatY(tick) }}</text>
+      }
+
+      <!-- Area fills -->
+      @for (s of series(); track s.label) {
+        <path
+          [attr.d]="buildArea(s.values)"
+          [attr.fill]="s.color"
+          fill-opacity="0.08"
+        />
+      }
+
+      <!-- Lines -->
+      @for (s of series(); track s.label) {
+        <polyline
+          [attr.points]="buildPolyline(s.values)"
+          fill="none"
+          [attr.stroke]="s.color"
+          stroke-width="2"
+          stroke-linejoin="round"
+          stroke-linecap="round"
+        />
+      }
+
+      <!-- Hover circles + vertical guide -->
+      @if (hoveredIndex(); as hi) {
+        <line
+          [attr.x1]="xPositions()[hi]" [attr.x2]="xPositions()[hi]"
+          [attr.y1]="20" [attr.y2]="20 + plotH()"
+          stroke="currentColor" stroke-opacity="0.15" stroke-width="1" stroke-dasharray="4 3"
+        />
+        @for (s of series(); track s.label) {
+          <circle
+            [attr.cx]="xPositions()[hi]"
+            [attr.cy]="yPos(s.values[hi])"
+            r="4" [attr.fill]="s.color" stroke="white" stroke-width="2"
+          />
+        }
+        <!-- Tooltip -->
+        <foreignObject
+          [attr.x]="getTooltipX(hi)"
+          [attr.y]="20"
+          width="110" height="70"
+        >
+          <div xmlns="http://www.w3.org/1999/xhtml"
+            class="bg-foreground text-background text-xs rounded-lg shadow-lg px-2.5 py-2 space-y-0.5 pointer-events-none">
+            <p class="font-semibold opacity-90 mb-1">{{ labels()[hi] }}</p>
+            @for (s of series(); track s.label) {
+              <p class="flex items-center gap-1">
+                <span class="inline-block w-2 h-2 rounded-full shrink-0" [style.background]="s.color"></span>
+                {{ formatY(s.values[hi]) }}
+              </p>
+            }
+          </div>
+        </foreignObject>
+      }
+
+      <!-- Hover areas (invisible) -->
+      @for (x of xPositions(); track $index; let i = $index) {
+        <rect
+          [attr.x]="x - plotW() / labels().length / 2"
+          [attr.y]="20"
+          [attr.width]="plotW() / labels().length"
+          [attr.height]="plotH()"
+          fill="transparent"
+          (mouseenter)="onHover(i)"
+        />
+      }
+
+      <!-- X-axis labels -->
+      @for (lbl of labels(); track lbl; let i = $index) {
+        <text
+          [attr.x]="xPositions()[i]"
+          [attr.y]="20 + plotH() + 18"
+          text-anchor="middle"
+          font-size="10"
+          fill="currentColor" class="text-muted-foreground"
+        >{{ lbl }}</text>
+      }
+    </svg>
+
+    <!-- Legend -->
+    <div class="flex items-center justify-center gap-5 mt-2">
+      @for (s of series(); track s.label) {
+        <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span class="w-6 h-0.5 rounded-full inline-block" [style.background]="s.color"></span>
+          {{ s.label }}
+        </div>
+      }
+    </div>
+  </div>
+}

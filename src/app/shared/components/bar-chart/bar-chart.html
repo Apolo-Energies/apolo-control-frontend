@@ -33,7 +33,7 @@
           <div
             class="w-full rounded-t-md transition-all duration-200 relative shadow-sm"
             [style.height.%]="pct(row.value)"
-            [style.background]="color()"
+            [style.background]="barColor(i)"
             [style.opacity]="isDimmed(i) ? 0.35 : 1"
             [style.transform]="isHovered(i) ? 'scaleY(1.02)' : 'scaleY(1)'"
             style="transform-origin: bottom;"

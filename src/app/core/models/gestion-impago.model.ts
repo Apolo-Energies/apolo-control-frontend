@@ -241,6 +241,14 @@ export interface GestionImpagoStats {
   countPagado: number;       importePagado: number;
   countRemesarNuevamente: number; importeRemesarNuevamente: number;
   countOtros: number;        importeOtros: number;
+  // Antigüedad de deuda
+  importe0a30: number;
+  importe31a60: number;
+  importe61a90: number;
+  importe91a180: number;
+  importeMas180: number;
+  // Histórico mensual
+  historicoMensual: { mes: string; impagos: number; cobrado: number }[];
 }
 
 // ── Acción de cobranza ────────────────────────────────────────────────────────

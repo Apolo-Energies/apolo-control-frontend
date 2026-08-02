@@ -92,6 +92,65 @@
       <p class="text-xs text-muted-foreground mt-0.5">{{ formatEur(s.importePagado) }}</p>
     </div>
   </div>
+
+
+  <!-- Gráficas: Deuda por estado + Antigüedad -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+
+    <!-- Deuda por estado -->
+    <div class="bg-card border border-border rounded-xl p-5">
+      <h3 class="text-sm font-semibold text-foreground mb-0.5">Deuda por estado</h3>
+      <p class="text-xs text-muted-foreground mb-4">{{ barChartData().length }} estados con deuda</p>
+      <app-bar-chart
+        [data]="barChartData()"
+        [colors]="barChartColors()"
+        [height]="180"
+      />
+      <!-- Legend with amounts -->
+      <div class="mt-4 space-y-2">
+        @for (row of barChartLegend(); track row.label) {
+          <div class="flex items-center gap-2 text-xs">
+            <span class="w-2.5 h-2.5 rounded-full shrink-0" [style.background]="row.color"></span>
+            <span class="text-muted-foreground w-28 truncate">{{ row.label }}</span>
+            <div class="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+              <div class="h-full rounded-full" [style.background]="row.color"
+                [style.width.%]="(row.value / (barChartLegend()[0]?.value || 1)) * 100">
+              </div>
+            </div>
+            <span class="font-mono font-medium text-foreground whitespace-nowrap">{{ formatEur(row.value) }}</span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Antigüedad de deuda -->
+    <div class="bg-card border border-border rounded-xl p-5">
+      <h3 class="text-sm font-semibold text-foreground mb-4">Antigüedad de deuda</h3>
+      @if (antiguedadData().length > 0) {
+        <app-donut-chart
+          [data]="antiguedadData()"
+          centerLabel="Vencida"
+          [showLegend]="true"
+        />
+      } @else {
+        <p class="text-sm text-muted-foreground text-center py-10">Sin datos de antigüedad</p>
+      }
+    </div>
+  </div>
+
+  <!-- Histórico acumulado -->
+  <div class="bg-card border border-border rounded-xl p-5 mb-4">
+    <h3 class="text-sm font-semibold text-foreground mb-4">Histórico acumulado — Impagos vs Cobrado</h3>
+    @if (lineLabels().length > 0) {
+      <app-line-chart
+        [series]="lineSeries()"
+        [labels]="lineLabels()"
+        [height]="200"
+      />
+    } @else {
+      <p class="text-sm text-muted-foreground text-center py-10">Sin datos históricos</p>
+    }
+  </div>
 }
 
 <!-- Tareas pendientes -->

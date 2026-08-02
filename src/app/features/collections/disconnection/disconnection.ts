@@ -46,8 +46,9 @@ export class Disconnection {
   private readonly globalLoading = inject(GlobalLoadingService);
 
   // ── Corte alerts (banner) ─────────────────────────────────────────────────
-  protected readonly alerts      = signal<GestionImpago[]>([]);
-  protected readonly alertsLoading = signal(false);
+  protected readonly alerts         = signal<GestionImpago[]>([]);
+  protected readonly alertsLoading  = signal(false);
+  protected readonly alertsExpanded = signal(false);
 
   // ── List state ────────────────────────────────────────────────────────────
   protected readonly loading       = signal(false);

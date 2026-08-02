@@ -16,6 +16,7 @@ export interface BarChartItem {
 export class BarChart {
   readonly data = input.required<readonly BarChartItem[]>();
   readonly color = input<string>('#10b981');
+  readonly colors = input<readonly string[]>([]);
   readonly height = input<number>(220);
   readonly emptyLabel = input<string>('Sin datos');
 
@@ -42,6 +43,10 @@ export class BarChart {
 
   protected onEnter(index: number): void {
     this.hoveredIndex.set(index);
+  }
+
+  protected barColor(index: number): string {
+    return this.colors()[index] ?? this.color();
   }
 
   protected onLeave(): void {
