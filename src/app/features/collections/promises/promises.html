@@ -7,95 +7,237 @@
 </app-page-header>
 
 <!-- KPI row -->
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-  <app-kpi-card label="Total promesas" [value]="rows().length" icon="calendar-check" tone="info" />
-  <app-kpi-card label="Vencidas sin cumplir" [value]="vencidas()" icon="alert-triangle" tone="danger" />
-  <app-kpi-card label="Cumplidas" [value]="cumplidas()" icon="check" tone="success" />
-  <app-kpi-card label="Importe total" [value]="formatEur(totalImporte())" icon="euro" tone="warning" />
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <!-- Total activas -->
+  <div class="bg-card border border-border rounded-2xl p-5 text-center">
+    <p class="text-sm text-muted-foreground">Total activas</p>
+    <p class="text-3xl font-bold text-foreground mt-1">{{ totalActivas() }}</p>
+  </div>
+  <!-- Vencidas -->
+  <div class="rounded-2xl border p-5 text-center transition-colors"
+    [class]="countVencidas() > 0
+      ? 'bg-danger-soft border-danger/20'
+      : 'bg-card border-border'">
+    <p class="text-sm" [class]="countVencidas() > 0 ? 'text-danger-fg font-semibold' : 'text-muted-foreground'">
+      ⚠️ Vencidas
+    </p>
+    <p class="text-3xl font-bold mt-1"
+      [class]="countVencidas() > 0 ? 'text-danger-fg' : 'text-foreground'">
+      {{ countVencidas() }}
+    </p>
+  </div>
+  <!-- Vencen hoy -->
+  <div class="rounded-2xl border p-5 text-center transition-colors"
+    [class]="countHoy() > 0
+      ? 'bg-warning-soft border-warning/20'
+      : 'bg-card border-border'">
+    <p class="text-sm" [class]="countHoy() > 0 ? 'text-warning-fg font-semibold' : 'text-muted-foreground'">
+      🔔 Vencen hoy
+    </p>
+    <p class="text-3xl font-bold mt-1"
+      [class]="countHoy() > 0 ? 'text-warning-fg' : 'text-foreground'">
+      {{ countHoy() }}
+    </p>
+  </div>
+  <!-- Próximas -->
+  <div class="bg-success-soft border border-success/20 rounded-2xl p-5 text-center">
+    <p class="text-sm text-success-fg">Próximas</p>
+    <p class="text-3xl font-bold text-success-fg mt-1">{{ countProximas() }}</p>
+  </div>
 </div>
 
-<!-- Table -->
+<!-- Search -->
+<div class="flex gap-2 mb-6">
+  <input type="text" [(ngModel)]="q" placeholder="Buscar por cliente o factura…"
+    class="h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-56" />
+  <button type="button" (click)="q = ''"
+    class="h-9 px-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
+    Limpiar
+  </button>
+</div>
+
 @if (loading()) {
-  <app-table-skeleton [cols]="7" [rows]="8" />
+  <app-table-skeleton [cols]="1" [rows]="6" />
 } @else if (error(); as msg) {
   <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm">{{ msg }}</div>
-} @else if (rows().length === 0) {
-  <app-empty-state icon="calendar-check" title="Sin promesas" description="No hay promesas de pago registradas actualmente." />
+} @else if (filtered().length === 0) {
+  <app-empty-state icon="calendar-check" title="Sin promesas" description="No hay promesas de pago pendientes actualmente." />
 } @else {
-  <div class="bg-card border border-border rounded-xl overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
-          <tr>
-            <th class="px-4 py-3 text-left font-semibold">Cliente</th>
-            <th class="px-4 py-3 text-left font-semibold">Factura</th>
-            <th class="px-4 py-3 text-right font-semibold">Importe</th>
-            <th class="px-4 py-3 text-right font-semibold">Prometido</th>
-            <th class="px-4 py-3 text-left font-semibold">Fecha promesa</th>
-            <th class="px-4 py-3 text-left font-semibold">Estado</th>
-            <th class="px-4 py-3 text-right font-semibold w-28">Acciones</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-border/40">
-          @for (r of rows(); track r.id) {
-            <tr class="hover:bg-accent/20 transition-colors"
-              [class.bg-danger-soft]="isOverdue(r)"
-              [class.bg-success-soft]="r.promesaCumplida">
-              <td class="px-4 py-3 max-w-[200px]">
-                <p class="font-medium text-foreground truncate" [title]="r.clienteNombre ?? r.clienteId">
-                  {{ r.clienteNombre ?? r.clienteId }}
-                </p>
-                @if (r.clienteNif) {
-                  <p class="text-xs text-muted-foreground font-mono">{{ r.clienteNif }}</p>
-                }
-              </td>
-              <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">{{ r.numeroFactura ?? '—' }}</td>
-              <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">{{ formatEur(r.importePendiente) }}</td>
-              <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">
-                @if (r.promesaImporte) {
-                  <span class="font-semibold">{{ formatEur(r.promesaImporte) }}</span>
-                } @else {
-                  <span class="text-muted-foreground">—</span>
-                }
-              </td>
-              <td class="px-4 py-3 text-xs whitespace-nowrap">
-                @if (r.promesaFecha) {
-                  <span [class.text-danger-fg]="isOverdue(r)" [class.font-semibold]="isOverdue(r)">
-                    {{ fmt(r.promesaFecha) }}
-                  </span>
-                  @if (isOverdue(r)) {
-                    <span class="block text-danger-fg text-[10px]">Vencida</span>
+
+  <!-- ── Vencidas ───────────────────────────────────────────────────── -->
+  @if (rowsVencidas().length > 0) {
+    <div class="mb-6">
+      <h2 class="text-xs font-bold text-danger-fg uppercase tracking-wider mb-3 flex items-center gap-1.5">
+        <ui-icon name="alert-triangle" [size]="14" />
+        Promesas vencidas ({{ rowsVencidas().length }})
+      </h2>
+      <div class="space-y-2">
+        @for (r of rowsVencidas(); track r.id) {
+          <div class="bg-card rounded-2xl border border-danger/20 bg-danger-soft/20 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-start gap-3">
+              <!-- Icon -->
+              <div class="p-2 rounded-xl bg-danger-soft shrink-0">
+                <ui-icon name="alert-triangle" [size]="18" class="text-danger-fg" />
+              </div>
+              <!-- Info -->
+              <div>
+                <p class="font-semibold text-foreground">{{ r.clienteNombre ?? r.clienteId }}</p>
+                <div class="flex flex-wrap items-center gap-2 mt-0.5">
+                  @if (r.numeroFactura) {
+                    <span class="text-xs text-muted-foreground font-mono">{{ r.numeroFactura }}</span>
                   }
-                } @else {
-                  <span class="text-muted-foreground">—</span>
-                }
-              </td>
-              <td class="px-4 py-3">
-                @if (r.promesaCumplida) {
-                  <app-status-badge tone="success">Cumplida</app-status-badge>
-                } @else {
-                  <app-status-badge [tone]="estadoTone(r.estado)">{{ estadoLabel[r.estado] }}</app-status-badge>
-                }
-              </td>
-              <td class="px-4 py-3">
-                <div class="flex justify-end gap-1.5">
-                  <a [routerLink]="['/collections/unpaid', r.id]"
-                    class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
-                    <ui-icon name="eye" [size]="13" />
-                  </a>
-                  @if (!r.promesaCumplida) {
-                    <button type="button" (click)="marcarPagado(r)"
-                      [disabled]="updatingId() === r.id"
-                      class="h-7 px-2 inline-flex items-center gap-1 rounded-md border border-success/30 text-success-fg hover:bg-success-soft transition-colors text-xs disabled:opacity-40">
-                      Pagado
-                    </button>
+                  <span class="text-xs font-bold text-foreground">{{ formatEur(r.importePendiente) }}</span>
+                  @if (r.promesaImporte) {
+                    <span class="text-xs text-success-fg font-semibold">Promete: {{ formatEur(r.promesaImporte) }}</span>
                   }
                 </div>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-danger-soft text-danger-fg">
+                    Vencida hace {{ -daysLeft(r.promesaFecha) }}d
+                  </span>
+                  <span class="text-xs text-muted-foreground">{{ fmt(r.promesaFecha) }}</span>
+                </div>
+                @let note = lastPromesaNote(r);
+                @if (note) {
+                  <p class="text-xs text-muted-foreground mt-1 italic">"{{ note }}"</p>
+                }
+              </div>
+            </div>
+            <!-- Actions -->
+            <div class="flex items-center gap-2 shrink-0">
+              <a [routerLink]="['/collections/unpaid', r.id]"
+                class="h-8 w-8 inline-flex items-center justify-center rounded-xl border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
+                <ui-icon name="eye" [size]="14" />
+              </a>
+              <button type="button" (click)="marcarNoPago(r)" [disabled]="updatingId() === r.id"
+                class="text-xs px-3 py-1.5 border border-border rounded-xl text-muted-foreground hover:bg-accent/40 font-medium transition-colors disabled:opacity-40">
+                No pagó
+              </button>
+              <button type="button" (click)="marcarPagado(r)" [disabled]="updatingId() === r.id"
+                class="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-success text-white rounded-xl font-semibold hover:bg-success/90 transition-colors disabled:opacity-40">
+                <ui-icon name="check" [size]="13" />
+                Pagó
+              </button>
+            </div>
+          </div>
+        }
+      </div>
     </div>
-  </div>
+  }
+
+  <!-- ── Vencen hoy ─────────────────────────────────────────────────── -->
+  @if (rowsHoy().length > 0) {
+    <div class="mb-6">
+      <h2 class="text-xs font-bold text-warning-fg uppercase tracking-wider mb-3 flex items-center gap-1.5">
+        <ui-icon name="bell" [size]="14" />
+        Vencen hoy ({{ rowsHoy().length }})
+      </h2>
+      <div class="space-y-2">
+        @for (r of rowsHoy(); track r.id) {
+          <div class="bg-card rounded-2xl border border-warning/25 bg-warning-soft/20 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-start gap-3">
+              <div class="p-2 rounded-xl bg-warning-soft shrink-0">
+                <ui-icon name="bell" [size]="18" class="text-warning-fg" />
+              </div>
+              <div>
+                <p class="font-semibold text-foreground">{{ r.clienteNombre ?? r.clienteId }}</p>
+                <div class="flex flex-wrap items-center gap-2 mt-0.5">
+                  @if (r.numeroFactura) {
+                    <span class="text-xs text-muted-foreground font-mono">{{ r.numeroFactura }}</span>
+                  }
+                  <span class="text-xs font-bold text-foreground">{{ formatEur(r.importePendiente) }}</span>
+                  @if (r.promesaImporte) {
+                    <span class="text-xs text-success-fg font-semibold">Promete: {{ formatEur(r.promesaImporte) }}</span>
+                  }
+                </div>
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-warning-soft text-warning-fg">
+                    ¡Hoy!
+                  </span>
+                  <span class="text-xs text-muted-foreground">{{ fmt(r.promesaFecha) }}</span>
+                </div>
+                @let note = lastPromesaNote(r);
+                @if (note) {
+                  <p class="text-xs text-muted-foreground mt-1 italic">"{{ note }}"</p>
+                }
+              </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <a [routerLink]="['/collections/unpaid', r.id]"
+                class="h-8 w-8 inline-flex items-center justify-center rounded-xl border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
+                <ui-icon name="eye" [size]="14" />
+              </a>
+              <button type="button" (click)="marcarNoPago(r)" [disabled]="updatingId() === r.id"
+                class="text-xs px-3 py-1.5 border border-border rounded-xl text-muted-foreground hover:bg-accent/40 font-medium transition-colors disabled:opacity-40">
+                No pagó
+              </button>
+              <button type="button" (click)="marcarPagado(r)" [disabled]="updatingId() === r.id"
+                class="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-success text-white rounded-xl font-semibold hover:bg-success/90 transition-colors disabled:opacity-40">
+                <ui-icon name="check" [size]="13" />
+                Pagó
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ── Próximas ────────────────────────────────────────────────────── -->
+  @if (rowsProximas().length > 0) {
+    <div class="mb-6">
+      <h2 class="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+        <ui-icon name="clock" [size]="14" />
+        Próximas ({{ rowsProximas().length }})
+      </h2>
+      <div class="space-y-2">
+        @for (r of rowsProximas(); track r.id) {
+          <div class="bg-card rounded-2xl border border-border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-start gap-3">
+              <div class="p-2 rounded-xl bg-info-soft shrink-0">
+                <ui-icon name="clock" [size]="18" class="text-info-fg" />
+              </div>
+              <div>
+                <p class="font-semibold text-foreground">{{ r.clienteNombre ?? r.clienteId }}</p>
+                <div class="flex flex-wrap items-center gap-2 mt-0.5">
+                  @if (r.numeroFactura) {
+                    <span class="text-xs text-muted-foreground font-mono">{{ r.numeroFactura }}</span>
+                  }
+                  <span class="text-xs font-bold text-foreground">{{ formatEur(r.importePendiente) }}</span>
+                  @if (r.promesaImporte) {
+                    <span class="text-xs text-success-fg font-semibold">Promete: {{ formatEur(r.promesaImporte) }}</span>
+                  }
+                </div>
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-info-soft text-info-fg">
+                    En {{ daysLeft(r.promesaFecha) }}d
+                  </span>
+                  <span class="text-xs text-muted-foreground">{{ fmt(r.promesaFecha) }}</span>
+                </div>
+                @let note = lastPromesaNote(r);
+                @if (note) {
+                  <p class="text-xs text-muted-foreground mt-1 italic">"{{ note }}"</p>
+                }
+              </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <a [routerLink]="['/collections/unpaid', r.id]"
+                class="h-8 w-8 inline-flex items-center justify-center rounded-xl border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
+                <ui-icon name="eye" [size]="14" />
+              </a>
+              <button type="button" (click)="marcarNoPago(r)" [disabled]="updatingId() === r.id"
+                class="text-xs px-3 py-1.5 border border-border rounded-xl text-muted-foreground hover:bg-accent/40 font-medium transition-colors disabled:opacity-40">
+                No pagó
+              </button>
+              <button type="button" (click)="marcarPagado(r)" [disabled]="updatingId() === r.id"
+                class="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-success text-white rounded-xl font-semibold hover:bg-success/90 transition-colors disabled:opacity-40">
+                <ui-icon name="check" [size]="13" />
+                Pagó
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
 }

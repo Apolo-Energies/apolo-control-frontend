@@ -87,6 +87,10 @@ export class GestionImpagoService {
     return this.http.patch<GestionImpago>(`${this.baseUrl}/${id}/estado`, payload);
   }
 
+  marcarNoPago(id: string): Observable<GestionImpago> {
+    return this.http.patch<GestionImpago>(`${this.baseUrl}/${id}/no-pago`, {});
+  }
+
   marcarOvcEnviado(id: string): Observable<GestionImpago> {
     return this.http.patch<GestionImpago>(`${this.baseUrl}/${id}/ovc-enviado`, {});
   }
