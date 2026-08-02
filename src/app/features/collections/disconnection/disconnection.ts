@@ -16,7 +16,7 @@ import { GestionImpagoService } from '../../../core/services/gestion-impago.serv
 import { NotificationService }  from '../../../core/services/notification.service';
 import { GlobalLoadingService } from '../../../core/services/global-loading.service';
 import {
-  GestionImpago, GestionImpagoFilter, GestionImpagoPayload,
+  GestionImpago, GestionImpagoPayload,
   EstadoGestionImpago, GestionImpagoActualizarEstadoPayload,
   ESTADO_GESTION_IMPAGO_LABEL, Page,
 } from '../../../core/models';
@@ -61,6 +61,10 @@ export class Disconnection {
   protected q             = '';
   protected estadoFilter: 'aviso_corte' | 'cortado' | '' = '';
 
+  // KPI counts from backend totals (not just current page)
+  protected readonly totalAvisoCorte = signal(0);
+  protected readonly totalCortado    = signal(0);
+
   // ── Constants ─────────────────────────────────────────────────────────────
   protected readonly estadoLabel = ESTADO_GESTION_IMPAGO_LABEL;
 
@@ -68,8 +72,8 @@ export class Disconnection {
   protected readonly totalElements = computed(() => this.result()?.totalElements ?? 0);
   protected readonly totalPages    = computed(() => this.result()?.totalPages ?? 0);
 
-  protected readonly countAvisoCorte = computed(() => this.rows().filter(r => r.estado === 'aviso_corte').length);
-  protected readonly countCortado    = computed(() => this.rows().filter(r => r.estado === 'cortado').length);
+  protected readonly countAvisoCorte = computed(() => this.totalAvisoCorte());
+  protected readonly countCortado    = computed(() => this.totalCortado());
 
   // ── Update ────────────────────────────────────────────────────────────────
   protected updatingId = signal<string | null>(null);
@@ -133,13 +137,25 @@ export class Disconnection {
   protected reload(p: number): void {
     this.page.set(p);
     this.loading.set(true);
-    const filter: GestionImpagoFilter = {
-      q:      this.q || undefined,
-      estado: this.estadoFilter || undefined,
-    };
-    this.service.list(filter, { page: p, size: this.size() }).subscribe({
-      next:  (res) => { this.result.set(res); this.loading.set(false); },
+    this.service.corteList(
+      { q: this.q || undefined, estado: this.estadoFilter || undefined },
+      { page: p, size: this.size() },
+    ).subscribe({
+      next: (res) => {
+        this.result.set(res);
+        this.loading.set(false);
+        this.loadKpiCounts();
+      },
       error: (err: HttpErrorResponse) => { this.error.set(extractMessage(err)); this.loading.set(false); },
+    });
+  }
+
+  private loadKpiCounts(): void {
+    this.service.corteList({ estado: 'aviso_corte' }, { size: 1 }).subscribe({
+      next: (res) => this.totalAvisoCorte.set(res.totalElements),
+    });
+    this.service.corteList({ estado: 'cortado' }, { size: 1 }).subscribe({
+      next: (res) => this.totalCortado.set(res.totalElements),
     });
   }
 

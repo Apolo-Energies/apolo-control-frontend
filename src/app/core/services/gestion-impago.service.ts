@@ -37,8 +37,10 @@ export class GestionImpagoService {
     });
   }
 
-  corte(): Observable<GestionImpago[]> {
-    return this.http.get<GestionImpago[]>(`${this.baseUrl}/corte`);
+  corteList(filter: { q?: string; estado?: string } = {}, page: PageRequest = {}): Observable<Page<GestionImpago>> {
+    return this.http.get<Page<GestionImpago>>(`${this.baseUrl}/corte`, {
+      params: buildParams({ ...filter, ...page }),
+    });
   }
 
   corteAlertas(): Observable<GestionImpago[]> {
