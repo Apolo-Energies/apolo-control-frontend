@@ -59,6 +59,12 @@ export class GestionImpagoService {
     return this.http.get<GestionImpago[]>(`${this.baseUrl}/promesas`);
   }
 
+  promesasList(q: string | undefined, page: PageRequest = {}): Observable<Page<GestionImpago>> {
+    return this.http.get<Page<GestionImpago>>(`${this.baseUrl}/promesas/page`, {
+      params: buildParams({ q, ...page }),
+    });
+  }
+
   getById(id: string): Observable<GestionImpago> {
     return this.http.get<GestionImpago>(`${this.baseUrl}/${id}`);
   }

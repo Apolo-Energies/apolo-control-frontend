@@ -15,7 +15,7 @@ import { GestionImpagoService } from '../../../core/services/gestion-impago.serv
 import { NotificationService }  from '../../../core/services/notification.service';
 import { GlobalLoadingService } from '../../../core/services/global-loading.service';
 import {
-  GestionImpago, GestionImpagoFilter,
+  GestionImpago,
   EstadoGestionImpago, GestionImpagoActualizarEstadoPayload,
   ESTADO_GESTION_IMPAGO_VALUES, ESTADO_GESTION_IMPAGO_LABEL,
   PRIORIDAD_GESTION_IMPAGO_LABEL, Page,
@@ -77,11 +77,7 @@ export class VerbalAgreement {
   protected reload(p: number): void {
     this.page.set(p);
     this.loading.set(true);
-    const filter: GestionImpagoFilter = {
-      q:      this.q || undefined,
-      estado: 'va_a_pagar',
-    };
-    this.service.list(filter, { page: p, size: this.size() }).subscribe({
+    this.service.promesasList(this.q || undefined, { page: p, size: this.size() }).subscribe({
       next:  (res) => { this.result.set(res); this.loading.set(false); },
       error: (err: HttpErrorResponse) => { this.error.set(extractMessage(err)); this.loading.set(false); },
     });
