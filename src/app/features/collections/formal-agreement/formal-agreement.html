@@ -1,4 +1,9 @@
 <app-page-header title="Acuerdo Formal (OVC)" subtitle="Casos en acuerdo formal con orden de vía de cobro">
+  <button type="button" (click)="exportCsv()"
+    class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
+    <ui-icon name="download" [size]="14" />
+    Exportar CSV
+  </button>
   <button type="button" (click)="load()"
     class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
     <ui-icon name="refresh-cw" [size]="14" />
@@ -7,10 +12,22 @@
 </app-page-header>
 
 <!-- KPI row -->
-<div class="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
   <app-kpi-card label="Total casos OVC" [value]="rows().length" icon="shield" tone="purple" />
-  <app-kpi-card label="Deuda pendiente" [value]="formatEur(totalDeuda)" icon="euro" tone="danger" />
-  <app-kpi-card label="Con predemanda" [value]="rows().filter(r => r.ovcPredemanda).length" icon="alert-triangle" tone="warning" />
+  <app-kpi-card label="Pdte. de enviar"  [value]="pendientesEnvio().length" icon="mail" tone="warning" />
+  <app-kpi-card label="Enviados"         [value]="enviados().length" icon="check" tone="success" />
+  <app-kpi-card label="Deuda total"      [value]="formatEur(totalDeuda())" icon="euro" tone="danger" />
+</div>
+
+<!-- Search -->
+<div class="flex gap-2 mb-5">
+  <input type="text" [value]="q()" (input)="q.set($any($event.target).value)"
+    placeholder="Buscar por cliente o factura…"
+    class="h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-56" />
+  <button type="button" (click)="q.set('')"
+    class="h-9 px-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
+    Limpiar
+  </button>
 </div>
 
 <!-- Banner: OVC pendientes de enviar -->
@@ -50,7 +67,7 @@
   <app-table-skeleton [cols]="7" [rows]="8" />
 } @else if (error(); as msg) {
   <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm">{{ msg }}</div>
-} @else if (rows().length === 0) {
+} @else if (filtered().length === 0) {
   <app-empty-state icon="shield" title="Sin casos OVC" description="No hay expedientes en acuerdo formal actualmente." />
 } @else {
   <div class="bg-card border border-border rounded-xl overflow-hidden">
@@ -62,14 +79,15 @@
             <th class="px-4 py-3 text-left font-semibold">Factura</th>
             <th class="px-4 py-3 text-right font-semibold">Importe</th>
             <th class="px-4 py-3 text-right font-semibold">Pendiente</th>
+            <th class="px-4 py-3 text-left font-semibold min-w-[200px]">Estado</th>
             <th class="px-4 py-3 text-left font-semibold">Inicio OVC</th>
-            <th class="px-4 py-3 text-left font-semibold">Predemanda</th>
-            <th class="px-4 py-3 text-right font-semibold w-36">Acciones</th>
+            <th class="px-4 py-3 text-right font-semibold w-12">Ver</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-border/40">
-          @for (r of rows(); track r.id) {
-            <tr class="hover:bg-accent/20 transition-colors">
+          @for (r of filtered(); track r.id) {
+            <tr class="hover:bg-accent/20 transition-colors" [class.opacity-50]="updatingId() === r.id">
+              <!-- Cliente -->
               <td class="px-4 py-3 max-w-[200px]">
                 <p class="font-medium text-foreground truncate" [title]="r.clienteNombre ?? r.clienteId">
                   {{ r.clienteNombre ?? r.clienteId }}
@@ -78,37 +96,59 @@
                   <p class="text-xs text-muted-foreground font-mono">{{ r.clienteNif }}</p>
                 }
               </td>
+              <!-- Factura -->
               <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">{{ r.numeroFactura ?? '—' }}</td>
+              <!-- Importe -->
               <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">{{ formatEur(r.importe) }}</td>
+              <!-- Pendiente -->
               <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">
                 <span class="text-danger-fg font-semibold">{{ formatEur(r.importePendiente) }}</span>
               </td>
+              <!-- Estado + checkboxes -->
+              <td class="px-4 py-3">
+                <select (change)="actualizarEstado(r, $any($event.target).value)"
+                  [disabled]="updatingId() === r.id"
+                  class="h-7 px-2 pr-6 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-40">
+                  <option value=""          [selected]="!r.estado">Otros</option>
+                  <option value="nuevo"     [selected]="r.estado === 'nuevo'">Nuevo</option>
+                  <option value="aviso_corte" [selected]="r.estado === 'aviso_corte'">Aviso de corte</option>
+                  <option value="cortado"   [selected]="r.estado === 'cortado'">Cortado</option>
+                  <option value="ovc"       [selected]="r.estado === 'ovc'">En OVC</option>
+                  <option value="va_a_pagar" [selected]="r.estado === 'va_a_pagar'">Va a pagar</option>
+                  <option value="acuerdo_pago" [selected]="r.estado === 'acuerdo_pago'">Acuerdo de pago</option>
+                  <option value="demanda"   [selected]="r.estado === 'demanda'">Demanda</option>
+                  <option value="pagado"    [selected]="r.estado === 'pagado'">Pagado</option>
+                </select>
+                <div class="flex flex-col gap-0.5 mt-1.5">
+                  <label class="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox"
+                      [checked]="!!r.ovcPredemanda"
+                      (change)="patchRecord(r, { ovcPredemanda: !r.ovcPredemanda })"
+                      [disabled]="updatingId() === r.id"
+                      class="h-3 w-3 rounded accent-primary" />
+                    <span class="text-[11px] text-muted-foreground">OVC Predemanda</span>
+                  </label>
+                  <label class="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox"
+                      [checked]="!!r.demandaM1"
+                      (change)="patchRecord(r, { demandaM1: !r.demandaM1 })"
+                      [disabled]="updatingId() === r.id"
+                      class="h-3 w-3 rounded accent-primary" />
+                    <span class="text-[11px] text-muted-foreground">Demanda M+1</span>
+                  </label>
+                </div>
+              </td>
+              <!-- Inicio OVC -->
               <td class="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                 {{ fmt(r.ovcStartDate) }}
               </td>
+              <!-- Ver -->
               <td class="px-4 py-3">
-                @if (r.ovcPredemanda) {
-                  <app-status-badge tone="warning">Predemanda</app-status-badge>
-                } @else {
-                  <span class="text-xs text-muted-foreground">—</span>
-                }
-              </td>
-              <td class="px-4 py-3">
-                <div class="flex justify-end gap-1.5">
+                <div class="flex justify-end">
                   <a [routerLink]="['/collections/unpaid', r.id]"
                     class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
                     <ui-icon name="eye" [size]="13" />
                   </a>
-                  <button type="button" (click)="actualizarEstado(r, 'demanda')"
-                    [disabled]="updatingId() === r.id"
-                    class="h-7 px-2 inline-flex items-center gap-1 rounded-md border border-danger/30 text-danger-fg hover:bg-danger-soft transition-colors text-xs disabled:opacity-40">
-                    Demanda
-                  </button>
-                  <button type="button" (click)="actualizarEstado(r, 'pagado')"
-                    [disabled]="updatingId() === r.id"
-                    class="h-7 px-2 inline-flex items-center gap-1 rounded-md border border-success/30 text-success-fg hover:bg-success-soft transition-colors text-xs disabled:opacity-40">
-                    Pagado
-                  </button>
                 </div>
               </td>
             </tr>

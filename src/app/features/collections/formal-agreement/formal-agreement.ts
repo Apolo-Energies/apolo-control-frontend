@@ -2,11 +2,11 @@ import {
   ChangeDetectionStrategy, Component, computed, inject, signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { PageHeader }    from '../../../shared/components/page-header/page-header';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
-import { StatusBadge, StatusTone } from '../../../shared/components/status-badge/status-badge';
 import { KpiCard }       from '../../../shared/components/kpi-card/kpi-card';
 import { EmptyState }    from '../../../shared/components/empty-state/empty-state';
 import { Icon }          from '../../../shared/icons/icon';
@@ -15,7 +15,7 @@ import { GestionImpagoService } from '../../../core/services/gestion-impago.serv
 import { NotificationService }  from '../../../core/services/notification.service';
 import { GlobalLoadingService } from '../../../core/services/global-loading.service';
 import {
-  GestionImpago,
+  GestionImpago, GestionImpagoPayload,
   EstadoGestionImpago, GestionImpagoActualizarEstadoPayload,
   ESTADO_GESTION_IMPAGO_LABEL,
 } from '../../../core/models';
@@ -27,7 +27,7 @@ function extractMessage(err: HttpErrorResponse): string {
 @Component({
   selector: 'app-formal-agreement',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PageHeader, TableSkeleton, StatusBadge, KpiCard, EmptyState, Icon, RouterLink],
+  imports: [PageHeader, TableSkeleton, KpiCard, EmptyState, Icon, FormsModule, RouterLink],
   templateUrl: './formal-agreement.html',
 })
 export class FormalAgreement {
@@ -42,13 +42,32 @@ export class FormalAgreement {
   protected updatingId          = signal<string | null>(null);
   protected enviandoId          = signal<string | null>(null);
 
-  // ── Derived ───────────────────────────────────────────────────────────────
-  protected readonly pendientesEnvio = computed(() =>
-    this.rows().filter(r => !r.ovcEnviado)
-  );
+  // ── Search ────────────────────────────────────────────────────────────────
+  protected readonly q = signal('');
 
   // ── Constants ─────────────────────────────────────────────────────────────
   protected readonly estadoLabel = ESTADO_GESTION_IMPAGO_LABEL;
+
+  // ── Filtered ──────────────────────────────────────────────────────────────
+  protected readonly filtered = computed(() => {
+    const q = this.q().toLowerCase().trim();
+    if (!q) return this.rows();
+    return this.rows().filter(r =>
+      (r.clienteNombre ?? '').toLowerCase().includes(q) ||
+      (r.numeroFactura ?? '').toLowerCase().includes(q),
+    );
+  });
+
+  // ── KPIs ──────────────────────────────────────────────────────────────────
+  protected readonly pendientesEnvio = computed(() =>
+    this.rows().filter(r => !r.ovcEnviado),
+  );
+  protected readonly enviados = computed(() =>
+    this.rows().filter(r => r.ovcEnviado),
+  );
+  protected readonly totalDeuda = computed(() =>
+    this.rows().reduce((s, r) => s + r.importePendiente, 0),
+  );
 
   constructor() { this.load(); }
 
@@ -64,9 +83,8 @@ export class FormalAgreement {
   // ── Estado update ─────────────────────────────────────────────────────────
   protected actualizarEstado(r: GestionImpago, estado: EstadoGestionImpago): void {
     this.updatingId.set(r.id);
-    const payload: GestionImpagoActualizarEstadoPayload = { estado };
     this.globalLoading.start('Actualizando', '');
-    this.service.actualizarEstado(r.id, payload).subscribe({
+    this.service.actualizarEstado(r.id, { estado }).subscribe({
       next: (updated) => {
         this.updatingId.set(null);
         this.globalLoading.stop();
@@ -76,6 +94,32 @@ export class FormalAgreement {
       error: (err: HttpErrorResponse) => {
         this.updatingId.set(null);
         this.globalLoading.stop();
+        this.notify.error(extractMessage(err));
+      },
+    });
+  }
+
+  // ── Patch boolean fields ──────────────────────────────────────────────────
+  protected patchRecord(r: GestionImpago, patch: Partial<GestionImpagoPayload>): void {
+    this.updatingId.set(r.id);
+    const payload: GestionImpagoPayload = {
+      clienteId:        r.clienteId,
+      importe:          r.importe,
+      parcialPagado:    r.parcialPagado,
+      moneda:           r.moneda,
+      estado:           r.estado,
+      ovcPredemanda:    r.ovcPredemanda,
+      demandaM1:        r.demandaM1,
+      motivoDevolucion: r.motivoDevolucion,
+      ...patch,
+    };
+    this.service.update(r.id, payload).subscribe({
+      next: (updated) => {
+        this.updatingId.set(null);
+        this.rows.update(list => list.map(item => item.id === updated.id ? updated : item));
+      },
+      error: (err: HttpErrorResponse) => {
+        this.updatingId.set(null);
         this.notify.error(extractMessage(err));
       },
     });
@@ -97,25 +141,38 @@ export class FormalAgreement {
     });
   }
 
-  // ── Display helpers ───────────────────────────────────────────────────────
-  protected estadoTone(estado: EstadoGestionImpago): StatusTone {
-    switch (estado) {
-      case 'ovc':     return 'purple';
-      case 'pagado':  return 'success';
-      case 'demanda': return 'danger';
-      default:        return 'neutral';
-    }
+  // ── Export CSV ────────────────────────────────────────────────────────────
+  protected exportCsv(): void {
+    const headers = ['Cliente', 'NIF', 'Factura', 'Importe', 'Pendiente', 'Inicio OVC', 'Estado', 'Predemanda', 'Demanda M+1'];
+    const rows = this.rows().map(r => [
+      r.clienteNombre ?? r.clienteId,
+      r.clienteNif ?? '',
+      r.numeroFactura ?? '',
+      r.importe,
+      r.importePendiente,
+      r.ovcStartDate ?? '',
+      this.estadoLabel[r.estado] ?? r.estado,
+      r.ovcPredemanda ? 'Sí' : 'No',
+      r.demandaM1 ? 'Sí' : 'No',
+    ]);
+    const csv = [headers, ...rows].map(row =>
+      row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','),
+    ).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'ovc.csv'; a.click();
+    URL.revokeObjectURL(url);
   }
 
+  // ── Display helpers ───────────────────────────────────────────────────────
   protected formatEur(v: number): string {
-    return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(v);
+    return new Intl.NumberFormat('es-ES', {
+      style: 'currency', currency: 'EUR', minimumFractionDigits: 0,
+    }).format(v);
   }
 
   protected fmt(v: string | null): string {
     return v ? new Date(v).toLocaleDateString('es-ES') : '—';
-  }
-
-  protected get totalDeuda(): number {
-    return this.rows().reduce((s, r) => s + r.importePendiente, 0);
   }
 }
