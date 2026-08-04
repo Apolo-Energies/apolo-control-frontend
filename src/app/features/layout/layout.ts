@@ -58,6 +58,7 @@ export class Layout {
         switchIcon: 'alert-triangle',
         items: [
           { label: 'Dashboard', url: '/collections/dashboard', icon: 'bar-chart-2' as const },
+          { label: 'Tareas del día', url: '/collections/tasks', icon: 'list-todo' as const },
           { label: 'Todos los impagos', url: '/collections/unpaid', icon: 'receipt-x' as const },
           {
             label: 'Por estado', url: '/collections/verbal-agreement', icon: 'folder-open' as const,
@@ -65,7 +66,7 @@ export class Layout {
               { label: 'Acuerdo Verbal', url: '/collections/verbal-agreement', icon: 'handshake' as const },
               { label: 'Aviso / Corte', url: '/collections/disconnection', icon: 'scissors' as const },
               { label: 'OVC', url: '/collections/formal-agreement', icon: 'shield' as const },
-              { label: 'Demanda', url: '/collections/lawsuits', icon: 'scale' as const },
+              { label: 'Pre-demanda / Demanda', url: '/collections/lawsuits', icon: 'scale' as const },
             ],
           },
           { label: 'Promesas de pago', url: '/collections/promises', icon: 'calendar-check' as const },

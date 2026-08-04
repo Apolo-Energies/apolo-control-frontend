@@ -1,4 +1,4 @@
-<app-page-header title="Demandas" subtitle="Casos en proceso judicial — seguimiento de expedientes">
+<app-page-header title="Demanda Judicial" subtitle="Expedientes en fase pre-demanda y demanda — seguimiento del proceso judicial">
   <button type="button" (click)="load()"
     class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
     <ui-icon name="refresh-cw" [size]="14" />
@@ -8,19 +8,53 @@
 
 <!-- KPI row -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-  <app-kpi-card label="Total demandas" [value]="rows().length" icon="scale" tone="danger" />
-  <app-kpi-card label="Deuda en litigio" [value]="formatEur(totalDeuda())" icon="euro" tone="danger" />
-  <app-kpi-card label="Demandas preparadas" [value]="preparadas()" icon="file-text" tone="warning" />
-  <app-kpi-card label="Demandas enviadas" [value]="enviadas()" icon="check" tone="success" />
+  <app-kpi-card label="Total expedientes" [value]="rows().length" icon="scale" tone="purple" />
+  <app-kpi-card label="Pre-demanda"       [value]="totalPredemanda()" icon="file-text" tone="warning" />
+  <app-kpi-card label="Demanda"           [value]="totalDemanda()" icon="scale" tone="danger" />
+  <app-kpi-card label="Deuda en litigio"  [value]="formatEur(totalDeuda())" icon="euro" tone="danger" />
+</div>
+
+<!-- Search + filter -->
+<div class="flex flex-wrap gap-2 mb-4">
+  <input type="text" [value]="q()" (input)="q.set($any($event.target).value)"
+    placeholder="Buscar por cliente o factura…"
+    class="h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-56" />
+  <button type="button" (click)="q.set('')"
+    class="h-9 px-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
+    Limpiar
+  </button>
+</div>
+<div class="flex gap-1.5 mb-5">
+  <button type="button" (click)="estadoFilter.set('all')"
+    class="h-8 px-3 rounded-lg text-xs font-medium transition-colors"
+    [class]="estadoFilter() === 'all'
+      ? 'bg-primary text-primary-foreground'
+      : 'border border-border text-muted-foreground hover:bg-accent/40'">
+    Todos ({{ rows().length }})
+  </button>
+  <button type="button" (click)="estadoFilter.set('predemanda')"
+    class="h-8 px-3 rounded-lg text-xs font-medium transition-colors"
+    [class]="estadoFilter() === 'predemanda'
+      ? 'bg-warning text-warning-foreground'
+      : 'border border-border text-muted-foreground hover:bg-accent/40'">
+    Pre-demanda ({{ totalPredemanda() }})
+  </button>
+  <button type="button" (click)="estadoFilter.set('demanda')"
+    class="h-8 px-3 rounded-lg text-xs font-medium transition-colors"
+    [class]="estadoFilter() === 'demanda'
+      ? 'bg-danger text-danger-foreground'
+      : 'border border-border text-muted-foreground hover:bg-accent/40'">
+    Demanda ({{ totalDemanda() }})
+  </button>
 </div>
 
 <!-- Table -->
 @if (loading()) {
-  <app-table-skeleton [cols]="8" [rows]="8" />
+  <app-table-skeleton [cols]="6" [rows]="8" />
 } @else if (error(); as msg) {
   <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm">{{ msg }}</div>
-} @else if (rows().length === 0) {
-  <app-empty-state icon="scale" title="Sin demandas" description="No hay expedientes en proceso judicial actualmente." />
+} @else if (filtered().length === 0) {
+  <app-empty-state icon="scale" title="Sin expedientes" description="No hay expedientes en proceso judicial actualmente." />
 } @else {
   <div class="bg-card border border-border rounded-xl overflow-hidden">
     <div class="overflow-x-auto">
@@ -30,16 +64,17 @@
             <th class="px-4 py-3 text-left font-semibold">Cliente</th>
             <th class="px-4 py-3 text-left font-semibold">Factura</th>
             <th class="px-4 py-3 text-right font-semibold">Pendiente</th>
-            <th class="px-4 py-3 text-center font-semibold">Preparada</th>
-            <th class="px-4 py-3 text-center font-semibold">Enviada</th>
-            <th class="px-4 py-3 text-center font-semibold">M+1</th>
-            <th class="px-4 py-3 text-center font-semibold">Judicial</th>
-            <th class="px-4 py-3 text-right font-semibold w-28">Acciones</th>
+            <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Fecha Envío</th>
+            <th class="px-4 py-3 text-left font-semibold min-w-[160px]">Estado</th>
+            <th class="px-4 py-3 text-left font-semibold">Abogado</th>
+            <th class="px-4 py-3 text-right font-semibold w-24">Acciones</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-border/40">
-          @for (r of rows(); track r.id) {
-            <tr class="hover:bg-accent/20 transition-colors">
+          @for (r of filtered(); track r.id) {
+            <!-- Main row -->
+            <tr class="hover:bg-accent/20 transition-colors" [class.opacity-60]="updatingId() === r.id">
+              <!-- Cliente -->
               <td class="px-4 py-3 max-w-[200px]">
                 <p class="font-medium text-foreground truncate" [title]="r.clienteNombre ?? r.clienteId">
                   {{ r.clienteNombre ?? r.clienteId }}
@@ -48,52 +83,150 @@
                   <p class="text-xs text-muted-foreground font-mono">{{ r.clienteNif }}</p>
                 }
               </td>
+              <!-- Factura -->
               <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">{{ r.numeroFactura ?? '—' }}</td>
+              <!-- Pendiente -->
               <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">
                 <span class="text-danger-fg font-semibold">{{ formatEur(r.importePendiente) }}</span>
               </td>
-              <td class="px-4 py-3 text-center text-sm">
-                @if (r.demandaPreparada) {
-                  <span class="text-success-fg font-semibold">✓</span>
-                } @else {
-                  <span class="text-muted-foreground">—</span>
-                }
+              <!-- Fecha envío -->
+              <td class="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                {{ fmt(r.fechaEnvioDemanda) }}
               </td>
-              <td class="px-4 py-3 text-center text-sm">
-                @if (r.demandaEnviada) {
-                  <span class="text-success-fg font-semibold">✓</span>
-                } @else {
-                  <span class="text-muted-foreground">—</span>
-                }
+              <!-- Estado select -->
+              <td class="px-4 py-3">
+                <select (change)="actualizarEstado(r, $any($event.target).value)"
+                  [disabled]="updatingId() === r.id"
+                  class="h-7 px-2 pr-6 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-40">
+                  <option value="nuevo"       [selected]="r.estado === 'nuevo'">Nuevo</option>
+                  <option value="ovc"         [selected]="r.estado === 'ovc'">En OVC</option>
+                  <option value="predemanda"  [selected]="r.estado === 'predemanda'">Pre-demanda</option>
+                  <option value="demanda"     [selected]="r.estado === 'demanda'">Demanda</option>
+                  <option value="juicio"      [selected]="r.estado === 'juicio'">Juicio</option>
+                  <option value="va_a_pagar"  [selected]="r.estado === 'va_a_pagar'">Va a pagar</option>
+                  <option value="pagado"      [selected]="r.estado === 'pagado'">Pagado</option>
+                </select>
               </td>
-              <td class="px-4 py-3 text-center text-sm">
-                @if (r.demandaM1) {
-                  <span class="text-warning-fg font-semibold">✓</span>
-                } @else {
-                  <span class="text-muted-foreground">—</span>
-                }
+              <!-- Abogado -->
+              <td class="px-4 py-3 text-xs text-muted-foreground">
+                {{ r.abogadoResponsable ?? '—' }}
               </td>
-              <td class="px-4 py-3 text-center text-sm">
-                @if (r.procesoJudicialGestionado) {
-                  <span class="text-purple-fg font-semibold">✓</span>
-                } @else {
-                  <span class="text-muted-foreground">—</span>
-                }
-              </td>
+              <!-- Acciones -->
               <td class="px-4 py-3">
                 <div class="flex justify-end gap-1.5">
                   <a [routerLink]="['/collections/unpaid', r.id]"
                     class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
                     <ui-icon name="eye" [size]="13" />
                   </a>
-                  <button type="button" (click)="actualizarEstado(r, 'pagado')"
-                    [disabled]="updatingId() === r.id"
-                    class="h-7 px-2 inline-flex items-center gap-1 rounded-md border border-success/30 text-success-fg hover:bg-success-soft transition-colors text-xs disabled:opacity-40">
-                    Pagado
+                  <button type="button" (click)="toggleExpand(r)"
+                    class="h-7 w-7 inline-flex items-center justify-center rounded-md border transition-colors"
+                    [class]="expandedId() === r.id
+                      ? 'border-primary/40 bg-primary/10 text-primary'
+                      : 'border-border text-muted-foreground hover:bg-accent/40'">
+                    <ui-icon name="chevron-down" [size]="13"
+                      [style.transform]="expandedId() === r.id ? 'rotate(180deg)' : 'rotate(0)'"
+                      style="transition: transform 0.15s" />
                   </button>
                 </div>
               </td>
             </tr>
+
+            <!-- Expanded detail panel -->
+            @if (expandedId() === r.id) {
+              <tr>
+                <td colspan="7" class="px-0 py-0">
+                  <div class="bg-accent/10 border-t border-b border-border/40 px-6 py-5">
+                    <p class="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">
+                      Información del expediente judicial
+                    </p>
+
+                    <!-- Editable fields -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+                      <!-- Fecha envío -->
+                      <div>
+                        <label class="block text-xs text-muted-foreground mb-1">Fecha de envío a demanda</label>
+                        <input type="date" [(ngModel)]="demandaForms[r.id].fechaEnvioDemanda"
+                          class="h-8 w-full px-2 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                      </div>
+                      <!-- Cantidad demandada -->
+                      <div>
+                        <label class="block text-xs text-muted-foreground mb-1">Cantidad demandada (€)</label>
+                        <input type="number" min="0" step="0.01"
+                          [(ngModel)]="demandaForms[r.id].cantidadDemandada"
+                          placeholder="0.00"
+                          class="h-8 w-full px-2 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                      </div>
+                      <!-- Abogado responsable -->
+                      <div>
+                        <label class="block text-xs text-muted-foreground mb-1">Abogado responsable</label>
+                        <input type="text" [(ngModel)]="demandaForms[r.id].abogadoResponsable"
+                          placeholder="Nombre del abogado"
+                          class="h-8 w-full px-2 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                      </div>
+                    </div>
+
+                    <!-- Save button -->
+                    <div class="flex justify-end mb-5">
+                      <button type="button" (click)="saveDemandaInfo(r)" [disabled]="updatingId() === r.id"
+                        class="h-8 px-4 inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-40">
+                        <ui-icon name="check" [size]="13" />
+                        Guardar cambios
+                      </button>
+                    </div>
+
+                    <!-- Documentos adjuntos -->
+                    <div>
+                      <div class="flex items-center justify-between mb-3">
+                        <p class="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                          Documentos adjuntos ({{ r.documentosAdjuntos.length }})
+                        </p>
+                        <label class="relative cursor-pointer">
+                          <input type="file" multiple class="sr-only"
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                            (change)="uploadDocumentos(r, $event)" />
+                          <span class="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-accent/40 transition-colors"
+                            [class.opacity-50]="uploadingId() === r.id">
+                            <ui-icon name="upload" [size]="13" />
+                            @if (uploadingId() === r.id) {
+                              Subiendo…
+                            } @else {
+                              Adjuntar archivos
+                            }
+                          </span>
+                        </label>
+                      </div>
+
+                      @if (!r.documentosAdjuntos.length) {
+                        <p class="text-xs text-muted-foreground italic">Sin documentos adjuntos.</p>
+                      } @else {
+                        <div class="space-y-1.5">
+                          @for (doc of r.documentosAdjuntos; track doc.url) {
+                            <div class="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2">
+                              <ui-icon name="file-text" [size]="14" class="text-muted-foreground shrink-0" />
+                              <div class="flex-1 min-w-0">
+                                <p class="text-xs font-medium text-foreground truncate">{{ doc.nombre }}</p>
+                                <p class="text-[11px] text-muted-foreground">
+                                  {{ fmt(doc.fechaSubida) }}
+                                  @if (doc.tamano) { · {{ formatBytes(doc.tamano) }} }
+                                </p>
+                              </div>
+                              <a [href]="doc.url" target="_blank"
+                                class="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors shrink-0">
+                                <ui-icon name="download" [size]="12" />
+                              </a>
+                              <button type="button" (click)="deleteDocumento(r, doc)"
+                                class="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-danger-fg hover:bg-danger-soft transition-colors shrink-0">
+                                <ui-icon name="trash" [size]="12" />
+                              </button>
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
           }
         </tbody>
       </table>

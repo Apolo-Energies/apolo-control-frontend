@@ -7,14 +7,16 @@ export type EstadoGestionImpago =
   | 'aviso_corte'
   | 'cortado'
   | 'ovc'
+  | 'predemanda'
   | 'demanda'
+  | 'juicio'
   | 'pagado'
   | 'remesar_nuevamente'
   | 'otros';
 
 export const ESTADO_GESTION_IMPAGO_VALUES: EstadoGestionImpago[] = [
   'nuevo', 'va_a_pagar', 'acuerdo_pago', 'aviso_corte', 'cortado',
-  'ovc', 'demanda', 'pagado', 'remesar_nuevamente', 'otros',
+  'ovc', 'predemanda', 'demanda', 'juicio', 'pagado', 'remesar_nuevamente', 'otros',
 ];
 
 export const ESTADO_GESTION_IMPAGO_LABEL: Record<EstadoGestionImpago, string> = {
@@ -24,7 +26,9 @@ export const ESTADO_GESTION_IMPAGO_LABEL: Record<EstadoGestionImpago, string> = 
   aviso_corte: 'Aviso de Corte',
   cortado: 'Cortado',
   ovc: 'Acuerdo Formal OVC',
+  predemanda: 'Pre-demanda',
   demanda: 'Demanda',
+  juicio: 'Juicio',
   pagado: 'Pagado',
   remesar_nuevamente: 'Remesar nuevamente',
   otros: 'Otros',
@@ -78,6 +82,18 @@ export interface PagoFraccionadoEntry {
   importe: number;
   fecha: string;
   cobrado: boolean;
+}
+
+export interface NotaEntry {
+  contenido: string;
+  fecha: string;
+}
+
+export interface DemandaDocumento {
+  nombre: string;
+  url: string;
+  fechaSubida: string;
+  tamano?: number;
 }
 
 // ── Cliente deudor ────────────────────────────────────────────────────────────
@@ -165,6 +181,11 @@ export interface GestionImpago {
   burofaxAvisoCorte: boolean;
   asnef: boolean;
   diasVencido: number | null;
+  fechaEnvioDemanda: string | null;
+  cantidadDemandada: number | null;
+  abogadoResponsable: string | null;
+  documentosAdjuntos: DemandaDocumento[];
+  notasBitacora: NotaEntry[];
   createdAt: string;
   updatedAt: string;
 }

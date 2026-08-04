@@ -55,6 +55,32 @@ export class GestionImpagoService {
     return this.http.get<GestionImpago[]>(`${this.baseUrl}/demanda`);
   }
 
+  demandasJudicial(): Observable<GestionImpago[]> {
+    return this.http.get<GestionImpago[]>(`${this.baseUrl}/demandas-judicial`);
+  }
+
+  actualizarDemandaInfo(id: string, payload: {
+    fechaEnvioDemanda?: string | null;
+    cantidadDemandada?: number | null;
+    abogadoResponsable?: string | null;
+  }): Observable<GestionImpago> {
+    return this.http.patch<GestionImpago>(`${this.baseUrl}/${id}/demanda-info`, payload);
+  }
+
+  uploadDocumento(id: string, file: File): Observable<GestionImpago> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<GestionImpago>(`${this.baseUrl}/${id}/documentos`, form);
+  }
+
+  deleteDocumento(id: string, filename: string): Observable<GestionImpago> {
+    return this.http.delete<GestionImpago>(`${this.baseUrl}/${id}/documentos/${filename}`);
+  }
+
+  agregarNota(id: string, contenido: string): Observable<GestionImpago> {
+    return this.http.post<GestionImpago>(`${this.baseUrl}/${id}/notas`, { contenido });
+  }
+
   promesas(): Observable<GestionImpago[]> {
     return this.http.get<GestionImpago[]>(`${this.baseUrl}/promesas`);
   }

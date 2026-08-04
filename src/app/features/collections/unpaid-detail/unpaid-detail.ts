@@ -32,7 +32,9 @@ function estadoToneFn(estado: EstadoGestionImpago): StatusTone {
     case 'aviso_corte':  return 'warning';
     case 'cortado':      return 'danger';
     case 'ovc':          return 'purple';
+    case 'predemanda':   return 'warning';
     case 'demanda':      return 'danger';
+    case 'juicio':       return 'danger';
     default:             return 'neutral';
   }
 }
@@ -58,6 +60,10 @@ export class UnpaidDetail implements OnInit {
   protected readonly impago       = signal<GestionImpago | null>(null);
   protected readonly acciones     = signal<GestionAccionCobranza[]>([]);
   protected readonly error        = signal<string | null>(null);
+
+  // ── Bitácora de notas ─────────────────────────────────────────────────────
+  protected readonly notaTexto     = signal('');
+  protected readonly notaSaving    = signal(false);
 
   // ── Estado dialog ─────────────────────────────────────────────────────────
   protected readonly estadoDialogOpen  = signal(false);
@@ -231,10 +237,36 @@ export class UnpaidDetail implements OnInit {
     });
   }
 
+  // ── Bitácora ─────────────────────────────────────────────────────────────
+  protected agregarNota(): void {
+    const texto = this.notaTexto().trim();
+    if (!texto) return;
+    const imp = this.impago();
+    if (!imp) return;
+    this.notaSaving.set(true);
+    this.service.agregarNota(imp.id, texto).subscribe({
+      next: (updated) => {
+        this.impago.set(updated);
+        this.notaTexto.set('');
+        this.notaSaving.set(false);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.notaSaving.set(false);
+        this.notify.error(extractMessage(err));
+      },
+    });
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
   protected estadoToneFn(e: EstadoGestionImpago): StatusTone { return estadoToneFn(e); }
   protected fmt(v: string | null): string { return v ? new Date(v).toLocaleDateString('es-ES') : '—'; }
   protected formatEur(v: number | null): string {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(v ?? 0);
+  }
+  protected formatBytes(bytes: number | undefined): string {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   }
 }

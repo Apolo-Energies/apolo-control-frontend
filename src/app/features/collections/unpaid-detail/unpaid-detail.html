@@ -190,6 +190,64 @@
       </div>
     }
 
+    <!-- Expediente judicial -->
+    @if (imp.demandaCheck || imp.estado === 'predemanda' || imp.estado === 'demanda') {
+      <div class="bg-card border border-danger/20 rounded-xl p-5">
+        <h3 class="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+          <ui-icon name="scale" [size]="14" />
+          Expediente judicial
+        </h3>
+        <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm mb-4">
+          <div>
+            <p class="text-xs text-muted-foreground">Abogado responsable</p>
+            <p class="font-medium">{{ imp.abogadoResponsable ?? '—' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-muted-foreground">Cantidad demandada</p>
+            <p class="font-semibold text-danger-fg">
+              {{ imp.cantidadDemandada != null ? formatEur(imp.cantidadDemandada) : '—' }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-muted-foreground">Fecha envío a demanda</p>
+            <p>{{ fmt(imp.fechaEnvioDemanda) }}</p>
+          </div>
+          <div class="flex items-end">
+            <a routerLink="/collections/lawsuits"
+              class="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+              <ui-icon name="arrow-up-right" [size]="11" />
+              Ver en Pre-demanda / Demanda
+            </a>
+          </div>
+        </div>
+        @if (imp.documentosAdjuntos.length > 0) {
+          <div>
+            <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              Documentos adjuntos ({{ imp.documentosAdjuntos.length }})
+            </p>
+            <div class="space-y-1.5">
+              @for (doc of imp.documentosAdjuntos; track doc.url) {
+                <div class="flex items-center gap-3 rounded-lg border border-border bg-accent/10 px-3 py-2">
+                  <ui-icon name="file-text" [size]="14" class="text-muted-foreground shrink-0" />
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs font-medium text-foreground truncate">{{ doc.nombre }}</p>
+                    <p class="text-[11px] text-muted-foreground">
+                      {{ fmt(doc.fechaSubida) }}
+                      @if (doc.tamano) { · {{ formatBytes(doc.tamano) }} }
+                    </p>
+                  </div>
+                  <a [href]="doc.url" target="_blank"
+                    class="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors shrink-0">
+                    <ui-icon name="download" [size]="12" />
+                  </a>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+
     <!-- Acciones de cobranza -->
     <div class="bg-card border border-border rounded-xl p-5">
       <div class="flex items-center justify-between mb-4">
@@ -231,6 +289,47 @@
         </div>
       }
     </div>
+
+    <!-- Bitácora de notas -->
+    <div class="bg-card border border-border rounded-xl p-5">
+      <h3 class="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+        <ui-icon name="file-text" [size]="14" />
+        Bitácora de notas
+      </h3>
+
+      <!-- Add note form -->
+      <div class="flex gap-2 mb-4">
+        <textarea
+          [value]="notaTexto()"
+          (input)="notaTexto.set($any($event.target).value)"
+          placeholder="Añadir nota de seguimiento..."
+          rows="2"
+          class="flex-1 px-3 py-2 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary resize-none placeholder:text-muted-foreground">
+        </textarea>
+        <button type="button"
+          (click)="agregarNota()"
+          [disabled]="notaSaving() || !notaTexto().trim()"
+          class="h-9 px-3 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium self-start flex items-center gap-1.5 transition-colors disabled:opacity-40">
+          <ui-icon name="plus" [size]="13" />
+          Añadir
+        </button>
+      </div>
+
+      <!-- Notes list -->
+      @if (imp.notasBitacora.length === 0) {
+        <p class="text-xs text-muted-foreground italic">Sin notas registradas.</p>
+      } @else {
+        <ol class="space-y-3">
+          @for (nota of imp.notasBitacora.slice().reverse(); track nota.fecha) {
+            <li class="relative pl-4 border-l-2 border-border/40">
+              <p class="text-xs text-muted-foreground mb-0.5">{{ fmt(nota.fecha) }}</p>
+              <p class="text-sm text-foreground whitespace-pre-wrap">{{ nota.contenido }}</p>
+            </li>
+          }
+        </ol>
+      }
+    </div>
+
   </div>
 
   <!-- Right: Status flags -->
