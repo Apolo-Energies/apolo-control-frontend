@@ -73,6 +73,9 @@ export class Lawsuits {
   protected readonly totalDemanda = computed(() =>
     this.rows().filter(r => r.estado === 'demanda').length,
   );
+  protected readonly totalJuicio = computed(() =>
+    this.rows().filter(r => r.estado === 'juicio').length,
+  );
   protected readonly totalDeuda = computed(() =>
     this.rows().reduce((s, r) => s + r.importePendiente, 0),
   );
@@ -151,6 +154,22 @@ export class Lawsuits {
       });
     };
     upload(0);
+  }
+
+  // ── Download document ─────────────────────────────────────────────────────
+  protected downloadDoc(r: GestionImpago, doc: DemandaDocumento): void {
+    const filename = doc.url.split('/').pop() ?? doc.nombre;
+    this.service.downloadDocumento(r.id, filename).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href     = url;
+        a.download = doc.nombre;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.notify.error('Error al descargar el documento'),
+    });
   }
 
   // ── Delete document ───────────────────────────────────────────────────────

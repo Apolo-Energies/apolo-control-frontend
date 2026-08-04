@@ -122,35 +122,68 @@
     </div>
 
     <!-- Historial de contactos -->
-    @if (imp.contactoHistory.length > 0) {
-      <div class="bg-card border border-border rounded-xl p-5">
-        <h3 class="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+    <div class="bg-card border border-border rounded-xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-semibold text-foreground flex items-center gap-2">
           <ui-icon name="phone" [size]="14" />
-          Historial de contacto ({{ imp.contactoStep }}/5)
+          Historial de contacto
+          <span class="text-xs font-normal text-muted-foreground">({{ imp.contactoStep }}/5)</span>
         </h3>
-        <ol class="relative border-l border-border/50 space-y-4 pl-4">
-          @for (h of imp.contactoHistory; track h.step) {
-            <li class="relative">
-              <span class="absolute -left-[22px] top-0.5 h-4 w-4 rounded-full bg-primary/10 border border-primary/40 flex items-center justify-center text-[9px] font-bold text-primary">
-                {{ h.step }}
-              </span>
-              <div>
-                <p class="text-sm font-medium text-foreground">{{ h.action }}</p>
-                <p class="text-xs text-muted-foreground">{{ fmt(h.date) }}</p>
+        <button
+          class="h-7 px-2.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium flex items-center gap-1.5 transition-colors"
+          (click)="openContactoDialog()">
+          <ui-icon name="plus" [size]="12" />
+          Registrar contacto
+        </button>
+      </div>
+
+      @if (imp.contactoHistory.length === 0) {
+        <p class="text-sm text-muted-foreground text-center py-6 italic">Sin contactos registrados aún.</p>
+      } @else {
+        <ol class="relative border-l-2 border-border/40 ml-3 space-y-1 pl-4">
+          @for (h of imp.contactoHistory; track h.date) {
+            @if (h.step > 0) {
+              <li class="relative pb-4 last:pb-0">
+                <span class="absolute -left-[22px] top-0.5 w-5 h-5 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-[10px] font-bold text-primary">
+                  {{ h.step }}
+                </span>
+                <p class="text-sm font-medium text-foreground leading-snug">{{ h.action }}</p>
+                <p class="text-xs text-muted-foreground mt-0.5">{{ fmtDateTime(h.date) }}</p>
                 @if (h.notes) {
-                  <p class="text-xs text-foreground/80 mt-0.5">{{ h.notes }}</p>
+                  <p class="text-xs text-foreground/80 mt-1 whitespace-pre-wrap">{{ h.notes }}</p>
                 }
                 @if (h.promesaFecha) {
-                  <p class="text-xs text-success-fg mt-0.5">
+                  <p class="text-xs text-success-fg mt-1 flex items-center gap-1">
+                    <ui-icon name="calendar-check" [size]="11" />
                     Promesa: {{ formatEur(h.promesaImporte) }} el {{ fmt(h.promesaFecha) }}
                   </p>
                 }
-              </div>
-            </li>
+              </li>
+            }
           }
         </ol>
-      </div>
-    }
+
+        <!-- Pending steps indicator -->
+        @if (imp.contactoStep < 5) {
+          <div class="flex items-center gap-2 mt-1 pt-2 border-t border-border/30">
+            <div class="flex gap-1">
+              @for (n of [1,2,3,4,5]; track n) {
+                <span class="w-2 h-2 rounded-full"
+                  [class]="n <= imp.contactoStep ? 'bg-primary' : 'bg-border'"></span>
+              }
+            </div>
+            <p class="text-xs text-muted-foreground">
+              {{ 5 - imp.contactoStep }} contacto{{ (5 - imp.contactoStep) !== 1 ? 's' : '' }} pendiente{{ (5 - imp.contactoStep) !== 1 ? 's' : '' }}
+            </p>
+          </div>
+        } @else {
+          <div class="flex items-center gap-2 mt-1 pt-2 border-t border-border/30">
+            <ui-icon name="check" [size]="13" class="text-success-fg" />
+            <p class="text-xs text-success-fg font-medium">Proceso de contacto completado</p>
+          </div>
+        }
+      }
+    </div>
 
     <!-- Pagos fraccionados -->
     @if (imp.pagoFraccionado && imp.pagosFraccionados.length > 0) {
@@ -236,10 +269,10 @@
                       @if (doc.tamano) { · {{ formatBytes(doc.tamano) }} }
                     </p>
                   </div>
-                  <a [href]="doc.url" target="_blank"
+                  <button type="button" (click)="downloadDoc(doc)"
                     class="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors shrink-0">
                     <ui-icon name="download" [size]="12" />
-                  </a>
+                  </button>
                 </div>
               }
             </div>

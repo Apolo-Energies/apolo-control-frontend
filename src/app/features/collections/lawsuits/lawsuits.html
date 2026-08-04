@@ -1,4 +1,4 @@
-<app-page-header title="Demanda Judicial" subtitle="Expedientes en fase pre-demanda y demanda — seguimiento del proceso judicial">
+<app-page-header title="Demanda Judicial" subtitle="Expedientes en fase pre-demanda, demanda y juicio — seguimiento del proceso judicial">
   <button type="button" (click)="load()"
     class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
     <ui-icon name="refresh-cw" [size]="14" />
@@ -7,11 +7,12 @@
 </app-page-header>
 
 <!-- KPI row -->
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-  <app-kpi-card label="Total expedientes" [value]="rows().length" icon="scale" tone="purple" />
-  <app-kpi-card label="Pre-demanda"       [value]="totalPredemanda()" icon="file-text" tone="warning" />
-  <app-kpi-card label="Demanda"           [value]="totalDemanda()" icon="scale" tone="danger" />
-  <app-kpi-card label="Deuda en litigio"  [value]="formatEur(totalDeuda())" icon="euro" tone="danger" />
+<div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+  <app-kpi-card label="Total expedientes" [value]="rows().length"        icon="scale"     tone="purple" />
+  <app-kpi-card label="Pre-demanda"       [value]="totalPredemanda()"    icon="file-text" tone="warning" />
+  <app-kpi-card label="Demanda"           [value]="totalDemanda()"       icon="scale"     tone="danger" />
+  <app-kpi-card label="Juicio"            [value]="totalJuicio()"        icon="scale"     tone="danger" />
+  <app-kpi-card label="Deuda en litigio"  [value]="formatEur(totalDeuda())" icon="euro"  tone="danger" />
 </div>
 
 <!-- Search + filter -->
@@ -45,6 +46,13 @@
       ? 'bg-danger text-danger-foreground'
       : 'border border-border text-muted-foreground hover:bg-accent/40'">
     Demanda ({{ totalDemanda() }})
+  </button>
+  <button type="button" (click)="estadoFilter.set('juicio')"
+    class="h-8 px-3 rounded-lg text-xs font-medium transition-colors"
+    [class]="estadoFilter() === 'juicio'
+      ? 'bg-danger text-danger-foreground'
+      : 'border border-border text-muted-foreground hover:bg-accent/40'">
+    Juicio ({{ totalJuicio() }})
   </button>
 </div>
 
@@ -210,10 +218,10 @@
                                   @if (doc.tamano) { · {{ formatBytes(doc.tamano) }} }
                                 </p>
                               </div>
-                              <a [href]="doc.url" target="_blank"
+                              <button type="button" (click)="downloadDoc(r, doc)"
                                 class="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors shrink-0">
                                 <ui-icon name="download" [size]="12" />
-                              </a>
+                              </button>
                               <button type="button" (click)="deleteDocumento(r, doc)"
                                 class="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-danger-fg hover:bg-danger-soft transition-colors shrink-0">
                                 <ui-icon name="trash" [size]="12" />

@@ -17,7 +17,7 @@ import {
   GestionImpago, GestionAccionCobranza,
   EstadoGestionImpago, ESTADO_GESTION_IMPAGO_VALUES, ESTADO_GESTION_IMPAGO_LABEL,
   TipoAccionCobranza, ResultadoAccionCobranza,
-  TIPO_ACCION_LABEL, RESULTADO_ACCION_LABEL,
+  TIPO_ACCION_LABEL, RESULTADO_ACCION_LABEL, DemandaDocumento,
 } from '../../../core/models';
 
 function extractMessage(err: HttpErrorResponse): string {
@@ -257,9 +257,33 @@ export class UnpaidDetail implements OnInit {
     });
   }
 
+  // ── Document download ─────────────────────────────────────────────────────
+  protected downloadDoc(doc: DemandaDocumento): void {
+    const imp      = this.impago();
+    if (!imp) return;
+    const filename = doc.url.split('/').pop() ?? doc.nombre;
+    this.service.downloadDocumento(imp.id, filename).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href     = url;
+        a.download = doc.nombre;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.notify.error('Error al descargar el documento'),
+    });
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
   protected estadoToneFn(e: EstadoGestionImpago): StatusTone { return estadoToneFn(e); }
   protected fmt(v: string | null): string { return v ? new Date(v).toLocaleDateString('es-ES') : '—'; }
+  protected fmtDateTime(v: string | null | undefined): string {
+    if (!v) return '—';
+    const d = new Date(v);
+    return d.toLocaleDateString('es-ES') + ' · ' +
+           d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  }
   protected formatEur(v: number | null): string {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(v ?? 0);
   }

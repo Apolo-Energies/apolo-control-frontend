@@ -57,35 +57,73 @@ export class Tasks {
   private readonly service = inject(GestionImpagoService);
   private readonly notify  = inject(NotificationService);
 
-  protected readonly loading    = signal(false);
-  protected readonly rows       = signal<GestionImpago[]>([]);
-  protected readonly error      = signal<string | null>(null);
-  protected readonly updatingId = signal<string | null>(null);
-  protected readonly expandedId = signal<string | null>(null);
-  protected readonly q          = signal('');
+  protected readonly loading       = signal(false);
+  protected readonly rows          = signal<GestionImpago[]>([]);
+  protected readonly error         = signal<string | null>(null);
+  protected readonly updatingId    = signal<string | null>(null);
+  protected readonly expandedId    = signal<string | null>(null);
+  protected readonly q             = signal('');
+  protected readonly contactoFilter = signal<'all' | '0' | '1' | '2' | '3+'>('all');
+  protected readonly fechaDesde    = signal('');
+  protected readonly fechaHasta    = signal('');
+  protected readonly sortBy        = signal<'priority' | 'deuda_desc' | 'fecha_desc' | 'fecha_asc'>('priority');
 
   protected contactoForms: Record<string, ContactoForm> = {};
 
   protected readonly estadoLabel = ESTADO_GESTION_IMPAGO_LABEL;
 
   protected readonly lista = computed(() => {
-    const q = this.q().toLowerCase().trim();
-    return this.rows()
+    const q          = this.q().toLowerCase().trim();
+    const cFilter    = this.contactoFilter();
+    const desde      = this.fechaDesde() ? new Date(this.fechaDesde()).getTime() : null;
+    const hasta      = this.fechaHasta() ? new Date(this.fechaHasta() + 'T23:59:59').getTime() : null;
+    const sort       = this.sortBy();
+
+    const filtered = this.rows()
       .filter(r => !EXCLUDED.includes(r.estado))
       .filter(r => !isGestionadoHoy(r))
       .filter(r => !q ||
         (r.clienteNombre ?? '').toLowerCase().includes(q) ||
         (r.numeroFactura ?? '').toLowerCase().includes(q),
       )
-      .sort((a, b) => {
-        const pA = sortPriority(a), pB = sortPriority(b);
-        if (pA !== pB) return pA - pB;
-        const tA = a.contactoHistory.length
-          ? new Date(a.contactoHistory[a.contactoHistory.length - 1].date).getTime() : 0;
-        const tB = b.contactoHistory.length
-          ? new Date(b.contactoHistory[b.contactoHistory.length - 1].date).getTime() : 0;
-        return tA - tB;
+      .filter(r => {
+        if (cFilter === 'all') return true;
+        const step = r.contactoStep;
+        if (cFilter === '0') return step === 0;
+        if (cFilter === '1') return step === 1;
+        if (cFilter === '2') return step === 2;
+        return step >= 3;
+      })
+      .filter(r => {
+        if (!desde && !hasta) return true;
+        const t = r.fechaDevolucion ? new Date(r.fechaDevolucion).getTime() : null;
+        if (!t) return false;
+        if (desde && t < desde) return false;
+        if (hasta && t > hasta) return false;
+        return true;
       });
+
+    return filtered.sort((a, b) => {
+      switch (sort) {
+        case 'deuda_desc':
+          return (b.importePendiente ?? 0) - (a.importePendiente ?? 0);
+        case 'fecha_desc':
+          return (b.fechaDevolucion ? new Date(b.fechaDevolucion).getTime() : 0) -
+                 (a.fechaDevolucion ? new Date(a.fechaDevolucion).getTime() : 0);
+        case 'fecha_asc':
+          return (a.fechaDevolucion ? new Date(a.fechaDevolucion).getTime() : 0) -
+                 (b.fechaDevolucion ? new Date(b.fechaDevolucion).getTime() : 0);
+        default: {
+          const pA = sortPriority(a), pB = sortPriority(b);
+          if (pA !== pB) return pA - pB;
+          const tA = a.contactoHistory.length
+            ? new Date(a.contactoHistory[a.contactoHistory.length - 1].date).getTime() : 0;
+          const tB = b.contactoHistory.length
+            ? new Date(b.contactoHistory[b.contactoHistory.length - 1].date).getTime() : 0;
+          return tA - tB;
+        }
+      }
+    });
   });
 
   protected readonly nuevosCount    = computed(() => this.lista().filter(r => isNew(r)).length);
@@ -153,6 +191,13 @@ export class Tasks {
         this.notify.error(extractMessage(err));
       },
     });
+  }
+
+  protected fmtDateTime(dateStr: string | null | undefined): string {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('es-ES') + ' · ' +
+           d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
   }
 
   protected relativeDays(dateStr: string | null | undefined): string {

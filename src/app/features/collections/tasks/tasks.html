@@ -26,11 +26,65 @@
   }
 </div>
 
-<!-- Search -->
-<div class="mb-4 max-w-sm">
-  <input type="text" [value]="q()" (input)="q.set($any($event.target).value)"
-    placeholder="Buscar cliente o factura..."
-    class="w-full h-10 px-3 rounded-xl border border-border text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+<!-- Search + Filters -->
+<div class="flex flex-wrap gap-2 mb-4 items-end">
+
+  <!-- Buscar -->
+  <div class="flex-1 min-w-[180px] max-w-xs">
+    <label class="block text-xs text-muted-foreground mb-1">Buscar</label>
+    <input type="text" [value]="q()" (input)="q.set($any($event.target).value)"
+      placeholder="Cliente o factura…"
+      class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+  </div>
+
+  <!-- Nº contacto -->
+  <div>
+    <label class="block text-xs text-muted-foreground mb-1">Nº contacto</label>
+    <select [value]="contactoFilter()" (change)="contactoFilter.set($any($event.target).value)"
+      class="h-9 px-2 pr-7 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+      <option value="all">Todos</option>
+      <option value="0">Sin contacto</option>
+      <option value="1">1er contacto</option>
+      <option value="2">2º contacto</option>
+      <option value="3+">3º o más</option>
+    </select>
+  </div>
+
+  <!-- Fecha devolución desde -->
+  <div>
+    <label class="block text-xs text-muted-foreground mb-1">Devolución desde</label>
+    <input type="date" [value]="fechaDesde()" (change)="fechaDesde.set($any($event.target).value)"
+      class="h-9 px-2 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+  </div>
+
+  <!-- Fecha hasta -->
+  <div>
+    <label class="block text-xs text-muted-foreground mb-1">hasta</label>
+    <input type="date" [value]="fechaHasta()" (change)="fechaHasta.set($any($event.target).value)"
+      class="h-9 px-2 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+  </div>
+
+  <!-- Ordenar por -->
+  <div>
+    <label class="block text-xs text-muted-foreground mb-1">Ordenar por</label>
+    <select [value]="sortBy()" (change)="sortBy.set($any($event.target).value)"
+      class="h-9 px-2 pr-7 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+      <option value="priority">Prioridad (defecto)</option>
+      <option value="deuda_desc">Mayor deuda</option>
+      <option value="fecha_desc">Más reciente</option>
+      <option value="fecha_asc">Más antiguo</option>
+    </select>
+  </div>
+
+  <!-- Limpiar -->
+  @if (q() || contactoFilter() !== 'all' || fechaDesde() || fechaHasta() || sortBy() !== 'priority') {
+    <button type="button"
+      (click)="q.set(''); contactoFilter.set('all'); fechaDesde.set(''); fechaHasta.set(''); sortBy.set('priority')"
+      class="h-9 px-3 self-end text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg hover:bg-accent/40 transition-colors">
+      Limpiar
+    </button>
+  }
+
 </div>
 
 <!-- Legend -->
@@ -169,7 +223,39 @@
         <!-- Expandable contact form -->
         @if (expandedId() === r.id) {
           <div class="border-t border-border/50 px-4 pb-4 pt-3">
-            <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Registrar contacto</p>
+
+            <!-- Contact history -->
+            @if (r.contactoHistory.length > 0) {
+              <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                Historial de contacto
+              </p>
+              <ol class="space-y-2.5 mb-4">
+                @for (h of r.contactoHistory; track h.date) {
+                  @if (h.step > 0) {
+                    <li class="flex gap-2.5 text-xs">
+                      <span class="shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px] mt-0.5">
+                        {{ h.step }}
+                      </span>
+                      <div>
+                        <p class="font-medium text-foreground leading-snug">{{ h.action }}</p>
+                        <p class="text-muted-foreground">{{ fmtDateTime(h.date) }}</p>
+                        @if (h.notes) {
+                          <p class="text-foreground/80 mt-0.5 whitespace-pre-wrap">{{ h.notes }}</p>
+                        }
+                        @if (h.promesaFecha) {
+                          <p class="text-success-fg mt-0.5">Promesa: {{ fmt(h.promesaFecha) }}</p>
+                        }
+                      </div>
+                    </li>
+                  }
+                }
+              </ol>
+              <div class="border-t border-border/30 mb-3"></div>
+            }
+
+            <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+              Contacto {{ r.contactoStep + 1 }}º
+            </p>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <div>
                 <label class="block text-xs text-muted-foreground mb-1">Tipo de acción *</label>

@@ -77,6 +77,10 @@ export class GestionImpagoService {
     return this.http.delete<GestionImpago>(`${this.baseUrl}/${id}/documentos/${filename}`);
   }
 
+  downloadDocumento(id: string, filename: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/${id}/documentos/${filename}`, { responseType: 'blob' });
+  }
+
   agregarNota(id: string, contenido: string): Observable<GestionImpago> {
     return this.http.post<GestionImpago>(`${this.baseUrl}/${id}/notas`, { contenido });
   }
