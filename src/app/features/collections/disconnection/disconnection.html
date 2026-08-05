@@ -215,33 +215,40 @@
                 }
               </td>
 
-              <!-- Contacto stepper (1–5) -->
+              <!-- Contacto -->
               <td class="px-3 py-2.5">
-                <div class="flex items-center gap-1">
+                <!-- Dots (lectura) -->
+                <div class="flex items-center gap-1 mb-1.5">
                   @for (step of [1,2,3,4,5]; track step) {
-                    <button type="button"
-                      [disabled]="step !== r.contactoStep + 1 || updatingId() === r.id"
-                      (click)="advanceContacto(r)"
-                      class="w-6 h-6 rounded-full text-[10px] font-bold flex items-center justify-center transition-colors"
+                    <span class="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center"
                       [class]="step <= r.contactoStep
                         ? 'bg-primary text-primary-foreground'
                         : step === r.contactoStep + 1
-                          ? 'border-2 border-primary text-primary hover:bg-primary/10 cursor-pointer'
-                          : 'border border-border text-muted-foreground/40 cursor-default'">
+                          ? 'border-2 border-primary/40 text-primary/40'
+                          : 'border border-border text-muted-foreground/30'">
                       {{ step }}
-                    </button>
+                    </span>
                   }
                 </div>
                 @if (r.contactoStep > 0) {
-                  <p class="text-[10px] text-muted-foreground mt-1.5 whitespace-nowrap font-medium">
+                  <p class="text-[10px] text-muted-foreground whitespace-nowrap font-medium">
                     {{ contactoLabel(r.contactoStep) }}
                   </p>
                 }
                 @if (r.promesaFecha) {
-                  <p class="text-[10px] text-muted-foreground mt-0.5 whitespace-nowrap">
+                  <p class="text-[10px] text-muted-foreground whitespace-nowrap">
                     Promesa {{ fmtShort(r.promesaFecha) }}
                   </p>
                 }
+                <!-- Botón registrar -->
+                <button type="button" (click)="toggleContactoForm(r)"
+                  class="mt-1.5 flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded transition-colors"
+                  [class]="expandedContactoId() === r.id
+                    ? 'bg-success-soft text-success-fg border border-success/30'
+                    : 'bg-primary/5 text-primary border border-primary/20 hover:bg-primary/10'">
+                  <ui-icon name="phone" [size]="10" />
+                  {{ expandedContactoId() === r.id ? 'Cancelar' : 'Registrar' }}
+                </button>
               </td>
 
               <!-- Motivo Dev. (click-to-edit) -->
@@ -282,6 +289,60 @@
                 </div>
               </td>
             </tr>
+
+            <!-- Formulario de contacto expandible -->
+            @if (expandedContactoId() === r.id) {
+              <tr class="bg-primary/3">
+                <td colspan="9" class="px-6 py-4 border-t border-primary/10">
+                  <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                    Contacto {{ r.contactoStep + 1 }}º — {{ r.clienteNombre ?? r.clienteId }}
+                  </p>
+                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                    <div>
+                      <label class="block text-xs text-muted-foreground mb-1">Tipo de acción *</label>
+                      <select [(ngModel)]="contactoForms[r.id].actionKey"
+                        class="h-8 w-full px-2 rounded-md border border-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/40">
+                        <option value="llamada">Llamada</option>
+                        <option value="email">Email</option>
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="aviso_corte">Aviso de corte</option>
+                        <option value="promesa">Promesa de pago</option>
+                        <option value="otro">Otro</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-xs text-muted-foreground mb-1">Notas</label>
+                      <input type="text" [(ngModel)]="contactoForms[r.id].notes"
+                        placeholder="Breve descripción…"
+                        class="h-8 w-full px-2 rounded-md border border-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                    </div>
+                    <div>
+                      <label class="block text-xs text-muted-foreground mb-1">Promesa de pago (fecha)</label>
+                      <input type="date" [(ngModel)]="contactoForms[r.id].promesaFecha"
+                        class="h-8 w-full px-2 rounded-md border border-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                    </div>
+                    <div>
+                      <label class="block text-xs text-muted-foreground mb-1">Promesa de pago (€)</label>
+                      <input type="number" [(ngModel)]="contactoForms[r.id].promesaImporte"
+                        min="0" step="0.01" placeholder="0.00"
+                        class="h-8 w-full px-2 rounded-md border border-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                    </div>
+                  </div>
+                  <div class="flex justify-end gap-2">
+                    <button type="button" (click)="expandedContactoId.set(null)"
+                      class="h-8 px-3 text-xs rounded-lg border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
+                      Cancelar
+                    </button>
+                    <button type="button" (click)="registrarContacto(r)"
+                      [disabled]="updatingId() === r.id"
+                      class="h-8 px-4 inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-40">
+                      <ui-icon name="check" [size]="13" />
+                      Guardar
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
           }
         </tbody>
       </table>

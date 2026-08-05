@@ -79,6 +79,12 @@ export class Disconnection {
   // ── Update ────────────────────────────────────────────────────────────────
   protected updatingId = signal<string | null>(null);
 
+  // ── Contacto form (inline expand) ─────────────────────────────────────────
+  protected readonly expandedContactoId = signal<string | null>(null);
+  protected contactoForms: Record<string, {
+    actionKey: string; notes: string; promesaFecha: string; promesaImporte: string;
+  }> = {};
+
   // ── Motivo editing ────────────────────────────────────────────────────────
   protected readonly editingMotivoId = signal<string | null>(null);
   protected editingMotivoValue = '';
@@ -201,12 +207,34 @@ export class Disconnection {
     });
   }
 
-  // ── Contacto stepper ──────────────────────────────────────────────────────
-  protected advanceContacto(r: GestionImpago): void {
-    if (r.contactoStep >= 5) return;
+  // ── Contacto form ─────────────────────────────────────────────────────────
+  protected toggleContactoForm(r: GestionImpago): void {
+    if (this.expandedContactoId() === r.id) {
+      this.expandedContactoId.set(null);
+    } else {
+      this.expandedContactoId.set(r.id);
+      if (!this.contactoForms[r.id]) {
+        this.contactoForms[r.id] = { actionKey: 'llamada', notes: '', promesaFecha: '', promesaImporte: '' };
+      }
+    }
+  }
+
+  protected registrarContacto(r: GestionImpago): void {
+    const form = this.contactoForms[r.id];
+    if (!form?.actionKey) return;
     this.updatingId.set(r.id);
-    this.service.registrarContacto(r.id, { actionKey: 'contacto' }).subscribe({
-      next:  () => { this.updatingId.set(null); this.reload(this.page()); },
+    this.service.registrarContacto(r.id, {
+      actionKey:      form.actionKey,
+      notes:          form.notes          || null,
+      promesaFecha:   form.promesaFecha   || null,
+      promesaImporte: form.promesaImporte ? parseFloat(form.promesaImporte) : null,
+    }).subscribe({
+      next: () => {
+        this.updatingId.set(null);
+        this.expandedContactoId.set(null);
+        this.notify.success('Contacto registrado');
+        this.reload(this.page());
+      },
       error: (err: HttpErrorResponse) => {
         this.updatingId.set(null);
         this.notify.error(extractMessage(err));

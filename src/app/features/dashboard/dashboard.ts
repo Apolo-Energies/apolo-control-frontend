@@ -19,6 +19,7 @@ import {
 } from '../../shared/pipes';
 import { DashboardService } from '../../core/services/dashboard.service';
 import { MasterDataService } from '../../core/services/master-data.service';
+import { GestionImpagoService } from '../../core/services/gestion-impago.service';
 import {
   ActividadDelegacion,
   ApiErrorResponse,
@@ -26,6 +27,7 @@ import {
   CONTRACT_STATUS_LABEL,
   DashboardFilter,
   DashboardSummary,
+  GestionImpagoStats,
   Page,
 } from '../../core/models';
 import { formatEnergy, formatMonthShort, formatMwh } from '../../shared/utils/format';
@@ -122,14 +124,19 @@ const STATUS_COLORS: Record<ContractStatus, { color: string; colorSoft: string; 
   templateUrl: './dashboard.html',
 })
 export class Dashboard {
-  private readonly service = inject(DashboardService);
-  private readonly masterData = inject(MasterDataService);
-  private readonly router = inject(Router);
+  private readonly service       = inject(DashboardService);
+  private readonly masterData    = inject(MasterDataService);
+  private readonly impagoService = inject(GestionImpagoService);
+  private readonly router        = inject(Router);
 
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly data = signal<DashboardSummary | null>(null);
   protected readonly range = signal<RangeId>('all');
+
+  // ── Impagos stats ─────────────────────────────────────────────────────────
+  protected readonly impagoStats        = signal<GestionImpagoStats | null>(null);
+  protected readonly impagoStatsLoading = signal(false);
 
   protected readonly selectedWeek  = signal(toIsoWeek(new Date()));
   protected readonly selectedMonth = signal(toIsoMonth(new Date()));
@@ -261,9 +268,28 @@ export class Dashboard {
     });
   });
 
+  protected readonly impagoChartData = computed<BarChartItem[]>(() =>
+    (this.impagoStats()?.historicoMensual ?? []).map(row => ({
+      label: formatMonthShort(row.mes),
+      value: row.impagos,
+      formattedValue: this.fmtEur(row.impagos),
+      tooltip: `Impagos ${row.mes}: ${this.fmtEur(row.impagos)}`,
+    })),
+  );
+
+  protected readonly cobradoChartData = computed<BarChartItem[]>(() =>
+    (this.impagoStats()?.historicoMensual ?? []).map(row => ({
+      label: formatMonthShort(row.mes),
+      value: row.cobrado,
+      formattedValue: this.fmtEur(row.cobrado),
+      tooltip: `Cobrado ${row.mes}: ${this.fmtEur(row.cobrado)}`,
+    })),
+  );
+
   constructor() {
     this.reload();
     this.reloadActividad(0);
+    this.loadImpagoStats();
   }
 
   protected setRange(id: RangeId): void {
@@ -340,6 +366,18 @@ export class Dashboard {
     void this.router.navigate(['/contracts'], {
       queryParams: { status: 'ko', motivoRechazo: motivo },
     });
+  }
+
+  protected loadImpagoStats(): void {
+    this.impagoStatsLoading.set(true);
+    this.impagoService.stats().subscribe({
+      next:  (s) => { this.impagoStats.set(s); this.impagoStatsLoading.set(false); },
+      error: ()  => this.impagoStatsLoading.set(false),
+    });
+  }
+
+  private fmtEur(v: number): string {
+    return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 }).format(v ?? 0);
   }
 
   private buildFilter(): DashboardFilter {
