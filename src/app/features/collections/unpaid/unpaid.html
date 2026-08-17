@@ -88,17 +88,13 @@
             <tr class="hover:bg-accent/20 transition-colors">
               <td class="px-4 py-3 whitespace-nowrap text-muted-foreground text-xs">{{ fmt(r.fechaDevolucion) }}</td>
               <td class="px-4 py-3">
-                @if (r.clienteActivo === 'baja') {
-                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-danger-soft text-danger-fg">
-                    <span class="w-1.5 h-1.5 rounded-full bg-danger-fg"></span>
-                    Baja
-                  </span>
-                } @else {
-                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-success-soft text-success-fg">
-                    <span class="w-1.5 h-1.5 rounded-full bg-success-fg"></span>
-                    Activo
-                  </span>
-                }
+                <select [value]="r.clienteActivo"
+                        (change)="changeClienteActivo(r, $any($event.target).value)"
+                        [disabled]="togglingClienteActivoId() === r.id"
+                        [class]="clienteActivoSelectClass(r.clienteActivo)">
+                  <option value="activo">Activo</option>
+                  <option value="baja">Baja</option>
+                </select>
               </td>
               <td class="px-4 py-3 max-w-[200px]">
                 <p class="font-medium text-foreground truncate" [title]="r.clienteNombre ?? r.clienteId">
@@ -142,7 +138,7 @@
                 </div>
                 @if (r.contactoStep > 0) {
                   <p class="text-[10px] text-muted-foreground whitespace-nowrap font-medium">
-                    {{ contactoLabel(r.contactoStep) }}
+                    {{ contactoLabel(r.contactoStep, lastContactoDate(r)) }}
                   </p>
                 }
                 @if (r.promesaFecha) {

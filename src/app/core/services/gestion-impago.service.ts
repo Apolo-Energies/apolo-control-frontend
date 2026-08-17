@@ -117,6 +117,10 @@ export class GestionImpagoService {
     return this.http.patch<GestionImpago>(`${this.baseUrl}/${id}/estado`, payload);
   }
 
+  actualizarClienteActivo(id: string, valor: 'activo' | 'baja'): Observable<GestionImpago> {
+    return this.http.patch<GestionImpago>(`${this.baseUrl}/${id}/cliente-activo`, null, { params: { valor } });
+  }
+
   marcarNoPago(id: string): Observable<GestionImpago> {
     return this.http.patch<GestionImpago>(`${this.baseUrl}/${id}/no-pago`, {});
   }

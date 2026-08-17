@@ -247,9 +247,17 @@ export class Unpaid {
     return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
   }
 
-  protected contactoLabel(step: number): string {
+  protected contactoLabel(step: number, lastDate?: string | null): string {
+    if (step <= 0) return '';
     const ordinals = ['', '1er', '2do', '3er', '4to', '5to'];
-    return step > 0 ? `${ordinals[step] ?? step + 'º'} Contacto` : '';
+    const ord = ordinals[step] ?? `${step}º`;
+    const datePart = lastDate ? ` (${this.fmtShort(lastDate)})` : '';
+    return `${ord} Contacto${datePart}`;
+  }
+
+  protected lastContactoDate(r: GestionImpago): string | null {
+    const contacts = r.contactoHistory?.filter(h => h.step > 0) ?? [];
+    return contacts.length ? contacts[contacts.length - 1].date : null;
   }
 
   // ── Inline estado change ──────────────────────────────────────────────────
@@ -328,6 +336,38 @@ export class Unpaid {
       nuevo:              'bg-slate-100 text-slate-600 dark:bg-slate-600 dark:text-slate-100',
     };
     return `${base} ${map[estado] ?? 'bg-slate-100 text-slate-600 dark:bg-slate-600 dark:text-slate-100'}`;
+  }
+
+  // ── Toggle cliente activo/baja ────────────────────────────────────────────
+  protected readonly togglingClienteActivoId = signal<string | null>(null);
+
+  protected changeClienteActivo(r: GestionImpago, valor: string): void {
+    if (valor === r.clienteActivo || this.togglingClienteActivoId()) return;
+    this.togglingClienteActivoId.set(r.id);
+    this.service.actualizarClienteActivo(r.id, valor as 'activo' | 'baja').subscribe({
+      next: (updated) => {
+        const page = this.result();
+        if (page) {
+          const content = page.content.map(x => x.id === r.id ? { ...x, clienteActivo: updated.clienteActivo } : x);
+          this.result.set({ ...page, content });
+        }
+        this.togglingClienteActivoId.set(null);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.notify.error(extractMessage(err));
+        this.togglingClienteActivoId.set(null);
+        // Forzar re-render para resetear el select al valor original
+        const page = this.result();
+        if (page) this.result.set({ ...page, content: [...page.content] });
+      },
+    });
+  }
+
+  protected clienteActivoSelectClass(valor: string): string {
+    const base = 'h-7 px-2 rounded-full text-xs font-semibold border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors disabled:opacity-60';
+    return valor === 'activo'
+      ? `${base} bg-emerald-100 text-emerald-800 dark:bg-emerald-700 dark:text-emerald-50`
+      : `${base} bg-slate-100 text-slate-600 dark:bg-slate-600 dark:text-slate-100`;
   }
 
   // ── Export CSV ────────────────────────────────────────────────────────────
