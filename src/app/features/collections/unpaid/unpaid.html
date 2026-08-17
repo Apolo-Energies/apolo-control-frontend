@@ -354,13 +354,16 @@
 
     <!-- Panel -->
     <div class="relative z-10 w-full max-w-sm rounded-xl bg-background border border-border shadow-xl p-6 flex flex-col gap-4">
-      <h2 class="text-base font-semibold text-foreground">Registrar pago</h2>
+      <h2 class="text-base font-semibold text-foreground">
+        {{ pagadoModal()?.newEstado === 'pagado' ? 'Registrar pago' : 'Registrar corte' }}
+      </h2>
 
       <div class="flex flex-col gap-3">
-        <!-- Fecha de pago (required) -->
+        <!-- Fecha (required) -->
         <div>
           <label class="block text-xs font-medium text-muted-foreground mb-1">
-            Fecha de pago <span class="text-destructive">*</span>
+            {{ pagadoModal()?.newEstado === 'pagado' ? 'Fecha de pago' : 'Fecha de corte' }}
+            <span class="text-destructive">*</span>
           </label>
           <input type="date" [(ngModel)]="pagadoFecha" required
             class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
@@ -382,7 +385,7 @@
         </button>
         <button type="button" (click)="confirmarPago()" [disabled]="!pagadoFecha"
           class="h-9 px-4 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-          Confirmar pago
+          {{ pagadoModal()?.newEstado === 'pagado' ? 'Confirmar pago' : 'Confirmar corte' }}
         </button>
       </div>
     </div>

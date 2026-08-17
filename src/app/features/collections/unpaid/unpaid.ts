@@ -255,17 +255,19 @@ export class Unpaid {
   // ── Inline estado change ──────────────────────────────────────────────────
   protected readonly savingEstadoId = signal<string | null>(null);
 
-  // Modal pagado
-  protected readonly pagadoModal = signal<{ row: GestionImpago; prevEstado: EstadoGestionImpago } | null>(null);
+  // Modal pagado / cortado
+  protected readonly pagadoModal = signal<{ row: GestionImpago; newEstado: EstadoGestionImpago } | null>(null);
   protected pagadoFecha = '';
   protected pagadoNotas = '';
 
+  private readonly ESTADO_CON_MODAL: ReadonlySet<string> = new Set(['pagado', 'cortado']);
+
   protected changeEstado(r: GestionImpago, newEstado: string): void {
     if (newEstado === r.estado || this.savingEstadoId()) return;
-    if (newEstado === 'pagado') {
+    if (this.ESTADO_CON_MODAL.has(newEstado)) {
       this.pagadoFecha = new Date().toISOString().slice(0, 10);
       this.pagadoNotas = '';
-      this.pagadoModal.set({ row: r, prevEstado: r.estado });
+      this.pagadoModal.set({ row: r, newEstado: newEstado as EstadoGestionImpago });
       return;
     }
     this.doActualizarEstado(r, { estado: newEstado as EstadoGestionImpago });
@@ -276,7 +278,7 @@ export class Unpaid {
     if (!modal || !this.pagadoFecha) return;
     this.pagadoModal.set(null);
     this.doActualizarEstado(modal.row, {
-      estado: 'pagado',
+      estado: modal.newEstado,
       fechaEstado: this.pagadoFecha,
       notas: this.pagadoNotas || null,
     });
