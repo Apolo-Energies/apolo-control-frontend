@@ -41,6 +41,13 @@
     <option value="baja">Solo Bajas</option>
   </select>
 
+  <select [(ngModel)]="pagadoFilter"
+    class="h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+    <option value="">Pagados + Pendientes</option>
+    <option value="no_pagado">Solo Pendientes</option>
+    <option value="pagado">Solo Pagados</option>
+  </select>
+
   <button type="button" (click)="applyFilters()"
     class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
     <ui-icon name="search" [size]="14" />
@@ -339,6 +346,35 @@
         class="w-full px-3 py-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"></textarea>
     </div>
 
+    <!-- Progreso de cobro (solo al editar) -->
+    @if (editing()) {
+      @let imp = editing()!;
+      <div class="pt-2 border-t border-border">
+        <div class="flex justify-between text-xs text-muted-foreground mb-1">
+          <span>Cobrado: <strong class="text-success-fg">{{ formatEur(imp.parcialPagado) }}</strong></span>
+          <span>Pendiente: <strong class="text-danger-fg">{{ formatEur(imp.importePendiente) }}</strong></span>
+        </div>
+        <div class="w-full bg-muted rounded-full h-1.5 overflow-hidden mb-3">
+          <div class="h-1.5 rounded-full bg-success-fg transition-all"
+            [style.width.%]="imp.importe > 0 ? (imp.parcialPagado / imp.importe) * 100 : 0"></div>
+        </div>
+        @if (imp.pagosHistorial.length > 0) {
+          <p class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Pagos registrados</p>
+          <div class="space-y-1 max-h-32 overflow-y-auto">
+            @for (p of imp.pagosHistorial.slice().reverse(); track p.fecha + p.importe) {
+              <div class="flex items-center gap-2 text-xs">
+                <span class="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  [class]="p.tipo === 'total' ? 'bg-success-fg' : 'bg-warning-fg'"></span>
+                <span class="font-semibold">{{ formatEur(p.importe) }}</span>
+                <span class="text-muted-foreground">{{ fmt(p.fecha) }}</span>
+                @if (p.notas) { <span class="text-muted-foreground truncate">· {{ p.notas }}</span> }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
   </form>
 </app-form-dialog>
 
@@ -351,24 +387,47 @@
     <!-- Panel -->
     <div class="relative z-10 w-full max-w-sm rounded-xl bg-background border border-border shadow-xl p-6 flex flex-col gap-4">
       <h2 class="text-base font-semibold text-foreground">
-        {{ pagadoModal()?.newEstado === 'pagado' ? 'Registrar pago' : 'Registrar corte' }}
+        @switch (pagadoModal()?.newEstado) {
+          @case ('pagado')       { Registrar pago total }
+          @case ('cortado')      { Registrar corte }
+          @case ('va_a_pagar')   { Acuerdo Verbal }
+          @case ('acuerdo_pago') { Acuerdo de Pago }
+        }
       </h2>
 
       <div class="flex flex-col gap-3">
         <!-- Fecha (required) -->
         <div>
           <label class="block text-xs font-medium text-muted-foreground mb-1">
-            {{ pagadoModal()?.newEstado === 'pagado' ? 'Fecha de pago' : 'Fecha de corte' }}
+            @switch (pagadoModal()?.newEstado) {
+              @case ('pagado')       { Fecha de pago }
+              @case ('cortado')      { Fecha de corte }
+              @case ('va_a_pagar')   { Fecha del acuerdo }
+              @case ('acuerdo_pago') { Fecha del acuerdo }
+            }
             <span class="text-destructive">*</span>
           </label>
           <input type="date" [(ngModel)]="pagadoFecha" required
             class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
         </div>
 
+        <!-- Importe parcial (solo acuerdos, opcional) -->
+        @if (ESTADO_CON_PAGO_PARCIAL.has(pagadoModal()?.newEstado ?? '')) {
+          <div>
+            <label class="block text-xs font-medium text-muted-foreground mb-1">
+              Importe a cuenta (€) <span class="text-muted-foreground font-normal">— opcional</span>
+            </label>
+            <input type="number" [(ngModel)]="pagadoImporte" min="0" step="0.01"
+              placeholder="0.00"
+              class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+            <p class="text-[10px] text-muted-foreground mt-1">Si se rellena, se registra como pago parcial en el historial.</p>
+          </div>
+        }
+
         <!-- Observaciones (optional) -->
         <div>
           <label class="block text-xs font-medium text-muted-foreground mb-1">Observaciones (opcional)</label>
-          <textarea [(ngModel)]="pagadoNotas" rows="3" placeholder="Añadir nota…"
+          <textarea [(ngModel)]="pagadoNotas" rows="2" placeholder="Añadir nota…"
             class="w-full px-3 py-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"></textarea>
         </div>
       </div>
@@ -381,7 +440,12 @@
         </button>
         <button type="button" (click)="confirmarPago()" [disabled]="!pagadoFecha"
           class="h-9 px-4 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-          {{ pagadoModal()?.newEstado === 'pagado' ? 'Confirmar pago' : 'Confirmar corte' }}
+          @switch (pagadoModal()?.newEstado) {
+            @case ('pagado')       { Confirmar pago }
+            @case ('cortado')      { Confirmar corte }
+            @case ('va_a_pagar')   { Confirmar acuerdo }
+            @case ('acuerdo_pago') { Confirmar acuerdo }
+          }
         </button>
       </div>
     </div>

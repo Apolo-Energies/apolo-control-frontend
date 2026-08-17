@@ -18,6 +18,7 @@ import {
   EstadoGestionImpago, ESTADO_GESTION_IMPAGO_VALUES, ESTADO_GESTION_IMPAGO_LABEL,
   TipoAccionCobranza, ResultadoAccionCobranza,
   TIPO_ACCION_LABEL, RESULTADO_ACCION_LABEL, DemandaDocumento,
+  RegistrarPagoPayload,
 } from '../../../core/models';
 
 function extractMessage(err: HttpErrorResponse): string {
@@ -252,6 +253,44 @@ export class UnpaidDetail implements OnInit {
       },
       error: (err: HttpErrorResponse) => {
         this.notaSaving.set(false);
+        this.notify.error(extractMessage(err));
+      },
+    });
+  }
+
+  // ── Registrar pago ────────────────────────────────────────────────────────
+  protected readonly pagoOpen       = signal(false);
+  protected readonly pagoSubmitting = signal(false);
+  protected pagoFecha   = '';
+  protected pagoImporte = 0;
+  protected pagoNotas   = '';
+
+  protected openPagoForm(): void {
+    const imp = this.impago();
+    this.pagoFecha   = new Date().toISOString().slice(0, 10);
+    this.pagoImporte = imp?.importePendiente ?? imp?.importe ?? 0;
+    this.pagoNotas   = '';
+    this.pagoOpen.set(true);
+  }
+
+  protected submitPago(): void {
+    const imp = this.impago();
+    if (!imp || !this.pagoFecha || this.pagoImporte <= 0) return;
+    const payload: RegistrarPagoPayload = {
+      fecha:   this.pagoFecha,
+      importe: this.pagoImporte,
+      notas:   this.pagoNotas || null,
+    };
+    this.pagoSubmitting.set(true);
+    this.service.registrarPago(imp.id, payload).subscribe({
+      next: (updated) => {
+        this.impago.set(updated);
+        this.pagoSubmitting.set(false);
+        this.pagoOpen.set(false);
+        this.notify.success('Pago registrado');
+      },
+      error: (err: HttpErrorResponse) => {
+        this.pagoSubmitting.set(false);
         this.notify.error(extractMessage(err));
       },
     });

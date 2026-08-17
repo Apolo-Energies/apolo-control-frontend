@@ -18,19 +18,25 @@
 } @else if (stats(); as s) {
 
   <!-- Top KPIs -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-3 mb-4">
     <app-kpi-card
       label="Deuda total activa"
       [value]="formatEur(s.deudaTotal)"
       icon="trending-down"
       tone="danger"
-      sublabel="Suma de importes pendientes" />
+      sublabel="Suma de importes originales" />
     <app-kpi-card
       label="Total cobrado"
       [value]="formatEur(s.cobrado)"
       icon="euro"
       tone="success"
       sublabel="Recuperado en el período" />
+    <app-kpi-card
+      label="Total pendiente"
+      [value]="formatEur(s.deudaTotal - s.cobrado)"
+      icon="clock"
+      tone="warning"
+      sublabel="Deuda aún sin cobrar" />
     <app-kpi-card
       label="Tasa de recuperación"
       [value]="formatPct(s.tasaRecuperacion)"

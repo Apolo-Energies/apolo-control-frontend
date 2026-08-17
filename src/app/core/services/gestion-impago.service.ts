@@ -13,6 +13,7 @@ import {
   Page,
   PageRequest,
   PagoFraccionadoEntry,
+  RegistrarPagoPayload,
 } from '../models';
 import { buildParams } from '../http/http-params.util';
 
@@ -115,6 +116,10 @@ export class GestionImpagoService {
 
   actualizarEstado(id: string, payload: GestionImpagoActualizarEstadoPayload): Observable<GestionImpago> {
     return this.http.patch<GestionImpago>(`${this.baseUrl}/${id}/estado`, payload);
+  }
+
+  registrarPago(id: string, payload: RegistrarPagoPayload): Observable<GestionImpago> {
+    return this.http.patch<GestionImpago>(`${this.baseUrl}/${id}/registrar-pago`, payload);
   }
 
   actualizarClienteActivo(id: string, valor: 'activo' | 'baja'): Observable<GestionImpago> {

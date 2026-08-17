@@ -84,6 +84,13 @@ export interface PagoFraccionadoEntry {
   cobrado: boolean;
 }
 
+export interface PagoHistorialEntry {
+  fecha: string;
+  importe: number;
+  tipo: 'parcial' | 'total';
+  notas: string | null;
+}
+
 export interface NotaEntry {
   contenido: string;
   fecha: string;
@@ -178,6 +185,8 @@ export interface GestionImpago {
   pagoFraccionado: boolean;
   numPagos: number | null;
   pagosFraccionados: PagoFraccionadoEntry[];
+  fechaPago: string | null;
+  pagosHistorial: PagoHistorialEntry[];
   burofaxAvisoCorte: boolean;
   asnef: boolean;
   diasVencido: number | null;
@@ -233,12 +242,20 @@ export interface GestionImpagoFilter {
   startDate?: string;
   endDate?: string;
   clienteActivo?: string;
+  pagadoFilter?: 'pagado' | 'no_pagado';
+}
+
+export interface RegistrarPagoPayload {
+  fecha: string;
+  importe: number;
+  notas?: string | null;
 }
 
 export interface GestionImpagoActualizarEstadoPayload {
   estado: EstadoGestionImpago;
   fechaEstado?: string | null;
   notas?: string | null;
+  importe?: number | null;
 }
 
 export interface GestionImpagoRegistrarContactoPayload {

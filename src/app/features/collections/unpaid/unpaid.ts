@@ -76,6 +76,7 @@ export class Unpaid {
   protected q                   = '';
   protected estadoFilter:        EstadoGestionImpago | '' = '';
   protected clienteActivoFilter: 'activo' | 'baja' | '' = '';
+  protected pagadoFilter:        'pagado' | 'no_pagado' | '' = '';
 
   // ── Constants ─────────────────────────────────────────────────────────────
   protected readonly estadoValues    = ESTADO_GESTION_IMPAGO_VALUES;
@@ -116,6 +117,7 @@ export class Unpaid {
       q:             this.q || undefined,
       estado:        this.estadoFilter        || undefined,
       clienteActivo: this.clienteActivoFilter || undefined,
+      pagadoFilter:  this.pagadoFilter        || undefined,
     };
     this.service.list(filter, { page: p, size: this.size() }).subscribe({
       next:  (res) => { this.result.set(res); this.loading.set(false); },
@@ -125,7 +127,7 @@ export class Unpaid {
 
   protected onSizeChange(size: number): void { this.size.set(size); this.reload(0); }
   protected applyFilters(): void { this.reload(0); }
-  protected clearFilters(): void { this.q = ''; this.estadoFilter = ''; this.clienteActivoFilter = ''; this.reload(0); }
+  protected clearFilters(): void { this.q = ''; this.estadoFilter = ''; this.clienteActivoFilter = ''; this.pagadoFilter = ''; this.reload(0); }
 
   // ── Create / Edit ─────────────────────────────────────────────────────────
   protected openCreate(): void {
@@ -265,16 +267,21 @@ export class Unpaid {
 
   // Modal pagado / cortado
   protected readonly pagadoModal = signal<{ row: GestionImpago; newEstado: EstadoGestionImpago } | null>(null);
-  protected pagadoFecha = '';
-  protected pagadoNotas = '';
+  protected pagadoFecha   = '';
+  protected pagadoNotas   = '';
+  protected pagadoImporte = 0;
 
-  private readonly ESTADO_CON_MODAL: ReadonlySet<string> = new Set(['pagado', 'cortado']);
+  private readonly ESTADO_CON_MODAL: ReadonlySet<string> = new Set(['pagado', 'cortado', 'va_a_pagar', 'acuerdo_pago']);
+  protected readonly ESTADO_CON_PAGO_PARCIAL: ReadonlySet<string> = new Set(['va_a_pagar', 'acuerdo_pago']);
 
   protected changeEstado(r: GestionImpago, newEstado: string): void {
     if (newEstado === r.estado || this.savingEstadoId()) return;
     if (this.ESTADO_CON_MODAL.has(newEstado)) {
-      this.pagadoFecha = new Date().toISOString().slice(0, 10);
-      this.pagadoNotas = '';
+      this.pagadoFecha   = new Date().toISOString().slice(0, 10);
+      this.pagadoNotas   = '';
+      this.pagadoImporte = this.ESTADO_CON_PAGO_PARCIAL.has(newEstado)
+        ? (r.importePendiente ?? r.importe)
+        : 0;
       this.pagadoModal.set({ row: r, newEstado: newEstado as EstadoGestionImpago });
       return;
     }
@@ -285,11 +292,37 @@ export class Unpaid {
     const modal = this.pagadoModal();
     if (!modal || !this.pagadoFecha) return;
     this.pagadoModal.set(null);
+
+    const esParcial = this.ESTADO_CON_PAGO_PARCIAL.has(modal.newEstado);
+
+    // Cambiar el estado
     this.doActualizarEstado(modal.row, {
-      estado: modal.newEstado,
+      estado:      modal.newEstado,
       fechaEstado: this.pagadoFecha,
-      notas: this.pagadoNotas || null,
+      notas:       this.pagadoNotas || null,
     });
+
+    // Para acuerdos, si pusieron importe, registrar también el pago parcial
+    if (esParcial && this.pagadoImporte > 0) {
+      this.service.registrarPago(modal.row.id, {
+        fecha:   this.pagadoFecha,
+        importe: this.pagadoImporte,
+        notas:   this.pagadoNotas || null,
+      }).subscribe({
+        next: (updated) => {
+          const page = this.result();
+          if (page) {
+            const content = page.content.map(x =>
+              x.id === modal.row.id
+                ? { ...x, parcialPagado: updated.parcialPagado, importePendiente: updated.importePendiente }
+                : x
+            );
+            this.result.set({ ...page, content });
+          }
+        },
+        error: (err: HttpErrorResponse) => this.notify.error(extractMessage(err)),
+      });
+    }
   }
 
   protected cancelarPago(): void {
@@ -380,6 +413,7 @@ export class Unpaid {
       q:             this.q || undefined,
       estado:        this.estadoFilter        || undefined,
       clienteActivo: this.clienteActivoFilter || undefined,
+      pagadoFilter:  this.pagadoFilter        || undefined,
     };
     this.service.exportCsv(filter).subscribe({
       next: (blob) => {
