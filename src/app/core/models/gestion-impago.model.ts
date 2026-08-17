@@ -232,6 +232,7 @@ export interface GestionImpagoFilter {
   clienteId?: string;
   startDate?: string;
   endDate?: string;
+  clienteActivo?: string;
 }
 
 export interface GestionImpagoActualizarEstadoPayload {

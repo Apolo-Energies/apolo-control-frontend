@@ -72,8 +72,9 @@ export class Unpaid {
   protected readonly size          = signal(20);
 
   // ── Filters ───────────────────────────────────────────────────────────────
-  protected q             = '';
-  protected estadoFilter: EstadoGestionImpago | '' = '';
+  protected q                   = '';
+  protected estadoFilter:        EstadoGestionImpago | '' = '';
+  protected clienteActivoFilter: 'activo' | 'baja' | '' = '';
 
   // ── Constants ─────────────────────────────────────────────────────────────
   protected readonly estadoValues    = ESTADO_GESTION_IMPAGO_VALUES;
@@ -111,8 +112,9 @@ export class Unpaid {
     this.page.set(p);
     this.loading.set(true);
     const filter: GestionImpagoFilter = {
-      q:      this.q || undefined,
-      estado: this.estadoFilter || undefined,
+      q:             this.q || undefined,
+      estado:        this.estadoFilter        || undefined,
+      clienteActivo: this.clienteActivoFilter || undefined,
     };
     this.service.list(filter, { page: p, size: this.size() }).subscribe({
       next:  (res) => { this.result.set(res); this.loading.set(false); },
@@ -122,7 +124,7 @@ export class Unpaid {
 
   protected onSizeChange(size: number): void { this.size.set(size); this.reload(0); }
   protected applyFilters(): void { this.reload(0); }
-  protected clearFilters(): void { this.q = ''; this.estadoFilter = ''; this.reload(0); }
+  protected clearFilters(): void { this.q = ''; this.estadoFilter = ''; this.clienteActivoFilter = ''; this.reload(0); }
 
   // ── Create / Edit ─────────────────────────────────────────────────────────
   protected openCreate(): void {
@@ -189,6 +191,66 @@ export class Unpaid {
     });
   }
 
+  // ── Contacto form (inline expand) ─────────────────────────────────────────
+  protected readonly expandedContactoId  = signal<string | null>(null);
+  protected readonly updatingContactoId  = signal<string | null>(null);
+  protected contactoForms: Record<string, {
+    actionKey: string; notes: string; promesaFecha: string; promesaImporte: string;
+  }> = {};
+
+  protected toggleContactoForm(r: GestionImpago): void {
+    if (this.expandedContactoId() === r.id) {
+      this.expandedContactoId.set(null);
+    } else {
+      this.expandedContactoId.set(r.id);
+      if (!this.contactoForms[r.id]) {
+        this.contactoForms[r.id] = { actionKey: 'llamada', notes: '', promesaFecha: '', promesaImporte: '' };
+      }
+    }
+  }
+
+  protected registrarContacto(r: GestionImpago): void {
+    const form = this.contactoForms[r.id];
+    if (!form?.actionKey) return;
+    this.updatingContactoId.set(r.id);
+    this.service.registrarContacto(r.id, {
+      actionKey:      form.actionKey,
+      notes:          form.notes          || null,
+      promesaFecha:   form.promesaFecha   || null,
+      promesaImporte: form.promesaImporte ? parseFloat(form.promesaImporte) : null,
+    }).subscribe({
+      next: (updated) => {
+        const page = this.result();
+        if (page) {
+          const content = page.content.map(x =>
+            x.id === r.id
+              ? { ...x, contactoStep: updated.contactoStep, lastActionDate: updated.lastActionDate, promesaFecha: updated.promesaFecha }
+              : x
+          );
+          this.result.set({ ...page, content });
+        }
+        this.updatingContactoId.set(null);
+        this.expandedContactoId.set(null);
+        this.notify.success('Contacto registrado');
+      },
+      error: (err: HttpErrorResponse) => {
+        this.updatingContactoId.set(null);
+        this.notify.error(extractMessage(err));
+      },
+    });
+  }
+
+  protected fmtShort(v: string | null): string {
+    if (!v) return '—';
+    const d = new Date(v);
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  protected contactoLabel(step: number): string {
+    const ordinals = ['', '1er', '2do', '3er', '4to', '5to'];
+    return step > 0 ? `${ordinals[step] ?? step + 'º'} Contacto` : '';
+  }
+
   // ── Inline estado change ──────────────────────────────────────────────────
   protected readonly savingEstadoId = signal<string | null>(null);
 
@@ -237,8 +299,9 @@ export class Unpaid {
     if (this.exporting()) return;
     this.exporting.set(true);
     const filter: GestionImpagoFilter = {
-      q:      this.q || undefined,
-      estado: this.estadoFilter || undefined,
+      q:             this.q || undefined,
+      estado:        this.estadoFilter        || undefined,
+      clienteActivo: this.clienteActivoFilter || undefined,
     };
     this.service.exportCsv(filter).subscribe({
       next: (blob) => {
