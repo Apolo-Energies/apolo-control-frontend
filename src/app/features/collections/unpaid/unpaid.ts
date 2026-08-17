@@ -17,6 +17,7 @@ import { NotificationService } from '../../../core/services/notification.service
 import { GlobalLoadingService } from '../../../core/services/global-loading.service';
 import {
   GestionImpago, GestionImpagoPayload, GestionImpagoFilter,
+  GestionImpagoActualizarEstadoPayload,
   EstadoGestionImpago, PrioridadGestionImpago,
   ESTADO_GESTION_IMPAGO_VALUES, ESTADO_GESTION_IMPAGO_LABEL,
   PRIORIDAD_GESTION_IMPAGO_LABEL, Page,
@@ -254,10 +255,45 @@ export class Unpaid {
   // ── Inline estado change ──────────────────────────────────────────────────
   protected readonly savingEstadoId = signal<string | null>(null);
 
+  // Modal pagado
+  protected readonly pagadoModal = signal<{ row: GestionImpago; prevEstado: EstadoGestionImpago } | null>(null);
+  protected pagadoFecha = '';
+  protected pagadoNotas = '';
+
   protected changeEstado(r: GestionImpago, newEstado: string): void {
     if (newEstado === r.estado || this.savingEstadoId()) return;
+    if (newEstado === 'pagado') {
+      this.pagadoFecha = new Date().toISOString().slice(0, 10);
+      this.pagadoNotas = '';
+      this.pagadoModal.set({ row: r, prevEstado: r.estado });
+      return;
+    }
+    this.doActualizarEstado(r, { estado: newEstado as EstadoGestionImpago });
+  }
+
+  protected confirmarPago(): void {
+    const modal = this.pagadoModal();
+    if (!modal || !this.pagadoFecha) return;
+    this.pagadoModal.set(null);
+    this.doActualizarEstado(modal.row, {
+      estado: 'pagado',
+      fechaEstado: this.pagadoFecha,
+      notas: this.pagadoNotas || null,
+    });
+  }
+
+  protected cancelarPago(): void {
+    this.pagadoModal.set(null);
+    // El navegador ya mutó el <select> a "pagado" en el DOM antes de que interceptáramos.
+    // Forzar un nuevo array en la señal hace que OnPush re-renderice y el [value]="r.estado"
+    // vuelva al valor original sin haber llamado a la API.
+    const page = this.result();
+    if (page) this.result.set({ ...page, content: [...page.content] });
+  }
+
+  private doActualizarEstado(r: GestionImpago, payload: GestionImpagoActualizarEstadoPayload): void {
     this.savingEstadoId.set(r.id);
-    this.service.actualizarEstado(r.id, { estado: newEstado as EstadoGestionImpago }).subscribe({
+    this.service.actualizarEstado(r.id, payload).subscribe({
       next: (updated) => {
         const page = this.result();
         if (page) {
