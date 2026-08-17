@@ -136,4 +136,11 @@ export class GestionImpagoService {
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
+
+  exportCsv(filter: GestionImpagoFilter = {}): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/export/csv`, {
+      params: buildParams(filter),
+      responseType: 'blob',
+    });
+  }
 }

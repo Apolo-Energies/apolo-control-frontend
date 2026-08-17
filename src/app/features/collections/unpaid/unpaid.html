@@ -1,9 +1,16 @@
 <app-page-header title="Impagos" subtitle="Gestión integral de facturas devueltas e impagadas">
-  <button type="button" (click)="openCreate()"
-    class="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
-    <ui-icon name="plus" [size]="15" />
-    Nuevo impago
-  </button>
+  <div class="flex items-center gap-2">
+    <button type="button" (click)="exportCsv()" [disabled]="exporting()"
+      class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50">
+      <ui-icon name="download" [size]="14" />
+      {{ exporting() ? 'Exportando…' : 'Exportar CSV' }}
+    </button>
+    <button type="button" (click)="openCreate()"
+      class="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
+      <ui-icon name="plus" [size]="15" />
+      Nuevo impago
+    </button>
+  </div>
 </app-page-header>
 
 <!-- KPI row -->
@@ -87,7 +94,15 @@
                 </span>
               </td>
               <td class="px-4 py-3">
-                <app-status-badge [tone]="estadoTone(r.estado)">{{ estadoLabel[r.estado] }}</app-status-badge>
+                <select
+                  [value]="r.estado"
+                  (change)="changeEstado(r, $any($event.target).value)"
+                  [disabled]="savingEstadoId() === r.id"
+                  [class]="estadoSelectClass(r.estado)">
+                  @for (e of estadoValues; track e) {
+                    <option [value]="e" [selected]="e === r.estado">{{ estadoLabel[e] }}</option>
+                  }
+                </select>
               </td>
               <td class="px-4 py-3">
                 <app-status-badge [tone]="prioridadTone(r.prioridad)">{{ prioridadLabel[r.prioridad] }}</app-status-badge>

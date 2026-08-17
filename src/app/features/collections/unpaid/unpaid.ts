@@ -189,6 +189,74 @@ export class Unpaid {
     });
   }
 
+  // ── Inline estado change ──────────────────────────────────────────────────
+  protected readonly savingEstadoId = signal<string | null>(null);
+
+  protected changeEstado(r: GestionImpago, newEstado: string): void {
+    if (newEstado === r.estado || this.savingEstadoId()) return;
+    this.savingEstadoId.set(r.id);
+    this.service.actualizarEstado(r.id, { estado: newEstado as EstadoGestionImpago }).subscribe({
+      next: (updated) => {
+        const page = this.result();
+        if (page) {
+          const content = page.content.map(x => x.id === r.id ? { ...x, estado: updated.estado } : x);
+          this.result.set({ ...page, content });
+        }
+        this.savingEstadoId.set(null);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.notify.error(extractMessage(err));
+        this.savingEstadoId.set(null);
+      },
+    });
+  }
+
+  protected estadoSelectClass(estado: EstadoGestionImpago): string {
+    const base = 'h-7 px-2 rounded-full text-xs font-semibold border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors disabled:opacity-60';
+    const map: Record<string, string> = {
+      pagado:             'bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-50',
+      va_a_pagar:         'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-50',
+      acuerdo_pago:       'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-50',
+      aviso_corte:        'bg-amber-100 text-amber-800 dark:bg-amber-600 dark:text-amber-50',
+      cortado:            'bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-50',
+      ovc:                'bg-purple-100 text-purple-800 dark:bg-purple-700 dark:text-purple-50',
+      predemanda:         'bg-orange-100 text-orange-800 dark:bg-orange-600 dark:text-orange-50',
+      demanda:            'bg-red-200 text-red-900 dark:bg-red-800 dark:text-red-50',
+      juicio:             'bg-red-300 text-red-900 dark:bg-red-900 dark:text-red-50',
+      remesar_nuevamente: 'bg-amber-100 text-amber-900 dark:bg-amber-700 dark:text-amber-50',
+      otros:              'bg-slate-100 text-slate-700 dark:bg-slate-600 dark:text-slate-100',
+      nuevo:              'bg-slate-100 text-slate-600 dark:bg-slate-600 dark:text-slate-100',
+    };
+    return `${base} ${map[estado] ?? 'bg-slate-100 text-slate-600 dark:bg-slate-600 dark:text-slate-100'}`;
+  }
+
+  // ── Export CSV ────────────────────────────────────────────────────────────
+  protected readonly exporting = signal(false);
+
+  protected exportCsv(): void {
+    if (this.exporting()) return;
+    this.exporting.set(true);
+    const filter: GestionImpagoFilter = {
+      q:      this.q || undefined,
+      estado: this.estadoFilter || undefined,
+    };
+    this.service.exportCsv(filter).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href     = url;
+        a.download = `impagos_export_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.exporting.set(false);
+      },
+      error: () => {
+        this.notify.error('Error al exportar CSV');
+        this.exporting.set(false);
+      },
+    });
+  }
+
   // ── Delete ────────────────────────────────────────────────────────────────
   protected confirmDelete(r: GestionImpago): void {
     if (!confirm(`¿Eliminar el impago "${r.numeroFactura ?? r.id}"?`)) return;
