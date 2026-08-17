@@ -78,6 +78,20 @@ export class Unpaid {
   protected clienteActivoFilter: 'activo' | 'baja' | '' = '';
   protected pagadoFilter:        'pagado' | 'no_pagado' | '' = '';
 
+  // ── Sort ──────────────────────────────────────────────────────────────────
+  protected sortField = signal('fechaDevolucion');
+  protected sortDir   = signal<'asc' | 'desc'>('desc');
+
+  protected setSort(field: string): void {
+    if (this.sortField() === field) {
+      this.sortDir.update(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      this.sortField.set(field);
+      this.sortDir.set('asc');
+    }
+    this.reload(0);
+  }
+
   // ── Constants ─────────────────────────────────────────────────────────────
   protected readonly estadoValues    = ESTADO_GESTION_IMPAGO_VALUES;
   protected readonly estadoLabel     = ESTADO_GESTION_IMPAGO_LABEL;
@@ -98,6 +112,7 @@ export class Unpaid {
     clienteId:        ['', Validators.required],
     numeroFactura:    [''],
     importe:          [0],
+    parcialPagado:    [0],
     fechaVencimiento: [''],
     fechaDevolucion:  [''],
     estado:           ['nuevo'],
@@ -119,7 +134,7 @@ export class Unpaid {
       clienteActivo: this.clienteActivoFilter || undefined,
       pagadoFilter:  this.pagadoFilter        || undefined,
     };
-    this.service.list(filter, { page: p, size: this.size() }).subscribe({
+    this.service.list(filter, { page: p, size: this.size(), sort: `${this.sortField()},${this.sortDir()}` }).subscribe({
       next:  (res) => { this.result.set(res); this.loading.set(false); },
       error: (err: HttpErrorResponse) => { this.error.set(extractMessage(err)); this.loading.set(false); },
     });
@@ -144,6 +159,7 @@ export class Unpaid {
       clienteId:        r.clienteId,
       numeroFactura:    r.numeroFactura ?? '',
       importe:          r.importe,
+      parcialPagado:    r.parcialPagado,
       fechaVencimiento: r.fechaVencimiento ?? '',
       fechaDevolucion:  r.fechaDevolucion ?? '',
       estado:           r.estado,
@@ -164,6 +180,7 @@ export class Unpaid {
       clienteId:        v.clienteId!,
       numeroFactura:    v.numeroFactura   || null,
       importe:          v.importe         ?? 0,
+      parcialPagado:    v.parcialPagado   ?? 0,
       fechaVencimiento: v.fechaVencimiento || null,
       fechaDevolucion:  v.fechaDevolucion  || null,
       estado:           (v.estado    as EstadoGestionImpago)     || 'nuevo',
