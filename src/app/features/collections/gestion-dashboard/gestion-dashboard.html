@@ -1,4 +1,11 @@
 <app-page-header title="Dashboard de Cobros" subtitle="Resumen ejecutivo de la gestión de impagados">
+  @if (isAdmin()) {
+    <a routerLink="/collections/estadisticas"
+      class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
+      <ui-icon name="bar-chart-2" [size]="14" />
+      Estadísticas
+    </a>
+  }
   <button type="button" (click)="loadStats()"
     class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
     <ui-icon name="refresh-cw" [size]="14" />

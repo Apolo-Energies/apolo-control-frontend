@@ -132,6 +132,15 @@ export const routes: Routes = [
       },
       // ── Cobros / Gestión de Impagos ──
       {
+        path: 'collections/estadisticas',
+        data: { roles: ['admin'] },
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/collections/gestion-estadisticas/gestion-estadisticas').then(
+            (m) => m.GestionEstadisticasPage,
+          ),
+      },
+      {
         path: 'collections/dashboard',
         loadComponent: () =>
           import('./features/collections/gestion-dashboard/gestion-dashboard').then(

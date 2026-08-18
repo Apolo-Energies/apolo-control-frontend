@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import {
+  GestionEstadisticas,
   GestionImpago,
   GestionImpagoActualizarEstadoPayload,
   GestionImpagoFilter,
@@ -30,6 +31,10 @@ export class GestionImpagoService {
 
   stats(): Observable<GestionImpagoStats> {
     return this.http.get<GestionImpagoStats>(`${this.baseUrl}/stats`);
+  }
+
+  estadisticas(): Observable<GestionEstadisticas> {
+    return this.http.get<GestionEstadisticas>(`${this.baseUrl}/estadisticas`);
   }
 
   tareas(q?: string): Observable<GestionImpago[]> {

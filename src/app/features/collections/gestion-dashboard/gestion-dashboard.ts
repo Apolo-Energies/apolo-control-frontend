@@ -14,6 +14,7 @@ import { BarChart, BarChartItem } from '../../../shared/components/bar-chart/bar
 import { DonutChart, DonutChartItem } from '../../../shared/components/donut-chart/donut-chart';
 import { LineChart, LineChartSeries } from '../../../shared/components/line-chart/line-chart';
 
+import { AuthService } from '../../../core/auth/auth.service';
 import { GestionImpagoService } from '../../../core/services/gestion-impago.service';
 import {
   GestionImpago, GestionImpagoStats,
@@ -42,6 +43,9 @@ function estadoToneFn(estado: EstadoGestionImpago): StatusTone {
 })
 export class GestionDashboard {
   private readonly service = inject(GestionImpagoService);
+  private readonly auth    = inject(AuthService);
+
+  protected readonly isAdmin = computed(() => this.auth.hasRole('admin'));
 
   // ── Stats state ───────────────────────────────────────────────────────────
   protected readonly stats        = signal<GestionImpagoStats | null>(null);

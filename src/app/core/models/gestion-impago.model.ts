@@ -291,6 +291,35 @@ export interface GestionImpagoStats {
   historicoMensual: { mes: string; impagos: number; cobrado: number }[];
 }
 
+// ── Estadísticas avanzadas ────────────────────────────────────────────────────
+
+export interface MotivoDevolucionItem {
+  motivo: string;
+  count: number;
+  porcentaje: number;
+}
+
+export interface ClienteRecurrenteItem {
+  clienteId: string;
+  nombreCliente: string | null;
+  totalImpagos: number;
+  pagados: number;
+}
+
+export interface GestionEstadisticas {
+  mediaHorasPrimerContacto: number | null;
+  mediaHorasRecuperacion: number | null;
+  countMenos1000: number;
+  countMasOIgual1000: number;
+  totalImpagos: number;
+  pctContactosMenos24h: number | null;
+  totalConContacto: number;
+  motivosDevolucion: MotivoDevolucionItem[];
+  clientesConMasDeUnImpago: number;
+  clientesRecurrentes: ClienteRecurrenteItem[];
+  mediaContactosHastaPago: number | null;
+}
+
 // ── Acción de cobranza ────────────────────────────────────────────────────────
 
 export interface GestionAccionCobranza {
