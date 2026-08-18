@@ -17,11 +17,13 @@ import { NotificationService } from '../../../core/services/notification.service
 import { GlobalLoadingService } from '../../../core/services/global-loading.service';
 import {
   GestionImpago, GestionImpagoPayload, GestionImpagoFilter,
+  GestionImpagoCliente,
   GestionImpagoActualizarEstadoPayload,
   EstadoGestionImpago, PrioridadGestionImpago,
   ESTADO_GESTION_IMPAGO_VALUES, ESTADO_GESTION_IMPAGO_LABEL,
   PRIORIDAD_GESTION_IMPAGO_LABEL, Page,
 } from '../../../core/models';
+import { GestionImpagoClienteService } from '../../../core/services/gestion-impago-cliente.service';
 
 function extractMessage(err: HttpErrorResponse): string {
   return (err.error as { message?: string })?.message ?? err.message ?? 'Error inesperado';
@@ -60,10 +62,11 @@ function prioridadToneFn(prioridad: PrioridadGestionImpago): StatusTone {
   templateUrl: './unpaid.html',
 })
 export class Unpaid {
-  private readonly service       = inject(GestionImpagoService);
-  private readonly notify        = inject(NotificationService);
-  private readonly globalLoading = inject(GlobalLoadingService);
-  private readonly fb            = inject(FormBuilder);
+  private readonly service        = inject(GestionImpagoService);
+  private readonly clienteService = inject(GestionImpagoClienteService);
+  private readonly notify         = inject(NotificationService);
+  private readonly globalLoading  = inject(GlobalLoadingService);
+  private readonly fb             = inject(FormBuilder);
 
   // ── List state ────────────────────────────────────────────────────────────
   protected readonly loading       = signal(false);
@@ -108,6 +111,24 @@ export class Unpaid {
   protected readonly submitting  = signal(false);
   protected readonly formError   = signal<string | null>(null);
 
+  // ── Cliente autocomplete ──────────────────────────────────────────────────
+  protected clienteQuery              = '';
+  protected readonly clienteResults   = signal<GestionImpagoCliente[]>([]);
+  protected readonly clienteLoading   = signal(false);
+  protected readonly clienteDropdown  = signal(false);
+  protected readonly clienteNombre    = signal<string | null>(null);
+  protected readonly creandoCliente   = signal(false);
+  protected readonly savingCliente    = signal(false);
+  protected readonly clienteFormError = signal<string | null>(null);
+
+  protected readonly nuevoClienteForm = this.fb.group({
+    nombre:   ['', Validators.required],
+    empresa:  [''],
+    nif:      [''],
+    telefono: [''],
+    email:    [''],
+  });
+
   protected readonly form = this.fb.group({
     clienteId:        ['', Validators.required],
     numeroFactura:    [''],
@@ -149,6 +170,12 @@ export class Unpaid {
     this.editing.set(null);
     this.formError.set(null);
     this.form.reset({ estado: 'nuevo', prioridad: 'media', importe: 0 });
+    this.clienteNombre.set(null);
+    this.clienteQuery = '';
+    this.clienteResults.set([]);
+    this.clienteDropdown.set(false);
+    this.creandoCliente.set(false);
+    this.buscarClientes();
     this.dialogOpen.set(true);
   }
 
@@ -168,10 +195,77 @@ export class Unpaid {
       motivoDevolucion: r.motivoDevolucion ?? '',
       observaciones:    r.observaciones ?? '',
     });
+    this.clienteNombre.set(r.clienteNombre ?? r.clienteId);
+    this.clienteQuery = '';
+    this.clienteDropdown.set(false);
+    this.creandoCliente.set(false);
     this.dialogOpen.set(true);
   }
 
   protected closeDialog(): void { this.dialogOpen.set(false); this.editing.set(null); }
+
+  // ── Cliente autocomplete methods ──────────────────────────────────────────
+  protected buscarClientes(): void {
+    this.clienteLoading.set(true);
+    this.clienteDropdown.set(true);
+    this.clienteService.list({ q: this.clienteQuery || undefined }, { size: 8, sort: 'nombre' }).subscribe({
+      next:  (page) => { this.clienteResults.set(page.content); this.clienteLoading.set(false); },
+      error: ()     => { this.clienteLoading.set(false); },
+    });
+  }
+
+  protected selectCliente(c: GestionImpagoCliente): void {
+    this.form.patchValue({ clienteId: c.id });
+    this.clienteNombre.set(c.nombre + (c.empresa ? ` (${c.empresa})` : ''));
+    this.clienteDropdown.set(false);
+    this.creandoCliente.set(false);
+  }
+
+  protected clearCliente(): void {
+    this.form.patchValue({ clienteId: '' });
+    this.clienteNombre.set(null);
+    this.clienteQuery = '';
+    this.clienteDropdown.set(false);
+    this.creandoCliente.set(false);
+  }
+
+  protected onClienteBlur(): void {
+    setTimeout(() => this.clienteDropdown.set(false), 150);
+  }
+
+  protected toggleCrearCliente(): void {
+    this.creandoCliente.update(v => !v);
+    if (this.creandoCliente()) {
+      this.nuevoClienteForm.reset();
+      this.clienteFormError.set(null);
+      this.clienteDropdown.set(false);
+    }
+  }
+
+  protected crearYSeleccionarCliente(): void {
+    if (this.nuevoClienteForm.invalid) { this.nuevoClienteForm.markAllAsTouched(); return; }
+    const v = this.nuevoClienteForm.getRawValue();
+    this.savingCliente.set(true);
+    this.clienteFormError.set(null);
+    this.clienteService.create({
+      nombre:   v.nombre!,
+      empresa:  v.empresa   || null,
+      nif:      v.nif       || null,
+      telefono: v.telefono  || null,
+      email:    v.email     || null,
+    }).subscribe({
+      next: (c) => {
+        this.savingCliente.set(false);
+        this.selectCliente(c);
+        this.creandoCliente.set(false);
+        this.notify.success('Cliente creado y seleccionado');
+      },
+      error: (err: HttpErrorResponse) => {
+        this.savingCliente.set(false);
+        this.clienteFormError.set(extractMessage(err));
+      },
+    });
+  }
 
   protected submit(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
