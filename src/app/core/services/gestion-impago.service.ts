@@ -29,8 +29,10 @@ export class GestionImpagoService {
     });
   }
 
-  stats(): Observable<GestionImpagoStats> {
-    return this.http.get<GestionImpagoStats>(`${this.baseUrl}/stats`);
+  stats(filter: { startDate?: string; endDate?: string } = {}): Observable<GestionImpagoStats> {
+    return this.http.get<GestionImpagoStats>(`${this.baseUrl}/stats`, {
+      params: buildParams(filter),
+    });
   }
 
   estadisticas(): Observable<GestionEstadisticas> {

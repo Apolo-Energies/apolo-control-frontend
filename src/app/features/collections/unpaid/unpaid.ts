@@ -29,6 +29,44 @@ function extractMessage(err: HttpErrorResponse): string {
   return (err.error as { message?: string })?.message ?? err.message ?? 'Error inesperado';
 }
 
+type RangeId = 'today' | 'week' | 'month' | 'year' | 'all';
+interface RangeOption { id: RangeId; label: string; }
+
+function toIsoDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+function toIsoWeek(date: Date): string {
+  const d = new Date(date);
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+  const year = d.getFullYear();
+  const jan1 = new Date(year, 0, 1);
+  const week = Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7);
+  return `${year}-W${String(week).padStart(2, '0')}`;
+}
+function toIsoMonth(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+function weekBounds(isoWeek: string): { start: Date; end: Date } {
+  const [yearStr, wStr] = isoWeek.split('-W');
+  const year = +yearStr, week = +wStr;
+  const jan4 = new Date(year, 0, 4);
+  const dow = jan4.getDay() || 7;
+  const mondayW1 = new Date(jan4);
+  mondayW1.setDate(jan4.getDate() - dow + 1);
+  const start = new Date(mondayW1);
+  start.setDate(mondayW1.getDate() + (week - 1) * 7);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return { start, end };
+}
+function formatDayMonth(d: Date): string {
+  const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${d.getDate()} ${months[d.getMonth()]}`;
+}
+
 function estadoToneFn(estado: EstadoGestionImpago): StatusTone {
   switch (estado) {
     case 'pagado':          return 'success';
@@ -80,6 +118,76 @@ export class Unpaid {
   protected estadoFilter:        EstadoGestionImpago | '' = '';
   protected clienteActivoFilter: 'activo' | 'baja' | '' = '';
   protected pagadoFilter:        'pagado' | 'no_pagado' | '' = '';
+
+  // ── Date range filter ─────────────────────────────────────────────────────
+  protected readonly range         = signal<RangeId>('all');
+  protected readonly selectedWeek  = signal(toIsoWeek(new Date()));
+  protected readonly selectedMonth = signal(toIsoMonth(new Date()));
+  protected readonly selectedYear  = signal(new Date().getFullYear());
+  protected readonly availableYears = Array.from(
+    { length: new Date().getFullYear() - 2020 + 1 },
+    (_, i) => new Date().getFullYear() - i,
+  );
+  protected readonly weekRangeLabel = computed(() => {
+    const { start, end } = weekBounds(this.selectedWeek());
+    return `${formatDayMonth(start)} – ${formatDayMonth(end)} ${start.getFullYear()}`;
+  });
+  protected readonly ranges: RangeOption[] = [
+    { id: 'today', label: 'Hoy' },
+    { id: 'week',  label: 'Semana' },
+    { id: 'month', label: 'Mes' },
+    { id: 'year',  label: 'Año' },
+    { id: 'all',   label: 'Histórico' },
+  ];
+
+  protected setRange(id: RangeId): void {
+    if (this.range() === id) return;
+    this.range.set(id);
+    const now = new Date();
+    if (id === 'week')  this.selectedWeek.set(toIsoWeek(now));
+    if (id === 'month') this.selectedMonth.set(toIsoMonth(now));
+    if (id === 'year')  this.selectedYear.set(now.getFullYear());
+    this.reload(0);
+  }
+
+  protected onWeekChange(e: Event): void {
+    this.selectedWeek.set((e.target as HTMLInputElement).value);
+    this.reload(0);
+  }
+
+  protected onMonthChange(e: Event): void {
+    this.selectedMonth.set((e.target as HTMLInputElement).value);
+    this.reload(0);
+  }
+
+  protected onYearChange(e: Event): void {
+    this.selectedYear.set(+(e.target as HTMLSelectElement).value);
+    this.reload(0);
+  }
+
+  private buildDateFilter(): { startDate?: string; endDate?: string } {
+    const r = this.range();
+    if (r === 'all') return {};
+    const today = new Date();
+    switch (r) {
+      case 'today': {
+        const d = toIsoDate(today);
+        return { startDate: d, endDate: d };
+      }
+      case 'week': {
+        const { start, end } = weekBounds(this.selectedWeek());
+        return { startDate: toIsoDate(start), endDate: toIsoDate(end) };
+      }
+      case 'month': {
+        const [y, mo] = this.selectedMonth().split('-').map(Number);
+        return { startDate: `${this.selectedMonth()}-01`, endDate: toIsoDate(new Date(y, mo, 0)) };
+      }
+      case 'year': {
+        const y = this.selectedYear();
+        return { startDate: `${y}-01-01`, endDate: `${y}-12-31` };
+      }
+    }
+  }
 
   // ── Sort ──────────────────────────────────────────────────────────────────
   protected sortField = signal('fechaDevolucion');
@@ -154,6 +262,7 @@ export class Unpaid {
       estado:        this.estadoFilter        || undefined,
       clienteActivo: this.clienteActivoFilter || undefined,
       pagadoFilter:  this.pagadoFilter        || undefined,
+      ...this.buildDateFilter(),
     };
     this.service.list(filter, { page: p, size: this.size(), sort: `${this.sortField()},${this.sortDir()}` }).subscribe({
       next:  (res) => { this.result.set(res); this.loading.set(false); },
@@ -163,7 +272,11 @@ export class Unpaid {
 
   protected onSizeChange(size: number): void { this.size.set(size); this.reload(0); }
   protected applyFilters(): void { this.reload(0); }
-  protected clearFilters(): void { this.q = ''; this.estadoFilter = ''; this.clienteActivoFilter = ''; this.pagadoFilter = ''; this.reload(0); }
+  protected clearFilters(): void {
+    this.q = ''; this.estadoFilter = ''; this.clienteActivoFilter = ''; this.pagadoFilter = '';
+    this.range.set('all');
+    this.reload(0);
+  }
 
   // ── Create / Edit ─────────────────────────────────────────────────────────
   protected openCreate(): void {
