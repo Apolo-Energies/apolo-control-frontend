@@ -29,7 +29,7 @@ export const ESTADO_GESTION_IMPAGO_LABEL: Record<EstadoGestionImpago, string> = 
   predemanda: 'Pre-demanda',
   demanda: 'Demanda',
   juicio: 'Juicio',
-  pagado: 'Pagado',
+  pagado: 'Cobrado',
   remesar_nuevamente: 'Remesar nuevamente',
   otros: 'Otros',
 };
