@@ -290,8 +290,8 @@ export class Unpaid {
       error: (err: HttpErrorResponse) => { this.error.set(extractMessage(err)); this.loading.set(false); },
     });
     this.service.totales(filter).subscribe({
-      next:  (t) => this.totalesData.set(t),
-      error: () => {},
+      next:  (t) => { console.log('[totales]', t); this.totalesData.set(t); },
+      error: (err) => console.error('[totales] error', err),
     });
   }
 
