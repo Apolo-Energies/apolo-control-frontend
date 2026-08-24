@@ -67,8 +67,8 @@
 <!-- KPI row -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
   <app-kpi-card label="Total registros" [value]="totalElements()" icon="receipt-x" tone="info" />
-  <app-kpi-card label="Importe total" [value]="formatEur(rows().reduce((s, r) => s + r.importe, 0))" icon="euro" tone="warning" />
-  <app-kpi-card label="Pendiente" [value]="formatEur(rows().reduce((s, r) => s + r.importePendiente, 0))" icon="alert-triangle" tone="danger" />
+  <app-kpi-card label="Importe total" [value]="formatEur(totalesData()?.totalImporte ?? 0)" icon="euro" tone="warning" />
+  <app-kpi-card label="Pendiente" [value]="formatEur(totalesData()?.totalPendiente ?? 0)" icon="alert-triangle" tone="danger" />
   <app-kpi-card label="Página actual" [value]="rows().length + ' registros'" icon="layers" tone="neutral" />
 </div>
 

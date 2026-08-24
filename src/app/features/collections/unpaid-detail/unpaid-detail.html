@@ -538,6 +538,48 @@
   </div>
 </div>
 
+<!-- Historial de estados -->
+<div class="mt-6 bg-card border border-border rounded-xl p-5">
+  <h3 class="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+    <ui-icon name="clock" [size]="14" />
+    Historial de estados
+  </h3>
+  @if (historial().length === 0) {
+    <p class="text-xs text-muted-foreground italic">Sin cambios de estado registrados.</p>
+  } @else {
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-border text-left text-xs text-muted-foreground">
+            <th class="pb-2 pr-4 font-medium">Fecha</th>
+            <th class="pb-2 pr-4 font-medium">Usuario</th>
+            <th class="pb-2 pr-4 font-medium">Estado anterior</th>
+            <th class="pb-2 font-medium">Estado nuevo</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          @for (h of historial(); track h.id) {
+            <tr class="py-2">
+              <td class="py-2 pr-4 text-muted-foreground whitespace-nowrap">{{ fmtDateTime(h.fechaCambio) }}</td>
+              <td class="py-2 pr-4">{{ h.usuarioNombre ?? '—' }}</td>
+              <td class="py-2 pr-4">
+                @if (h.estadoAnterior) {
+                  <app-status-badge [tone]="estadoToneFn(h.estadoAnterior)">{{ estadoLabel[h.estadoAnterior] }}</app-status-badge>
+                } @else {
+                  <span class="text-muted-foreground text-xs italic">Creación</span>
+                }
+              </td>
+              <td class="py-2">
+                <app-status-badge [tone]="estadoToneFn(h.estadoNuevo)">{{ estadoLabel[h.estadoNuevo] }}</app-status-badge>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
 }
 
 <!-- Estado dialog -->

@@ -59,6 +59,15 @@
             <p class="text-sm font-medium text-foreground truncate">{{ userName() }}</p>
             <p class="text-xs text-muted-foreground truncate">{{ userEmail() }}</p>
           </div>
+          <a
+            [routerLink]="['/perfil']"
+            (click)="menuOpen.set(false)"
+            class="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent/40 transition-colors"
+          >
+            <ui-icon name="user" [size]="16" />
+            Mi perfil
+          </a>
+          <div class="border-t border-border/60"></div>
           <button
             type="button"
             (click)="onLogout()"

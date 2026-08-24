@@ -19,6 +19,7 @@ import {
   GestionImpago, GestionImpagoPayload, GestionImpagoFilter,
   GestionImpagoCliente,
   GestionImpagoActualizarEstadoPayload,
+  GestionImpagoTotales,
   EstadoGestionImpago, PrioridadGestionImpago,
   ESTADO_GESTION_IMPAGO_VALUES, ESTADO_GESTION_IMPAGO_LABEL,
   PRIORIDAD_GESTION_IMPAGO_LABEL, Page,
@@ -109,6 +110,7 @@ export class Unpaid {
   // ── List state ────────────────────────────────────────────────────────────
   protected readonly loading       = signal(false);
   protected readonly result        = signal<Page<GestionImpago> | null>(null);
+  protected readonly totalesData   = signal<GestionImpagoTotales | null>(null);
   protected readonly error         = signal<string | null>(null);
   protected readonly page          = signal(0);
   protected readonly size          = signal(20);
@@ -286,6 +288,10 @@ export class Unpaid {
     this.service.list(filter, { page: p, size: this.size(), sort: `${this.sortField()},${this.sortDir()}` }).subscribe({
       next:  (res) => { this.result.set(res); this.loading.set(false); },
       error: (err: HttpErrorResponse) => { this.error.set(extractMessage(err)); this.loading.set(false); },
+    });
+    this.service.totales(filter).subscribe({
+      next:  (t) => this.totalesData.set(t),
+      error: () => {},
     });
   }
 

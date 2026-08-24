@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, output, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Icon } from '../../icons/icon';
 import { ThemeService } from '../../services/theme';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -7,7 +8,7 @@ import { USER_ROLE_LABEL } from '../../../core/models';
 @Component({
   selector: 'app-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icon],
+  imports: [Icon, RouterLink],
   templateUrl: './header.html',
 })
 export class Header {

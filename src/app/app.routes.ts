@@ -215,6 +215,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/import/import').then((m) => m.Import),
       },
 
+      {
+        path: 'perfil',
+        loadComponent: () => import('./features/perfil/perfil').then((m) => m.Perfil),
+      },
+
       { path: '**', redirectTo: 'dashboard' },
     ],
   },

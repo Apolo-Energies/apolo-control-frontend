@@ -11,6 +11,8 @@ import {
   GestionImpagoPayload,
   GestionImpagoRegistrarContactoPayload,
   GestionImpagoStats,
+  GestionImpagoTotales,
+  HistorialEstadoImpago,
   Page,
   PageRequest,
   PagoFraccionadoEntry,
@@ -31,6 +33,12 @@ export class GestionImpagoService {
 
   stats(filter: { startDate?: string; endDate?: string } = {}): Observable<GestionImpagoStats> {
     return this.http.get<GestionImpagoStats>(`${this.baseUrl}/stats`, {
+      params: buildParams(filter),
+    });
+  }
+
+  totales(filter: GestionImpagoFilter = {}): Observable<GestionImpagoTotales> {
+    return this.http.get<GestionImpagoTotales>(`${this.baseUrl}/totales`, {
       params: buildParams(filter),
     });
   }
@@ -105,6 +113,10 @@ export class GestionImpagoService {
 
   getById(id: string): Observable<GestionImpago> {
     return this.http.get<GestionImpago>(`${this.baseUrl}/${id}`);
+  }
+
+  getHistorial(id: string): Observable<HistorialEstadoImpago[]> {
+    return this.http.get<HistorialEstadoImpago[]>(`${this.baseUrl}/${id}/historial`);
   }
 
   byCliente(clienteId: string, page: PageRequest = {}): Observable<Page<GestionImpago>> {

@@ -14,7 +14,7 @@ import { GestionAccionCobranzaService } from '../../../core/services/gestion-acc
 import { NotificationService }          from '../../../core/services/notification.service';
 import { GlobalLoadingService }         from '../../../core/services/global-loading.service';
 import {
-  GestionImpago, GestionAccionCobranza,
+  GestionImpago, GestionAccionCobranza, HistorialEstadoImpago,
   EstadoGestionImpago, ESTADO_GESTION_IMPAGO_VALUES, ESTADO_GESTION_IMPAGO_LABEL,
   TipoAccionCobranza, ResultadoAccionCobranza,
   TIPO_ACCION_LABEL, RESULTADO_ACCION_LABEL, DemandaDocumento,
@@ -60,6 +60,7 @@ export class UnpaidDetail implements OnInit {
   protected readonly loading      = signal(true);
   protected readonly impago       = signal<GestionImpago | null>(null);
   protected readonly acciones     = signal<GestionAccionCobranza[]>([]);
+  protected readonly historial    = signal<HistorialEstadoImpago[]>([]);
   protected readonly error        = signal<string | null>(null);
 
   // ── Bitácora de notas ─────────────────────────────────────────────────────
@@ -130,6 +131,10 @@ export class UnpaidDetail implements OnInit {
           next: (acc) => this.acciones.set(acc),
           error: () => {},
         });
+        this.service.getHistorial(id).subscribe({
+          next: (hist) => this.historial.set(hist),
+          error: () => {},
+        });
       },
       error: (err: HttpErrorResponse) => {
         this.error.set(extractMessage(err));
@@ -163,6 +168,7 @@ export class UnpaidDetail implements OnInit {
         this.estadoSubmitting.set(false);
         this.estadoDialogOpen.set(false);
         this.notify.success('Estado actualizado');
+        this.service.getHistorial(imp.id).subscribe({ next: (h) => this.historial.set(h), error: () => {} });
       },
       error: (err: HttpErrorResponse) => {
         this.estadoSubmitting.set(false);
@@ -196,6 +202,7 @@ export class UnpaidDetail implements OnInit {
         this.contactoSubmitting.set(false);
         this.contactoDialogOpen.set(false);
         this.notify.success('Contacto registrado');
+        this.service.getHistorial(imp.id).subscribe({ next: (h) => this.historial.set(h), error: () => {} });
       },
       error: (err: HttpErrorResponse) => {
         this.contactoSubmitting.set(false);
@@ -288,6 +295,7 @@ export class UnpaidDetail implements OnInit {
         this.pagoSubmitting.set(false);
         this.pagoOpen.set(false);
         this.notify.success('Pago registrado');
+        this.service.getHistorial(imp.id).subscribe({ next: (h) => this.historial.set(h), error: () => {} });
       },
       error: (err: HttpErrorResponse) => {
         this.pagoSubmitting.set(false);

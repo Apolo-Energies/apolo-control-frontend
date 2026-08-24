@@ -1,0 +1,152 @@
+<app-page-header title="Mi perfil" subtitle="Datos personales y firma para comunicaciones" />
+
+@if (loading()) {
+  <div class="flex items-center justify-center py-20">
+    <ui-icon name="loader" [size]="24" class="animate-spin text-muted-foreground" />
+  </div>
+} @else if (perfil(); as p) {
+
+  <div class="max-w-2xl mx-auto space-y-6">
+
+    <!-- Cabecera de usuario -->
+    <div class="bg-card border border-border rounded-2xl p-6 flex items-center gap-5">
+      <div
+        class="h-16 w-16 rounded-full bg-primary/15 ring-2 ring-primary/30 text-primary flex items-center justify-center text-2xl font-bold shrink-0"
+      >
+        {{ initials(p.nombre) }}
+      </div>
+      <div>
+        <p class="text-xl font-semibold text-foreground">{{ p.nombre }}</p>
+        <p class="text-sm text-muted-foreground">{{ p.email }}</p>
+        <span class="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+          {{ rolLabel(p.rol) }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Formulario de datos -->
+    <div class="bg-card border border-border rounded-2xl p-6">
+      <h2 class="text-sm font-semibold text-foreground mb-5">Datos personales</h2>
+
+      <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4">
+
+        <label class="flex flex-col gap-1.5">
+          <span class="text-xs font-medium text-foreground/80">Nombre completo <span class="text-danger-fg">*</span></span>
+          <input
+            type="text"
+            formControlName="nombre"
+            placeholder="Tu nombre completo"
+            class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+        </label>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label class="flex flex-col gap-1.5">
+            <span class="text-xs font-medium text-foreground/80">Correo</span>
+            <input
+              type="email"
+              [value]="p.email"
+              disabled
+              class="w-full rounded-lg border border-border bg-accent/30 px-3 py-2 text-sm text-muted-foreground cursor-not-allowed"
+            />
+          </label>
+
+          <label class="flex flex-col gap-1.5">
+            <span class="text-xs font-medium text-foreground/80">Teléfono</span>
+            <input
+              type="tel"
+              formControlName="telefono"
+              placeholder="+34 600 000 000"
+              class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </label>
+        </div>
+
+        <label class="flex flex-col gap-1.5">
+          <span class="text-xs font-medium text-foreground/80">Cargo</span>
+          <input
+            type="text"
+            formControlName="cargo"
+            placeholder="Ej. Responsable de cobros"
+            class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+        </label>
+
+        <div class="flex justify-end pt-2">
+          <button
+            type="submit"
+            [disabled]="form.invalid || saving()"
+            class="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+          >
+            @if (saving()) {
+              <ui-icon name="loader" [size]="14" class="animate-spin" />
+            }
+            Guardar cambios
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Firma -->
+    <div class="bg-card border border-border rounded-2xl p-6">
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <h2 class="text-sm font-semibold text-foreground">Firma digital</h2>
+          <p class="text-xs text-muted-foreground mt-0.5">
+            Se incluirá automáticamente en los correos que envíes
+          </p>
+        </div>
+        @if (!p.hasFirma) {
+          <span class="text-xs px-2 py-0.5 rounded-full bg-warning-soft text-warning-fg font-medium">
+            Sin firma
+          </span>
+        } @else {
+          <span class="text-xs px-2 py-0.5 rounded-full bg-success-soft text-success-fg font-medium">
+            Firma activa
+          </span>
+        }
+      </div>
+
+      <!-- Preview de firma -->
+      @if (p.hasFirma) {
+        <div class="mb-4 rounded-xl border border-border bg-white p-4 flex justify-center">
+          <img
+            [src]="firmaDataUrl()"
+            alt="Firma"
+            class="max-h-28 max-w-full object-contain"
+          />
+        </div>
+      } @else {
+        <div class="mb-4 rounded-xl border border-dashed border-border bg-accent/20 p-8 flex flex-col items-center gap-2 text-muted-foreground">
+          <ui-icon name="file-text" [size]="32" />
+          <p class="text-sm">Aún no tienes firma subida</p>
+        </div>
+      }
+
+      <!-- Upload -->
+      <label class="cursor-pointer">
+        <input
+          type="file"
+          accept="image/*"
+          class="sr-only"
+          (change)="onFirmaSelected($event)"
+          [disabled]="uploadingFirma()"
+        />
+        <span
+          class="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-border text-sm text-foreground hover:bg-accent/40 transition-colors"
+          [class.opacity-40]="uploadingFirma()"
+        >
+          @if (uploadingFirma()) {
+            <ui-icon name="loader" [size]="14" class="animate-spin" />
+            Subiendo…
+          } @else {
+            <ui-icon name="upload" [size]="14" />
+            {{ p.hasFirma ? 'Cambiar firma' : 'Subir firma' }}
+          }
+        </span>
+      </label>
+      <p class="text-xs text-muted-foreground mt-2">PNG, JPG o SVG · máx. 2 MB</p>
+    </div>
+
+  </div>
+}

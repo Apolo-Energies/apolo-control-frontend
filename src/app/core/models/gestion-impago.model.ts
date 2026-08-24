@@ -197,6 +197,16 @@ export interface GestionImpago {
   notasBitacora: NotaEntry[];
   createdAt: string;
   updatedAt: string;
+  fechaUltimoEstado: string | null;
+}
+
+export interface HistorialEstadoImpago {
+  id: string;
+  usuarioId: string | null;
+  usuarioNombre: string | null;
+  estadoAnterior: EstadoGestionImpago | null;
+  estadoNuevo: EstadoGestionImpago;
+  fechaCambio: string;
 }
 
 export interface GestionImpagoPayload {
@@ -289,6 +299,14 @@ export interface GestionImpagoStats {
   importeMas180: number;
   // Histórico mensual
   historicoMensual: { mes: string; impagos: number; cobrado: number }[];
+}
+
+// ── Totales filtrados ────────────────────────────────────────────────────────
+
+export interface GestionImpagoTotales {
+  totalImporte: number;
+  totalPendiente: number;
+  totalRegistros: number;
 }
 
 // ── Estadísticas avanzadas ────────────────────────────────────────────────────
