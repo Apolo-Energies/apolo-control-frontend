@@ -75,6 +75,9 @@ export interface ContactoHistorialEntry {
   statusDate: string | null;
   promesaFecha: string | null;
   promesaImporte: number | null;
+  emailEstado?: 'enviado' | 'fallido' | 'sin_email' | null;
+  emailDestinatario?: string | null;
+  emailUsuario?: string | null;
 }
 
 export interface PagoFraccionadoEntry {

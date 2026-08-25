@@ -149,6 +149,32 @@
                 </span>
                 <p class="text-sm font-medium text-foreground leading-snug">{{ h.action }}</p>
                 <p class="text-xs text-muted-foreground mt-0.5">{{ fmtDateTime(h.date) }}</p>
+                @if (h.actionKey === 'email' && h.emailEstado) {
+                  <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                    @if (h.emailEstado === 'enviado') {
+                      <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-success-soft text-success-fg">
+                        <ui-icon name="mail" [size]="10" />
+                        Email enviado
+                      </span>
+                    } @else if (h.emailEstado === 'fallido') {
+                      <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-danger-soft text-danger-fg">
+                        <ui-icon name="mail" [size]="10" />
+                        Error al enviar
+                      </span>
+                    } @else if (h.emailEstado === 'sin_email') {
+                      <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-muted text-muted-foreground">
+                        <ui-icon name="mail" [size]="10" />
+                        Sin email
+                      </span>
+                    }
+                    @if (h.emailDestinatario) {
+                      <span class="text-[10px] text-muted-foreground">→ {{ h.emailDestinatario }}</span>
+                    }
+                    @if (h.emailUsuario) {
+                      <span class="text-[10px] text-muted-foreground">· por {{ h.emailUsuario }}</span>
+                    }
+                  </div>
+                }
                 @if (h.notes) {
                   <p class="text-xs text-foreground/80 mt-1 whitespace-pre-wrap">{{ h.notes }}</p>
                 }
