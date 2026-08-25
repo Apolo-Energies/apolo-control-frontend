@@ -164,7 +164,12 @@
                     } @else if (h.emailEstado === 'sin_email') {
                       <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-muted text-muted-foreground">
                         <ui-icon name="mail" [size]="10" />
-                        Sin email
+                        Cliente sin email
+                      </span>
+                    } @else if (h.emailEstado === 'sin_factura_ee') {
+                      <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-muted text-muted-foreground">
+                        <ui-icon name="file-text" [size]="10" />
+                        Sin factura en EE
                       </span>
                     }
                     @if (h.emailDestinatario) {
