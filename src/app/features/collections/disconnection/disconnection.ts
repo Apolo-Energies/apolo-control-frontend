@@ -25,6 +25,14 @@ function extractMessage(err: HttpErrorResponse): string {
   return (err.error as { message?: string })?.message ?? err.message ?? 'Error inesperado';
 }
 
+const STEP_ACTIONS: Record<number, string[]> = {
+  1: ['llamada', 'whatsapp'],
+  2: ['llamada', 'whatsapp', 'email', 'otro'],
+  3: ['llamada', 'whatsapp', 'email', 'aviso_corte', 'otro'],
+  4: ['aviso_corte', 'llamada', 'promesa'],
+  5: ['llamada', 'whatsapp', 'email', 'promesa'],
+};
+
 function estadoToneFn(estado: EstadoGestionImpago): StatusTone {
   switch (estado) {
     case 'aviso_corte': return 'warning';
@@ -82,7 +90,7 @@ export class Disconnection {
   // ── Contacto form (inline expand) ─────────────────────────────────────────
   protected readonly expandedContactoId = signal<string | null>(null);
   protected contactoForms: Record<string, {
-    actionKey: string; notes: string; promesaFecha: string; promesaImporte: string;
+    actionKey: string; notes: string; promesaFecha: string; promesaImporte: string; targetStep: number;
   }> = {};
 
   // ── Motivo editing ────────────────────────────────────────────────────────
@@ -208,14 +216,34 @@ export class Disconnection {
   }
 
   // ── Contacto form ─────────────────────────────────────────────────────────
-  protected toggleContactoForm(r: GestionImpago): void {
-    if (this.expandedContactoId() === r.id) {
+  protected readonly contactoActions = [
+    { key: 'llamada',     label: 'Llamada',     icon: 'phone'           as const },
+    { key: 'email',       label: 'Email',       icon: 'mail'            as const },
+    { key: 'whatsapp',    label: 'WhatsApp',    icon: 'message-square'  as const },
+    { key: 'aviso_corte', label: 'Aviso corte', icon: 'scissors'        as const },
+    { key: 'promesa',     label: 'Promesa',     icon: 'calendar-check'  as const },
+    { key: 'otro',        label: 'Otro',        icon: 'more-horizontal' as const },
+  ];
+
+  protected stepContactoActions(rowId: string): typeof this.contactoActions {
+    const step = this.contactoForms[rowId]?.targetStep ?? 1;
+    const keys = STEP_ACTIONS[step] ?? ['llamada'];
+    return this.contactoActions.filter(a => keys.includes(a.key));
+  }
+
+  protected setContactoAction(rowId: string, key: string): void {
+    if (this.contactoForms[rowId]) {
+      this.contactoForms[rowId].actionKey = key;
+    }
+  }
+
+  protected toggleContactoForm(r: GestionImpago, step: number): void {
+    if (this.expandedContactoId() === r.id && this.contactoForms[r.id]?.targetStep === step) {
       this.expandedContactoId.set(null);
     } else {
+      const keys = STEP_ACTIONS[step] ?? ['llamada'];
       this.expandedContactoId.set(r.id);
-      if (!this.contactoForms[r.id]) {
-        this.contactoForms[r.id] = { actionKey: 'llamada', notes: '', promesaFecha: '', promesaImporte: '' };
-      }
+      this.contactoForms[r.id] = { actionKey: keys[0], notes: '', promesaFecha: '', promesaImporte: '', targetStep: step };
     }
   }
 

@@ -123,18 +123,26 @@
 
     <!-- Historial de contactos -->
     <div class="bg-card border border-border rounded-xl p-5">
-      <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center justify-between mb-3">
         <h3 class="text-sm font-semibold text-foreground flex items-center gap-2">
           <ui-icon name="phone" [size]="14" />
           Historial de contacto
           <span class="text-xs font-normal text-muted-foreground">({{ imp.contactoStep }}/5)</span>
         </h3>
-        <button
-          class="h-7 px-2.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium flex items-center gap-1.5 transition-colors"
-          (click)="openContactoDialog()">
-          <ui-icon name="plus" [size]="12" />
-          Registrar contacto
-        </button>
+      </div>
+      <div class="flex items-center gap-1 mb-4">
+        @for (step of [1,2,3,4,5]; track step) {
+          <button type="button" (click)="openContactoDialog(step)"
+            class="w-8 h-8 rounded-full text-sm font-bold flex items-center justify-center transition-colors"
+            [class]="step <= imp.contactoStep
+              ? 'bg-primary text-primary-foreground cursor-default'
+              : 'border-2 border-primary/50 text-primary/60 hover:border-primary hover:text-primary hover:bg-primary/10'">
+            {{ step }}
+          </button>
+          @if (step < 5) {
+            <div class="flex-1 h-px max-w-8" [class]="step < imp.contactoStep ? 'bg-primary' : 'bg-border/60'"></div>
+          }
+        }
       </div>
 
       @if (imp.contactoHistory.length === 0) {
@@ -697,7 +705,7 @@
 <!-- Contacto dialog -->
 <app-form-dialog
   [open]="contactoDialogOpen()"
-  title="Registrar contacto"
+  [title]="contactoDialogTitle()"
   icon="phone"
   [saving]="contactoSubmitting()"
   [canSave]="contactoForm.valid"
@@ -707,35 +715,57 @@
   (save)="submitContacto()"
 >
   <form [formGroup]="contactoForm" class="space-y-4">
-    <div>
-      <label class="block text-sm font-medium text-foreground mb-1">Tipo de acción *</label>
-      <select formControlName="actionKey"
-        class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary">
-        <option value="llamada">Llamada</option>
-        <option value="email">Email</option>
-        <option value="whatsapp">WhatsApp</option>
-        <option value="aviso_corte">Aviso de corte</option>
-        <option value="promesa">Promesa de pago</option>
-        <option value="otro">Otro</option>
-      </select>
+    <!-- Selector de tipo (pills filtradas por paso) -->
+    <div class="flex flex-wrap gap-1.5">
+      @for (act of contactoDialogActions(); track act.key) {
+        <button type="button" (click)="selectContactoAction(act.key)"
+          [class]="contactoActionKey() === act.key
+            ? 'flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-primary text-primary-foreground border border-primary transition-colors'
+            : 'flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-border hover:bg-accent transition-colors'">
+          <ui-icon [name]="act.icon" [size]="11" />
+          {{ act.label }}
+        </button>
+      }
     </div>
+
+    <!-- Email: aviso informativo -->
+    @if (contactoActionKey() === 'email') {
+      <div class="flex items-start gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 text-primary text-xs">
+        <ui-icon name="info" [size]="13" class="mt-0.5 shrink-0" />
+        <span>Se enviará un email automáticamente al cliente con la dirección registrada en EE.</span>
+      </div>
+    }
+
+    <!-- Aviso corte: aviso de cambio de estado -->
+    @if (contactoActionKey() === 'aviso_corte') {
+      <div class="flex items-start gap-2 p-3 rounded-lg bg-warning-soft border border-warning-fg/20 text-warning-fg text-xs">
+        <ui-icon name="info" [size]="13" class="mt-0.5 shrink-0" />
+        <span>El estado del impago cambiará automáticamente a <strong>Aviso de corte</strong>.</span>
+      </div>
+    }
+
+    <!-- Promesa: fecha + importe -->
+    @if (contactoActionKey() === 'promesa') {
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium text-foreground mb-1">Fecha compromiso</label>
+          <input type="date" formControlName="promesaFecha"
+            class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-foreground mb-1">Importe (€)</label>
+          <input type="number" formControlName="promesaImporte" min="0" step="0.01"
+            class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary" />
+        </div>
+      </div>
+    }
+
+    <!-- Notas: siempre visible -->
     <div>
       <label class="block text-sm font-medium text-foreground mb-1">Notas</label>
       <textarea formControlName="notes" rows="3"
         class="w-full px-3 py-2 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary resize-none">
       </textarea>
-    </div>
-    <div class="grid grid-cols-2 gap-3">
-      <div>
-        <label class="block text-sm font-medium text-foreground mb-1">Fecha promesa</label>
-        <input type="date" formControlName="promesaFecha"
-          class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-foreground mb-1">Importe promesa</label>
-        <input type="number" formControlName="promesaImporte" min="0" step="0.01"
-          class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary" />
-      </div>
     </div>
   </form>
 </app-form-dialog>

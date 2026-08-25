@@ -80,11 +80,36 @@ export class UnpaidDetail implements OnInit {
   protected readonly contactoDialogOpen  = signal(false);
   protected readonly contactoSubmitting  = signal(false);
   protected readonly contactoError       = signal<string | null>(null);
+  protected readonly contactoActionKey   = signal<string>('llamada');
+  protected readonly contactoTargetStep  = signal<number>(1);
   protected readonly contactoForm = this.fb.group({
     actionKey: ['llamada', Validators.required],
     notes: [''],
     promesaFecha: [''],
     promesaImporte: [null as number | null],
+  });
+  private static readonly STEP_ACTIONS: Record<number, string[]> = {
+    1: ['llamada', 'whatsapp'],
+    2: ['llamada', 'whatsapp', 'email', 'otro'],
+    3: ['llamada', 'whatsapp', 'email', 'aviso_corte', 'otro'],
+    4: ['aviso_corte', 'llamada', 'promesa'],
+    5: ['llamada', 'whatsapp', 'email', 'promesa'],
+  };
+  protected readonly contactoActions = [
+    { key: 'llamada',     label: 'Llamada',     icon: 'phone'           as const },
+    { key: 'email',       label: 'Email',       icon: 'mail'            as const },
+    { key: 'whatsapp',    label: 'WhatsApp',    icon: 'message-square'  as const },
+    { key: 'aviso_corte', label: 'Aviso corte', icon: 'scissors'        as const },
+    { key: 'promesa',     label: 'Promesa',     icon: 'calendar-check'  as const },
+    { key: 'otro',        label: 'Otro',        icon: 'more-horizontal' as const },
+  ];
+  protected readonly contactoDialogActions = computed(() => {
+    const keys = UnpaidDetail.STEP_ACTIONS[this.contactoTargetStep()] ?? ['llamada'];
+    return this.contactoActions.filter(a => keys.includes(a.key));
+  });
+  protected readonly contactoDialogTitle = computed(() => {
+    const act = this.contactoActions.find(a => a.key === this.contactoActionKey());
+    return act ? `Registrar ${act.label.toLowerCase()}` : 'Registrar contacto';
   });
 
   // ── Acción cobranza dialog ─────────────────────────────────────────────────
@@ -178,10 +203,21 @@ export class UnpaidDetail implements OnInit {
   }
 
   // ── Registrar contacto ────────────────────────────────────────────────────
-  protected openContactoDialog(): void {
-    this.contactoForm.reset({ actionKey: 'llamada' });
+  protected openContactoDialog(step?: number): void {
+    const imp = this.impago();
+    const targetStep = Math.min(step ?? (imp ? imp.contactoStep + 1 : 1), 5);
+    this.contactoTargetStep.set(targetStep);
+    const keys = UnpaidDetail.STEP_ACTIONS[targetStep] ?? ['llamada'];
+    const firstAction = keys[0] ?? 'llamada';
+    this.contactoActionKey.set(firstAction);
+    this.contactoForm.reset({ actionKey: firstAction });
     this.contactoError.set(null);
     this.contactoDialogOpen.set(true);
+  }
+
+  protected selectContactoAction(key: string): void {
+    this.contactoActionKey.set(key);
+    this.contactoForm.patchValue({ actionKey: key });
   }
 
   protected submitContacto(): void {
