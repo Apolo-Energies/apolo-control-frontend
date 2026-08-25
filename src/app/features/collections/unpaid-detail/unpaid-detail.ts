@@ -304,7 +304,46 @@ export class UnpaidDetail implements OnInit {
     });
   }
 
-  // ── Document download ─────────────────────────────────────────────────────
+  // ── Documentos ────────────────────────────────────────────────────────────
+  protected readonly docUploading = signal(false);
+
+  protected uploadDoc(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file  = input.files?.[0];
+    if (!file) return;
+    const imp = this.impago();
+    if (!imp) return;
+    this.docUploading.set(true);
+    this.service.uploadDocumento(imp.id, file).subscribe({
+      next: (updated) => {
+        this.impago.set(updated);
+        this.docUploading.set(false);
+        this.notify.success('Archivo subido');
+        input.value = '';
+      },
+      error: (err: HttpErrorResponse) => {
+        this.docUploading.set(false);
+        this.notify.error(extractMessage(err));
+        input.value = '';
+      },
+    });
+  }
+
+  protected deleteDoc(doc: DemandaDocumento): void {
+    const imp = this.impago();
+    if (!imp) return;
+    const filename = doc.url.split('/').pop() ?? doc.nombre;
+    this.service.deleteDocumento(imp.id, filename).subscribe({
+      next: (updated) => {
+        this.impago.set(updated);
+        this.notify.success('Documento eliminado');
+      },
+      error: (err: HttpErrorResponse) => {
+        this.notify.error(extractMessage(err));
+      },
+    });
+  }
+
   protected downloadDoc(doc: DemandaDocumento): void {
     const imp      = this.impago();
     if (!imp) return;

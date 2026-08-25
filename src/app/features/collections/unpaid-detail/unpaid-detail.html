@@ -411,6 +411,56 @@
       }
     </div>
 
+    <!-- Documentos adjuntos -->
+    <div class="bg-card border border-border rounded-xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-semibold text-foreground flex items-center gap-2">
+          <ui-icon name="file-plus" [size]="14" />
+          Documentos adjuntos
+          @if (imp.documentosAdjuntos.length > 0) {
+            <span class="text-xs font-normal text-muted-foreground">({{ imp.documentosAdjuntos.length }})</span>
+          }
+        </h3>
+        <label
+          class="h-7 px-2.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+          [class.opacity-50]="docUploading()"
+          [class.pointer-events-none]="docUploading()"
+        >
+          <ui-icon name="upload" [size]="12" />
+          {{ docUploading() ? 'Subiendo…' : 'Subir archivo' }}
+          <input type="file" class="hidden" (change)="uploadDoc($event)" [disabled]="docUploading()" />
+        </label>
+      </div>
+      @if (imp.documentosAdjuntos.length === 0) {
+        <p class="text-sm text-muted-foreground text-center py-6 italic">Sin documentos adjuntos.</p>
+      } @else {
+        <div class="space-y-1.5">
+          @for (doc of imp.documentosAdjuntos; track doc.url) {
+            <div class="flex items-center gap-3 rounded-lg border border-border bg-accent/10 px-3 py-2">
+              <ui-icon name="file-text" [size]="14" class="text-muted-foreground shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-medium text-foreground truncate">{{ doc.nombre }}</p>
+                <p class="text-[11px] text-muted-foreground">
+                  {{ fmt(doc.fechaSubida) }}
+                  @if (doc.tamano) { · {{ formatBytes(doc.tamano) }} }
+                </p>
+              </div>
+              <button type="button" (click)="downloadDoc(doc)"
+                title="Descargar"
+                class="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors shrink-0">
+                <ui-icon name="download" [size]="12" />
+              </button>
+              <button type="button" (click)="deleteDoc(doc)"
+                title="Eliminar"
+                class="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-danger-fg hover:bg-danger/10 transition-colors shrink-0">
+                <ui-icon name="trash" [size]="12" />
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
     <!-- Bitácora de notas -->
     <div class="bg-card border border-border rounded-xl p-5">
       <h3 class="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
