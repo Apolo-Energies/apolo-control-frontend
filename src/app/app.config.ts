@@ -16,6 +16,7 @@ import Aura from '@primeuix/themes/aura';
 import { routes } from './app.routes';
 import { environment } from '../environments/environment';
 import { authInterceptor } from './core/auth/auth.interceptor';
+import { maintenanceInterceptor } from './core/http/maintenance.interceptor';
 import { AuthService } from './core/auth/auth.service';
 import { MasterDataService } from './core/services/master-data.service';
 
@@ -31,7 +32,7 @@ export const appConfig: ApplicationConfig = {
     }),
     MessageService,
     ConfirmationService,
-    provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    provideHttpClient(withFetch(), withInterceptors([authInterceptor, maintenanceInterceptor])),
     {
       provide: APP_INITIALIZER,
       multi: true,

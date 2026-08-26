@@ -4,11 +4,12 @@ import { Toast } from 'primeng/toast';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 
 import { BrandLoader } from './shared/components/brand-loader/brand-loader';
+import { MaintenanceBanner } from './shared/components/maintenance-banner/maintenance-banner';
 import { GlobalLoadingService } from './core/services/global-loading.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Toast, ConfirmDialog, BrandLoader],
+  imports: [RouterOutlet, Toast, ConfirmDialog, BrandLoader, MaintenanceBanner],
   templateUrl: './app.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
