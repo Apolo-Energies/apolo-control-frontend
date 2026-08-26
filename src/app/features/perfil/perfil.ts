@@ -12,6 +12,7 @@ import { PageHeader } from '../../shared/components/page-header/page-header';
 import { Icon } from '../../shared/icons/icon';
 import { PerfilService } from '../../core/services/perfil.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { UserPreferencesService } from '../../core/services/user-preferences.service';
 import { PerfilResponse, USER_ROLE_LABEL } from '../../core/models';
 
 @Component({
@@ -24,6 +25,9 @@ export class Perfil implements OnInit {
   private readonly service = inject(PerfilService);
   private readonly notify = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
+  private readonly prefs = inject(UserPreferencesService);
+  protected mantenerFiltros(): boolean { return this.prefs.mantenerFiltros(); }
+  protected toggleMantenerFiltros(): void { this.prefs.set('mantenerFiltros', !this.prefs.mantenerFiltros()); }
 
   protected readonly perfil = signal<PerfilResponse | null>(null);
   protected readonly loading = signal(true);
