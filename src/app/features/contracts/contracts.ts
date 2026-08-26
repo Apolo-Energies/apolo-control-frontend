@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -20,6 +20,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { ContratoPdfService, PdfContratoData } from '../../core/services/contrato-pdf.service';
+import { ListStateService }                    from '../../core/services/list-state.service';
 import {
   ApiErrorResponse,
   Contract,
@@ -175,7 +176,7 @@ function contractOffersToPdfOfertas(offers: ContractOffer[]) {
   ],
   templateUrl: './contracts.html',
 })
-export class Contracts {
+export class Contracts implements OnDestroy {
   private readonly service = inject(ContractService);
   private readonly masterData = inject(MasterDataService);
   private readonly globalLoading = inject(GlobalLoadingService);
@@ -186,6 +187,7 @@ export class Contracts {
   private readonly pdfService = inject(ContratoPdfService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly listState = inject(ListStateService);
 
   // Filtros de la barra superior
   protected statusFilter: ContractStatus | '' = '';
@@ -351,6 +353,16 @@ export class Contracts {
   protected readonly totalPages = computed(() => this.result()?.totalPages ?? 0);
 
   constructor() {
+    const s = this.listState.get<{ q: string; statusFilter: string; startDate: string; endDate: string; motivoRechazo: string; page: number; size: number }>('contracts');
+    if (s) {
+      this.q = s.q;
+      this.statusFilter = s.statusFilter as ContractStatus | '';
+      this.startDate = s.startDate;
+      this.endDate = s.endDate;
+      this.motivoRechazo = s.motivoRechazo;
+      this.size.set(s.size);
+    }
+
     // Pre-populate filters from query params (e.g. when coming from the dashboard chart)
     const snap = this.route.snapshot.queryParams;
     const snapStatus = snap['status'] as ContractStatus | undefined;
@@ -361,7 +373,7 @@ export class Contracts {
       void this.router.navigate([], { replaceUrl: true, queryParams: {} });
     }
 
-    this.reload(0);
+    this.reload(snapStatus || snapMotivo ? 0 : (s?.page ?? 0));
 
     // Reactive handler for id/renovar deep-links (can arrive after init)
     this.route.queryParams.subscribe(params => {
@@ -379,6 +391,14 @@ export class Contracts {
           error: () => {},
         });
       }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.listState.save('contracts', {
+      q: this.q, statusFilter: this.statusFilter, startDate: this.startDate,
+      endDate: this.endDate, motivoRechazo: this.motivoRechazo,
+      page: this.page(), size: this.size(),
     });
   }
 

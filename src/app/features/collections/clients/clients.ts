@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, computed, inject, signal,
+  ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
@@ -14,6 +14,7 @@ import { Icon }          from '../../../shared/icons/icon';
 import { GestionImpagoClienteService } from '../../../core/services/gestion-impago-cliente.service';
 import { NotificationService }         from '../../../core/services/notification.service';
 import { GlobalLoadingService }        from '../../../core/services/global-loading.service';
+import { ListStateService }            from '../../../core/services/list-state.service';
 import {
   GestionImpagoCliente, GestionImpagoClientePayload,
   NivelRiesgoGestionCliente, NIVEL_RIESGO_LABEL, Page,
@@ -42,11 +43,12 @@ function nivelToneFn(nivel: NivelRiesgoGestionCliente): StatusTone {
   ],
   templateUrl: './clients.html',
 })
-export class GestionClients {
+export class GestionClients implements OnDestroy {
   private readonly service       = inject(GestionImpagoClienteService);
   private readonly notify        = inject(NotificationService);
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly fb            = inject(FormBuilder);
+  private readonly listState     = inject(ListStateService);
 
   // ── List state ────────────────────────────────────────────────────────────
   protected readonly loading       = signal(false);
@@ -84,7 +86,15 @@ export class GestionClients {
     notas:      [''],
   });
 
-  constructor() { this.reload(0); }
+  constructor() {
+    const s = this.listState.get<{ q: string; page: number; size: number }>('clients');
+    if (s) { this.q = s.q; this.size.set(s.size); this.reload(s.page); }
+    else { this.reload(0); }
+  }
+
+  ngOnDestroy(): void {
+    this.listState.save('clients', { q: this.q, page: this.page(), size: this.size() });
+  }
 
   // ── List ──────────────────────────────────────────────────────────────────
   protected reload(p: number): void {

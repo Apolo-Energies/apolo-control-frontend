@@ -4,11 +4,12 @@ import { Icon } from '../../icons/icon';
 import { ThemeService } from '../../services/theme';
 import { AuthService } from '../../../core/auth/auth.service';
 import { USER_ROLE_LABEL } from '../../../core/models';
+import { NotificationBell } from '../notification-bell/notification-bell';
 
 @Component({
   selector: 'app-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icon, RouterLink],
+  imports: [Icon, RouterLink, NotificationBell],
   templateUrl: './header.html',
 })
 export class Header {

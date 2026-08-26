@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, computed, inject, signal,
+  ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
@@ -25,6 +25,7 @@ import {
   PRIORIDAD_GESTION_IMPAGO_LABEL, Page,
 } from '../../../core/models';
 import { GestionImpagoClienteService } from '../../../core/services/gestion-impago-cliente.service';
+import { ListStateService } from '../../../core/services/list-state.service';
 
 function extractMessage(err: HttpErrorResponse): string {
   return (err.error as { message?: string })?.message ?? err.message ?? 'Error inesperado';
@@ -108,12 +109,13 @@ function prioridadToneFn(prioridad: PrioridadGestionImpago): StatusTone {
   ],
   templateUrl: './unpaid.html',
 })
-export class Unpaid {
+export class Unpaid implements OnDestroy {
   private readonly service        = inject(GestionImpagoService);
   private readonly clienteService = inject(GestionImpagoClienteService);
   private readonly notify         = inject(NotificationService);
   private readonly globalLoading  = inject(GlobalLoadingService);
   private readonly fb             = inject(FormBuilder);
+  private readonly listState      = inject(ListStateService);
 
   // ── List state ────────────────────────────────────────────────────────────
   protected readonly loading       = signal(false);
@@ -280,7 +282,52 @@ export class Unpaid {
     observaciones:    [''],
   });
 
-  constructor() { this.reload(0); }
+  constructor() {
+    const s = this.listState.get<{
+      q: string; estadoFilter: EstadoGestionImpago | ''; clienteActivoFilter: 'activo' | 'baja' | '';
+      pagadoFilter: 'pagado' | 'no_pagado' | ''; page: number; size: number;
+      sortField: string; sortDir: 'asc' | 'desc'; range: 'today' | 'week' | 'month' | 'year' | 'all' | 'custom';
+      selectedWeek: string; selectedMonth: string; selectedYear: number;
+      customStart: string; customEnd: string;
+    }>('unpaid');
+    if (s) {
+      this.q                   = s.q;
+      this.estadoFilter        = s.estadoFilter;
+      this.clienteActivoFilter = s.clienteActivoFilter;
+      this.pagadoFilter        = s.pagadoFilter;
+      this.size.set(s.size);
+      this.sortField.set(s.sortField);
+      this.sortDir.set(s.sortDir);
+      this.range.set(s.range);
+      this.selectedWeek.set(s.selectedWeek);
+      this.selectedMonth.set(s.selectedMonth);
+      this.selectedYear.set(s.selectedYear);
+      this.customStart.set(s.customStart);
+      this.customEnd.set(s.customEnd);
+      this.reload(s.page);
+    } else {
+      this.reload(0);
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.listState.save('unpaid', {
+      q:                   this.q,
+      estadoFilter:        this.estadoFilter,
+      clienteActivoFilter: this.clienteActivoFilter,
+      pagadoFilter:        this.pagadoFilter,
+      page:                this.page(),
+      size:                this.size(),
+      sortField:           this.sortField(),
+      sortDir:             this.sortDir(),
+      range:               this.range(),
+      selectedWeek:        this.selectedWeek(),
+      selectedMonth:       this.selectedMonth(),
+      selectedYear:        this.selectedYear(),
+      customStart:         this.customStart(),
+      customEnd:           this.customEnd(),
+    });
+  }
 
   // ── List ──────────────────────────────────────────────────────────────────
   protected reload(p: number): void {

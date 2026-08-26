@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, computed, inject, signal,
+  ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -12,6 +12,7 @@ import { Icon } from '../../shared/icons/icon';
 import { BajaDialog } from '../../shared/components/baja-dialog/baja-dialog';
 import { BajaService } from '../../core/services/baja.service';
 import { ContractService } from '../../core/services/contract.service';
+import { ListStateService } from '../../core/services/list-state.service';
 import { Contract, DelegacionBajaStats, Page } from '../../core/models';
 import { formatDate, safeText } from '../../shared/utils/format';
 
@@ -41,10 +42,11 @@ function monthToRange(month: string): { start: string; end: string } {
   imports: [PageHeader, TableSkeleton, Pagination, Icon, FormsModule, BajaDialog],
   templateUrl: './bajas.html',
 })
-export class Bajas {
+export class Bajas implements OnDestroy {
   private readonly service         = inject(BajaService);
   private readonly contractService = inject(ContractService);
   private readonly route           = inject(ActivatedRoute);
+  private readonly listState       = inject(ListStateService);
 
   // ── Tabs ────────────────────────────────────────────────────────────────────
   protected readonly activeTab = signal<'list' | 'top'>('list');
@@ -91,8 +93,35 @@ export class Bajas {
   protected readonly bajaPreselected = signal<Contract | null>(null);
 
   constructor() {
-    this.applyFilters();
+    const s = this.listState.get<{ searchQ: string; selectedMonth: string; selectedColaborador: string; selectedProducto: string; startDate: string; endDate: string; page: number; size: number }>('bajas');
+    if (s) {
+      this.searchQ = s.searchQ;
+      this.selectedMonth = s.selectedMonth;
+      this.selectedColaborador = s.selectedColaborador;
+      this.selectedProducto = s.selectedProducto;
+      this.startDate = s.startDate;
+      this.endDate = s.endDate;
+      if (s.selectedMonth) {
+        const r = monthToRange(s.selectedMonth);
+        this.activeStartDate = r.start;
+        this.activeEndDate = r.end;
+      }
+      this.page.set(s.page);
+      this.size.set(s.size);
+      this.reload(s.page);
+      this.loadTopDelegaciones();
+    } else {
+      this.applyFilters();
+    }
     this.checkAutoOpen();
+  }
+
+  ngOnDestroy(): void {
+    this.listState.save('bajas', {
+      searchQ: this.searchQ, selectedMonth: this.selectedMonth,
+      selectedColaborador: this.selectedColaborador, selectedProducto: this.selectedProducto,
+      startDate: this.startDate, endDate: this.endDate, page: this.page(), size: this.size(),
+    });
   }
 
   private checkAutoOpen(): void {

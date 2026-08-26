@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, computed, inject, signal,
+  ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
@@ -16,6 +16,7 @@ import { CambioService } from '../../core/services/cambio.service';
 import { MasterDataService } from '../../core/services/master-data.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { GlobalLoadingService } from '../../core/services/global-loading.service';
+import { ListStateService }     from '../../core/services/list-state.service';
 import { ConfirmService } from '../../core/services/confirm.service';
 import {
   Cambio, TipoCambio, ResultadoCambio,
@@ -56,13 +57,14 @@ function extractMessage(err: HttpErrorResponse): string {
   ],
   templateUrl: './cambios.html',
 })
-export class Cambios {
+export class Cambios implements OnDestroy {
   private readonly service = inject(CambioService);
   private readonly masterData = inject(MasterDataService);
   private readonly notify = inject(NotificationService);
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
+  private readonly listState = inject(ListStateService);
 
   // ── List state ────────────────────────────────────────────────────────────
   protected readonly loading = signal(false);
@@ -142,7 +144,22 @@ export class Cambios {
         this.selectedClienteOption.set(null);
       }
     });
-    this.reload(0);
+    const s = this.listState.get<{ q: string; tipoFilter: string; resultadoFilter: string; gestionadoFilter: string; page: number; size: number }>('cambios');
+    if (s) {
+      this.q = s.q;
+      this.tipoFilter = s.tipoFilter as TipoCambio | '';
+      this.resultadoFilter = s.resultadoFilter as ResultadoCambio | '';
+      this.gestionadoFilter = s.gestionadoFilter as '' | 'true' | 'false';
+      this.size.set(s.size);
+    }
+    this.reload(s?.page ?? 0);
+  }
+
+  ngOnDestroy(): void {
+    this.listState.save('cambios', {
+      q: this.q, tipoFilter: this.tipoFilter, resultadoFilter: this.resultadoFilter,
+      gestionadoFilter: this.gestionadoFilter, page: this.page(), size: this.size(),
+    });
   }
 
   // ── List ──────────────────────────────────────────────────────────────────

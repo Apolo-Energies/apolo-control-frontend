@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 
@@ -14,6 +14,7 @@ import { MasterDataService } from '../../core/services/master-data.service';
 import { GlobalLoadingService } from '../../core/services/global-loading.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ConfirmService } from '../../core/services/confirm.service';
+import { ListStateService } from '../../core/services/list-state.service';
 import {
   ApiErrorResponse,
   EstadoPago,
@@ -64,13 +65,14 @@ const TIPO_TONE: Record<TipoPago, StatusTone> = {
   ],
   templateUrl: './pagos-liquidacion.html',
 })
-export class PagosLiquidacion {
+export class PagosLiquidacion implements OnDestroy {
   private readonly service = inject(PagosLiquidacionService);
   private readonly masterData = inject(MasterDataService);
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly notify = inject(NotificationService);
   private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
+  private readonly listState = inject(ListStateService);
 
   protected readonly estadoValues = ESTADO_PAGO_VALUES;
   protected readonly tipoValues = TIPO_PAGO_VALUES;
@@ -135,7 +137,24 @@ export class PagosLiquidacion {
   private debounce: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
-    this.reload(0);
+    const s = this.listState.get<{ q: string; estado: string; tipo: string; delegacionId: string; startDate: string; endDate: string; page: number; size: number }>('pagos-liquidacion');
+    if (s) {
+      this.q = s.q;
+      this.estado = s.estado as EstadoPago | '';
+      this.tipo = s.tipo as TipoPago | '';
+      this.delegacionId = s.delegacionId;
+      this.startDate = s.startDate;
+      this.endDate = s.endDate;
+      this.size.set(s.size);
+    }
+    this.reload(s?.page ?? 0);
+  }
+
+  ngOnDestroy(): void {
+    this.listState.save('pagos-liquidacion', {
+      q: this.q, estado: this.estado, tipo: this.tipo, delegacionId: this.delegacionId,
+      startDate: this.startDate, endDate: this.endDate, page: this.page(), size: this.size(),
+    });
   }
 
   protected reload(page: number): void {

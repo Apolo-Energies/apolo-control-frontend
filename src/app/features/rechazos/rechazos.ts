@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, computed, inject, signal,
+  ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
@@ -17,6 +17,7 @@ import { ContractService } from '../../core/services/contract.service';
 import { MasterDataService } from '../../core/services/master-data.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { GlobalLoadingService } from '../../core/services/global-loading.service';
+import { ListStateService }     from '../../core/services/list-state.service';
 import {
   Rechazo, RechazoEstado, RechazoResultado,
   RECHAZO_ESTADO_LABEL, RECHAZO_RESULTADO_LABEL,
@@ -51,13 +52,14 @@ function extractMessage(err: HttpErrorResponse): string {
   ],
   templateUrl: './rechazos.html',
 })
-export class Rechazos {
+export class Rechazos implements OnDestroy {
   private readonly service = inject(RechazoService);
   private readonly contractService = inject(ContractService);
   private readonly masterData = inject(MasterDataService);
   private readonly notify = inject(NotificationService);
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly fb = inject(FormBuilder);
+  private readonly listState = inject(ListStateService);
 
   // ── List state ────────────────────────────────────────────────────────────
   protected readonly loading = signal(false);
@@ -129,7 +131,23 @@ export class Rechazos {
   protected nuevoComentario = '';
   protected readonly addingComment = signal(false);
 
-  constructor() { this.reload(0); }
+  constructor() {
+    const s = this.listState.get<{ q: string; estadoFilter: string; resultadoFilter: string; page: number; size: number }>('rechazos');
+    if (s) {
+      this.q = s.q;
+      this.estadoFilter = s.estadoFilter as RechazoEstado | '';
+      this.resultadoFilter = s.resultadoFilter as RechazoResultado | '';
+      this.size.set(s.size);
+    }
+    this.reload(s?.page ?? 0);
+  }
+
+  ngOnDestroy(): void {
+    this.listState.save('rechazos', {
+      q: this.q, estadoFilter: this.estadoFilter, resultadoFilter: this.resultadoFilter,
+      page: this.page(), size: this.size(),
+    });
+  }
 
   // ── List ──────────────────────────────────────────────────────────────────
   protected reload(p: number): void {

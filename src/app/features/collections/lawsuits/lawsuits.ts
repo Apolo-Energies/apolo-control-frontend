@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, computed, inject, signal,
+  ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -14,6 +14,7 @@ import { Icon }          from '../../../shared/icons/icon';
 import { GestionImpagoService } from '../../../core/services/gestion-impago.service';
 import { NotificationService }  from '../../../core/services/notification.service';
 import { GlobalLoadingService } from '../../../core/services/global-loading.service';
+import { ListStateService }     from '../../../core/services/list-state.service';
 import {
   GestionImpago, EstadoGestionImpago, DemandaDocumento,
   GestionImpagoActualizarEstadoPayload, ESTADO_GESTION_IMPAGO_LABEL,
@@ -35,10 +36,11 @@ interface DemandaForm {
   imports: [PageHeader, TableSkeleton, KpiCard, EmptyState, Icon, FormsModule, RouterLink],
   templateUrl: './lawsuits.html',
 })
-export class Lawsuits {
+export class Lawsuits implements OnDestroy {
   private readonly service       = inject(GestionImpagoService);
   private readonly notify        = inject(NotificationService);
   private readonly globalLoading = inject(GlobalLoadingService);
+  private readonly listState     = inject(ListStateService);
 
   // ── List state ────────────────────────────────────────────────────────────
   protected readonly loading    = signal(false);
@@ -84,7 +86,15 @@ export class Lawsuits {
   protected readonly estadoLabel = ESTADO_GESTION_IMPAGO_LABEL;
   protected readonly environment = { apiUrl: '/api' };
 
-  constructor() { this.load(); }
+  constructor() {
+    const s = this.listState.get<{ q: string; estadoFilter: string }>('lawsuits');
+    if (s) { this.q.set(s.q); this.estadoFilter.set(s.estadoFilter); }
+    this.load();
+  }
+
+  ngOnDestroy(): void {
+    this.listState.save('lawsuits', { q: this.q(), estadoFilter: this.estadoFilter() });
+  }
 
   // ── Load ──────────────────────────────────────────────────────────────────
   protected load(): void {

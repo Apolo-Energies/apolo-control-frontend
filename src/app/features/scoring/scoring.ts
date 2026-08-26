@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 
@@ -9,6 +9,7 @@ import { TableSkeleton } from '../../shared/components/table-skeleton/table-skel
 import { LoadingOverlay } from '../../shared/components/loading-overlay/loading-overlay';
 import { Icon } from '../../shared/icons/icon';
 import { ScoringFilter, ScoringService } from '../../core/services/scoring.service';
+import { ListStateService }              from '../../core/services/list-state.service';
 import { ApiErrorResponse, CustomerScoring, Page } from '../../core/models';
 import { formatDate } from '../../shared/utils/format';
 
@@ -26,8 +27,9 @@ import { formatDate } from '../../shared/utils/format';
   ],
   templateUrl: './scoring.html',
 })
-export class ScoringList {
+export class ScoringList implements OnDestroy {
   private readonly service = inject(ScoringService);
+  private readonly listState = inject(ListStateService);
 
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
@@ -50,7 +52,31 @@ export class ScoringList {
   private debounce: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
-    this.reload(0);
+    const s = this.listState.get<{
+      busqueda: string; minPuntuacion: string; maxPuntuacion: string;
+      fechaInicioVigilancia: string; fechaFinVigilancia: string;
+      vigilanciaActiva: boolean; historico: boolean; page: number; size: number;
+    }>('scoring');
+    if (s) {
+      this.busqueda = s.busqueda;
+      this.minPuntuacion = s.minPuntuacion;
+      this.maxPuntuacion = s.maxPuntuacion;
+      this.fechaInicioVigilancia = s.fechaInicioVigilancia;
+      this.fechaFinVigilancia = s.fechaFinVigilancia;
+      this.vigilanciaActiva = s.vigilanciaActiva;
+      this.historico = s.historico;
+      this.size.set(s.size);
+    }
+    this.reload(s?.page ?? 0);
+  }
+
+  ngOnDestroy(): void {
+    this.listState.save('scoring', {
+      busqueda: this.busqueda, minPuntuacion: this.minPuntuacion, maxPuntuacion: this.maxPuntuacion,
+      fechaInicioVigilancia: this.fechaInicioVigilancia, fechaFinVigilancia: this.fechaFinVigilancia,
+      vigilanciaActiva: this.vigilanciaActiva, historico: this.historico,
+      page: this.page(), size: this.size(),
+    });
   }
 
   protected reload(page: number): void {

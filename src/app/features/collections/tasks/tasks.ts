@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, computed, inject, signal,
+  ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -11,6 +11,7 @@ import { StatusBadge, StatusTone } from '../../../shared/components/status-badge
 
 import { GestionImpagoService } from '../../../core/services/gestion-impago.service';
 import { NotificationService }  from '../../../core/services/notification.service';
+import { ListStateService }     from '../../../core/services/list-state.service';
 import {
   GestionImpago, EstadoGestionImpago, ESTADO_GESTION_IMPAGO_LABEL,
 } from '../../../core/models';
@@ -53,9 +54,10 @@ interface ContactoForm {
   imports: [PageHeader, Icon, StatusBadge, FormsModule, RouterLink],
   templateUrl: './tasks.html',
 })
-export class Tasks {
-  private readonly service = inject(GestionImpagoService);
-  private readonly notify  = inject(NotificationService);
+export class Tasks implements OnDestroy {
+  private readonly service    = inject(GestionImpagoService);
+  private readonly notify     = inject(NotificationService);
+  private readonly listState  = inject(ListStateService);
 
   protected readonly loading       = signal(false);
   protected readonly rows          = signal<GestionImpago[]>([]);
@@ -133,7 +135,26 @@ export class Tasks {
       .filter(r => isGestionadoHoy(r)).length,
   );
 
-  constructor() { this.load(); }
+  constructor() {
+    const s = this.listState.get<{
+      q: string; contactoFilter: string; fechaDesde: string; fechaHasta: string; sortBy: string;
+    }>('tasks');
+    if (s) {
+      this.q.set(s.q);
+      this.contactoFilter.set(s.contactoFilter as 'all' | '0' | '1' | '2' | '3+');
+      this.fechaDesde.set(s.fechaDesde);
+      this.fechaHasta.set(s.fechaHasta);
+      this.sortBy.set(s.sortBy as 'priority' | 'deuda_desc' | 'fecha_desc' | 'fecha_asc');
+    }
+    this.load();
+  }
+
+  ngOnDestroy(): void {
+    this.listState.save('tasks', {
+      q: this.q(), contactoFilter: this.contactoFilter(),
+      fechaDesde: this.fechaDesde(), fechaHasta: this.fechaHasta(), sortBy: this.sortBy(),
+    });
+  }
 
   protected load(): void {
     this.loading.set(true);

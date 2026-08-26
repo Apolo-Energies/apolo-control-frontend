@@ -20,3 +20,4 @@ export * from './cambio.model';
 export * from './gestion-impago.model';
 export * from './job-ejecucion.model';
 export * from './perfil.model';
+export * from './notification.model';

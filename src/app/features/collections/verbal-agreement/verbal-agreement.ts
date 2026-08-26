@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, computed, inject, signal,
+  ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -14,6 +14,7 @@ import { Icon }         from '../../../shared/icons/icon';
 import { GestionImpagoService } from '../../../core/services/gestion-impago.service';
 import { NotificationService }  from '../../../core/services/notification.service';
 import { GlobalLoadingService } from '../../../core/services/global-loading.service';
+import { ListStateService }     from '../../../core/services/list-state.service';
 import {
   GestionImpago,
   EstadoGestionImpago, GestionImpagoActualizarEstadoPayload,
@@ -44,10 +45,11 @@ function estadoToneFn(estado: EstadoGestionImpago): StatusTone {
   imports: [PageHeader, TableSkeleton, StatusBadge, Pagination, Icon, FormsModule, RouterLink],
   templateUrl: './verbal-agreement.html',
 })
-export class VerbalAgreement {
+export class VerbalAgreement implements OnDestroy {
   private readonly service       = inject(GestionImpagoService);
   private readonly notify        = inject(NotificationService);
   private readonly globalLoading = inject(GlobalLoadingService);
+  private readonly listState     = inject(ListStateService);
 
   // ── List state ────────────────────────────────────────────────────────────
   protected readonly loading       = signal(false);
@@ -71,7 +73,15 @@ export class VerbalAgreement {
   // ── Estado update ─────────────────────────────────────────────────────────
   protected updatingId = signal<string | null>(null);
 
-  constructor() { this.reload(0); }
+  constructor() {
+    const s = this.listState.get<{ q: string; page: number; size: number }>('verbal-agreement');
+    if (s) { this.q = s.q; this.size.set(s.size); this.reload(s.page); }
+    else { this.reload(0); }
+  }
+
+  ngOnDestroy(): void {
+    this.listState.save('verbal-agreement', { q: this.q, page: this.page(), size: this.size() });
+  }
 
   // ── List ──────────────────────────────────────────────────────────────────
   protected reload(p: number): void {

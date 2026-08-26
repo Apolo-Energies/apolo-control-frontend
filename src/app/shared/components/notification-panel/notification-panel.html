@@ -1,0 +1,108 @@
+<div
+  class="absolute right-0 mt-2 w-80 bg-card border border-border rounded-xl shadow-lg overflow-hidden z-50 flex flex-col"
+  style="max-height: 520px"
+  (click)="$event.stopPropagation()"
+>
+  <!-- Header -->
+  <div class="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+    <div class="flex items-center gap-2">
+      <h3 class="text-sm font-semibold text-foreground">Notificaciones</h3>
+      @if (inbox.unreadCount() > 0) {
+        <span class="h-5 min-w-5 px-1 rounded-full bg-primary text-[10px] text-white flex items-center justify-center font-bold">
+          {{ inbox.unreadCount() }}
+        </span>
+      }
+    </div>
+    @if (inbox.unreadCount() > 0) {
+      <button
+        type="button"
+        class="text-xs text-primary hover:underline"
+        (click)="inbox.markAllRead()"
+      >
+        Marcar todas
+      </button>
+    }
+  </div>
+
+  <!-- Scroll container -->
+  <div #scrollContainer class="overflow-y-auto flex-1 min-h-0">
+
+    <!-- Empty state -->
+    @if (!inbox.loading() && inbox.notifications().length === 0) {
+      <div class="py-12 flex flex-col items-center gap-2 text-muted-foreground">
+        <ui-icon name="bell" [size]="30" class="opacity-20" />
+        <p class="text-sm">Sin notificaciones</p>
+      </div>
+    }
+
+    <!-- Notification items -->
+    @for (n of inbox.notifications(); track n.id) {
+      <div
+        class="px-4 py-3 border-b border-border/40 hover:bg-accent/30 transition-colors cursor-pointer select-none"
+        [class.bg-primary\/5]="!n.read"
+        (click)="onMarkRead(n)"
+      >
+        <!-- Top row -->
+        <div class="flex items-center gap-1.5 mb-1.5">
+          <span
+            class="text-[9px] font-bold tracking-wide uppercase px-1.5 py-0.5 rounded"
+            [ngClass]="systemClass(n.system)"
+          >
+            {{ n.system }}
+          </span>
+          @if (n.processError) {
+            <span class="text-[9px] font-semibold uppercase tracking-wide text-danger-fg bg-danger/10 px-1.5 py-0.5 rounded">
+              Error de proceso
+            </span>
+          }
+          <span class="ml-auto text-[10px] text-muted-foreground shrink-0">
+            {{ n.createdAt | date: 'dd/MM HH:mm' }}
+          </span>
+          @if (!n.read) {
+            <span class="h-1.5 w-1.5 rounded-full bg-primary shrink-0"></span>
+          }
+        </div>
+
+        <!-- Body -->
+        <div class="flex items-start gap-2">
+          <ui-icon
+            [name]="levelIcon(n.level)"
+            [size]="13"
+            class="mt-0.5 shrink-0"
+            [ngClass]="levelIconClass(n.level)"
+          />
+          <div class="min-w-0">
+            <p class="text-xs font-medium text-foreground leading-snug">{{ n.title }}</p>
+            @if (n.message) {
+              <p class="text-[11px] text-muted-foreground leading-snug mt-0.5 line-clamp-2">{{ n.message }}</p>
+            }
+          </div>
+        </div>
+
+        <!-- Actions -->
+        @if (n.actions && n.actions.length > 0) {
+          <div class="flex gap-3 mt-2 pl-5">
+            @for (action of n.actions; track action.label) {
+              <button
+                type="button"
+                class="text-[11px] font-medium text-primary hover:underline"
+                (click)="onAction(action, $event)"
+              >
+                {{ action.label }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Infinite scroll sentinel -->
+    <div #sentinel class="py-3 flex items-center justify-center">
+      @if (inbox.loading()) {
+        <ui-icon name="loader" [size]="16" class="text-muted-foreground animate-spin" />
+      } @else if (!inbox.hasMore() && inbox.notifications().length > 0) {
+        <span class="text-[11px] text-muted-foreground/50">· fin ·</span>
+      }
+    </div>
+  </div>
+</div>

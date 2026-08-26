@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, computed, inject, signal,
+  ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -15,6 +15,7 @@ import { Icon }          from '../../../shared/icons/icon';
 import { GestionImpagoService } from '../../../core/services/gestion-impago.service';
 import { NotificationService }  from '../../../core/services/notification.service';
 import { GlobalLoadingService } from '../../../core/services/global-loading.service';
+import { ListStateService }     from '../../../core/services/list-state.service';
 import {
   GestionImpago, GestionImpagoPayload,
   EstadoGestionImpago, GestionImpagoActualizarEstadoPayload,
@@ -48,10 +49,11 @@ function estadoToneFn(estado: EstadoGestionImpago): StatusTone {
   imports: [PageHeader, TableSkeleton, Pagination, KpiCard, Icon, FormsModule, RouterLink],
   templateUrl: './disconnection.html',
 })
-export class Disconnection {
+export class Disconnection implements OnDestroy {
   private readonly service       = inject(GestionImpagoService);
   private readonly notify        = inject(NotificationService);
   private readonly globalLoading = inject(GlobalLoadingService);
+  private readonly listState     = inject(ListStateService);
 
   // ── Corte alerts (banner) ─────────────────────────────────────────────────
   protected readonly alerts         = signal<GestionImpago[]>([]);
@@ -98,8 +100,22 @@ export class Disconnection {
   protected editingMotivoValue = '';
 
   constructor() {
+    const s = this.listState.get<{ q: string; estadoFilter: string; sortOption: string; page: number; size: number }>('disconnection');
+    if (s) {
+      this.q = s.q;
+      this.estadoFilter = s.estadoFilter as 'aviso_corte' | 'cortado' | '';
+      this.sortOption = s.sortOption;
+      this.size.set(s.size);
+    }
     this.loadAlerts();
-    this.reload(0);
+    this.reload(s?.page ?? 0);
+  }
+
+  ngOnDestroy(): void {
+    this.listState.save('disconnection', {
+      q: this.q, estadoFilter: this.estadoFilter, sortOption: this.sortOption,
+      page: this.page(), size: this.size(),
+    });
   }
 
   // ── Corte alerts ──────────────────────────────────────────────────────────

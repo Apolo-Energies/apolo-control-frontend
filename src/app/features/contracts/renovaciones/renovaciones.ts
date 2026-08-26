@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -12,6 +12,7 @@ import { StatusBadge, StatusTone } from '../../../shared/components/status-badge
 import { Pagination } from '../../../shared/components/pagination/pagination';
 import { Icon } from '../../../shared/icons/icon';
 import { ContractService } from '../../../core/services/contract.service';
+import { ListStateService } from '../../../core/services/list-state.service';
 import {
   Contract,
   ContractRenovaciones,
@@ -51,9 +52,10 @@ const SIZE = 10;
   imports: [PageHeader, TableSkeleton, StatusBadge, Pagination, Icon, FormsModule],
   templateUrl: './renovaciones.html',
 })
-export class Renovaciones {
-  private readonly service = inject(ContractService);
-  private readonly router = inject(Router);
+export class Renovaciones implements OnDestroy {
+  private readonly service    = inject(ContractService);
+  private readonly router     = inject(Router);
+  private readonly listState  = inject(ListStateService);
   private readonly searchChange$ = new Subject<void>();
 
   protected readonly loading = signal(false);
@@ -81,7 +83,27 @@ export class Renovaciones {
       this.resetPages();
       this.load();
     });
+    const s = this.listState.get<{
+      q: string; fechaDesde: string; fechaHasta: string;
+      vPage: number; pvPage: number; rPage: number; pageSize: number;
+    }>('renovaciones');
+    if (s) {
+      this.q.set(s.q);
+      this.fechaDesde.set(s.fechaDesde);
+      this.fechaHasta.set(s.fechaHasta);
+      this.vPage.set(s.vPage);
+      this.pvPage.set(s.pvPage);
+      this.rPage.set(s.rPage);
+      this.pageSize.set(s.pageSize);
+    }
     this.load();
+  }
+
+  ngOnDestroy(): void {
+    this.listState.save('renovaciones', {
+      q: this.q(), fechaDesde: this.fechaDesde(), fechaHasta: this.fechaHasta(),
+      vPage: this.vPage(), pvPage: this.pvPage(), rPage: this.rPage(), pageSize: this.pageSize(),
+    });
   }
 
   protected load(): void {

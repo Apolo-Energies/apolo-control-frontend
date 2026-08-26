@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 
@@ -13,6 +13,7 @@ import { FacturaContabilidadService } from '../../core/services/factura-contabil
 import { MasterDataService } from '../../core/services/master-data.service';
 import { GlobalLoadingService } from '../../core/services/global-loading.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { ListStateService }    from '../../core/services/list-state.service';
 import {
   ApiErrorResponse,
   FACTURA_ESTADO_LABEL,
@@ -45,12 +46,13 @@ const ESTADO_TONE: Record<FacturaContabilidadEstado, StatusTone> = {
   ],
   templateUrl: './facturas-contabilidad.html',
 })
-export class FacturasContabilidad {
+export class FacturasContabilidad implements OnDestroy {
   private readonly service = inject(FacturaContabilidadService);
   private readonly masterData = inject(MasterDataService);
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly notify = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
+  private readonly listState = inject(ListStateService);
 
   protected readonly estados = FACTURA_ESTADO_VALUES;
 
@@ -95,7 +97,22 @@ export class FacturasContabilidad {
   private debounce: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
-    this.reload(0);
+    const s = this.listState.get<{ q: string; estado: string; startDate: string; endDate: string; page: number; size: number }>('facturas-contabilidad');
+    if (s) {
+      this.q = s.q;
+      this.estado = s.estado as FacturaContabilidadEstado | '';
+      this.startDate = s.startDate;
+      this.endDate = s.endDate;
+      this.size.set(s.size);
+    }
+    this.reload(s?.page ?? 0);
+  }
+
+  ngOnDestroy(): void {
+    this.listState.save('facturas-contabilidad', {
+      q: this.q, estado: this.estado, startDate: this.startDate, endDate: this.endDate,
+      page: this.page(), size: this.size(),
+    });
   }
 
   protected reload(page: number): void {

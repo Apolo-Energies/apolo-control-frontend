@@ -22,13 +22,7 @@
       <ui-icon [name]="theme.isDark() ? 'sun' : 'moon'" [size]="18" />
     </button>
 
-    <button
-      type="button"
-      class="relative h-9 w-9 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground flex items-center justify-center"
-      aria-label="Notificaciones"
-    >
-      <ui-icon name="bell" [size]="18" />
-    </button>
+    <app-notification-bell />
 
     <div class="h-7 w-px bg-border mx-1"></div>
 

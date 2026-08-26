@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, computed, inject, signal,
+  ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -14,6 +14,7 @@ import { Icon }          from '../../../shared/icons/icon';
 import { GestionImpagoService } from '../../../core/services/gestion-impago.service';
 import { NotificationService }  from '../../../core/services/notification.service';
 import { GlobalLoadingService } from '../../../core/services/global-loading.service';
+import { ListStateService }     from '../../../core/services/list-state.service';
 import {
   GestionImpago, GestionImpagoPayload,
   EstadoGestionImpago, GestionImpagoActualizarEstadoPayload,
@@ -30,10 +31,11 @@ function extractMessage(err: HttpErrorResponse): string {
   imports: [PageHeader, TableSkeleton, KpiCard, EmptyState, Icon, FormsModule, RouterLink],
   templateUrl: './formal-agreement.html',
 })
-export class FormalAgreement {
+export class FormalAgreement implements OnDestroy {
   private readonly service       = inject(GestionImpagoService);
   private readonly notify        = inject(NotificationService);
   private readonly globalLoading = inject(GlobalLoadingService);
+  private readonly listState     = inject(ListStateService);
 
   // ── List state ────────────────────────────────────────────────────────────
   protected readonly loading    = signal(false);
@@ -69,7 +71,15 @@ export class FormalAgreement {
     this.rows().reduce((s, r) => s + r.importePendiente, 0),
   );
 
-  constructor() { this.load(); }
+  constructor() {
+    const s = this.listState.get<{ q: string }>('formal-agreement');
+    if (s) this.q.set(s.q);
+    this.load();
+  }
+
+  ngOnDestroy(): void {
+    this.listState.save('formal-agreement', { q: this.q() });
+  }
 
   // ── Load ──────────────────────────────────────────────────────────────────
   protected load(): void {
