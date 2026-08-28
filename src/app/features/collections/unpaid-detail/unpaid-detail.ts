@@ -342,6 +342,106 @@ export class UnpaidDetail implements OnInit {
     });
   }
 
+  // ── Pagos fraccionados ────────────────────────────────────────────────────
+  protected readonly fraccionadoEditMode = signal(false);
+  protected readonly fraccionadoSaving   = signal(false);
+  protected fraccionadoRows: { importe: string; fecha: string; cobrado: boolean }[] = [];
+
+  protected openFraccionadoEdit(): void {
+    const imp = this.impago();
+    if (!imp) return;
+    this.fraccionadoRows = (imp.pagosFraccionados ?? []).map(p => ({
+      importe: String(p.importe),
+      fecha:   p.fecha ?? '',
+      cobrado: !!p.cobrado,
+    }));
+    if (this.fraccionadoRows.length === 0) {
+      this.fraccionadoRows = [{ importe: '', fecha: '', cobrado: false }];
+    }
+    this.fraccionadoEditMode.set(true);
+  }
+
+  protected addFraccionadoRow(): void {
+    this.fraccionadoRows = [...this.fraccionadoRows, { importe: '', fecha: '', cobrado: false }];
+  }
+
+  protected removeFraccionadoRow(i: number): void {
+    this.fraccionadoRows = this.fraccionadoRows.filter((_, idx) => idx !== i);
+  }
+
+  protected saveFraccionado(): void {
+    const imp = this.impago();
+    if (!imp) return;
+    const pagos = this.fraccionadoRows
+      .filter(r => r.fecha && r.importe && parseFloat(r.importe) > 0)
+      .map((r, idx) => ({
+        numero:  idx + 1,
+        importe: parseFloat(r.importe),
+        fecha:   r.fecha,
+        cobrado: r.cobrado,
+      }));
+    this.fraccionadoSaving.set(true);
+    this.service.actualizarPagosFraccionados(imp.id, pagos).subscribe({
+      next: (updated) => {
+        this.impago.set(updated);
+        this.fraccionadoSaving.set(false);
+        this.fraccionadoEditMode.set(false);
+        this.notify.success('Plan de pagos actualizado');
+        this.service.getHistorial(imp.id).subscribe({ next: (h) => this.historial.set(h), error: () => {} });
+      },
+      error: (err: HttpErrorResponse) => {
+        this.fraccionadoSaving.set(false);
+        this.notify.error(extractMessage(err));
+      },
+    });
+  }
+
+  protected cancelFraccionado(): void {
+    this.fraccionadoEditMode.set(false);
+  }
+
+  protected fraccionadoTotalPlanificado(): number {
+    return this.fraccionadoRows.reduce((sum, r) => {
+      const v = parseFloat(r.importe);
+      return sum + (isNaN(v) || v < 0 ? 0 : v);
+    }, 0);
+  }
+
+  protected fraccionadoFaltante(): number {
+    return (this.impago()?.importePendiente ?? 0) - this.fraccionadoTotalPlanificado();
+  }
+
+  protected fraccionadoPct(): number {
+    const pending = this.impago()?.importePendiente ?? 0;
+    if (pending <= 0) return 0;
+    return Math.min((this.fraccionadoTotalPlanificado() / pending) * 100, 100);
+  }
+
+  protected readonly fraccionadoToggling = signal(false);
+
+  protected toggleCobradoDirecto(index: number): void {
+    const imp = this.impago();
+    if (!imp || this.fraccionadoToggling()) return;
+    const pagos = imp.pagosFraccionados.map((p, i) => ({
+      numero:  p.numero,
+      importe: p.importe,
+      fecha:   p.fecha,
+      cobrado: i === index ? !p.cobrado : p.cobrado,
+    }));
+    this.fraccionadoToggling.set(true);
+    this.service.actualizarPagosFraccionados(imp.id, pagos).subscribe({
+      next: (updated) => {
+        this.impago.set(updated);
+        this.fraccionadoToggling.set(false);
+        this.service.getHistorial(imp.id).subscribe({ next: (h) => this.historial.set(h), error: () => {} });
+      },
+      error: (err: HttpErrorResponse) => {
+        this.fraccionadoToggling.set(false);
+        this.notify.error(extractMessage(err));
+      },
+    });
+  }
+
   // ── Documentos ────────────────────────────────────────────────────────────
   protected readonly docUploading = signal(false);
 

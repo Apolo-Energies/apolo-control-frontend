@@ -229,12 +229,84 @@
     </div>
 
     <!-- Pagos fraccionados -->
-    @if (imp.pagoFraccionado && imp.pagosFraccionados.length > 0) {
-      <div class="bg-card border border-border rounded-xl p-5">
-        <h3 class="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+    <div class="bg-card border border-border rounded-xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-semibold text-foreground flex items-center gap-2">
           <ui-icon name="wallet" [size]="14" />
           Pagos fraccionados
         </h3>
+        @if (!fraccionadoEditMode()) {
+          <button type="button" (click)="openFraccionadoEdit()"
+            class="h-7 px-3 inline-flex items-center gap-1 rounded-lg border border-border text-xs text-muted-foreground hover:bg-accent/40 transition-colors">
+            <ui-icon name="edit" [size]="12" />
+            {{ imp.pagoFraccionado && imp.pagosFraccionados.length > 0 ? 'Editar plan' : 'Configurar plan' }}
+          </button>
+        }
+      </div>
+
+      @if (fraccionadoEditMode()) {
+        <!-- Modo edición inline -->
+        <div class="space-y-2">
+          @for (row of fraccionadoRows; track $index; let i = $index) {
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-muted-foreground w-5 text-center shrink-0">{{ i + 1 }}</span>
+              <input type="number" [(ngModel)]="row.importe" placeholder="Importe (€)" step="0.01" min="0"
+                class="h-8 flex-1 rounded-md border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+              <input type="date" [(ngModel)]="row.fecha"
+                class="h-8 w-36 rounded-md border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+              <label class="flex items-center gap-1 text-xs text-muted-foreground cursor-pointer select-none shrink-0">
+                <input type="checkbox" [(ngModel)]="row.cobrado" class="rounded" />
+                Cobrado
+              </label>
+              <button type="button" (click)="removeFraccionadoRow(i)"
+                class="h-7 w-7 inline-flex items-center justify-center rounded-md text-danger-fg hover:bg-danger/10 transition-colors shrink-0">
+                <ui-icon name="trash" [size]="13" />
+              </button>
+            </div>
+          }
+          <button type="button" (click)="addFraccionadoRow()"
+            class="mt-1 h-7 px-3 inline-flex items-center gap-1 rounded-md border border-dashed border-border text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors">
+            <ui-icon name="plus" [size]="12" />
+            Añadir pago
+          </button>
+        </div>
+
+        <!-- Progress bar de saldo -->
+        <div class="mt-4 rounded-lg border border-border bg-accent/20 p-3 space-y-1.5">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-muted-foreground">
+              Planificado: <span class="font-semibold text-foreground">{{ formatEur(fraccionadoTotalPlanificado()) }}</span>
+              <span class="text-muted-foreground"> / {{ formatEur(impago()?.importePendiente ?? 0) }} pendiente</span>
+            </span>
+            @if (fraccionadoFaltante() > 0.005) {
+              <span class="font-medium text-warning-fg">Faltante: {{ formatEur(fraccionadoFaltante()) }}</span>
+            } @else if (fraccionadoFaltante() < -0.005) {
+              <span class="font-medium text-danger-fg">Exceso: {{ formatEur(-fraccionadoFaltante()) }}</span>
+            } @else {
+              <span class="font-medium text-success-fg">✓ Cubierto</span>
+            }
+          </div>
+          <div class="h-2 rounded-full bg-muted overflow-hidden">
+            <div class="h-full rounded-full transition-all duration-300"
+              [class]="fraccionadoFaltante() < -0.005 ? 'bg-danger' : fraccionadoFaltante() <= 0.005 ? 'bg-success' : 'bg-primary'"
+              [style.width.%]="fraccionadoPct()">
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 mt-4 pt-3 border-t border-border">
+          <button type="button" (click)="saveFraccionado()" [disabled]="fraccionadoSaving()"
+            class="h-8 px-4 inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity">
+            @if (fraccionadoSaving()) { <ui-icon name="loader" [size]="12" class="animate-spin" /> }
+            Guardar plan
+          </button>
+          <button type="button" (click)="cancelFraccionado()" [disabled]="fraccionadoSaving()"
+            class="h-8 px-3 inline-flex items-center rounded-lg border border-border text-xs text-muted-foreground hover:bg-accent/40 disabled:opacity-50 transition-colors">
+            Cancelar
+          </button>
+        </div>
+      } @else if (imp.pagoFraccionado && imp.pagosFraccionados.length > 0) {
+        <!-- Vista de solo lectura -->
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
             <thead class="text-xs uppercase tracking-wide text-muted-foreground">
@@ -247,24 +319,31 @@
             </thead>
             <tbody class="divide-y divide-border/40">
               @for (p of imp.pagosFraccionados; track p.numero) {
-                <tr [class.bg-success-soft]="p.cobrado" class="hover:bg-accent/20">
+                <tr [class.bg-success/5]="p.cobrado" class="hover:bg-accent/20">
                   <td class="px-3 py-2 text-muted-foreground">{{ p.numero }}</td>
                   <td class="px-3 py-2 text-right font-mono">{{ formatEur(p.importe) }}</td>
                   <td class="px-3 py-2">{{ fmt(p.fecha) }}</td>
                   <td class="px-3 py-2 text-center">
-                    @if (p.cobrado) {
-                      <ui-icon name="check" [size]="14" class="text-success-fg" />
-                    } @else {
-                      <span class="text-muted-foreground">—</span>
-                    }
+                    <button type="button"
+                      (click)="toggleCobradoDirecto($index)"
+                      [disabled]="fraccionadoToggling()"
+                      title="{{ p.cobrado ? 'Desmarcar cobrado' : 'Marcar como cobrado' }}"
+                      class="inline-flex items-center justify-center w-7 h-7 rounded-md transition-colors disabled:opacity-40"
+                      [class]="p.cobrado
+                        ? 'text-success-fg hover:bg-success/10'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'">
+                      <ui-icon [name]="p.cobrado ? 'check-square' : 'circle'" [size]="16" />
+                    </button>
                   </td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
-      </div>
-    }
+      } @else {
+        <p class="text-sm text-muted-foreground">Sin plan de pagos fraccionados configurado.</p>
+      }
+    </div>
 
     <!-- Historial de pagos -->
     <div class="bg-card border border-border rounded-xl p-5">

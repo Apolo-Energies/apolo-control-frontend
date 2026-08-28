@@ -141,6 +141,10 @@ export class GestionImpagoService {
     return this.http.patch<GestionImpago>(`${this.baseUrl}/${id}/registrar-pago`, payload);
   }
 
+  actualizarPagosFraccionados(id: string, pagos: PagoFraccionadoEntry[]): Observable<GestionImpago> {
+    return this.http.patch<GestionImpago>(`${this.baseUrl}/${id}/pagos-fraccionados`, pagos);
+  }
+
   actualizarClienteActivo(id: string, valor: 'activo' | 'baja'): Observable<GestionImpago> {
     return this.http.patch<GestionImpago>(`${this.baseUrl}/${id}/cliente-activo`, null, { params: { valor } });
   }
@@ -155,10 +159,6 @@ export class GestionImpagoService {
 
   registrarContacto(id: string, payload: GestionImpagoRegistrarContactoPayload): Observable<GestionImpago> {
     return this.http.patch<GestionImpago>(`${this.baseUrl}/${id}/contacto`, payload);
-  }
-
-  actualizarPagosFraccionados(id: string, pagos: PagoFraccionadoEntry[]): Observable<GestionImpago> {
-    return this.http.patch<GestionImpago>(`${this.baseUrl}/${id}/pagos-fraccionados`, pagos);
   }
 
   delete(id: string): Observable<void> {
