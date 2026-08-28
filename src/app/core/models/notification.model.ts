@@ -1,6 +1,6 @@
 export type NotificationSystem = 'CONTROL' | 'IMPAGOS';
 export type NotificationLevel = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
-export type NotificationActionType = 'NAVIGATE' | 'API_CALL' | 'DISMISS';
+export type NotificationActionType = 'NAVIGATE' | 'NAVIGATE_NEW_TAB' | 'API_CALL' | 'DISMISS';
 
 export interface NotificationAction {
   label: string;

@@ -85,6 +85,9 @@ export class NotificationInboxService {
     if (action.actionType === 'NAVIGATE') {
       this.router.navigateByUrl(action.payload);
       this.closePanel();
+    } else if (action.actionType === 'NAVIGATE_NEW_TAB') {
+      window.open(action.payload, '_blank');
+      this.closePanel();
     } else if (action.actionType === 'DISMISS') {
       this.closePanel();
     }
