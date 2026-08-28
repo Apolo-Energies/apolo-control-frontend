@@ -81,6 +81,74 @@
     </div>
   </div>
 
+  <!-- ── Antigüedad por días desde creación ───────────────────────────────── -->
+  <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Antigüedad de impagos pendientes</p>
+  <div class="bg-card border border-border rounded-xl p-5 mb-8">
+    @let totalNoPagado = d.count0a15 + d.count16a30 + d.count31a60 + d.count61a180 + d.count181a360 + d.countMas360;
+    @if (totalNoPagado === 0) {
+      <app-empty-state icon="check-circle" title="Sin impagos pendientes" description="No hay impagos activos." />
+    } @else {
+      <p class="text-xs text-muted-foreground mb-4">Días desde el vencimiento (o creación si no hay fecha de vencimiento) · {{ totalNoPagado }} impagos con deuda pendiente</p>
+      <div class="space-y-3">
+        @for (bucket of [
+          { label: '0 – 15 días',    count: d.count0a15,    color: '#10b981' },
+          { label: '16 – 30 días',   count: d.count16a30,   color: '#3b82f6' },
+          { label: '31 – 60 días',   count: d.count31a60,   color: '#f59e0b' },
+          { label: '61 – 180 días',  count: d.count61a180,  color: '#f97316' },
+          { label: '181 – 360 días', count: d.count181a360, color: '#ef4444' },
+          { label: 'Más de 360 días',count: d.countMas360,  color: '#7c3aed' }
+        ]; track bucket.label) {
+          <div class="flex items-center gap-3">
+            <span class="w-28 text-xs text-muted-foreground shrink-0">{{ bucket.label }}</span>
+            <div class="flex-1 h-4 rounded-full bg-muted overflow-hidden">
+              <div class="h-full rounded-full transition-all"
+                [style.background]="bucket.color"
+                [style.width.%]="totalNoPagado > 0 ? (bucket.count / totalNoPagado) * 100 : 0"></div>
+            </div>
+            <span class="font-mono text-xs font-semibold text-foreground w-8 text-right shrink-0">{{ bucket.count }}</span>
+            <span class="font-mono text-xs text-muted-foreground w-12 text-right shrink-0">
+              {{ totalNoPagado > 0 ? ((bucket.count / totalNoPagado) * 100).toFixed(1) : '0.0' }}%
+            </span>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- ── Media de recuperación por intervalo ──────────────────────────────── -->
+  <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Velocidad de recuperación</p>
+  <div class="bg-card border border-border rounded-xl p-5 mb-8">
+    @let totalRecup = d.countRecup0a7 + d.countRecup8a30 + d.countRecupMas30;
+    @if (totalRecup === 0) {
+      <app-empty-state icon="info" title="Sin cobros registrados" description="No hay impagos cobrados con fecha de pago." />
+    } @else {
+      <p class="text-xs text-muted-foreground mb-4">Días desde creación hasta cobro total · {{ totalRecup }} impagos cobrados</p>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        @for (bucket of [
+          { label: '0 – 7 días',   count: d.countRecup0a7,   color: '#10b981', tone: 'success' },
+          { label: '8 – 30 días',  count: d.countRecup8a30,  color: '#f59e0b', tone: 'warning' },
+          { label: 'Más de 30 días', count: d.countRecupMas30, color: '#ef4444', tone: 'danger' }
+        ]; track bucket.label) {
+          <div class="rounded-xl border border-border p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs text-muted-foreground">{{ bucket.label }}</span>
+              <span class="font-mono text-xs font-semibold"
+                [style.color]="bucket.color">
+                {{ totalRecup > 0 ? ((bucket.count / totalRecup) * 100).toFixed(1) : '0.0' }}%
+              </span>
+            </div>
+            <p class="text-3xl font-bold text-foreground">{{ bucket.count }}</p>
+            <div class="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+              <div class="h-full rounded-full"
+                [style.background]="bucket.color"
+                [style.width.%]="totalRecup > 0 ? (bucket.count / totalRecup) * 100 : 0"></div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
   <!-- ── Motivos de devolución ──────────────────────────────────────────────── -->
   <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Motivos de devolución</p>
   <div class="bg-card border border-border rounded-xl p-5 mb-8">

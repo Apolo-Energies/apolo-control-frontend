@@ -349,6 +349,17 @@ export interface GestionEstadisticas {
   clientesRecurrentes: ClienteRecurrenteItem[];
   mediaContactosHastaPago: number | null;
   porDelegacion: DelegacionEstadoItem[];
+  // Antigüedad por días desde creación (no pagados)
+  count0a15: number;
+  count16a30: number;
+  count31a60: number;
+  count61a180: number;
+  count181a360: number;
+  countMas360: number;
+  // Distribución de recuperación (pagados)
+  countRecup0a7: number;
+  countRecup8a30: number;
+  countRecupMas30: number;
 }
 
 // ── Acción de cobranza ────────────────────────────────────────────────────────
