@@ -13,6 +13,7 @@ import { GestionImpagoService }         from '../../../core/services/gestion-imp
 import { GestionAccionCobranzaService } from '../../../core/services/gestion-accion-cobranza.service';
 import { NotificationService }          from '../../../core/services/notification.service';
 import { GlobalLoadingService }         from '../../../core/services/global-loading.service';
+import { MasterDataService }            from '../../../core/services/master-data.service';
 import {
   GestionImpago, GestionAccionCobranza, HistorialEstadoImpago,
   EstadoGestionImpago, ESTADO_GESTION_IMPAGO_VALUES, ESTADO_GESTION_IMPAGO_LABEL,
@@ -56,6 +57,7 @@ export class UnpaidDetail implements OnInit {
   private readonly notify         = inject(NotificationService);
   private readonly globalLoading  = inject(GlobalLoadingService);
   private readonly fb             = inject(FormBuilder);
+  protected readonly masterData   = inject(MasterDataService);
 
   protected readonly loading      = signal(true);
   protected readonly impago       = signal<GestionImpago | null>(null);
@@ -400,6 +402,10 @@ export class UnpaidDetail implements OnInit {
   // ── Helpers ───────────────────────────────────────────────────────────────
   protected estadoToneFn(e: EstadoGestionImpago): StatusTone { return estadoToneFn(e); }
   protected fmt(v: string | null): string { return v ? new Date(v).toLocaleDateString('es-ES') : '—'; }
+  protected delegacionNombre(id: string | null): string {
+    if (!id) return '—';
+    return this.masterData.delegaciones().find(d => d.id === id)?.nombre ?? id;
+  }
   protected fmtDateTime(v: string | null | undefined): string {
     if (!v) return '—';
     const d = new Date(v);

@@ -35,6 +35,7 @@ export class Layout {
         switchIcon: 'layout-dashboard',
         items: [
           { label: 'Dashboard', url: '/dashboard', icon: 'layout-dashboard' },
+          { label: 'Tareas', url: '/tasks', icon: 'check-square' },
           {
             label: 'Contratos', url: '/contracts', icon: 'file-text',
             children: [

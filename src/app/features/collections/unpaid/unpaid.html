@@ -99,6 +99,14 @@
     <option value="pagado">Solo Cobrados</option>
   </select>
 
+  <select [(ngModel)]="delegacionFilter"
+    class="h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+    <option value="">Todas las delegaciones</option>
+    @for (d of masterData.delegacionesActivas(); track d.id) {
+      <option [value]="d.id">{{ d.nombre }}</option>
+    }
+  </select>
+
   <button type="button" (click)="applyFilters()"
     class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
     <ui-icon name="search" [size]="14" />
@@ -112,7 +120,7 @@
 
 <!-- Table -->
 @if (loading() && !result()) {
-  <app-table-skeleton [cols]="11" [rows]="8" />
+  <app-table-skeleton [cols]="12" [rows]="8" />
 } @else if (error(); as msg) {
   <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm">{{ msg }}</div>
 } @else {
@@ -144,6 +152,7 @@
                 }
               </span>
             </th>
+            <th class="px-4 py-3 text-left font-semibold">Delegación</th>
             <th class="px-4 py-3 text-left font-semibold">Factura</th>
             <th class="px-4 py-3 text-right font-semibold">Importe</th>
             <th class="px-4 py-3 text-right font-semibold">Pendiente</th>
@@ -167,7 +176,7 @@
         <tbody class="divide-y divide-border/40">
           @if (rows().length === 0) {
             <tr>
-              <td colspan="11" class="px-4 py-10 text-center text-muted-foreground text-sm">
+              <td colspan="12" class="px-4 py-10 text-center text-muted-foreground text-sm">
                 No se encontraron registros.
               </td>
             </tr>
@@ -191,6 +200,9 @@
                 @if (r.clienteNif) {
                   <p class="text-xs text-muted-foreground font-mono">{{ r.clienteNif }}</p>
                 }
+              </td>
+              <td class="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                {{ delegacionNombre(r.delegacionId) }}
               </td>
               <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">{{ r.numeroFactura ?? '—' }}</td>
               <td class="px-4 py-3 text-right whitespace-nowrap font-mono text-xs">{{ formatEur(r.importe) }}</td>

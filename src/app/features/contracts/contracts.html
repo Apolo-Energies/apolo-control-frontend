@@ -101,13 +101,45 @@
       <table class="w-full text-sm">
         <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
-            <th class="px-4 py-3 text-left font-semibold">Cliente</th>
+            <th class="px-4 py-3 text-left font-semibold cursor-pointer select-none hover:text-foreground"
+                (click)="setSort('clienteNombre')">
+              <span class="inline-flex items-center gap-1">
+                Cliente
+                @if (sortField() === 'clienteNombre') {
+                  <ui-icon [name]="sortDir() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="12" class="text-primary" />
+                } @else { <ui-icon name="chevron-down" [size]="12" class="opacity-30" /> }
+              </span>
+            </th>
             <th class="px-4 py-3 text-left font-semibold">CUPS</th>
             <th class="px-3 py-3 text-center font-semibold w-[90px]">Válido</th>
             <th class="px-4 py-3 text-left font-semibold">Servicio</th>
-            <th class="px-4 py-3 text-left font-semibold">Estado</th>
-            <th class="px-4 py-3 text-left font-semibold">F. inicio</th>
-            <th class="px-4 py-3 text-left font-semibold">F. fin</th>
+            <th class="px-4 py-3 text-left font-semibold cursor-pointer select-none hover:text-foreground"
+                (click)="setSort('estado')">
+              <span class="inline-flex items-center gap-1">
+                Estado
+                @if (sortField() === 'estado') {
+                  <ui-icon [name]="sortDir() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="12" class="text-primary" />
+                } @else { <ui-icon name="chevron-down" [size]="12" class="opacity-30" /> }
+              </span>
+            </th>
+            <th class="px-4 py-3 text-left font-semibold cursor-pointer select-none hover:text-foreground"
+                (click)="setSort('fechaInicio')">
+              <span class="inline-flex items-center gap-1">
+                F. inicio
+                @if (sortField() === 'fechaInicio') {
+                  <ui-icon [name]="sortDir() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="12" class="text-primary" />
+                } @else { <ui-icon name="chevron-down" [size]="12" class="opacity-30" /> }
+              </span>
+            </th>
+            <th class="px-4 py-3 text-left font-semibold cursor-pointer select-none hover:text-foreground"
+                (click)="setSort('fechaFinPrevista')">
+              <span class="inline-flex items-center gap-1">
+                F. fin
+                @if (sortField() === 'fechaFinPrevista') {
+                  <ui-icon [name]="sortDir() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="12" class="text-primary" />
+                } @else { <ui-icon name="chevron-down" [size]="12" class="opacity-30" /> }
+              </span>
+            </th>
             <th class="px-4 py-3 text-right font-semibold">Consumo (MWh)</th>
             <th class="px-4 py-3 text-right font-semibold">Margen bruto</th>
             <th class="px-4 py-3 text-right font-semibold">Margen neto</th>

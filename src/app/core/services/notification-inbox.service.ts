@@ -34,6 +34,7 @@ export class NotificationInboxService {
       if (user) {
         this.refresh();
         this.connectSSE();
+        this.checkOverdueTasks(user.id);
       } else {
         this.disconnect();
         this.notifications.set([]);
@@ -151,6 +152,49 @@ export class NotificationInboxService {
       this.disconnect();
       setTimeout(() => { if (this.auth.user()) this.connectSSE(); }, 5000);
     };
+  }
+
+  private checkOverdueTasks(userId: string): void {
+    const today = new Date().toISOString().slice(0, 10);
+    const key = `overdue_checked_${userId}_${today}`;
+    if (localStorage.getItem(key)) return;
+    const tareasBase = this.baseUrl.replace('/notifications', '/tareas');
+    this.http.get<{ id: string; titulo: string }[]>(`${tareasBase}/vencidas`).subscribe({
+      next: (tasks) => {
+        localStorage.setItem(key, '1');
+        if (!tasks.length) return;
+        this.playAlertSound();
+        const count = tasks.length;
+        const route = count === 1
+          ? `/tasks?vencidas=true&detalle=${tasks[0].id}`
+          : `/tasks?vencidas=true`;
+        const detail = count === 1
+          ? `"${tasks[0].titulo}" venció sin completar — haz clic para verla`
+          : `${count} tareas vencidas pendientes — haz clic para verlas`;
+        this.toast.warnNav(detail, route, 'Tareas vencidas');
+      },
+      error: () => {},
+    });
+  }
+
+  private playAlertSound(): void {
+    try {
+      const ctx = new AudioContext();
+      [880, 1100, 1320].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = 'sine';
+        const t = ctx.currentTime + i * 0.18;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.25, t + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        osc.start(t);
+        osc.stop(t + 0.3);
+      });
+    } catch { /* blocked by browser autoplay policy */ }
   }
 
   private disconnect(): void {

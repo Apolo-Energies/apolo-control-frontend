@@ -121,6 +121,63 @@
     }
   </div>
 
+  <!-- ── Distribución por delegación ──────────────────────────────────────────── -->
+  <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Distribución por delegación</p>
+  @if (delegacionesAgrupadas().length === 0) {
+    <div class="bg-card border border-border rounded-xl p-5 mb-8">
+      <app-empty-state icon="users" title="Sin datos" description="No hay impagos asignados a delegaciones." />
+    </div>
+  } @else {
+    <div class="bg-card border border-border rounded-xl overflow-hidden mb-8">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th class="px-4 py-3 text-left font-semibold">Delegación</th>
+              <th class="px-4 py-3 text-right font-semibold">Total</th>
+              <th class="px-4 py-3 text-right font-semibold">Pendientes</th>
+              <th class="px-4 py-3 text-right font-semibold">Cobrados</th>
+              <th class="px-4 py-3 text-right font-semibold">Tasa cobro</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border/40">
+            @for (row of delegacionesAgrupadas(); track row.id) {
+              <tr class="hover:bg-accent/20 transition-colors">
+                <td class="px-4 py-3 font-medium text-foreground">{{ row.nombre }}</td>
+                <td class="px-4 py-3 text-right">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-accent text-foreground">
+                    {{ row.total }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-danger/10 text-danger-fg">
+                    {{ row.pendiente }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-success/10 text-success-fg">
+                    {{ row.pagado }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <div class="flex items-center justify-end gap-2">
+                    <div class="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div class="h-full rounded-full bg-success"
+                        [style.width.%]="row.total > 0 ? (row.pagado / row.total) * 100 : 0"></div>
+                    </div>
+                    <span class="font-mono text-xs font-semibold text-foreground w-10 text-right">
+                      {{ formatPct(row.total > 0 ? (row.pagado / row.total) * 100 : 0) }}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
   <!-- ── Recurrencia de clientes ────────────────────────────────────────────── -->
   <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Recurrencia de clientes</p>
   <div class="grid grid-cols-1 lg:grid-cols-4 gap-3 mb-4">

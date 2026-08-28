@@ -9,8 +9,10 @@ import { Icon } from '../../shared/icons/icon';
 import { SettingService } from '../../core/services/setting.service';
 import { TarifaPenalizacionService } from '../../core/services/tarifa-penalizacion.service';
 import { EeSyncService } from '../../core/services/ee-sync.service';
+import { TipoSolicitudService } from '../../core/services/tipo-solicitud.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { AppSetting, ApiErrorResponse, JobEjecucion, TarifaPenalizacion, TarifaPenalizacionPayload } from '../../core/models';
+import { TipoSolicitud, TipoSolicitudRequest } from '../../core/models/tipo-solicitud.model';
 
 @Component({
   selector: 'app-settings',
@@ -22,6 +24,7 @@ export class Settings {
   private readonly service = inject(SettingService);
   private readonly tarifaService = inject(TarifaPenalizacionService);
   private readonly eeSyncSvc = inject(EeSyncService);
+  private readonly tipoSolicitudSvc = inject(TipoSolicitudService);
   private readonly notify = inject(NotificationService);
 
   protected readonly loading = signal(false);
@@ -48,6 +51,13 @@ export class Settings {
 
   protected tarifaDraft: TarifaPenalizacionPayload = this.emptyTarifa();
 
+  // ── Tipos de solicitud ────────────────────────────────────────────────────
+  protected readonly tiposSolicitud = signal<TipoSolicitud[]>([]);
+  protected readonly tipoSolicitudFormOpen = signal(false);
+  protected readonly editingTipoSolicitud = signal<TipoSolicitud | null>(null);
+  protected readonly tipoSolicitudSaving = signal(false);
+  protected tipoSolicitudDraft: TipoSolicitudRequest = { codigo: '', nombre: '', activo: true, orden: 0, diasRecordatorio: 30 };
+
   private emptyTarifa(): TarifaPenalizacionPayload {
     return { nombre: '', pctPenalizacion: 0, precioMega: 140, diasPrevioAviso: 15, recargoSinAviso: 0, activa: true };
   }
@@ -56,6 +66,7 @@ export class Settings {
     this.load();
     this.loadTarifas();
     this.loadEeSyncHistorial();
+    this.loadTiposSolicitud();
   }
 
   protected load(): void {
@@ -228,6 +239,73 @@ export class Settings {
 
   protected pctDisplay(v: number): string {
     return (v * 100).toFixed(2) + '%';
+  }
+
+  // ── Tipos de solicitud ────────────────────────────────────────────────────
+  protected loadTiposSolicitud(): void {
+    this.tipoSolicitudSvc.findAll().subscribe({
+      next: (list) => this.tiposSolicitud.set(list),
+      error: () => {},
+    });
+  }
+
+  protected openTipoCreate(): void {
+    this.editingTipoSolicitud.set(null);
+    this.tipoSolicitudDraft = { codigo: '', nombre: '', activo: true, orden: this.tiposSolicitud().length + 1, diasRecordatorio: 30 };
+    this.tipoSolicitudFormOpen.set(true);
+  }
+
+  protected openTipoEdit(ts: TipoSolicitud): void {
+    this.editingTipoSolicitud.set(ts);
+    this.tipoSolicitudDraft = { codigo: ts.codigo, nombre: ts.nombre, activo: ts.activo, orden: ts.orden, diasRecordatorio: ts.diasRecordatorio ?? 30 };
+    this.tipoSolicitudFormOpen.set(true);
+  }
+
+  protected closeTipoForm(): void {
+    this.tipoSolicitudFormOpen.set(false);
+    this.editingTipoSolicitud.set(null);
+  }
+
+  protected saveTipoSolicitud(): void {
+    const editing = this.editingTipoSolicitud();
+    this.tipoSolicitudSaving.set(true);
+    const op = editing
+      ? this.tipoSolicitudSvc.update(editing.id, this.tipoSolicitudDraft)
+      : this.tipoSolicitudSvc.create(this.tipoSolicitudDraft);
+
+    op.subscribe({
+      next: (ts) => {
+        this.tipoSolicitudSaving.set(false);
+        this.closeTipoForm();
+        if (editing) {
+          this.tiposSolicitud.update(list => list.map(x => x.id === ts.id ? ts : x));
+        } else {
+          this.tiposSolicitud.update(list => [...list, ts].sort((a, b) => a.orden - b.orden));
+        }
+        this.notify.success(editing ? 'Tipo actualizado' : 'Tipo creado');
+      },
+      error: (err: HttpErrorResponse) => {
+        this.tipoSolicitudSaving.set(false);
+        this.notify.error(extractMessage(err));
+      },
+    });
+  }
+
+  protected deleteTipoSolicitud(id: string): void {
+    this.tipoSolicitudSvc.delete(id).subscribe({
+      next: () => {
+        this.tiposSolicitud.update(list => list.filter(ts => ts.id !== id));
+        this.notify.success('Tipo eliminado');
+      },
+      error: (err: HttpErrorResponse) => this.notify.error(extractMessage(err)),
+    });
+  }
+
+  protected toggleTipoActivo(ts: TipoSolicitud): void {
+    this.tipoSolicitudSvc.update(ts.id, { ...ts, activo: !ts.activo }).subscribe({
+      next: (updated) => this.tiposSolicitud.update(list => list.map(x => x.id === updated.id ? updated : x)),
+      error: (err: HttpErrorResponse) => this.notify.error(extractMessage(err)),
+    });
   }
 }
 

@@ -146,6 +146,7 @@ export interface GestionImpagoClienteFilter {
 
 export interface GestionImpago {
   id: string;
+  delegacionId: string | null;
   clienteId: string;
   clienteNombre: string | null;
   clienteNif: string | null;
@@ -214,6 +215,7 @@ export interface HistorialEstadoImpago {
 
 export interface GestionImpagoPayload {
   clienteId: string;
+  delegacionId?: string | null;
   numeroFactura?: string | null;
   importe?: number;
   parcialPagado?: number;
@@ -256,6 +258,7 @@ export interface GestionImpagoFilter {
   endDate?: string;
   clienteActivo?: string;
   pagadoFilter?: 'pagado' | 'no_pagado';
+  delegacionId?: string;
 }
 
 export interface RegistrarPagoPayload {
@@ -327,6 +330,12 @@ export interface ClienteRecurrenteItem {
   pagados: number;
 }
 
+export interface DelegacionEstadoItem {
+  delegacionId: string | null;
+  estado: string;
+  count: number;
+}
+
 export interface GestionEstadisticas {
   mediaHorasPrimerContacto: number | null;
   mediaHorasRecuperacion: number | null;
@@ -339,6 +348,7 @@ export interface GestionEstadisticas {
   clientesConMasDeUnImpago: number;
   clientesRecurrentes: ClienteRecurrenteItem[];
   mediaContactosHastaPago: number | null;
+  porDelegacion: DelegacionEstadoItem[];
 }
 
 // ── Acción de cobranza ────────────────────────────────────────────────────────

@@ -323,3 +323,126 @@
     </div>
   </div>
 }
+
+<!-- ═══ TIPOS DE SOLICITUD ══════════════════════════════════════════════════ -->
+<section class="bg-card border border-border rounded-2xl overflow-hidden mt-6">
+  <div class="flex items-center justify-between px-6 py-4 border-b border-border">
+    <div>
+      <h2 class="text-sm font-semibold text-foreground">Tipos de solicitud (Cambios)</h2>
+      <p class="text-xs text-muted-foreground mt-0.5">Nombres de cada tipo y días de recordatorio para cambios sin gestionar</p>
+    </div>
+    <button type="button" (click)="openTipoCreate()"
+      class="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-xs text-foreground hover:bg-accent/40 transition-colors">
+      <ui-icon name="plus" [size]="14" /> Añadir tipo
+    </button>
+  </div>
+
+  <!-- Formulario inline -->
+  @if (tipoSolicitudFormOpen()) {
+    <div class="px-6 py-4 bg-accent/20 border-b border-border">
+      <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-3">
+        <div>
+          <label class="text-xs text-muted-foreground block mb-1">Código (único)</label>
+          <input type="text" [(ngModel)]="tipoSolicitudDraft.codigo"
+            [disabled]="!!editingTipoSolicitud()"
+            placeholder="ej. cambio_potencia"
+            class="w-full h-8 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
+          />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="text-xs text-muted-foreground block mb-1">Nombre visible</label>
+          <input type="text" [(ngModel)]="tipoSolicitudDraft.nombre"
+            placeholder="ej. Cambio de potencia"
+            class="w-full h-8 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+        </div>
+        <div>
+          <label class="text-xs text-muted-foreground block mb-1">Orden</label>
+          <input type="number" [(ngModel)]="tipoSolicitudDraft.orden"
+            min="0"
+            class="w-full h-8 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="text-xs text-muted-foreground block mb-1">
+          Días para recordatorio
+          <span class="text-muted-foreground/60 font-normal ml-1">(días desde la solicitud hasta avisar si no está gestionada; 0 = sin recordatorio)</span>
+        </label>
+        <input type="number" [(ngModel)]="tipoSolicitudDraft.diasRecordatorio"
+          min="0" max="365"
+          class="w-36 h-8 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+      </div>
+      <div class="flex items-center justify-end gap-2">
+        <button type="button" (click)="closeTipoForm()"
+          class="h-8 px-3 text-xs text-muted-foreground border border-border rounded-lg hover:bg-accent/40 transition-colors">
+          Cancelar
+        </button>
+        <button type="button" (click)="saveTipoSolicitud()"
+          [disabled]="tipoSolicitudSaving() || !tipoSolicitudDraft.nombre || !tipoSolicitudDraft.codigo"
+          class="h-8 px-4 text-xs bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity">
+          @if (tipoSolicitudSaving()) {
+            <ui-icon name="loader" [size]="13" class="animate-spin" />
+          } @else {
+            {{ editingTipoSolicitud() ? 'Guardar cambios' : 'Crear tipo' }}
+          }
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Lista de tipos -->
+  @if (tiposSolicitud().length === 0) {
+    <div class="px-6 py-8 text-center text-sm text-muted-foreground">
+      No hay tipos de solicitud configurados
+    </div>
+  } @else {
+    <ul class="divide-y divide-border">
+      @for (ts of tiposSolicitud(); track ts.id) {
+        <li class="flex items-center gap-4 px-6 py-3"
+          [class.opacity-50]="!ts.activo">
+          <div class="h-6 w-6 flex items-center justify-center rounded bg-accent text-xs text-muted-foreground font-mono">
+            {{ ts.orden }}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-foreground">{{ ts.nombre }}</p>
+            <p class="text-xs text-muted-foreground font-mono">{{ ts.codigo }}</p>
+          </div>
+          <span class="text-xs whitespace-nowrap hidden sm:flex items-center gap-1"
+            [class.text-muted-foreground]="ts.diasRecordatorio > 0"
+            [class.text-muted-foreground-40]="ts.diasRecordatorio === 0">
+            <ui-icon name="bell" [size]="12" [class.opacity-20]="ts.diasRecordatorio === 0" />
+            @if (ts.diasRecordatorio > 0) {
+              {{ ts.diasRecordatorio }} días
+            } @else {
+              Sin recordatorio
+            }
+          </span>
+          <span class="text-xs px-2 py-0.5 rounded-full"
+            [class.bg-success-soft]="ts.activo"
+            [class.text-success-fg]="ts.activo"
+            [class.bg-muted]="!ts.activo"
+            [class.text-muted-foreground]="!ts.activo">
+            {{ ts.activo ? 'Activo' : 'Inactivo' }}
+          </span>
+          <div class="flex items-center gap-1">
+            <button type="button" (click)="toggleTipoActivo(ts)"
+              class="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              [title]="ts.activo ? 'Desactivar' : 'Activar'">
+              <ui-icon [name]="ts.activo ? 'eye' : 'eye'" [size]="14" />
+            </button>
+            <button type="button" (click)="openTipoEdit(ts)"
+              class="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+              <ui-icon name="edit" [size]="14" />
+            </button>
+            <button type="button" (click)="deleteTipoSolicitud(ts.id)"
+              class="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-danger-fg hover:bg-danger-soft transition-colors">
+              <ui-icon name="trash" [size]="14" />
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</section>

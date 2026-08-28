@@ -20,6 +20,7 @@ import {
 import { DashboardService } from '../../core/services/dashboard.service';
 import { MasterDataService } from '../../core/services/master-data.service';
 import { GestionImpagoService } from '../../core/services/gestion-impago.service';
+import { TareaService } from '../../core/services/tarea.service';
 import {
   ActividadDelegacion,
   ApiErrorResponse,
@@ -30,6 +31,7 @@ import {
   GestionImpagoStats,
   Page,
 } from '../../core/models';
+import { TareaStats, TareaRequest } from '../../core/models/tarea.model';
 import { formatEnergy, formatMonthShort, formatMwh } from '../../shared/utils/format';
 
 type RangeId = 'today' | 'week' | 'month' | 'year' | 'all';
@@ -127,12 +129,19 @@ export class Dashboard {
   private readonly service       = inject(DashboardService);
   private readonly masterData    = inject(MasterDataService);
   private readonly impagoService = inject(GestionImpagoService);
+  private readonly tareaService  = inject(TareaService);
   private readonly router        = inject(Router);
 
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly data = signal<DashboardSummary | null>(null);
   protected readonly range = signal<RangeId>('all');
+
+  // ── Tareas de hoy ─────────────────────────────────────────────────────────
+  protected readonly tareasStats   = signal<TareaStats | null>(null);
+  protected readonly tareasLoading = signal(false);
+  protected readonly tareasFormVisible = signal(false);
+  protected nuevaTarea: TareaRequest = { titulo: '', fechaVencimiento: new Date().toISOString().slice(0, 10) };
 
   // ── Impagos stats ─────────────────────────────────────────────────────────
   protected readonly impagoStats        = signal<GestionImpagoStats | null>(null);
@@ -290,6 +299,7 @@ export class Dashboard {
     this.reload();
     this.reloadActividad(0);
     this.loadImpagoStats();
+    this.loadTareas();
   }
 
   protected setRange(id: RangeId): void {
@@ -366,6 +376,31 @@ export class Dashboard {
     void this.router.navigate(['/contracts'], {
       queryParams: { status: 'ko', motivoRechazo: motivo },
     });
+  }
+
+  protected loadTareas(): void {
+    this.tareasLoading.set(true);
+    this.tareaService.getHoy().subscribe({
+      next:  (s) => { this.tareasStats.set(s); this.tareasLoading.set(false); },
+      error: ()  => this.tareasLoading.set(false),
+    });
+  }
+
+  protected toggleTarea(id: string): void {
+    this.tareaService.toggleCompletar(id).subscribe(() => this.loadTareas());
+  }
+
+  protected saveTarea(): void {
+    if (!this.nuevaTarea.titulo.trim()) return;
+    this.tareaService.create(this.nuevaTarea).subscribe(() => {
+      this.tareasFormVisible.set(false);
+      this.nuevaTarea = { titulo: '', fechaVencimiento: new Date().toISOString().slice(0, 10) };
+      this.loadTareas();
+    });
+  }
+
+  protected deleteTarea(id: string): void {
+    this.tareaService.delete(id).subscribe(() => this.loadTareas());
   }
 
   protected loadImpagoStats(): void {

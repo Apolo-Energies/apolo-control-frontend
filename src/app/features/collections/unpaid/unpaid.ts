@@ -15,6 +15,7 @@ import { Icon } from '../../../shared/icons/icon';
 import { GestionImpagoService } from '../../../core/services/gestion-impago.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { GlobalLoadingService } from '../../../core/services/global-loading.service';
+import { MasterDataService } from '../../../core/services/master-data.service';
 import {
   GestionImpago, GestionImpagoPayload, GestionImpagoFilter,
   GestionImpagoCliente,
@@ -116,6 +117,7 @@ export class Unpaid implements OnDestroy {
   private readonly globalLoading  = inject(GlobalLoadingService);
   private readonly fb             = inject(FormBuilder);
   private readonly listState      = inject(ListStateService);
+  protected readonly masterData   = inject(MasterDataService);
 
   // ── List state ────────────────────────────────────────────────────────────
   protected readonly loading       = signal(false);
@@ -130,6 +132,7 @@ export class Unpaid implements OnDestroy {
   protected estadoFilter:        EstadoGestionImpago | '' = '';
   protected clienteActivoFilter: 'activo' | 'baja' | '' = '';
   protected pagadoFilter:        'pagado' | 'no_pagado' | '' = '';
+  protected delegacionFilter                               = '';
 
   // ── Date range filter ─────────────────────────────────────────────────────
   protected readonly range         = signal<RangeId>('all');
@@ -285,7 +288,7 @@ export class Unpaid implements OnDestroy {
   constructor() {
     const s = this.listState.get<{
       q: string; estadoFilter: EstadoGestionImpago | ''; clienteActivoFilter: 'activo' | 'baja' | '';
-      pagadoFilter: 'pagado' | 'no_pagado' | ''; page: number; size: number;
+      pagadoFilter: 'pagado' | 'no_pagado' | ''; delegacionFilter: string; page: number; size: number;
       sortField: string; sortDir: 'asc' | 'desc'; range: 'today' | 'week' | 'month' | 'year' | 'all' | 'custom';
       selectedWeek: string; selectedMonth: string; selectedYear: number;
       customStart: string; customEnd: string;
@@ -295,6 +298,7 @@ export class Unpaid implements OnDestroy {
       this.estadoFilter        = s.estadoFilter;
       this.clienteActivoFilter = s.clienteActivoFilter;
       this.pagadoFilter        = s.pagadoFilter;
+      this.delegacionFilter    = s.delegacionFilter ?? '';
       this.size.set(s.size);
       this.sortField.set(s.sortField);
       this.sortDir.set(s.sortDir);
@@ -316,6 +320,7 @@ export class Unpaid implements OnDestroy {
       estadoFilter:        this.estadoFilter,
       clienteActivoFilter: this.clienteActivoFilter,
       pagadoFilter:        this.pagadoFilter,
+      delegacionFilter:    this.delegacionFilter,
       page:                this.page(),
       size:                this.size(),
       sortField:           this.sortField(),
@@ -338,6 +343,7 @@ export class Unpaid implements OnDestroy {
       estado:        this.estadoFilter        || undefined,
       clienteActivo: this.clienteActivoFilter || undefined,
       pagadoFilter:  this.pagadoFilter        || undefined,
+      delegacionId:  this.delegacionFilter    || undefined,
       ...this.buildDateFilter(),
     };
     this.service.list(filter, { page: p, size: this.size(), sort: `${this.sortField()},${this.sortDir()}` }).subscribe({
@@ -354,6 +360,7 @@ export class Unpaid implements OnDestroy {
   protected applyFilters(): void { this.reload(0); }
   protected clearFilters(): void {
     this.q = ''; this.estadoFilter = ''; this.clienteActivoFilter = ''; this.pagadoFilter = '';
+    this.delegacionFilter = '';
     this.range.set('all');
     this.customStart.set('');
     this.customEnd.set('');
@@ -585,6 +592,11 @@ export class Unpaid implements OnDestroy {
   protected lastContactoDate(r: GestionImpago): string | null {
     const contacts = r.contactoHistory?.filter(h => h.step > 0) ?? [];
     return contacts.length ? contacts[contacts.length - 1].date : null;
+  }
+
+  protected delegacionNombre(id: string | null): string {
+    if (!id) return '—';
+    return this.masterData.delegaciones().find(d => d.id === id)?.nombre ?? id;
   }
 
   // ── Inline estado change ──────────────────────────────────────────────────

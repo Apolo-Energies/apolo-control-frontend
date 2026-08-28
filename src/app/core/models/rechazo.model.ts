@@ -1,5 +1,12 @@
 export type RechazoEstado = 'rechazado' | 'incidencia' | 'activo';
 export type RechazoResultado = 'tramitado_de_nuevo' | 'resuelta' | 'ko' | 'gestionado';
+export type PlataformaRechazo = 'ENERGY_EXPERT' | 'RENOVAE' | 'OTRO';
+
+export const PLATAFORMA_LABEL: Record<PlataformaRechazo, string> = {
+  ENERGY_EXPERT: 'Energy Expert',
+  RENOVAE: 'Renovae',
+  OTRO: 'Otro',
+};
 
 export const RECHAZO_ESTADO_LABEL: Record<RechazoEstado, string> = {
   rechazado: 'Rechazado',
@@ -42,6 +49,7 @@ export interface Rechazo {
   delegacionNombre: string | null;
   estado: RechazoEstado;
   resultado: RechazoResultado | null;
+  plataforma: PlataformaRechazo | null;
   nombre: string;
   motivo: string | null;
   documentacionNecesaria: string | null;

@@ -63,6 +63,126 @@
   </div>
 } @else if (data(); as d) {
 
+  <!-- ── Tareas del día ────────────────────────────────────────────── -->
+  <section class="bg-card border border-border rounded-xl p-5 mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        <div class="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+          <ui-icon name="check-square" [size]="18" />
+        </div>
+        <div>
+          <h2 class="text-sm font-semibold text-foreground">Mis tareas de hoy</h2>
+          @if (tareasStats(); as ts) {
+            <p class="text-xs text-muted-foreground">
+              {{ ts.completadasHoy }}/{{ ts.totalHoy }} completadas
+              @if (ts.pendientesHoy > 0) {
+                · <span class="text-warning-fg font-medium">{{ ts.pendientesHoy }} pendientes</span>
+              }
+            </p>
+          }
+        </div>
+      </div>
+      <button
+        type="button"
+        (click)="tareasFormVisible.set(!tareasFormVisible())"
+        class="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-xs text-foreground hover:bg-accent/40 transition-colors"
+      >
+        <ui-icon name="plus" [size]="14" />
+        Nueva tarea
+      </button>
+    </div>
+
+    <!-- Formulario nueva tarea -->
+    @if (tareasFormVisible()) {
+      <div class="mb-4 p-4 rounded-xl border border-border bg-accent/20 flex flex-col gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input
+            type="text"
+            [(ngModel)]="nuevaTarea.titulo"
+            placeholder="Título de la tarea..."
+            class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          <input
+            type="date"
+            [(ngModel)]="nuevaTarea.fechaVencimiento"
+            class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+        </div>
+        <input
+          type="text"
+          [(ngModel)]="nuevaTarea.descripcion"
+          placeholder="Descripción (opcional)..."
+          class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+        <div class="flex items-center gap-2 justify-end">
+          <select
+            [(ngModel)]="nuevaTarea.prioridad"
+            class="h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground focus:outline-none"
+          >
+            <option value="BAJA">Prioridad baja</option>
+            <option value="NORMAL">Prioridad normal</option>
+            <option value="ALTA">Prioridad alta</option>
+          </select>
+          <button type="button" (click)="tareasFormVisible.set(false)"
+            class="h-8 px-3 text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors">
+            Cancelar
+          </button>
+          <button type="button" (click)="saveTarea()"
+            class="h-8 px-4 text-xs bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity">
+            Guardar
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Lista de tareas -->
+    @if (tareasLoading()) {
+      <div class="flex items-center gap-2 text-muted-foreground text-sm py-4">
+        <ui-icon name="loader" [size]="14" class="animate-spin" /> Cargando tareas…
+      </div>
+    } @else if (tareasStats()?.tareasHoy?.length === 0) {
+      <p class="text-sm text-muted-foreground py-4 text-center">No hay tareas asignadas para hoy</p>
+    } @else {
+      <ul class="divide-y divide-border">
+        @for (t of tareasStats()?.tareasHoy; track t.id) {
+          <li class="flex items-start gap-3 py-2.5"
+            [class.opacity-50]="t.completada">
+            <button type="button" (click)="toggleTarea(t.id)"
+              class="mt-0.5 h-5 w-5 shrink-0 rounded border-2 flex items-center justify-center transition-colors"
+              [class.border-primary]="t.completada"
+              [class.bg-primary]="t.completada"
+              [class.border-border]="!t.completada">
+              @if (t.completada) {
+                <ui-icon name="check" [size]="11" class="text-primary-foreground" />
+              }
+            </button>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-foreground truncate"
+                [class.line-through]="t.completada">{{ t.titulo }}</p>
+              @if (t.descripcion) {
+                <p class="text-xs text-muted-foreground truncate">{{ t.descripcion }}</p>
+              }
+              <div class="flex items-center gap-2 mt-0.5">
+                @if (!t.esGeneral) {
+                  <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">Individual</span>
+                } @else {
+                  <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-accent text-muted-foreground">General</span>
+                }
+                @if (t.prioridad === 'ALTA') {
+                  <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-danger-soft text-danger-fg font-medium">Alta</span>
+                }
+              </div>
+            </div>
+            <button type="button" (click)="deleteTarea(t.id)"
+              class="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-danger-fg transition-colors opacity-0 group-hover:opacity-100">
+              <ui-icon name="x" [size]="13" />
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
   <!-- KPI principales -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
     <div class="bg-card border border-border rounded-xl p-6">

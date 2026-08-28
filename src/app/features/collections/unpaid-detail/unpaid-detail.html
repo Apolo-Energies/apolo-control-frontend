@@ -105,6 +105,10 @@
           <p class="font-medium">{{ imp.prioridad }}</p>
         </div>
         <div>
+          <p class="text-xs text-muted-foreground">Delegación</p>
+          <p>{{ delegacionNombre(imp.delegacionId) }}</p>
+        </div>
+        <div>
           <p class="text-xs text-muted-foreground">Colaborador</p>
           <p>{{ imp.colaborador ?? '—' }}</p>
         </div>

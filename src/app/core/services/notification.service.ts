@@ -29,6 +29,11 @@ export class NotificationService {
     this.message.add({ severity: 'error', summary, detail, life: 5000 });
   }
 
+  /** Toast sticky con ruta de navegación — se activa al hacer clic en él. */
+  warnNav(detail: string, route: string, summary = 'Atención'): void {
+    this.message.add({ severity: 'warn', summary, detail, life: 10000, data: { route } });
+  }
+
   clear(): void {
     this.message.clear();
   }

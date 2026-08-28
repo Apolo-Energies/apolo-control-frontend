@@ -2,7 +2,7 @@
 <router-outlet />
 
 <!-- Toasts (notify.success/error/info/warn) -->
-<p-toast position="bottom-right" />
+<p-toast position="bottom-right" (onMessageClick)="onToastClick($event)" />
 
 <!-- Confirmaciones (confirm.ask) -->
 <p-confirmDialog

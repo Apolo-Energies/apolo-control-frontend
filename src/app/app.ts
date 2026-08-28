@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet } from '@angular/router';
 import { Toast } from 'primeng/toast';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 
@@ -15,4 +15,11 @@ import { GlobalLoadingService } from './core/services/global-loading.service';
 })
 export class App {
   protected readonly globalLoading = inject(GlobalLoadingService);
+  private readonly router = inject(Router);
+
+  protected onToastClick(event: Event): void {
+    const msg = (event as any)?.message;
+    const route: string | undefined = msg?.data?.route;
+    if (route) void this.router.navigateByUrl(route);
+  }
 }

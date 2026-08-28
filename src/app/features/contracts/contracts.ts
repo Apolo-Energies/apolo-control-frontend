@@ -352,8 +352,21 @@ export class Contracts implements OnDestroy {
   protected readonly totalElements = computed(() => this.result()?.totalElements ?? 0);
   protected readonly totalPages = computed(() => this.result()?.totalPages ?? 0);
 
+  protected readonly sortField = signal('fechaCreacion');
+  protected readonly sortDir   = signal<'asc' | 'desc'>('desc');
+
+  protected setSort(field: string): void {
+    if (this.sortField() === field) {
+      this.sortDir.update(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      this.sortField.set(field);
+      this.sortDir.set('asc');
+    }
+    this.reload(0);
+  }
+
   constructor() {
-    const s = this.listState.get<{ q: string; statusFilter: string; startDate: string; endDate: string; motivoRechazo: string; page: number; size: number }>('contracts');
+    const s = this.listState.get<{ q: string; statusFilter: string; startDate: string; endDate: string; motivoRechazo: string; page: number; size: number; sortField: string; sortDir: 'asc' | 'desc' }>('contracts');
     if (s) {
       this.q = s.q;
       this.statusFilter = s.statusFilter as ContractStatus | '';
@@ -361,6 +374,8 @@ export class Contracts implements OnDestroy {
       this.endDate = s.endDate;
       this.motivoRechazo = s.motivoRechazo;
       this.size.set(s.size);
+      if (s.sortField) this.sortField.set(s.sortField);
+      if (s.sortDir)   this.sortDir.set(s.sortDir);
     }
 
     // Pre-populate filters from query params (e.g. when coming from the dashboard chart)
@@ -399,6 +414,7 @@ export class Contracts implements OnDestroy {
       q: this.q, statusFilter: this.statusFilter, startDate: this.startDate,
       endDate: this.endDate, motivoRechazo: this.motivoRechazo,
       page: this.page(), size: this.size(),
+      sortField: this.sortField(), sortDir: this.sortDir(),
     });
   }
 
@@ -415,7 +431,7 @@ export class Contracts implements OnDestroy {
           endDate: this.endDate || undefined,
           motivoRechazo: this.motivoRechazo || undefined,
         },
-        { page, size: this.size(), sort: 'fechaCreacion,desc' },
+        { page, size: this.size(), sort: `${this.sortField()},${this.sortDir()}` },
       )
       .subscribe({
         next: (response) => {
