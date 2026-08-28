@@ -259,6 +259,8 @@ export interface GestionImpagoFilter {
   clienteActivo?: string;
   pagadoFilter?: 'pagado' | 'no_pagado';
   delegacionId?: string;
+  pagoFraccionado?: boolean;
+  soloVencidos?: boolean;
 }
 
 export interface RegistrarPagoPayload {

@@ -1,9 +1,11 @@
 import {
   ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { skip } from 'rxjs';
 import { PageHeader } from '../../../shared/components/page-header/page-header';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { StatusBadge, StatusTone } from '../../../shared/components/status-badge/status-badge';
@@ -117,6 +119,7 @@ export class Unpaid implements OnDestroy {
   private readonly globalLoading  = inject(GlobalLoadingService);
   private readonly fb             = inject(FormBuilder);
   private readonly listState      = inject(ListStateService);
+  private readonly route          = inject(ActivatedRoute);
   protected readonly masterData   = inject(MasterDataService);
 
   // ── List state ────────────────────────────────────────────────────────────
@@ -133,6 +136,8 @@ export class Unpaid implements OnDestroy {
   protected clienteActivoFilter: 'activo' | 'baja' | '' = '';
   protected pagadoFilter:        'pagado' | 'no_pagado' | '' = '';
   protected delegacionFilter                               = '';
+  protected pagoFraccionadoFilter: boolean | null          = null;
+  protected soloVencidosFilter: boolean | null             = null;
 
   // ── Date range filter ─────────────────────────────────────────────────────
   protected readonly range         = signal<RangeId>('all');
@@ -286,6 +291,19 @@ export class Unpaid implements OnDestroy {
   });
 
   constructor() {
+    // Leer query params en la carga inicial
+    const qp = this.route.snapshot.queryParamMap;
+    if (qp.get('pagoFraccionado') === 'true') this.pagoFraccionadoFilter = true;
+    if (qp.get('soloVencidos')    === 'true') this.soloVencidosFilter    = true;
+
+    // Reaccionar a cambios de query params sin reconstruir el componente
+    // (cuando el usuario navega desde la notificación estando ya en esta página)
+    this.route.queryParamMap.pipe(skip(1), takeUntilDestroyed()).subscribe(params => {
+      this.pagoFraccionadoFilter = params.get('pagoFraccionado') === 'true' ? true : null;
+      this.soloVencidosFilter    = params.get('soloVencidos')    === 'true' ? true : null;
+      this.reload(0);
+    });
+
     const s = this.listState.get<{
       q: string; estadoFilter: EstadoGestionImpago | ''; clienteActivoFilter: 'activo' | 'baja' | '';
       pagadoFilter: 'pagado' | 'no_pagado' | ''; delegacionFilter: string; page: number; size: number;
@@ -339,11 +357,13 @@ export class Unpaid implements OnDestroy {
     this.page.set(p);
     this.loading.set(true);
     const filter: GestionImpagoFilter = {
-      q:             this.q || undefined,
-      estado:        this.estadoFilter        || undefined,
-      clienteActivo: this.clienteActivoFilter || undefined,
-      pagadoFilter:  this.pagadoFilter        || undefined,
-      delegacionId:  this.delegacionFilter    || undefined,
+      q:               this.q || undefined,
+      estado:          this.estadoFilter        || undefined,
+      clienteActivo:   this.clienteActivoFilter || undefined,
+      pagadoFilter:    this.pagadoFilter        || undefined,
+      delegacionId:    this.delegacionFilter    || undefined,
+      pagoFraccionado: this.pagoFraccionadoFilter ?? undefined,
+      soloVencidos:    this.soloVencidosFilter    ?? undefined,
       ...this.buildDateFilter(),
     };
     this.service.list(filter, { page: p, size: this.size(), sort: `${this.sortField()},${this.sortDir()}` }).subscribe({
@@ -360,7 +380,7 @@ export class Unpaid implements OnDestroy {
   protected applyFilters(): void { this.reload(0); }
   protected clearFilters(): void {
     this.q = ''; this.estadoFilter = ''; this.clienteActivoFilter = ''; this.pagadoFilter = '';
-    this.delegacionFilter = '';
+    this.delegacionFilter = ''; this.pagoFraccionadoFilter = null; this.soloVencidosFilter = null;
     this.range.set('all');
     this.customStart.set('');
     this.customEnd.set('');

@@ -88,6 +88,14 @@ export class NotificationInboxService {
     } else if (action.actionType === 'NAVIGATE_NEW_TAB') {
       window.open(action.payload, '_blank');
       this.closePanel();
+    } else if (action.actionType === 'NAVIGATE_MULTI_TAB') {
+      try {
+        const urls: string[] = JSON.parse(action.payload);
+        urls.forEach(url => window.open(url, '_blank'));
+      } catch {
+        window.open(action.payload, '_blank');
+      }
+      this.closePanel();
     } else if (action.actionType === 'DISMISS') {
       this.closePanel();
     }
