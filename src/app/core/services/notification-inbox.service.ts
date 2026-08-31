@@ -80,8 +80,9 @@ export class NotificationInboxService {
     });
   }
 
-  handleAction(action: NotificationAction, event: Event): void {
+  handleAction(action: NotificationAction, notificationId: string, event: Event): void {
     event.stopPropagation();
+    this.markRead(notificationId);
     if (action.actionType === 'NAVIGATE') {
       this.router.navigateByUrl(action.payload);
       this.closePanel();

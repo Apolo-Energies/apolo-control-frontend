@@ -70,8 +70,8 @@ export class NotificationPanel implements AfterViewInit, OnDestroy {
     }
   }
 
-  protected onAction(action: NotificationAction, event: Event): void {
-    this.inbox.handleAction(action, event);
+  protected onAction(action: NotificationAction, notificationId: string, event: Event): void {
+    this.inbox.handleAction(action, notificationId, event);
   }
 
   protected onMarkRead(n: AppNotification): void {
