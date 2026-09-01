@@ -103,6 +103,68 @@
   />
 </div>
 
+<!-- Asignaciones de vista ("ver como") — solo admin -->
+@if (canEdit()) {
+  <section class="mt-6 bg-card border border-border rounded-xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-border/60">
+      <h2 class="text-sm font-semibold text-foreground">Asignaciones de vista ("Ver como")</h2>
+      <p class="text-xs text-muted-foreground mt-0.5">
+        Permite que un usuario no administrador vea las notificaciones y tareas de otro usuario (solo lectura).
+        Los administradores pueden ver a todos sin necesidad de asignación.
+      </p>
+    </div>
+    <div class="p-4 flex flex-col gap-3">
+      <div class="flex flex-wrap items-end gap-3">
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-muted-foreground">Usuario que ve</span>
+          <select [(ngModel)]="asignacionViewer"
+            class="h-9 px-2 rounded-lg border border-border text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-48">
+            <option value="">Seleccionar…</option>
+            @for (u of rows(); track u.id) {
+              <option [value]="u.id">{{ u.nombre }}</option>
+            }
+          </select>
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-muted-foreground">Puede ver a</span>
+          <select [(ngModel)]="asignacionTarget"
+            class="h-9 px-2 rounded-lg border border-border text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-48">
+            <option value="">Seleccionar…</option>
+            @for (u of rows(); track u.id) {
+              <option [value]="u.id">{{ u.nombre }}</option>
+            }
+          </select>
+        </label>
+        <button type="button" (click)="addAsignacion()"
+          [disabled]="!asignacionViewer || !asignacionTarget || asignacionViewer === asignacionTarget || asignacionSaving()"
+          class="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50">
+          {{ asignacionSaving() ? 'Guardando…' : 'Añadir' }}
+        </button>
+      </div>
+
+      @if (asignaciones().length === 0) {
+        <p class="text-xs text-muted-foreground">No hay asignaciones creadas.</p>
+      } @else {
+        <ul class="divide-y divide-border/40 border border-border/60 rounded-lg">
+          @for (a of asignaciones(); track a.id) {
+            <li class="px-3 py-2 flex items-center justify-between text-sm">
+              <span>
+                <strong class="text-foreground">{{ a.viewerNombre ?? a.viewerId }}</strong>
+                <span class="text-muted-foreground"> puede ver a </span>
+                <strong class="text-foreground">{{ a.targetNombre ?? a.targetId }}</strong>
+              </span>
+              <button type="button" (click)="removeAsignacion(a)" title="Eliminar asignación"
+                class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-danger-fg hover:bg-accent/40 transition-colors">
+                <ui-icon name="trash" [size]="13" />
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  </section>
+}
+
 <p-dialog
   [visible]="modalOpen()"
   (visibleChange)="$event ? null : closeModal()"

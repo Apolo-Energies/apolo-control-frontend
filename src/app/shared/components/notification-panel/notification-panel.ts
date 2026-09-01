@@ -79,4 +79,9 @@ export class NotificationPanel implements AfterViewInit, OnDestroy {
     const nav = n.actions?.find(a => a.actionType === 'NAVIGATE');
     if (nav) this.inbox.navigateTo(nav.payload);
   }
+
+  protected onViewAsChange(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.inbox.setViewingAs(value || null);
+  }
 }

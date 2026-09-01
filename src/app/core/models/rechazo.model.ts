@@ -24,6 +24,16 @@ export const RECHAZO_RESULTADO_LABEL: Record<RechazoResultado, string> = {
 export const RECHAZO_ESTADO_VALUES: RechazoEstado[] = ['rechazado', 'incidencia', 'activo'];
 export const RECHAZO_RESULTADO_VALUES: RechazoResultado[] = ['tramitado_de_nuevo', 'resuelta', 'ko', 'gestionado'];
 
+export type RechazoPlataforma = 'ENERGY_EXPERT' | 'RENOVAE' | 'OTRO';
+
+export const RECHAZO_PLATAFORMA_LABEL: Record<RechazoPlataforma, string> = {
+  ENERGY_EXPERT: 'Energy Expert',
+  RENOVAE: 'Renovae',
+  OTRO: 'Otro',
+};
+
+export const RECHAZO_PLATAFORMA_VALUES: RechazoPlataforma[] = ['ENERGY_EXPERT', 'RENOVAE', 'OTRO'];
+
 export interface RechazoComentario {
   id: string;
   texto: string;
@@ -53,6 +63,7 @@ export interface Rechazo {
   nombre: string;
   motivo: string | null;
   documentacionNecesaria: string | null;
+  numeroTicket: string | null;
   diasRecordatorio: number;
   fechaRecordatorio: string | null;
   ultimoRecordatorio: string | null;
@@ -71,6 +82,8 @@ export interface RechazoPayload {
   delegacionId?: string | null;
   motivo?: string | null;
   documentacionNecesaria?: string | null;
+  plataforma?: string | null;
+  numeroTicket?: string | null;
   diasRecordatorio?: number | null;
   fechaRecordatorio?: string | null;
 }

@@ -10,6 +10,12 @@ import { NotificationService } from './notification.service';
 
 const PAGE_SIZE = 20;
 
+export interface UsuarioVisible {
+  id: string;
+  nombre: string;
+  rol: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class NotificationInboxService {
   private readonly http = inject(HttpClient);
@@ -25,6 +31,10 @@ export class NotificationInboxService {
   readonly loading = signal(false);
   readonly hasMore = signal(true);
 
+  // "Ver como": usuarios visibles y usuario seleccionado (null = yo mismo)
+  readonly visibles = signal<UsuarioVisible[]>([]);
+  readonly viewingAs = signal<UsuarioVisible | null>(null);
+
   private currentPage = 0;
   private eventSource: EventSource | null = null;
 
@@ -35,12 +45,46 @@ export class NotificationInboxService {
         this.refresh();
         this.connectSSE();
         this.checkOverdueTasks(user.id);
+        this.loadVisibles();
       } else {
         this.disconnect();
         this.notifications.set([]);
         this.unreadCount.set(0);
+        this.visibles.set([]);
+        this.viewingAs.set(null);
       }
     });
+
+    // El navegador limita a 6 conexiones simultáneas por servidor (HTTP/1.1) y cada
+    // pestaña mantiene un stream SSE abierto: con varias pestañas se agota el límite
+    // y cualquier petición nueva queda colgada. Solo la pestaña visible mantiene SSE.
+    document.addEventListener('visibilitychange', () => {
+      if (!this.auth.user()) return;
+      if (document.hidden) {
+        this.disconnect();
+      } else {
+        this.connectSSE();
+        this.refresh();
+      }
+    });
+  }
+
+  setViewingAs(userId: string | null): void {
+    const target = userId ? this.visibles().find(u => u.id === userId) ?? null : null;
+    this.viewingAs.set(target);
+    this.refresh();
+  }
+
+  private loadVisibles(): void {
+    this.http.get<UsuarioVisible[]>(`${environment.apiUrl}/asignaciones/visibles`).subscribe({
+      next: list => this.visibles.set(list),
+      error: () => this.visibles.set([]),
+    });
+  }
+
+  private asUserParam(): string {
+    const v = this.viewingAs();
+    return v ? `&asUser=${v.id}` : '';
   }
 
   /** Resets list and reloads from page 0. Called on login and on panel open. */
@@ -59,6 +103,7 @@ export class NotificationInboxService {
   }
 
   markRead(id: string): void {
+    if (this.viewingAs()) return;   // vista de otro usuario: solo lectura
     const n = this.notifications().find(n => n.id === id);
     if (!n || n.read) return;
     this.http.post(`${this.baseUrl}/${id}/read`, {}).subscribe({
@@ -71,6 +116,7 @@ export class NotificationInboxService {
   }
 
   markAllRead(): void {
+    if (this.viewingAs()) return;   // vista de otro usuario: solo lectura
     this.http.post(`${this.baseUrl}/read-all`, {}).subscribe({
       next: () => {
         this.notifications.update(list => list.map(n => ({ ...n, read: true })));
@@ -119,7 +165,7 @@ export class NotificationInboxService {
   private loadPage(): void {
     this.loading.set(true);
     this.http
-      .get<Page<AppNotification>>(`${this.baseUrl}?page=${this.currentPage}&size=${PAGE_SIZE}`)
+      .get<Page<AppNotification>>(`${this.baseUrl}?page=${this.currentPage}&size=${PAGE_SIZE}${this.asUserParam()}`)
       .subscribe({
         next: page => {
           this.notifications.update(list => [...list, ...page.content]);
@@ -132,7 +178,9 @@ export class NotificationInboxService {
   }
 
   private loadUnreadCount(): void {
-    this.http.get<{ count: number }>(`${this.baseUrl}/unread-count`).subscribe({
+    const v = this.viewingAs();
+    const url = v ? `${this.baseUrl}/unread-count?asUser=${v.id}` : `${this.baseUrl}/unread-count`;
+    this.http.get<{ count: number }>(url).subscribe({
       next: res => this.unreadCount.set(res.count),
       error: () => {},
     });

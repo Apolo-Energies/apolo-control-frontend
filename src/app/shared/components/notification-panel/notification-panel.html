@@ -13,7 +13,7 @@
         </span>
       }
     </div>
-    @if (inbox.unreadCount() > 0) {
+    @if (inbox.unreadCount() > 0 && !inbox.viewingAs()) {
       <button
         type="button"
         class="text-xs text-primary hover:underline"
@@ -23,6 +23,29 @@
       </button>
     }
   </div>
+
+  <!-- Ver como -->
+  @if (inbox.visibles().length > 0) {
+    <div class="px-4 py-2 border-b border-border/60 shrink-0 flex items-center gap-2"
+         [class.bg-warning-soft]="inbox.viewingAs()">
+      <ui-icon name="users" [size]="13" class="text-muted-foreground shrink-0" />
+      <select
+        class="flex-1 h-7 px-1 rounded-md border border-border text-xs bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+        [value]="inbox.viewingAs()?.id ?? ''"
+        (change)="onViewAsChange($event)"
+        aria-label="Ver notificaciones como otro usuario">
+        <option value="">Mis notificaciones</option>
+        @for (u of inbox.visibles(); track u.id) {
+          <option [value]="u.id">Ver como: {{ u.nombre }}</option>
+        }
+      </select>
+    </div>
+    @if (inbox.viewingAs(); as v) {
+      <p class="px-4 py-1.5 text-[11px] text-warning-fg bg-warning-soft border-b border-border/60 shrink-0">
+        Viendo las notificaciones de <strong>{{ v.nombre }}</strong> (solo lectura)
+      </p>
+    }
+  }
 
   <!-- Scroll container -->
   <div #scrollContainer class="overflow-y-auto flex-1 min-h-0">

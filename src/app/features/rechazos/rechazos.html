@@ -61,6 +61,7 @@
             <th class="px-4 py-3 text-left font-semibold">Nombre</th>
             <th class="px-4 py-3 text-left font-semibold">Cliente</th>
             <th class="px-4 py-3 text-left font-semibold">Delegación</th>
+            <th class="px-4 py-3 text-left font-semibold">Ticket</th>
             <th class="px-4 py-3 text-left font-semibold">Estado</th>
             <th class="px-4 py-3 text-left font-semibold">Resultado</th>
             <th class="px-4 py-3 text-left font-semibold">Recordatorio</th>
@@ -71,7 +72,7 @@
         <tbody class="divide-y divide-border/40">
           @if (rows().length === 0) {
             <tr>
-              <td colspan="8" class="px-4 py-10 text-center text-muted-foreground text-sm">
+              <td colspan="9" class="px-4 py-10 text-center text-muted-foreground text-sm">
                 No se encontraron registros.
               </td>
             </tr>
@@ -89,6 +90,16 @@
                 @if (row.clienteNif) { <p class="text-xs text-muted-foreground font-mono">{{ row.clienteNif }}</p> }
               </td>
               <td class="px-4 py-3 text-foreground/80 text-xs">{{ text(row.delegacionNombre) }}</td>
+              <td class="px-4 py-3 text-xs">
+                @if (row.numeroTicket || row.plataforma) {
+                  <p class="font-mono text-foreground/90">{{ text(row.numeroTicket) }}</p>
+                  @if (row.plataforma) {
+                    <p class="text-muted-foreground">{{ plataformaLabel[row.plataforma] }}</p>
+                  }
+                } @else {
+                  <span class="text-muted-foreground">—</span>
+                }
+              </td>
               <td class="px-4 py-3">
                 <app-status-badge [tone]="estadoTone(row.estado)">{{ estadoLabel(row.estado) }}</app-status-badge>
               </td>
@@ -280,6 +291,25 @@
       <label class="block text-xs font-medium text-muted-foreground mb-1">Documentación necesaria</label>
       <textarea formControlName="documentacionNecesaria" rows="2" placeholder="Lista de documentos requeridos…"
         class="w-full px-3 py-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none disabled:opacity-60"></textarea>
+    </div>
+
+    <!-- Ticket / plataforma -->
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Plataforma</label>
+        <select formControlName="plataforma"
+          class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60">
+          <option value="">Sin plataforma</option>
+          @for (p of plataformaValues; track p) {
+            <option [value]="p">{{ plataformaLabel[p] }}</option>
+          }
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">Nº de ticket</label>
+        <input formControlName="numeroTicket" type="text" placeholder="Ej: TK-12345"
+          class="w-full h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60" />
+      </div>
     </div>
 
     <!-- Recordatorio -->

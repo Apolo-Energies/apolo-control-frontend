@@ -8,7 +8,9 @@ import { PageHeader } from '../../shared/components/page-header/page-header';
 import { StatusBadge, StatusTone } from '../../shared/components/status-badge/status-badge';
 import { Pagination } from '../../shared/components/pagination/pagination';
 import { Icon } from '../../shared/icons/icon';
+import { FormsModule } from '@angular/forms';
 import { UserService } from '../../core/services/user.service';
+import { AsignacionService, Asignacion } from '../../core/services/asignacion.service';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { AuthService } from '../../core/auth/auth.service';
@@ -37,6 +39,7 @@ const ROLE_TONE: Record<UserRole, StatusTone> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule,
+    FormsModule,
     PageHeader,
     StatusBadge,
     Pagination,
@@ -86,6 +89,48 @@ export class Users {
 
   constructor() {
     this.reload(0);
+    if (this.auth.hasRole('admin')) {
+      this.reloadAsignaciones();
+    }
+  }
+
+  // ── Asignaciones de vista ("ver como") ────────────────────────────────────
+  private readonly asignacionService = inject(AsignacionService);
+  protected readonly asignaciones = signal<Asignacion[]>([]);
+  protected readonly asignacionSaving = signal(false);
+  protected asignacionViewer = '';
+  protected asignacionTarget = '';
+
+  protected reloadAsignaciones(): void {
+    this.asignacionService.list().subscribe({
+      next: (list) => this.asignaciones.set(list),
+      error: () => {},
+    });
+  }
+
+  protected addAsignacion(): void {
+    if (!this.asignacionViewer || !this.asignacionTarget || this.asignacionSaving()) return;
+    this.asignacionSaving.set(true);
+    this.asignacionService.create(this.asignacionViewer, this.asignacionTarget).subscribe({
+      next: () => {
+        this.asignacionSaving.set(false);
+        this.asignacionViewer = '';
+        this.asignacionTarget = '';
+        this.notify.success('Asignación creada');
+        this.reloadAsignaciones();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.asignacionSaving.set(false);
+        this.notify.error(extractMessage(err));
+      },
+    });
+  }
+
+  protected removeAsignacion(a: Asignacion): void {
+    this.asignacionService.delete(a.id).subscribe({
+      next: () => { this.notify.success('Asignación eliminada'); this.reloadAsignaciones(); },
+      error: (err: HttpErrorResponse) => this.notify.error(extractMessage(err)),
+    });
   }
 
   protected reload(page: number): void {

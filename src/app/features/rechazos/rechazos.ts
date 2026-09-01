@@ -22,6 +22,7 @@ import {
   Rechazo, RechazoEstado, RechazoResultado,
   RECHAZO_ESTADO_LABEL, RECHAZO_RESULTADO_LABEL,
   RECHAZO_ESTADO_VALUES, RECHAZO_RESULTADO_VALUES,
+  RECHAZO_PLATAFORMA_LABEL, RECHAZO_PLATAFORMA_VALUES,
 } from '../../core/models/rechazo.model';
 import { Contract, ContractStatus, CONTRACT_STATUS_LABEL, Page } from '../../core/models';
 import { formatDate, safeText } from '../../shared/utils/format';
@@ -76,6 +77,8 @@ export class Rechazos implements OnDestroy {
   // ── Constants ─────────────────────────────────────────────────────────────
   protected readonly estadoValues = RECHAZO_ESTADO_VALUES;
   protected readonly resultadoValues = RECHAZO_RESULTADO_VALUES;
+  protected readonly plataformaValues = RECHAZO_PLATAFORMA_VALUES;
+  protected readonly plataformaLabel = RECHAZO_PLATAFORMA_LABEL;
 
   protected readonly rows = computed(() => this.result()?.content ?? []);
   protected readonly totalElements = computed(() => this.result()?.totalElements ?? 0);
@@ -103,6 +106,8 @@ export class Rechazos implements OnDestroy {
     documentacionNecesaria: [''],
     clienteId: [''],
     delegacionId: [''],
+    plataforma: [''],
+    numeroTicket: [''],
     diasRecordatorio: [3, [Validators.min(1)]],
     fechaRecordatorio: [''],
     contratoId: [''],
@@ -197,6 +202,8 @@ export class Rechazos implements OnDestroy {
       documentacionNecesaria: r.documentacionNecesaria ?? '',
       clienteId: r.clienteId ?? '',
       delegacionId: r.delegacionId ?? '',
+      plataforma: r.plataforma ?? '',
+      numeroTicket: r.numeroTicket ?? '',
       diasRecordatorio: r.diasRecordatorio,
       fechaRecordatorio: r.fechaRecordatorio ?? '',
       contratoId: r.contratoId ?? '',
@@ -235,6 +242,8 @@ export class Rechazos implements OnDestroy {
       delegacionId: v.delegacionId || null,
       motivo: v.motivo || null,
       documentacionNecesaria: v.documentacionNecesaria || null,
+      plataforma: v.plataforma || null,
+      numeroTicket: v.numeroTicket || null,
       diasRecordatorio: v.diasRecordatorio ?? 3,
       fechaRecordatorio: v.fechaRecordatorio || null,
     };
