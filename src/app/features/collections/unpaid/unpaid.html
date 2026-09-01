@@ -154,8 +154,28 @@
             </th>
             <th class="px-4 py-3 text-left font-semibold">Delegación</th>
             <th class="px-4 py-3 text-left font-semibold">Factura</th>
-            <th class="px-4 py-3 text-right font-semibold">Importe</th>
-            <th class="px-4 py-3 text-right font-semibold">Pendiente</th>
+            <th class="px-4 py-3 text-right font-semibold cursor-pointer select-none hover:text-foreground"
+                (click)="setSort('importe')">
+              <span class="inline-flex items-center justify-end gap-1">
+                Importe
+                @if (sortField() === 'importe') {
+                  <ui-icon [name]="sortDir() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="12" class="text-primary" />
+                } @else {
+                  <ui-icon name="chevron-down" [size]="12" class="opacity-30" />
+                }
+              </span>
+            </th>
+            <th class="px-4 py-3 text-right font-semibold cursor-pointer select-none hover:text-foreground"
+                (click)="setSort('importePendiente')">
+              <span class="inline-flex items-center justify-end gap-1">
+                Pendiente
+                @if (sortField() === 'importePendiente') {
+                  <ui-icon [name]="sortDir() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="12" class="text-primary" />
+                } @else {
+                  <ui-icon name="chevron-down" [size]="12" class="opacity-30" />
+                }
+              </span>
+            </th>
             <th class="px-4 py-3 text-left font-semibold">Estado</th>
             <th class="px-4 py-3 text-left font-semibold min-w-[140px]">Contacto</th>
             <th class="px-4 py-3 text-left font-semibold cursor-pointer select-none hover:text-foreground"
