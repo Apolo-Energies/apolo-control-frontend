@@ -68,11 +68,11 @@
     </span>
   </button>
 
-  <!-- Rango fecha vencimiento -->
-  <input type="date" [ngModel]="startDate" (ngModelChange)="startDate = $event; applyFilters()"
+  <!-- Rango fecha cuotas (filtro client-side) -->
+  <input type="date" [ngModel]="startDate()" (ngModelChange)="startDate.set($event)"
     class="h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
   <span class="h-9 flex items-center text-muted-foreground text-sm">–</span>
-  <input type="date" [ngModel]="endDate" (ngModelChange)="endDate = $event; applyFilters()"
+  <input type="date" [ngModel]="endDate()" (ngModelChange)="endDate.set($event)"
     class="h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
 
   <button type="button" (click)="clearFilters()"
@@ -167,7 +167,11 @@
             <tr class="border-b border-border bg-muted/20">
               <td colspan="8" class="px-6 pb-4 pt-2">
                 <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                  Plan de pagos — {{ r.pagosFraccionados.length }} cuotas
+                  Plan de pagos — {{ filteredPagos(r).length }}
+                  @if (startDate() || endDate()) {
+                    <span class="font-normal text-muted-foreground"> de {{ r.pagosFraccionados.length }}</span>
+                  }
+                  cuotas
                 </p>
                 <div class="rounded-xl border border-border overflow-hidden">
                   <table class="w-full text-sm">
@@ -181,7 +185,7 @@
                       </tr>
                     </thead>
                     <tbody>
-                      @for (p of r.pagosFraccionados; track p.numero) {
+                      @for (p of filteredPagos(r); track p.numero) {
                         @let status = pagoStatus(p);
                         @let dias   = diasRestantes(p);
                         <tr class="border-t border-border text-xs transition-colors"

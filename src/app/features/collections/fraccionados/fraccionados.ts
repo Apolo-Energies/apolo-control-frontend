@@ -43,39 +43,54 @@ export class Fraccionados {
   protected readonly page       = signal(0);
   protected readonly pageSize   = PAGE_SIZE;
 
-  // ── Filtros (se envían al backend) ───────────────────────────────────────────
+  // ── Filtros backend ───────────────────────────────────────────────────────────
   protected q            = '';
   protected estadoFilter = '';
   protected soloVencidas = false;
-  protected startDate    = '';
-  protected endDate      = '';
+
+  // ── Filtro de fecha: actúa sobre las fechas de cuotas (client-side) ──────────
+  protected readonly startDate = signal('');
+  protected readonly endDate   = signal('');
 
   // ── Expand ───────────────────────────────────────────────────────────────────
   protected readonly expandedId = signal<string | null>(null);
 
-  // ── Filas de la página actual (excluye los que no tienen cuotas) ─────────────
+  // ── Cuotas filtradas por rango de fecha ──────────────────────────────────────
+  protected filteredPagos(r: GestionImpago): PagoFraccionadoEntry[] {
+    const start = this.startDate();
+    const end   = this.endDate();
+    if (!start && !end) return r.pagosFraccionados;
+    return r.pagosFraccionados.filter(p => {
+      if (!p.fecha) return false;
+      if (start && p.fecha < start) return false;
+      if (end   && p.fecha > end)   return false;
+      return true;
+    });
+  }
+
+  // ── Filas visibles: excluye registros sin cuotas (o sin cuotas en el rango) ──
   protected readonly rows = computed(() =>
-    (this.result()?.content ?? []).filter(r => r.pagosFraccionados.length > 0));
+    (this.result()?.content ?? []).filter(r => this.filteredPagos(r).length > 0));
 
   protected readonly totalElements = computed(() => this.result()?.totalElements ?? 0);
   protected readonly totalPages    = computed(() => this.result()?.totalPages ?? 0);
 
-  // ── KPIs — calculados sobre las filas de la página actual ────────────────────
+  // ── KPIs — sobre cuotas filtradas de la página actual ────────────────────────
   protected readonly cuotasVencidas = computed(() => {
     const hoy = this.today();
     return this.rows().reduce((s, r) =>
-      s + r.pagosFraccionados.filter(p => !p.cobrado && !p.descartado && p.fecha && p.fecha <= hoy).length, 0);
+      s + this.filteredPagos(r).filter(p => !p.cobrado && !p.descartado && p.fecha && p.fecha <= hoy).length, 0);
   });
   protected readonly importeVencido = computed(() => {
     const hoy = this.today();
     return this.rows().reduce((s, r) =>
-      s + r.pagosFraccionados
+      s + this.filteredPagos(r)
         .filter(p => !p.cobrado && !p.descartado && p.fecha && p.fecha <= hoy)
         .reduce((ps, p) => ps + (p.importe ?? 0), 0), 0);
   });
   protected readonly importeCobrado = computed(() =>
     this.rows().reduce((s, r) =>
-      s + r.pagosFraccionados.filter(p => p.cobrado).reduce((ps, p) => ps + (p.importe ?? 0), 0), 0));
+      s + this.filteredPagos(r).filter(p => p.cobrado).reduce((ps, p) => ps + (p.importe ?? 0), 0), 0));
 
   protected readonly estadoValues = ESTADO_GESTION_IMPAGO_VALUES;
   protected readonly estadoLabel  = ESTADO_GESTION_IMPAGO_LABEL;
@@ -89,11 +104,10 @@ export class Fraccionados {
 
     const filter = {
       pagoFraccionado: true as const,
-      q:              this.q            || undefined,
-      estado:         (this.estadoFilter || undefined) as EstadoGestionImpago | undefined,
-      startDate:      this.startDate    || undefined,
-      endDate:        this.endDate      || undefined,
-      soloVencidos:   this.soloVencidas || undefined,
+      q:            this.q            || undefined,
+      estado:       (this.estadoFilter || undefined) as EstadoGestionImpago | undefined,
+      soloVencidos: this.soloVencidas || undefined,
+      // startDate/endDate filtran cuotas client-side, no se envían al backend
     };
 
     this.service.list(filter, { page: p, size: PAGE_SIZE, sort: 'fechaDevolucion,desc' }).subscribe({
@@ -113,8 +127,8 @@ export class Fraccionados {
     this.q            = '';
     this.estadoFilter = '';
     this.soloVencidas = false;
-    this.startDate    = '';
-    this.endDate      = '';
+    this.startDate.set('');
+    this.endDate.set('');
     this.reload(0);
   }
 
@@ -174,7 +188,7 @@ export class Fraccionados {
 
   protected cuotasSummary(r: GestionImpago): { total: number; cobradas: number; vencidas: number; descartadas: number } {
     const hoy   = this.today();
-    const pagos = r.pagosFraccionados;
+    const pagos = this.filteredPagos(r);
     return {
       total:       pagos.length,
       cobradas:    pagos.filter(p => p.cobrado).length,
