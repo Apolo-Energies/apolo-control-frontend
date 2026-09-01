@@ -87,6 +87,10 @@ export class GestionEstadisticasPage {
     return this.DONUT_COLORS[i % this.DONUT_COLORS.length];
   }
 
+  protected formatEur(v: number): string {
+    return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
+  }
+
   protected formatHoras(h: number | null | undefined): string {
     if (h == null) return '—';
     if (h < 24) return `${h.toFixed(1)} h`;

@@ -85,6 +85,7 @@ export interface PagoFraccionadoEntry {
   importe: number;
   fecha: string;
   cobrado: boolean;
+  descartado?: boolean;
 }
 
 export interface PagoHistorialEntry {
@@ -358,6 +359,12 @@ export interface GestionEstadisticas {
   count61a180: number;
   count181a360: number;
   countMas360: number;
+  importe0a15: number;
+  importe16a30: number;
+  importe31a60: number;
+  importe61a180: number;
+  importe181a360: number;
+  importeMas360: number;
   // Distribución de recuperación (pagados)
   countRecup0a7: number;
   countRecup8a30: number;

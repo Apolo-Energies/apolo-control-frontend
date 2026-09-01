@@ -91,12 +91,12 @@
       <p class="text-xs text-muted-foreground mb-4">Días desde el vencimiento (o creación si no hay fecha de vencimiento) · {{ totalNoPagado }} impagos con deuda pendiente</p>
       <div class="space-y-3">
         @for (bucket of [
-          { label: '0 – 15 días',    count: d.count0a15,    color: '#10b981' },
-          { label: '16 – 30 días',   count: d.count16a30,   color: '#3b82f6' },
-          { label: '31 – 60 días',   count: d.count31a60,   color: '#f59e0b' },
-          { label: '61 – 180 días',  count: d.count61a180,  color: '#f97316' },
-          { label: '181 – 360 días', count: d.count181a360, color: '#ef4444' },
-          { label: 'Más de 360 días',count: d.countMas360,  color: '#7c3aed' }
+          { label: '0 – 15 días',    count: d.count0a15,    importe: d.importe0a15,    color: '#10b981' },
+          { label: '16 – 30 días',   count: d.count16a30,   importe: d.importe16a30,   color: '#3b82f6' },
+          { label: '31 – 60 días',   count: d.count31a60,   importe: d.importe31a60,   color: '#f59e0b' },
+          { label: '61 – 180 días',  count: d.count61a180,  importe: d.importe61a180,  color: '#f97316' },
+          { label: '181 – 360 días', count: d.count181a360, importe: d.importe181a360, color: '#ef4444' },
+          { label: 'Más de 360 días',count: d.countMas360,  importe: d.importeMas360,  color: '#7c3aed' }
         ]; track bucket.label) {
           <div class="flex items-center gap-3">
             <span class="w-28 text-xs text-muted-foreground shrink-0">{{ bucket.label }}</span>
@@ -108,6 +108,9 @@
             <span class="font-mono text-xs font-semibold text-foreground w-8 text-right shrink-0">{{ bucket.count }}</span>
             <span class="font-mono text-xs text-muted-foreground w-12 text-right shrink-0">
               {{ totalNoPagado > 0 ? ((bucket.count / totalNoPagado) * 100).toFixed(1) : '0.0' }}%
+            </span>
+            <span class="font-mono text-xs text-muted-foreground w-24 text-right shrink-0">
+              {{ formatEur(bucket.importe) }}
             </span>
           </div>
         }

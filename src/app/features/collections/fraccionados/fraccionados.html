@@ -1,0 +1,288 @@
+<app-page-header title="Pagos Fraccionados" subtitle="Seguimiento de todos los planes de pago por cuotas">
+  <button type="button" (click)="reload(0)"
+    class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm hover:bg-accent/40 transition-colors">
+    <ui-icon name="refresh-cw" [size]="14" />
+    Actualizar
+  </button>
+</app-page-header>
+
+<!-- KPIs -->
+<div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+  <div class="bg-card border border-border rounded-2xl p-5 text-center">
+    <p class="text-sm text-muted-foreground">Impagos con plan</p>
+    <p class="text-3xl font-bold text-foreground mt-1">{{ totalElements() }}</p>
+  </div>
+  <div class="bg-card border border-border rounded-2xl p-5 text-center">
+    <p class="text-sm text-muted-foreground">Importe total</p>
+    <p class="text-xl font-bold text-foreground mt-1">{{ formatEur(totales()?.totalImporte ?? 0) }}</p>
+  </div>
+  <div class="rounded-2xl border p-5 text-center transition-colors"
+    [class]="cuotasVencidas() > 0 ? 'bg-danger-soft border-danger/20' : 'bg-card border-border'">
+    <p class="text-sm" [class]="cuotasVencidas() > 0 ? 'text-danger-fg font-semibold' : 'text-muted-foreground'">
+      Cuotas vencidas
+    </p>
+    <p class="text-3xl font-bold mt-1" [class]="cuotasVencidas() > 0 ? 'text-danger-fg' : 'text-foreground'">
+      {{ cuotasVencidas() }}
+    </p>
+  </div>
+  <div class="rounded-2xl border p-5 text-center transition-colors"
+    [class]="importeVencido() > 0 ? 'bg-danger-soft border-danger/20' : 'bg-card border-border'">
+    <p class="text-sm" [class]="importeVencido() > 0 ? 'text-danger-fg font-semibold' : 'text-muted-foreground'">
+      Importe vencido
+    </p>
+    <p class="text-xl font-bold mt-1" [class]="importeVencido() > 0 ? 'text-danger-fg' : 'text-foreground'">
+      {{ formatEur(importeVencido()) }}
+    </p>
+  </div>
+  <div class="bg-success-soft border border-success/20 rounded-2xl p-5 text-center">
+    <p class="text-sm text-success-fg">Importe cobrado</p>
+    <p class="text-xl font-bold text-success-fg mt-1">{{ formatEur(importeCobrado()) }}</p>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="flex flex-wrap gap-2 mb-5">
+  <!-- Búsqueda -->
+  <input type="text" [(ngModel)]="q" (ngModelChange)="applyFilters()"
+    placeholder="Buscar por cliente, NIF o factura…"
+    class="h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-56" />
+
+  <!-- Estado -->
+  <select [(ngModel)]="estadoFilter" (ngModelChange)="applyFilters()"
+    class="h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+    <option value="">Todos los estados</option>
+    @for (e of estadoValues; track e) {
+      <option [value]="e">{{ estadoLabel[e] }}</option>
+    }
+  </select>
+
+  <!-- Solo vencidas -->
+  <button type="button" (click)="soloVencidas = !soloVencidas; applyFilters()"
+    class="h-9 px-3 rounded-lg border text-sm font-medium transition-colors"
+    [class]="soloVencidas
+      ? 'bg-danger-soft border-danger/40 text-danger-fg'
+      : 'border-border text-muted-foreground hover:bg-accent/40'">
+    <span class="flex items-center gap-1.5">
+      <ui-icon name="alert-triangle" [size]="13" />
+      Solo vencidas
+    </span>
+  </button>
+
+  <!-- Rango fecha vencimiento -->
+  <input type="date" [ngModel]="startDate" (ngModelChange)="startDate = $event; applyFilters()"
+    class="h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+  <span class="h-9 flex items-center text-muted-foreground text-sm">–</span>
+  <input type="date" [ngModel]="endDate" (ngModelChange)="endDate = $event; applyFilters()"
+    class="h-9 px-3 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+
+  <button type="button" (click)="clearFilters()"
+    class="h-9 px-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
+    Limpiar
+  </button>
+</div>
+
+@if (loading()) {
+  <app-table-skeleton [cols]="5" [rows]="8" />
+} @else if (error(); as msg) {
+  <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm">{{ msg }}</div>
+} @else if (rows().length === 0) {
+  <app-empty-state icon="layers" title="Sin resultados"
+    description="No hay impagos con plan de pago fraccionado que coincidan con los filtros." />
+} @else {
+
+  <!-- Tabla maestra -->
+  <div class="rounded-2xl border border-border overflow-hidden mb-4">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-border bg-muted/40 text-muted-foreground text-xs uppercase tracking-wide">
+          <th class="w-8 px-3 py-3"></th>
+          <th class="px-4 py-3 text-left">Cliente</th>
+          <th class="px-4 py-3 text-left hidden md:table-cell">Factura</th>
+          <th class="px-4 py-3 text-left hidden lg:table-cell">Estado</th>
+          <th class="px-4 py-3 text-right hidden sm:table-cell">Importe</th>
+          <th class="px-4 py-3 text-right hidden sm:table-cell">Pendiente</th>
+          <th class="px-4 py-3 text-center">Cuotas</th>
+          <th class="px-4 py-3 w-10"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of rows(); track r.id) {
+          @let summary  = cuotasSummary(r);
+          @let expanded = expandedId() === r.id;
+          @let saving   = savingId() === r.id;
+
+          <!-- Fila principal -->
+          <tr class="border-b border-border cursor-pointer transition-colors"
+            [class]="expanded ? 'bg-primary/5' : 'hover:bg-accent/30'"
+            (click)="toggleExpand(r.id)">
+            <td class="px-3 py-3 text-muted-foreground">
+              <ui-icon [name]="expanded ? 'chevron-down' : 'chevron-right'" [size]="14" />
+            </td>
+            <td class="px-4 py-3">
+              <p class="font-medium text-foreground">{{ r.clienteNombre ?? r.nombreCliente ?? r.clienteId }}</p>
+              @if (r.clienteNif) {
+                <p class="text-xs text-muted-foreground font-mono">{{ r.clienteNif }}</p>
+              }
+            </td>
+            <td class="px-4 py-3 hidden md:table-cell">
+              <span class="font-mono text-xs text-muted-foreground">{{ r.numeroFactura ?? '—' }}</span>
+            </td>
+            <td class="px-4 py-3 hidden lg:table-cell">
+              <span class="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                {{ estadoLabel[r.estado] }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-right hidden sm:table-cell">
+              <span class="font-mono text-xs text-foreground">{{ formatEur(r.importe) }}</span>
+            </td>
+            <td class="px-4 py-3 text-right hidden sm:table-cell">
+              <span class="font-semibold text-foreground">{{ formatEur(r.importePendiente) }}</span>
+            </td>
+            <td class="px-4 py-3 text-center">
+              @if (summary.vencidas > 0) {
+                <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-danger-soft text-danger-fg">
+                  <ui-icon name="alert-triangle" [size]="11" />
+                  {{ summary.vencidas }} vencida{{ summary.vencidas > 1 ? 's' : '' }}
+                </span>
+              } @else if (summary.cobradas >= summary.total - summary.descartadas && summary.total > 0) {
+                <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-success-soft text-success-fg">
+                  Al día
+                </span>
+              } @else {
+                <span class="text-xs text-muted-foreground">
+                  {{ summary.cobradas }}/{{ summary.total }} cobradas
+                </span>
+              }
+            </td>
+            <td class="px-4 py-3" (click)="$event.stopPropagation()">
+              <a [routerLink]="['/collections/unpaid', r.id]"
+                class="h-7 w-7 inline-flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
+                <ui-icon name="eye" [size]="13" />
+              </a>
+            </td>
+          </tr>
+
+          <!-- Fila expandida — sub-tabla de cuotas -->
+          @if (expanded) {
+            <tr class="border-b border-border bg-muted/20">
+              <td colspan="8" class="px-6 pb-4 pt-2">
+                <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                  Plan de pagos — {{ r.pagosFraccionados.length }} cuotas
+                </p>
+                <div class="rounded-xl border border-border overflow-hidden">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="bg-muted/50 text-muted-foreground text-xs uppercase tracking-wide">
+                        <th class="px-3 py-2 text-center w-10">#</th>
+                        <th class="px-3 py-2 text-left">Fecha</th>
+                        <th class="px-3 py-2 text-right">Importe</th>
+                        <th class="px-3 py-2 text-center">Estado</th>
+                        <th class="px-3 py-2 text-right">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (p of r.pagosFraccionados; track p.numero) {
+                        @let status = pagoStatus(p);
+                        @let dias   = diasRestantes(p);
+                        <tr class="border-t border-border text-xs transition-colors"
+                          [class]="status === 'vencido'    ? 'bg-danger-soft/30' :
+                                   status === 'hoy'        ? 'bg-warning-soft/30' :
+                                   status === 'cobrado'    ? 'bg-success-soft/10' :
+                                   status === 'descartado' ? 'opacity-50' : ''">
+                          <td class="px-3 py-2.5 text-center font-mono text-muted-foreground">{{ p.numero }}</td>
+                          <td class="px-3 py-2.5">
+                            <span class="font-medium text-foreground">{{ fmt(p.fecha) }}</span>
+                            @if (status === 'vencido') {
+                              <span class="ml-1.5 text-danger-fg font-semibold">(hace {{ -dias }}d)</span>
+                            } @else if (status === 'hoy') {
+                              <span class="ml-1.5 text-warning-fg font-semibold">(hoy)</span>
+                            } @else if (status === 'pendiente') {
+                              <span class="ml-1.5 text-muted-foreground">(en {{ dias }}d)</span>
+                            }
+                          </td>
+                          <td class="px-3 py-2.5 text-right font-semibold text-foreground">
+                            {{ formatEur(p.importe) }}
+                          </td>
+                          <td class="px-3 py-2.5 text-center">
+                            @switch (status) {
+                              @case ('cobrado') {
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-soft text-success-fg font-semibold text-xs">
+                                  <ui-icon name="check-circle" [size]="11" />
+                                  Cobrado
+                                </span>
+                              }
+                              @case ('vencido') {
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger-soft text-danger-fg font-semibold text-xs">
+                                  <ui-icon name="alert-triangle" [size]="11" />
+                                  Vencido
+                                </span>
+                              }
+                              @case ('hoy') {
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning-soft text-warning-fg font-semibold text-xs">
+                                  <ui-icon name="bell" [size]="11" />
+                                  Hoy
+                                </span>
+                              }
+                              @case ('descartado') {
+                                <span class="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs line-through">
+                                  Descartado
+                                </span>
+                              }
+                              @default {
+                                <span class="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs">
+                                  Pendiente
+                                </span>
+                              }
+                            }
+                          </td>
+                          <!-- Acciones por cuota -->
+                          <td class="px-3 py-2.5 text-right">
+                            @if (status === 'descartado') {
+                              <button type="button" [disabled]="saving"
+                                (click)="restaurar(r, p)"
+                                class="text-xs px-2 py-1 rounded-lg border border-border text-muted-foreground hover:bg-accent/40 transition-colors disabled:opacity-40">
+                                Restaurar
+                              </button>
+                            } @else if (status !== 'cobrado') {
+                              <div class="inline-flex gap-1.5">
+                                <button type="button" [disabled]="saving"
+                                  (click)="marcarCobrada(r, p)"
+                                  class="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-success text-white rounded-lg font-semibold hover:bg-success/90 transition-colors disabled:opacity-40">
+                                  <ui-icon name="check" [size]="11" />
+                                  Cobrar
+                                </button>
+                                <button type="button" [disabled]="saving"
+                                  (click)="descartar(r, p)"
+                                  class="text-xs px-2 py-1 rounded-lg border border-border text-muted-foreground hover:bg-accent/40 transition-colors disabled:opacity-40">
+                                  Descartar
+                                </button>
+                              </div>
+                            }
+                          </td>
+                        </tr>
+                      } @empty {
+                        <tr>
+                          <td colspan="5" class="px-3 py-4 text-center text-xs text-muted-foreground">
+                            Sin cuotas registradas
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Paginación -->
+  <app-pagination
+    [page]="page()"
+    [totalPages]="totalPages()"
+    [totalElements]="totalElements()"
+    [pageSize]="pageSize"
+    (pageChange)="onPageChange($event)" />
+}

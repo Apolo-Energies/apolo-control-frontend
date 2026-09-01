@@ -71,6 +71,7 @@ export class Layout {
             ],
           },
           { label: 'Promesas de pago', url: '/collections/promises', icon: 'calendar-check' as const },
+          { label: 'Pagos fraccionados', url: '/collections/fraccionados', icon: 'layers' as const },
           { label: 'Clientes deudores', url: '/collections/clients', icon: 'users' as const },
         ],
       },

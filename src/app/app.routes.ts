@@ -191,6 +191,11 @@ export const routes: Routes = [
           import('./features/collections/promises/promises').then((m) => m.Promises),
       },
       {
+        path: 'collections/fraccionados',
+        loadComponent: () =>
+          import('./features/collections/fraccionados/fraccionados').then((m) => m.Fraccionados),
+      },
+      {
         path: 'collections/tasks',
         loadComponent: () =>
           import('./features/collections/tasks/tasks').then((m) => m.Tasks),
