@@ -85,6 +85,8 @@ export interface PagoFraccionadoEntry {
   importe: number;
   fecha: string;
   cobrado: boolean;
+  /** Fecha real en que se marcó como cobrada (puede diferir del vencimiento). */
+  fechaPago?: string;
   descartado?: boolean;
 }
 
