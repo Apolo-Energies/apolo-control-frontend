@@ -53,7 +53,11 @@ export class BajaDialog {
   protected readonly calculo    = signal<CalculoPenalizacionResponse | null>(null);
   protected readonly calculando = signal(false);
   protected selectedTarifaId   = '';
-  protected tienePrevioAviso   = true;
+  protected tienePrevioAviso   = false;
+  /** Tarifa del contrato sin equivalente en tarifas de penalización (para avisar al usuario). */
+  protected readonly tarifaSinMatch = signal<string | null>(null);
+  private contractForAuto: Contract | null = null;
+  private recalcTimer: ReturnType<typeof setTimeout> | null = null;
 
   // ── Editable contract fields (signals for reactive empty-state styling) ──────
   protected readonly fechaInicioEdit = signal('');
@@ -91,9 +95,31 @@ export class BajaDialog {
 
   private loadTarifas(): void {
     this.tarifaService.list(true).subscribe({
-      next: (list) => this.tarifas.set(list),
+      next: (list) => {
+        this.tarifas.set(list);
+        this.autoSelectTarifa();
+      },
       error: () => {},
     });
+  }
+
+  /** Selecciona automáticamente la tarifa de penalización que coincide con la tarifa del contrato. */
+  private autoSelectTarifa(): void {
+    this.tarifaSinMatch.set(null);
+    if (this.selectedTarifaId || !this.contractForAuto || this.tarifas().length === 0) return;
+    const c = this.contractForAuto;
+    const ref = (c.suministroTarifa ?? '').trim().toUpperCase();
+    if (!ref) return;
+    const match = this.tarifas().find(t => {
+      const nombre = t.nombre.trim().toUpperCase();
+      return nombre.length > 0 && (ref === nombre || ref.startsWith(nombre));
+    });
+    if (match) {
+      this.selectedTarifaId = match.id;
+      this.scheduleRecalc();
+    } else {
+      this.tarifaSinMatch.set(c.suministroTarifa!.trim());
+    }
   }
 
   private initForm(editing: Contract | null, preselected: Contract | null): void {
@@ -103,9 +129,10 @@ export class BajaDialog {
     this.resetContractSearch();
 
     if (editing) {
+      this.contractForAuto = editing;
       this.showPenalizacion.set(editing.tienePenalizacion ?? false);
       this.selectedTarifaId = editing.tarifaPenalizacionId ?? '';
-      this.tienePrevioAviso = editing.tienePrevioAviso ?? true;
+      this.tienePrevioAviso = editing.tienePrevioAviso ?? false;
       this.fechaInicioEdit.set(editing.fechaInicio ?? '');
       this.consumoEdit.set(editing.consumoTotal != null ? String(editing.consumoTotal) : '');
       this.fechaBajaEmpty.set(!editing.fechaEstado);
@@ -117,9 +144,10 @@ export class BajaDialog {
         fechaBaja:         editing.fechaEstado ?? '',
       });
     } else if (preselected) {
+      this.contractForAuto = preselected;
       this.showPenalizacion.set(true);
       this.selectedTarifaId = preselected.tarifaPenalizacionId ?? '';
-      this.tienePrevioAviso = true;
+      this.tienePrevioAviso = false;
       this.fechaInicioEdit.set(preselected.fechaInicio ?? '');
       this.consumoEdit.set(preselected.consumoTotal != null ? String(preselected.consumoTotal) : '');
       this.fechaBajaEmpty.set(true);
@@ -131,14 +159,18 @@ export class BajaDialog {
         fechaBaja:         '',
       });
     } else {
+      this.contractForAuto = null;
       this.showPenalizacion.set(false);
       this.selectedTarifaId = '';
-      this.tienePrevioAviso = true;
+      this.tienePrevioAviso = false;
       this.fechaInicioEdit.set('');
       this.consumoEdit.set('');
       this.fechaBajaEmpty.set(false);
       this.form.reset({ tienePenalizacion: false });
     }
+
+    this.autoSelectTarifa();
+    this.scheduleRecalc();
   }
 
   protected onTienePenalizacionChange(checked: boolean): void {
@@ -147,25 +179,34 @@ export class BajaDialog {
       this.form.patchValue({ montoLiquidacion: null });
       this.calculo.set(null);
       this.selectedTarifaId = '';
+    } else {
+      this.autoSelectTarifa();
+      this.scheduleRecalc();
     }
   }
 
-  protected calcularPenalizacion(): void {
-    if (!this.selectedTarifaId) return;
+  protected setPreaviso(conPreaviso: boolean): void {
+    this.tienePrevioAviso = conPreaviso;
+    this.scheduleRecalc();
+  }
+
+  /** Recalcula automáticamente la penalización (con debounce) al cambiar cualquier dato. */
+  protected scheduleRecalc(): void {
+    this.calculo.set(null);
+    if (this.recalcTimer) clearTimeout(this.recalcTimer);
+    this.recalcTimer = setTimeout(() => this.recalcular(), 350);
+  }
+
+  private recalcular(): void {
+    if (!this.showPenalizacion() || !this.selectedTarifaId) return;
 
     const v           = this.form.getRawValue();
     const fechaInicio = this.fechaInicioEdit();
     const fechaBaja   = v.fechaBaja || new Date().toISOString().slice(0, 10);
     const consumo     = parseFloat(this.consumoEdit());
 
-    if (!fechaInicio) {
-      this.notify.error('Introduce la fecha de inicio del contrato');
-      return;
-    }
-    if (!this.consumoEdit || isNaN(consumo) || consumo < 0) {
-      this.notify.error('Introduce el consumo anual (MWh) del contrato');
-      return;
-    }
+    // Datos incompletos: no se calcula todavía (sin mostrar errores)
+    if (!fechaInicio || isNaN(consumo) || consumo < 0) return;
 
     this.calculando.set(true);
     this.tarifaService.calcular({
@@ -298,7 +339,10 @@ export class BajaDialog {
     this.form.patchValue({ contratoId: c.id });
     this.fechaInicioEdit.set(c.fechaInicio ?? '');
     this.consumoEdit.set(c.consumoTotal != null ? String(c.consumoTotal) : '');
-    this.calculo.set(null);
+    this.contractForAuto = c;
+    this.selectedTarifaId = c.tarifaPenalizacionId ?? '';
+    this.autoSelectTarifa();
+    this.scheduleRecalc();
   }
 
   protected clearContract(): void {
