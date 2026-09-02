@@ -3,7 +3,6 @@
 export type EstadoGestionImpago =
   | 'nuevo'
   | 'va_a_pagar'
-  | 'acuerdo_pago'
   | 'aviso_corte'
   | 'cortado'
   | 'ovc'
@@ -12,17 +11,19 @@ export type EstadoGestionImpago =
   | 'juicio'
   | 'pagado'
   | 'remesar_nuevamente'
+  | 'credit_back'
+  | 'perdidos'
   | 'otros';
 
 export const ESTADO_GESTION_IMPAGO_VALUES: EstadoGestionImpago[] = [
-  'nuevo', 'va_a_pagar', 'acuerdo_pago', 'aviso_corte', 'cortado',
-  'ovc', 'predemanda', 'demanda', 'juicio', 'pagado', 'remesar_nuevamente', 'otros',
+  'nuevo', 'va_a_pagar', 'aviso_corte', 'cortado',
+  'ovc', 'predemanda', 'demanda', 'juicio', 'pagado',
+  'remesar_nuevamente', 'credit_back', 'perdidos', 'otros',
 ];
 
 export const ESTADO_GESTION_IMPAGO_LABEL: Record<EstadoGestionImpago, string> = {
   nuevo: 'Nuevo',
   va_a_pagar: 'Acuerdo Verbal',
-  acuerdo_pago: 'Acuerdo de Pago',
   aviso_corte: 'Aviso de Corte',
   cortado: 'Cortado',
   ovc: 'Acuerdo Formal OVC',
@@ -31,6 +32,8 @@ export const ESTADO_GESTION_IMPAGO_LABEL: Record<EstadoGestionImpago, string> = 
   juicio: 'Juicio',
   pagado: 'Cobrado',
   remesar_nuevamente: 'Remesar nuevamente',
+  credit_back: 'Credit Back',
+  perdidos: 'Perdidos',
   otros: 'Otros',
 };
 
@@ -294,13 +297,14 @@ export interface GestionImpagoStats {
   tasaRecuperacion: number;
   countNuevo: number;        importeNuevo: number;
   countVaAPagar: number;     importeVaAPagar: number;
-  countAcuerdoPago: number;  importeAcuerdoPago: number;
   countAvisoCorte: number;   importeAvisoCorte: number;
   countCortado: number;      importeCortado: number;
   countOvc: number;          importeOvc: number;
   countDemanda: number;      importeDemanda: number;
   countPagado: number;       importePagado: number;
   countRemesarNuevamente: number; importeRemesarNuevamente: number;
+  countCreditBack: number;   importeCreditBack: number;
+  countPerdidos: number;     importePerdidos: number;
   countOtros: number;        importeOtros: number;
   // Antigüedad de deuda
   importe0a30: number;

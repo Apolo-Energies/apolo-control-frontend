@@ -60,11 +60,12 @@ function estadoToneFn(estado: EstadoGestionImpago): StatusTone {
   switch (estado) {
     case 'pagado':       return 'success';
     case 'va_a_pagar':  return 'info';
-    case 'acuerdo_pago':return 'info';
     case 'aviso_corte': return 'warning';
     case 'cortado':     return 'danger';
     case 'ovc':         return 'purple';
     case 'demanda':     return 'danger';
+    case 'credit_back': return 'info';
+    case 'perdidos':    return 'danger';
     case 'nuevo':       return 'neutral';
     default:            return 'neutral';
   }
@@ -172,8 +173,9 @@ export class GestionDashboard {
     { label: 'Pagado',         color: '#10b981', getValue: s => s.importePagado            ?? 0 },
     { label: 'Otros',          color: '#6b7280', getValue: s => s.importeOtros             ?? 0 },
     { label: 'Acuerdo Formal', color: '#8b5cf6', getValue: s => s.importeOvc               ?? 0 },
-    { label: 'Acuerdo de Pago',color: '#3b82f6', getValue: s => s.importeAcuerdoPago       ?? 0 },
     { label: 'Acuerdo Verbal', color: '#0ea5e9', getValue: s => s.importeVaAPagar          ?? 0 },
+    { label: 'Credit Back',    color: '#06b6d4', getValue: s => s.importeCreditBack        ?? 0 },
+    { label: 'Perdidos',       color: '#be123c', getValue: s => s.importePerdidos          ?? 0 },
     { label: 'Aviso corte',    color: '#f59e0b', getValue: s => s.importeAvisoCorte        ?? 0 },
     { label: 'Corte',          color: '#ef4444', getValue: s => s.importeCortado           ?? 0 },
     { label: 'Remesar nueva.', color: '#eab308', getValue: s => s.importeRemesarNuevamente ?? 0 },

@@ -78,10 +78,10 @@
                     class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
                     <ui-icon name="eye" [size]="13" />
                   </a>
-                  <button type="button" (click)="actualizarEstado(r, 'acuerdo_pago')"
+                  <button type="button" (click)="actualizarEstado(r, 'ovc')"
                     [disabled]="updatingId() === r.id"
                     class="h-7 px-2 inline-flex items-center gap-1 rounded-md border border-info/30 text-info-fg hover:bg-info-soft transition-colors text-xs disabled:opacity-40">
-                    Acuerdo
+                    Acuerdo OVC
                   </button>
                   <button type="button" (click)="actualizarEstado(r, 'pagado')"
                     [disabled]="updatingId() === r.id"

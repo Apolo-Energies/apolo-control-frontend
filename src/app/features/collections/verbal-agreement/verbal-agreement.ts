@@ -30,11 +30,12 @@ function estadoToneFn(estado: EstadoGestionImpago): StatusTone {
   switch (estado) {
     case 'pagado':       return 'success';
     case 'va_a_pagar':  return 'info';
-    case 'acuerdo_pago':return 'info';
     case 'aviso_corte': return 'warning';
     case 'cortado':     return 'danger';
     case 'ovc':         return 'purple';
     case 'demanda':     return 'danger';
+    case 'credit_back': return 'info';
+    case 'perdidos':    return 'danger';
     default:            return 'neutral';
   }
 }

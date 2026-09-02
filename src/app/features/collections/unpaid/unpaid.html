@@ -87,9 +87,10 @@
 
   <select [(ngModel)]="clienteActivoFilter"
     class="h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
-    <option value="">Activo + Baja</option>
+    <option value="">Todos</option>
     <option value="activo">Solo Activos</option>
     <option value="baja">Solo Bajas</option>
+    <option value="cortado">Solo Cortados</option>
   </select>
 
   <select [(ngModel)]="pagadoFilter"
@@ -211,6 +212,7 @@
                         [class]="clienteActivoSelectClass(r.clienteActivo)">
                   <option value="activo">Activo</option>
                   <option value="baja">Baja</option>
+                  <option value="cortado">Cortado</option>
                 </select>
               </td>
               <td class="px-4 py-3 max-w-[200px]">
@@ -624,10 +626,9 @@
     <div class="relative z-10 w-full max-w-sm rounded-xl bg-background border border-border shadow-xl p-6 flex flex-col gap-4">
       <h2 class="text-base font-semibold text-foreground">
         @switch (pagadoModal()?.newEstado) {
-          @case ('pagado')       { Registrar pago total }
-          @case ('cortado')      { Registrar corte }
-          @case ('va_a_pagar')   { Acuerdo Verbal }
-          @case ('acuerdo_pago') { Acuerdo de Pago }
+          @case ('pagado')     { Registrar pago total }
+          @case ('cortado')    { Registrar corte }
+          @case ('va_a_pagar') { Acuerdo Verbal }
         }
       </h2>
 
@@ -636,10 +637,9 @@
         <div>
           <label class="block text-xs font-medium text-muted-foreground mb-1">
             @switch (pagadoModal()?.newEstado) {
-              @case ('pagado')       { Fecha de pago }
-              @case ('cortado')      { Fecha de corte }
-              @case ('va_a_pagar')   { Fecha del acuerdo }
-              @case ('acuerdo_pago') { Fecha del acuerdo }
+              @case ('pagado')     { Fecha de pago }
+              @case ('cortado')    { Fecha de corte }
+              @case ('va_a_pagar') { Fecha del acuerdo }
             }
             <span class="text-destructive">*</span>
           </label>
@@ -677,10 +677,9 @@
         <button type="button" (click)="confirmarPago()" [disabled]="!pagadoFecha"
           class="h-9 px-4 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
           @switch (pagadoModal()?.newEstado) {
-            @case ('pagado')       { Confirmar pago }
-            @case ('cortado')      { Confirmar corte }
-            @case ('va_a_pagar')   { Confirmar acuerdo }
-            @case ('acuerdo_pago') { Confirmar acuerdo }
+            @case ('pagado')     { Confirmar pago }
+            @case ('cortado')    { Confirmar corte }
+            @case ('va_a_pagar') { Confirmar acuerdo }
           }
         </button>
       </div>

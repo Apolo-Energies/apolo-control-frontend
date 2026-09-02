@@ -96,9 +96,14 @@
       <p class="text-xs text-muted-foreground mt-0.5">{{ formatEur(s.importeVaAPagar) }}</p>
     </div>
     <div class="bg-card border border-border rounded-xl p-4">
-      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Acuerdo de Pago</p>
-      <p class="text-2xl font-bold text-info-fg">{{ s.countAcuerdoPago }}</p>
-      <p class="text-xs text-muted-foreground mt-0.5">{{ formatEur(s.importeAcuerdoPago) }}</p>
+      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Credit Back</p>
+      <p class="text-2xl font-bold text-info-fg">{{ s.countCreditBack }}</p>
+      <p class="text-xs text-muted-foreground mt-0.5">{{ formatEur(s.importeCreditBack) }}</p>
+    </div>
+    <div class="bg-card border border-border rounded-xl p-4">
+      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Perdidos</p>
+      <p class="text-2xl font-bold text-danger-fg">{{ s.countPerdidos }}</p>
+      <p class="text-xs text-muted-foreground mt-0.5">{{ formatEur(s.importePerdidos) }}</p>
     </div>
     <div class="bg-card border border-border rounded-xl p-4">
       <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Aviso de Corte</p>

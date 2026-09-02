@@ -145,7 +145,7 @@ export class GestionImpagoService {
     return this.http.patch<GestionImpago>(`${this.baseUrl}/${id}/pagos-fraccionados`, pagos);
   }
 
-  actualizarClienteActivo(id: string, valor: 'activo' | 'baja'): Observable<GestionImpago> {
+  actualizarClienteActivo(id: string, valor: 'activo' | 'baja' | 'cortado'): Observable<GestionImpago> {
     return this.http.patch<GestionImpago>(`${this.baseUrl}/${id}/cliente-activo`, null, { params: { valor } });
   }
 

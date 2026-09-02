@@ -193,12 +193,14 @@
                 class="h-7 px-2 pr-6 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 disabled:opacity-40 cursor-pointer">
                 <option value="nuevo"              [selected]="r.estado === 'nuevo'">Nuevo</option>
                 <option value="va_a_pagar"         [selected]="r.estado === 'va_a_pagar'">Acuerdo Verbal</option>
-                <option value="acuerdo_pago"       [selected]="r.estado === 'acuerdo_pago'">Acuerdo Formal</option>
+                <option value="ovc"                [selected]="r.estado === 'ovc'">Acuerdo Formal OVC</option>
                 <option value="aviso_corte"        [selected]="r.estado === 'aviso_corte'">Aviso Corte</option>
                 <option value="cortado"            [selected]="r.estado === 'cortado'">Cortado</option>
                 <option value="predemanda"         [selected]="r.estado === 'predemanda'">Pre-demanda</option>
                 <option value="demanda"            [selected]="r.estado === 'demanda'">Demanda</option>
                 <option value="juicio"             [selected]="r.estado === 'juicio'">Juicio</option>
+                <option value="credit_back"        [selected]="r.estado === 'credit_back'">Credit Back</option>
+                <option value="perdidos"           [selected]="r.estado === 'perdidos'">Perdidos</option>
                 <option value="pagado"             [selected]="r.estado === 'pagado'">Cobrado</option>
                 <option value="remesar_nuevamente" [selected]="r.estado === 'remesar_nuevamente'">Remesar nuevamente</option>
                 <option value="otros"              [selected]="r.estado === 'otros'">Otros</option>

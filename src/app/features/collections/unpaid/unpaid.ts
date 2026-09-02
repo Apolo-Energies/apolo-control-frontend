@@ -84,11 +84,12 @@ function estadoToneFn(estado: EstadoGestionImpago): StatusTone {
   switch (estado) {
     case 'pagado':          return 'success';
     case 'va_a_pagar':      return 'info';
-    case 'acuerdo_pago':    return 'info';
     case 'aviso_corte':     return 'warning';
     case 'cortado':         return 'danger';
     case 'ovc':             return 'purple';
     case 'demanda':         return 'danger';
+    case 'credit_back':     return 'info';
+    case 'perdidos':        return 'danger';
     case 'nuevo':           return 'neutral';
     default:                return 'neutral';
   }
@@ -133,7 +134,7 @@ export class Unpaid implements OnDestroy {
   // ── Filters ───────────────────────────────────────────────────────────────
   protected q                   = '';
   protected estadoFilter:        EstadoGestionImpago | '' = '';
-  protected clienteActivoFilter: 'activo' | 'baja' | '' = '';
+  protected clienteActivoFilter: 'activo' | 'baja' | 'cortado' | '' = '';
   protected pagadoFilter:        'pagado' | 'no_pagado' | '' = '';
   protected delegacionFilter                               = '';
   protected pagoFraccionadoFilter: boolean | null          = null;
@@ -305,7 +306,7 @@ export class Unpaid implements OnDestroy {
     });
 
     const s = this.listState.get<{
-      q: string; estadoFilter: EstadoGestionImpago | ''; clienteActivoFilter: 'activo' | 'baja' | '';
+      q: string; estadoFilter: EstadoGestionImpago | ''; clienteActivoFilter: 'activo' | 'baja' | 'cortado' | '';
       pagadoFilter: 'pagado' | 'no_pagado' | ''; delegacionFilter: string; page: number; size: number;
       sortField: string; sortDir: 'asc' | 'desc'; range: 'today' | 'week' | 'month' | 'year' | 'all' | 'custom';
       selectedWeek: string; selectedMonth: string; selectedYear: number;
@@ -628,8 +629,8 @@ export class Unpaid implements OnDestroy {
   protected pagadoNotas   = '';
   protected pagadoImporte = 0;
 
-  private readonly ESTADO_CON_MODAL: ReadonlySet<string> = new Set(['pagado', 'cortado', 'va_a_pagar', 'acuerdo_pago']);
-  protected readonly ESTADO_CON_PAGO_PARCIAL: ReadonlySet<string> = new Set(['va_a_pagar', 'acuerdo_pago']);
+  private readonly ESTADO_CON_MODAL: ReadonlySet<string> = new Set(['pagado', 'cortado', 'va_a_pagar']);
+  protected readonly ESTADO_CON_PAGO_PARCIAL: ReadonlySet<string> = new Set(['va_a_pagar']);
 
   protected changeEstado(r: GestionImpago, newEstado: string): void {
     if (newEstado === r.estado || this.savingEstadoId()) return;
@@ -714,7 +715,6 @@ export class Unpaid implements OnDestroy {
     const map: Record<string, string> = {
       pagado:             'bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-50',
       va_a_pagar:         'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-50',
-      acuerdo_pago:       'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-50',
       aviso_corte:        'bg-amber-100 text-amber-800 dark:bg-amber-600 dark:text-amber-50',
       cortado:            'bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-50',
       ovc:                'bg-purple-100 text-purple-800 dark:bg-purple-700 dark:text-purple-50',
@@ -722,6 +722,8 @@ export class Unpaid implements OnDestroy {
       demanda:            'bg-red-200 text-red-900 dark:bg-red-800 dark:text-red-50',
       juicio:             'bg-red-300 text-red-900 dark:bg-red-900 dark:text-red-50',
       remesar_nuevamente: 'bg-amber-100 text-amber-900 dark:bg-amber-700 dark:text-amber-50',
+      credit_back:        'bg-cyan-100 text-cyan-800 dark:bg-cyan-700 dark:text-cyan-50',
+      perdidos:           'bg-rose-200 text-rose-900 dark:bg-rose-800 dark:text-rose-50',
       otros:              'bg-slate-100 text-slate-700 dark:bg-slate-600 dark:text-slate-100',
       nuevo:              'bg-slate-100 text-slate-600 dark:bg-slate-600 dark:text-slate-100',
     };
@@ -734,7 +736,7 @@ export class Unpaid implements OnDestroy {
   protected changeClienteActivo(r: GestionImpago, valor: string): void {
     if (valor === r.clienteActivo || this.togglingClienteActivoId()) return;
     this.togglingClienteActivoId.set(r.id);
-    this.service.actualizarClienteActivo(r.id, valor as 'activo' | 'baja').subscribe({
+    this.service.actualizarClienteActivo(r.id, valor as 'activo' | 'baja' | 'cortado').subscribe({
       next: (updated) => {
         const page = this.result();
         if (page) {
@@ -755,9 +757,9 @@ export class Unpaid implements OnDestroy {
 
   protected clienteActivoSelectClass(valor: string): string {
     const base = 'h-7 px-2 rounded-full text-xs font-semibold border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors disabled:opacity-60';
-    return valor === 'activo'
-      ? `${base} bg-emerald-100 text-emerald-800 dark:bg-emerald-700 dark:text-emerald-50`
-      : `${base} bg-slate-100 text-slate-600 dark:bg-slate-600 dark:text-slate-100`;
+    if (valor === 'activo')  return `${base} bg-emerald-100 text-emerald-800 dark:bg-emerald-700 dark:text-emerald-50`;
+    if (valor === 'cortado') return `${base} bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-50`;
+    return `${base} bg-slate-100 text-slate-600 dark:bg-slate-600 dark:text-slate-100`;
   }
 
   // ── Export CSV ────────────────────────────────────────────────────────────

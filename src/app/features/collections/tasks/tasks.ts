@@ -243,12 +243,13 @@ export class Tasks implements OnDestroy {
     switch (estado) {
       case 'pagado':             return 'success';
       case 'va_a_pagar':         return 'info';
-      case 'acuerdo_pago':       return 'info';
       case 'aviso_corte':        return 'warning';
       case 'cortado':            return 'danger';
       case 'ovc':                return 'purple';
       case 'predemanda':         return 'warning';
       case 'demanda':            return 'danger';
+      case 'credit_back':        return 'info';
+      case 'perdidos':           return 'danger';
       case 'remesar_nuevamente': return 'neutral';
       default:                   return 'neutral';
     }
