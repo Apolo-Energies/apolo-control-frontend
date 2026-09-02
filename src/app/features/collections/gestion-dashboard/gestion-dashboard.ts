@@ -134,8 +134,18 @@ export class GestionDashboard {
     const today = new Date();
     switch (r) {
       case 'today': { const d = toIsoDate(today); return { startDate: d, endDate: d }; }
-      case 'week':  { const { start, end } = weekBounds(this.selectedWeek()); return { startDate: toIsoDate(start), endDate: toIsoDate(end) }; }
-      case 'month': { const [y, mo] = this.selectedMonth().split('-').map(Number); return { startDate: `${this.selectedMonth()}-01`, endDate: toIsoDate(new Date(y, mo, 0)) }; }
+      case 'week': {
+        const w = this.selectedWeek();
+        if (!w || !/^\d{4}-W\d{2}$/.test(w)) return {};
+        const { start, end } = weekBounds(w);
+        return { startDate: toIsoDate(start), endDate: toIsoDate(end) };
+      }
+      case 'month': {
+        const m = this.selectedMonth();
+        if (!m || !/^\d{4}-\d{2}$/.test(m)) return {};
+        const [y, mo] = m.split('-').map(Number);
+        return { startDate: `${m}-01`, endDate: toIsoDate(new Date(y, mo, 0)) };
+      }
       case 'year':  { const y = this.selectedYear(); return { startDate: `${y}-01-01`, endDate: `${y}-12-31` }; }
     }
   }
