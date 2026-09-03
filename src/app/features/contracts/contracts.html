@@ -1271,6 +1271,7 @@
 <app-baja-dialog
   [open]="bajaDialogOpen()"
   [preselectedContract]="bajaForContract()"
+  [fechaBajaInicial]="bajaFechaInicial()"
   (saved)="onBajaSaved()"
   (cancelled)="closeBajaDialog()"
 />

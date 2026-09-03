@@ -211,8 +211,9 @@ export class Contracts implements OnDestroy {
   protected readonly createOpen    = signal(false);
   protected readonly statusOpen    = signal(false);
   protected readonly editOpen      = signal(false);
-  protected readonly bajaDialogOpen  = signal(false);
-  protected readonly bajaForContract = signal<Contract | null>(null);
+  protected readonly bajaDialogOpen   = signal(false);
+  protected readonly bajaForContract  = signal<Contract | null>(null);
+  protected readonly bajaFechaInicial = signal('');
   protected readonly submitting = signal(false);
   protected readonly formError = signal<string | null>(null);
   protected readonly editingContract = signal<Contract | null>(null);
@@ -836,6 +837,7 @@ export class Contracts implements OnDestroy {
     if (v.estado === 'baja') {
       this.closeStatus();
       this.bajaForContract.set(contract);
+      this.bajaFechaInicial.set(v.fechaEstado ?? '');
       this.bajaDialogOpen.set(true);
       return;
     }

@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, computed,
+  ChangeDetectionStrategy, Component, OnDestroy, computed,
   effect, inject, input, output, signal, untracked,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -24,11 +24,13 @@ function extractMessage(err: HttpErrorResponse): string {
   imports: [FormDialog, Icon, FormsModule, ReactiveFormsModule],
   templateUrl: './baja-dialog.html',
 })
-export class BajaDialog {
+export class BajaDialog implements OnDestroy {
   // ── Inputs ───────────────────────────────────────────────────────────────────
-  open              = input<boolean>(false);
-  editingBaja       = input<Contract | null>(null);
+  open                = input<boolean>(false);
+  editingBaja         = input<Contract | null>(null);
   preselectedContract = input<Contract | null>(null);
+  /** Fecha de baja pre-rellenada cuando se viene del diálogo "Cambiar estado". */
+  fechaBajaInicial    = input<string>('');
 
   // ── Outputs ──────────────────────────────────────────────────────────────────
   saved     = output<void>();
@@ -112,7 +114,7 @@ export class BajaDialog {
     if (!ref) return;
     const match = this.tarifas().find(t => {
       const nombre = t.nombre.trim().toUpperCase();
-      return nombre.length > 0 && (ref === nombre || ref.startsWith(nombre));
+      return nombre.length > 0 && (ref === nombre || nombre.startsWith(ref));
     });
     if (match) {
       this.selectedTarifaId = match.id;
@@ -144,19 +146,20 @@ export class BajaDialog {
         fechaBaja:         editing.fechaEstado ?? '',
       });
     } else if (preselected) {
+      const fechaBaja = this.fechaBajaInicial() || '';
       this.contractForAuto = preselected;
       this.showPenalizacion.set(true);
       this.selectedTarifaId = preselected.tarifaPenalizacionId ?? '';
       this.tienePrevioAviso = false;
       this.fechaInicioEdit.set(preselected.fechaInicio ?? '');
       this.consumoEdit.set(preselected.consumoTotal != null ? String(preselected.consumoTotal) : '');
-      this.fechaBajaEmpty.set(true);
+      this.fechaBajaEmpty.set(!fechaBaja);
       this.form.reset({
         contratoId:        preselected.id,
         tienePenalizacion: true,
         feedbackCliente:   '',
         montoLiquidacion:  null,
-        fechaBaja:         '',
+        fechaBaja,
       });
     } else {
       this.contractForAuto = null;
@@ -185,9 +188,16 @@ export class BajaDialog {
     }
   }
 
+  /** Cambia el preaviso y actualiza el monto al instante desde el cálculo ya cargado. */
   protected setPreaviso(conPreaviso: boolean): void {
     this.tienePrevioAviso = conPreaviso;
-    this.scheduleRecalc();
+    const c = this.calculo();
+    if (c) {
+      const total = conPreaviso ? c.totalConPreaviso : c.totalSinPreaviso;
+      this.form.patchValue({ montoLiquidacion: total });
+    } else {
+      this.scheduleRecalc();
+    }
   }
 
   /** Recalcula automáticamente la penalización (con debounce) al cambiar cualquier dato. */
@@ -195,6 +205,10 @@ export class BajaDialog {
     this.calculo.set(null);
     if (this.recalcTimer) clearTimeout(this.recalcTimer);
     this.recalcTimer = setTimeout(() => this.recalcular(), 350);
+  }
+
+  ngOnDestroy(): void {
+    if (this.recalcTimer) clearTimeout(this.recalcTimer);
   }
 
   private recalcular(): void {
@@ -219,7 +233,9 @@ export class BajaDialog {
       next: (res) => {
         this.calculo.set(res);
         this.calculando.set(false);
-        this.form.patchValue({ montoLiquidacion: res.totalSugerido });
+        // Usar el total correspondiente al preaviso seleccionado
+        const total = this.tienePrevioAviso ? res.totalConPreaviso : res.totalSinPreaviso;
+        this.form.patchValue({ montoLiquidacion: total });
       },
       error: () => {
         this.calculando.set(false);

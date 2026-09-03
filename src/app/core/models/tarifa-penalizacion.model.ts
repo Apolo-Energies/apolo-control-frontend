@@ -34,4 +34,8 @@ export interface CalculoPenalizacionResponse {
   recargo: number;
   totalSugerido: number;
   diasPrevioAviso: number;
+  /** Penalización con preaviso (sin recargo = basePenalizacion). */
+  totalConPreaviso: number;
+  /** Penalización sin preaviso (basePenalizacion + 50%). */
+  totalSinPreaviso: number;
 }

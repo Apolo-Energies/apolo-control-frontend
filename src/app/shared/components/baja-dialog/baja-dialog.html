@@ -217,15 +217,15 @@
                 <span>Base penalización</span>
                 <span class="font-mono text-foreground">{{ c.basePenalizacion.toFixed(2) }} €</span>
               </div>
-              @if (c.recargo > 0) {
+              @if (!tienePrevioAviso) {
                 <div class="flex justify-between text-muted-foreground">
                   <span>Recargo sin preaviso <span class="text-xs font-medium text-danger-fg">(+50%)</span></span>
-                  <span class="font-mono text-danger-fg">+ {{ c.recargo.toFixed(2) }} €</span>
+                  <span class="font-mono text-danger-fg">+ {{ (c.totalSinPreaviso - c.basePenalizacion).toFixed(2) }} €</span>
                 </div>
               }
               <div class="flex justify-between font-semibold text-foreground border-t border-border pt-1.5 mt-1.5">
                 <span>Total sugerido</span>
-                <span class="font-mono text-primary">{{ c.totalSugerido.toFixed(2) }} €</span>
+                <span class="font-mono text-primary">{{ (tienePrevioAviso ? c.totalConPreaviso : c.totalSinPreaviso).toFixed(2) }} €</span>
               </div>
             </div>
           }
