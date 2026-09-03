@@ -144,10 +144,19 @@ export class Settings {
   protected ejecutarEeSync(): void {
     this.eeSyncEjecutando.set(true);
     this.eeSyncSvc.ejecutar().subscribe({
-      next: (res) => {
-        this.eeSyncEjecutando.set(false);
-        this.notify.success('Sincronización completada');
-        this.loadEeSyncHistorial();
+      next: () => {
+        this.notify.success('Sincronización iniciada — puede tardar varios minutos');
+        // Recargar historial cada 30s hasta que el spinner se detenga (máx 10 min)
+        let intentos = 0;
+        const poll = setInterval(() => {
+          this.loadEeSyncHistorial();
+          if (++intentos >= 20) {
+            clearInterval(poll);
+            this.eeSyncEjecutando.set(false);
+          }
+        }, 30_000);
+        // Primera recarga a los 5s para ver la entrada "en curso"
+        setTimeout(() => this.loadEeSyncHistorial(), 5_000);
       },
       error: (err: HttpErrorResponse) => {
         this.eeSyncEjecutando.set(false);
