@@ -79,7 +79,7 @@
       <input
         type="date"
         [value]="fechaInicioEdit()"
-        (change)="fechaInicioEdit.set($any($event.target).value); calculo.set(null)"
+        (change)="fechaInicioEdit.set($any($event.target).value); scheduleRecalc()"
         [class]="'w-full h-9 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 transition-colors ' +
                  (fechaInicioEdit() ? 'border-input bg-background focus:ring-ring' : 'border-warning/60 bg-warning/5 focus:ring-warning/30')"
       />
@@ -99,7 +99,7 @@
       <input
         type="date"
         formControlName="fechaBaja"
-        (change)="fechaBajaEmpty.set(!$any($event.target).value); calculo.set(null)"
+        (change)="fechaBajaEmpty.set(!$any($event.target).value); scheduleRecalc()"
         [class]="'w-full h-9 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 transition-colors ' +
                  (fechaBajaEmpty() ? 'border-warning/60 bg-warning/5 focus:ring-warning/30' : 'border-input bg-background focus:ring-ring')"
       />
@@ -140,7 +140,7 @@
           <input
             type="number"
             [value]="consumoEdit()"
-            (change)="consumoEdit.set($any($event.target).value); calculo.set(null)"
+            (change)="consumoEdit.set($any($event.target).value); scheduleRecalc()"
             min="0" step="0.01" placeholder="0.00"
             [class]="'w-full h-9 rounded-lg border px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 transition-colors ' +
                      (consumoEdit() ? 'border-input bg-background focus:ring-ring' : 'border-warning/60 bg-warning/5 focus:ring-warning/30')"
@@ -154,30 +154,26 @@
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-foreground">Tarifa</label>
           <select [(ngModel)]="selectedTarifaId" [ngModelOptions]="{standalone: true}"
-            (change)="calculo.set(null)"
+            (change)="scheduleRecalc()"
             class="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
             <option value="">— Selecciona tarifa —</option>
             @for (t of tarifas(); track t.id) {
               <option [value]="t.id">{{ t.nombre }}</option>
             }
           </select>
+          @if (!selectedTarifaId && tarifaSinMatch(); as tref) {
+            <p class="text-xs text-warning-fg">
+              El contrato es <span class="font-semibold">{{ tref }}</span> pero no existe una tarifa de penalización equivalente.
+              Selecciónala manualmente o créala en Configuración → Tarifas de penalización.
+            </p>
+          }
         </div>
 
         <!-- Preaviso -->
         @if (selectedTarifaId) {
           <div class="flex items-center gap-3">
             <button type="button"
-              (click)="tienePrevioAviso = true; calculo.set(null)"
-              class="flex-1 h-9 rounded-lg border text-sm font-medium transition-colors"
-              [class.border-primary]="tienePrevioAviso"
-              [class.bg-primary]="tienePrevioAviso"
-              [class.text-primary-foreground]="tienePrevioAviso"
-              [class.border-border]="!tienePrevioAviso"
-              [class.text-muted-foreground]="!tienePrevioAviso">
-              Con preaviso
-            </button>
-            <button type="button"
-              (click)="tienePrevioAviso = false; calculo.set(null)"
+              (click)="setPreaviso(false)"
               class="flex-1 h-9 rounded-lg border text-sm font-medium transition-colors"
               [class.border-primary]="!tienePrevioAviso"
               [class.bg-primary]="!tienePrevioAviso"
@@ -186,20 +182,25 @@
               [class.text-muted-foreground]="tienePrevioAviso">
               Sin preaviso
             </button>
+            <button type="button"
+              (click)="setPreaviso(true)"
+              class="flex-1 h-9 rounded-lg border text-sm font-medium transition-colors"
+              [class.border-primary]="tienePrevioAviso"
+              [class.bg-primary]="tienePrevioAviso"
+              [class.text-primary-foreground]="tienePrevioAviso"
+              [class.border-border]="!tienePrevioAviso"
+              [class.text-muted-foreground]="!tienePrevioAviso">
+              Con preaviso
+            </button>
           </div>
 
-          <!-- Calcular -->
-          <button type="button" (click)="calcularPenalizacion()"
-            [disabled]="calculando()"
-            class="w-full h-9 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-            @if (calculando()) {
-              <ui-icon name="loader" [size]="14" class="animate-spin" />
-              Calculando…
-            } @else {
-              <ui-icon name="scale" [size]="14" />
-              Calcular penalización sugerida
-            }
-          </button>
+          <!-- Cálculo automático -->
+          @if (calculando()) {
+            <p class="flex items-center justify-center gap-2 text-xs text-muted-foreground py-1">
+              <ui-icon name="loader" [size]="13" class="animate-spin" />
+              Calculando penalización…
+            </p>
+          }
 
           <!-- Resultado -->
           @if (calculo(); as c) {
