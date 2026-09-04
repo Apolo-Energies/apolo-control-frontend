@@ -816,7 +816,7 @@
                   <p class="font-mono text-sm font-medium text-foreground">{{ s.cups }}</p>
                   <div class="flex gap-3 mt-0.5">
                     @if (s.tipo) { <span class="text-xs text-muted-foreground">Tipo: <strong>{{ s.tipo }}</strong></span> }
-                    @if (s.tarifa) { <span class="text-xs text-muted-foreground">Tarifa: <strong>{{ s.tarifa }}</strong></span> }
+                    @if (s.tarifa) { <span [class]="tarifaBadge(s.tarifa)">{{ s.tarifa }}</span> }
                     @if (s.provincia) { <span class="text-xs text-muted-foreground">{{ s.provincia }}</span> }
                   </div>
                 </div>
@@ -825,7 +825,7 @@
           } @else if (c.cups) {
             <div class="rounded-lg border border-border/60 bg-background px-3 py-2">
               <p class="font-mono text-sm font-medium text-foreground">{{ c.cups }}</p>
-              @if (c.suministroTarifa) { <p class="text-xs text-muted-foreground">Tarifa: {{ c.suministroTarifa }}</p> }
+              @if (c.suministroTarifa) { <p class="mt-0.5"><span [class]="tarifaBadge(c.suministroTarifa)">{{ c.suministroTarifa }}</span></p> }
               @if (c.provincia) { <p class="text-xs text-muted-foreground">{{ c.provincia }}</p> }
             </div>
           } @else {

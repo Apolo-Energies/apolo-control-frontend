@@ -14,7 +14,7 @@ import { BajaService } from '../../core/services/baja.service';
 import { ContractService } from '../../core/services/contract.service';
 import { ListStateService } from '../../core/services/list-state.service';
 import { Contract, DelegacionBajaStats, Page } from '../../core/models';
-import { formatDate, safeText } from '../../shared/utils/format';
+import { formatDate, safeText, tarifaBadgeClass } from '../../shared/utils/format';
 
 function generateMonthOptions(): { label: string; value: string }[] {
   const opts: { label: string; value: string }[] = [];
@@ -267,4 +267,5 @@ export class Bajas implements OnDestroy {
 
   protected date(v: string | null): string { return formatDate(v); }
   protected text(v: string | null): string { return safeText(v); }
+  protected readonly tarifaBadge = tarifaBadgeClass;
 }
