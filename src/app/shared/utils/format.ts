@@ -157,3 +157,13 @@ export function formatMonthShort(yearMonth: string): string {
 export function safeText(value: string | null | undefined, fallback = '—'): string {
   return value && value.trim().length > 0 ? value : fallback;
 }
+
+export function tarifaBadgeClass(tarifa: string | null | undefined): string {
+  const t = (tarifa ?? '').trim().toUpperCase();
+  const base = 'inline-block rounded-full px-2 py-0.5 text-xs font-mono font-medium ';
+  if (t.startsWith('2.0')) return base + 'bg-info-soft text-info-fg';
+  if (t.startsWith('3.0')) return base + 'bg-success-soft text-success-fg';
+  if (t.startsWith('6.1')) return base + 'bg-purple-soft text-purple-fg';
+  if (t.startsWith('6.'))  return base + 'bg-warning-soft text-warning-fg';
+  return base + 'bg-neutral-soft text-neutral-fg';
+}

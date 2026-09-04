@@ -67,7 +67,13 @@
                   {{ typeLabel(row.tipo) }}
                 </app-status-badge>
               </td>
-              <td class="px-4 py-3 text-foreground/80">{{ text(row.tarifa) }}</td>
+              <td class="px-4 py-3">
+                @if (row.tarifa) {
+                  <span [class]="tarifaBadge(row.tarifa)">{{ row.tarifa }}</span>
+                } @else {
+                  <span class="text-xs text-muted-foreground">—</span>
+                }
+              </td>
               <td class="px-4 py-3">
                 <p class="font-medium text-foreground">{{ row.clienteNombre }}</p>
                 @if (row.clienteNif) {

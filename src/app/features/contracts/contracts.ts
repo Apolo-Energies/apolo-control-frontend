@@ -32,7 +32,7 @@ import {
   Page,
   SuministroPayload,
 } from '../../core/models';
-import { formatDate, formatEuro, safeText } from '../../shared/utils/format';
+import { formatDate, formatEuro, safeText, tarifaBadgeClass } from '../../shared/utils/format';
 import { Observable, of } from 'rxjs';
 
 const STATUS_TONE: Record<ContractStatus, StatusTone> = {
@@ -934,6 +934,8 @@ export class Contracts implements OnDestroy {
   protected text(value: string | null): string {
     return safeText(value);
   }
+
+  protected readonly tarifaBadge = tarifaBadgeClass;
 
   protected consumo(value: number | null): string {
     if (value == null || value === 0) return '—';
