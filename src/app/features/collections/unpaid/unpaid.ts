@@ -137,6 +137,14 @@ export class Unpaid implements OnDestroy {
   protected clienteActivoFilter: 'activo' | 'baja' | 'cortado' | '' = '';
   protected pagadoFilter:        'pagado' | 'no_pagado' | '' = '';
   protected delegacionFilter                               = '';
+  protected delegacionQuery                                = '';
+  protected readonly delegacionDropdownOpen                = signal(false);
+  protected readonly filteredDelegaciones = computed(() => {
+    const q = this.delegacionQuery.trim().toLowerCase();
+    const all = this.masterData.delegacionesActivas();
+    if (!q) return all;
+    return all.filter(d => d.nombre.toLowerCase().includes(q));
+  });
   protected pagoFraccionadoFilter: boolean | null          = null;
   protected soloVencidosFilter: boolean | null             = null;
 
@@ -318,6 +326,10 @@ export class Unpaid implements OnDestroy {
       this.clienteActivoFilter = s.clienteActivoFilter;
       this.pagadoFilter        = s.pagadoFilter;
       this.delegacionFilter    = s.delegacionFilter ?? '';
+      if (this.delegacionFilter) {
+        const d = this.masterData.delegaciones().find(x => x.id === this.delegacionFilter);
+        this.delegacionQuery = d?.nombre ?? '';
+      }
       this.size.set(s.size);
       this.sortField.set(s.sortField);
       this.sortDir.set(s.sortDir);
@@ -381,11 +393,37 @@ export class Unpaid implements OnDestroy {
   protected applyFilters(): void { this.reload(0); }
   protected clearFilters(): void {
     this.q = ''; this.estadoFilter = ''; this.clienteActivoFilter = ''; this.pagadoFilter = '';
-    this.delegacionFilter = ''; this.pagoFraccionadoFilter = null; this.soloVencidosFilter = null;
+    this.delegacionFilter = ''; this.delegacionQuery = '';
+    this.pagoFraccionadoFilter = null; this.soloVencidosFilter = null;
     this.range.set('all');
     this.customStart.set('');
     this.customEnd.set('');
     this.reload(0);
+  }
+
+  protected onDelegacionQueryInput(value: string): void {
+    this.delegacionQuery = value;
+    this.delegacionDropdownOpen.set(true);
+    if (!value.trim() && this.delegacionFilter) {
+      this.delegacionFilter = '';
+      this.reload(0);
+    }
+  }
+
+  protected selectDelegacion(d: { id: string; nombre: string } | null): void {
+    if (d) {
+      this.delegacionFilter = d.id;
+      this.delegacionQuery = d.nombre;
+    } else {
+      this.delegacionFilter = '';
+      this.delegacionQuery = '';
+    }
+    this.delegacionDropdownOpen.set(false);
+    this.reload(0);
+  }
+
+  protected onDelegacionBlur(): void {
+    setTimeout(() => this.delegacionDropdownOpen.set(false), 150);
   }
 
   // ── Create / Edit ─────────────────────────────────────────────────────────
@@ -773,6 +811,7 @@ export class Unpaid implements OnDestroy {
       estado:        this.estadoFilter        || undefined,
       clienteActivo: this.clienteActivoFilter || undefined,
       pagadoFilter:  this.pagadoFilter        || undefined,
+      delegacionId:  this.delegacionFilter    || undefined,
     };
     this.service.exportCsv(filter).subscribe({
       next: (blob) => {
