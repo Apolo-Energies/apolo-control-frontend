@@ -174,7 +174,7 @@
                   <td class="px-4 py-3 text-foreground/80">{{ text(row.clienteDelegacion) }}</td>
                   <td class="px-4 py-3">
                     @if (row.suministroTarifa) {
-                      <span class="inline-block rounded-full bg-info-soft px-2 py-0.5 text-xs font-mono font-medium text-info-fg">
+                      <span [class]="tarifaBadge(row.suministroTarifa)">
                         {{ row.suministroTarifa }}
                       </span>
                     } @else {

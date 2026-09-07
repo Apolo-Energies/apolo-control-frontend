@@ -24,7 +24,7 @@ import {
   SUPPLY_TYPE_VALUES,
   SupplyType,
 } from '../../core/models';
-import { formatMwh, formatNumber, safeText } from '../../shared/utils/format';
+import { formatMwh, formatNumber, safeText, tarifaBadgeClass } from '../../shared/utils/format';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -238,6 +238,8 @@ export class Supplies {
   protected text(value: string | null, fallback = '—'): string {
     return safeText(value, fallback);
   }
+
+  protected readonly tarifaBadge = tarifaBadgeClass;
 
   protected num(value: number | null): string {
     return formatNumber(value);
