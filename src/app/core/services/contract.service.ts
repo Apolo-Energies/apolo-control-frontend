@@ -9,6 +9,7 @@ import {
   ContractFilter,
   ContractPayload,
   ContractRenovaciones,
+  ContratoIncidencia,
   Page,
   PageRequest,
 } from '../models';
@@ -84,5 +85,9 @@ export class ContractService {
 
   toggleValidado(id: string): Observable<Contract> {
     return this.http.patch<Contract>(`${this.baseUrl}/${id}/validado`, {});
+  }
+
+  getIncidencias(): Observable<ContratoIncidencia[]> {
+    return this.http.get<ContratoIncidencia[]>(`${this.baseUrl}/incidencias`);
   }
 }

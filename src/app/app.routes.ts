@@ -37,6 +37,11 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./features/contracts/renovaciones/renovaciones').then((m) => m.Renovaciones),
           },
+          {
+            path: 'incidencias',
+            loadComponent: () =>
+              import('./features/contracts/incidencias/incidencias').then((m) => m.Incidencias),
+          },
         ],
       },
       {

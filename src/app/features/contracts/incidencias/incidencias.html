@@ -1,0 +1,358 @@
+<app-page-header
+  title="Incidencias de contratos"
+  [subtitle]="loading() ? '' : rows().length + ' contratos en estados pendientes'"
+/>
+
+@if (loading()) {
+  <app-table-skeleton [rows]="6" />
+} @else if (error()) {
+  <app-empty-state
+    title="Error al cargar"
+    [description]="error()!"
+    icon="alert-triangle"
+  />
+} @else if (rows().length === 0) {
+  <app-empty-state
+    title="Sin incidencias"
+    description="No hay contratos en estados pendientes"
+    icon="check-circle"
+  />
+} @else {
+
+  <!-- KPIs -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+    <div class="bg-card border border-border rounded-lg p-4">
+      <div class="text-2xl font-bold text-foreground">{{ filteredRows().length }}</div>
+      <div class="text-xs text-muted-foreground mt-0.5">Contratos</div>
+    </div>
+    <div class="bg-card border border-border rounded-lg p-4">
+      <div class="text-2xl font-bold text-red-600">
+        {{ filteredRows().filter(r => r.completedItems < r.totalItems).length }}
+      </div>
+      <div class="text-xs text-muted-foreground mt-0.5">Incompletos</div>
+    </div>
+    <div class="bg-card border border-border rounded-lg p-4">
+      <div class="text-2xl font-bold text-amber-600">
+        {{ filteredRows().filter(r => r.estado === 'para_firma').length }}
+      </div>
+      <div class="text-xs text-muted-foreground mt-0.5">Para firma</div>
+    </div>
+    <div class="bg-card border border-border rounded-lg p-4">
+      <div class="text-2xl font-bold text-blue-600">
+        {{ filteredRows().filter(r => r.estado === 'incidencia').length }}
+      </div>
+      <div class="text-xs text-muted-foreground mt-0.5">Incidencias</div>
+    </div>
+  </div>
+
+  <!-- Barra de filtros -->
+  <section class="bg-card border border-border rounded-xl p-4 mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:flex-wrap">
+
+    <!-- Búsqueda libre -->
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-muted-foreground">Búsqueda</span>
+      <input
+        type="text"
+        placeholder="Nombre, NIF o CUPS…"
+        [value]="filterQ()"
+        (input)="filterQ.set($any($event.target).value)"
+        class="rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground w-56 focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+    </label>
+
+    <!-- Estado -->
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-muted-foreground">Estado</span>
+      <select
+        [value]="filterEstado()"
+        (change)="filterEstado.set($any($event.target).value)"
+        class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      >
+        <option value="">Todos</option>
+        <option value="previo">Previo</option>
+        <option value="para_estudio">Para estudio</option>
+        <option value="para_tramitar">Para tramitar</option>
+        <option value="para_firma">Para firma</option>
+        <option value="incidencia">Incidencia</option>
+      </select>
+    </label>
+
+    <!-- Campo faltante -->
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-muted-foreground">Campo faltante</span>
+      <select
+        [value]="filterFaltante()"
+        (change)="filterFaltante.set($any($event.target).value)"
+        class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      >
+        <option value="">Todos</option>
+        <optgroup label="Datos del cliente">
+          <option value="nif">Sin NIF / CIF</option>
+          <option value="nombre">Sin nombre / razón social</option>
+          <option value="iban">Sin IBAN</option>
+          <option value="telefono">Sin teléfono</option>
+          <option value="email">Sin email</option>
+        </optgroup>
+        <optgroup label="Documentación">
+          <option value="cups">Sin CUPS</option>
+          <option value="docs">Sin documentación</option>
+        </optgroup>
+        <optgroup label="Firma y verificación">
+          <option value="firmaSms">Sin firma SMS</option>
+          <option value="verificacion">Sin verificación llamada</option>
+        </optgroup>
+      </select>
+    </label>
+
+    <!-- Limpiar filtros -->
+    @if (hasFilters) {
+      <button
+        type="button"
+        (click)="clearFilters()"
+        class="h-8 px-3 rounded-lg border border-border text-xs text-muted-foreground hover:bg-accent/40 transition-colors self-end"
+      >
+        Limpiar filtros
+      </button>
+    }
+
+    @if (hasFilters) {
+      <span class="text-xs text-muted-foreground self-end ml-auto pb-1">
+        {{ filteredRows().length }} de {{ rows().length }} contratos
+      </span>
+    }
+
+  </section>
+
+  <!-- Empty state when filters match nothing -->
+  @if (filteredRows().length === 0) {
+    <app-empty-state
+      title="Sin resultados"
+      description="Ningún contrato coincide con los filtros aplicados"
+      icon="search"
+    />
+  } @else {
+
+  <div class="bg-card rounded-lg border border-border overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-border bg-muted/30 text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+          <th class="w-8 px-2 py-3"></th>
+          <th class="text-left px-4 py-3">Cliente</th>
+          <th class="text-left px-4 py-3">Estado</th>
+          <th class="text-left px-4 py-3">Fecha</th>
+          <th class="text-left px-4 py-3 min-w-[160px]">Completitud</th>
+          <th class="text-right px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of filteredRows(); track r.id) {
+          @let expanded = expandedId() === r.id;
+
+          <!-- Master row -->
+          <tr
+            (click)="toggleExpand(r.id)"
+            class="border-b border-border cursor-pointer transition-colors"
+            [class]="expanded ? 'bg-primary/5' : 'hover:bg-accent/30'"
+          >
+            <td class="px-2 py-3 text-center text-muted-foreground">
+              <ui-icon [name]="expanded ? 'chevron-down' : 'chevron-right'" [size]="16" />
+            </td>
+            <td class="px-4 py-3">
+              <div class="font-medium text-foreground">{{ r.clienteNombre }}</div>
+              <div class="text-xs text-muted-foreground">{{ r.clienteNif ?? '—' }}</div>
+            </td>
+            <td class="px-4 py-3">
+              <app-status-badge [tone]="estadoTone(r.estado)">{{ estadoLabel(r.estado) }}</app-status-badge>
+            </td>
+            <td class="px-4 py-3 text-xs text-muted-foreground">
+              {{ fmt(r.fechaCreacion) }}
+            </td>
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-2">
+                <div class="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    class="h-full rounded-full transition-all duration-300"
+                    [class]="progressClass(r)"
+                    [style.width.%]="progressPercent(r)"
+                  ></div>
+                </div>
+                <span class="text-xs text-muted-foreground whitespace-nowrap font-mono">
+                  {{ r.completedItems }}/{{ r.totalItems }}
+                </span>
+              </div>
+            </td>
+            <td class="px-4 py-3 text-right" (click)="$event.stopPropagation()">
+              <button
+                (click)="navigateToContract(r.id)"
+                class="text-xs text-primary hover:underline"
+              >
+                Ver contrato
+              </button>
+            </td>
+          </tr>
+
+          <!-- Detail row -->
+          @if (expanded) {
+            <tr class="border-b border-border bg-muted/10">
+              <td colspan="6" class="px-6 py-5">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                  <!-- DATOS -->
+                  <div>
+                    <h4 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                      Datos del cliente
+                    </h4>
+                    <div class="space-y-2.5">
+                      @for (item of groupItems(r.checklist, 'datos'); track item.key) {
+                        <div class="flex items-start gap-2">
+                          <ui-icon
+                            [name]="item.completed ? 'check-circle' : 'alert-circle'"
+                            [size]="15"
+                            class="mt-0.5 shrink-0"
+                            [class]="item.completed ? 'text-green-500' : 'text-red-500'"
+                          />
+                          <div class="flex-1 min-w-0">
+                            <div class="text-xs font-medium text-foreground">{{ item.label }}</div>
+                            @if (item.currentValue) {
+                              <div class="text-xs text-muted-foreground truncate">{{ item.currentValue }}</div>
+                            }
+                          </div>
+                          @if (!item.completed) {
+                            @if (item.entity === 'cliente') {
+                              <button
+                                (click)="openEdit(r, item); $event.stopPropagation()"
+                                class="text-xs text-primary hover:underline shrink-0 font-medium"
+                              >
+                                Editar
+                              </button>
+                            } @else {
+                              <button
+                                (click)="navigateToContract(r.id); $event.stopPropagation()"
+                                class="text-xs text-muted-foreground hover:underline shrink-0"
+                              >
+                                Ir
+                              </button>
+                            }
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- DOCUMENTACIÓN -->
+                  <div>
+                    <h4 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                      Documentación
+                    </h4>
+                    <div class="space-y-2.5">
+                      @for (item of groupItems(r.checklist, 'documentacion'); track item.key) {
+                        <div class="flex items-start gap-2">
+                          <ui-icon
+                            [name]="item.completed ? 'check-circle' : 'alert-circle'"
+                            [size]="15"
+                            class="mt-0.5 shrink-0"
+                            [class]="item.completed ? 'text-green-500' : 'text-red-500'"
+                          />
+                          <div class="flex-1 min-w-0">
+                            <div class="text-xs font-medium text-foreground">{{ item.label }}</div>
+                            @if (item.currentValue) {
+                              <div class="text-xs text-muted-foreground">{{ item.currentValue }}</div>
+                            }
+                          </div>
+                          @if (!item.completed) {
+                            <button
+                              (click)="navigateToContract(r.id); $event.stopPropagation()"
+                              class="text-xs text-primary hover:underline shrink-0 font-medium"
+                            >
+                              Adjuntar
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+
+                    @if (r.cups.length > 0) {
+                      <div class="mt-4 pt-3 border-t border-border">
+                        <div class="text-xs text-muted-foreground font-medium mb-1">CUPS</div>
+                        @for (cup of r.cups; track cup) {
+                          <div class="text-xs font-mono text-foreground">{{ cup }}</div>
+                        }
+                      </div>
+                    }
+                  </div>
+
+                  <!-- FIRMA Y VERIFICACIÓN -->
+                  <div>
+                    <h4 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                      Firma y verificación
+                    </h4>
+                    <div class="space-y-2.5">
+                      @for (item of groupItems(r.checklist, 'firma'); track item.key) {
+                        <div class="flex items-start gap-2">
+                          <ui-icon
+                            [name]="item.completed ? 'check-circle' : (item.optional ? 'circle' : 'alert-circle')"
+                            [size]="15"
+                            class="mt-0.5 shrink-0"
+                            [class]="item.completed ? 'text-green-500' : (item.optional ? 'text-muted-foreground' : 'text-red-500')"
+                          />
+                          <div class="flex-1 min-w-0">
+                            <div class="text-xs font-medium text-foreground">{{ item.label }}</div>
+                            @if (item.optional && !item.completed) {
+                              <div class="text-xs text-muted-foreground">Verificación manual</div>
+                            }
+                            @if (item.currentValue) {
+                              <div class="text-xs text-muted-foreground">{{ item.currentValue }}</div>
+                            }
+                          </div>
+                          @if (item.field === 'validado') {
+                            <button
+                              (click)="toggleFirma(r); $event.stopPropagation()"
+                              [disabled]="saving()"
+                              class="text-xs shrink-0 font-medium disabled:opacity-50"
+                              [class]="item.completed ? 'text-muted-foreground hover:underline' : 'text-primary hover:underline'"
+                            >
+                              {{ item.completed ? 'Desmarcar' : 'Marcar firmado' }}
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+
+                </div>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  } <!-- end @else filteredRows -->
+
+} <!-- end @else rows -->
+
+<!-- Edit dialog -->
+<app-form-dialog
+  [open]="editOpen()"
+  [title]="editItem()?.label ?? 'Editar campo'"
+  subtitle="Introduce el valor para completar este dato"
+  icon="edit"
+  [saving]="saving()"
+  [canSave]="canSaveEdit"
+  saveLabel="Guardar"
+  [errorMessage]="formError()"
+  (cancel)="closeEdit()"
+  (save)="saveEdit()"
+>
+  <div class="space-y-1.5">
+    <label class="text-sm font-medium text-foreground">{{ editItem()?.label }}</label>
+    <input
+      [formControl]="editValue"
+      type="text"
+      class="w-full px-3 py-2 border border-input rounded-md text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+      placeholder="Introduce el valor"
+      (keydown.enter)="canSaveEdit && saveEdit()"
+    />
+  </div>
+</app-form-dialog>

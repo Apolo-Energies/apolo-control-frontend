@@ -48,4 +48,8 @@ export class CustomerService {
       params: buildParams(page),
     });
   }
+
+  patch(id: string, body: Record<string, string | null>): Observable<Customer> {
+    return this.http.patch<Customer>(`${this.baseUrl}/${id}`, body);
+  }
 }
