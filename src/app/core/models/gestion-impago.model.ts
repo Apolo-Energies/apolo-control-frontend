@@ -280,6 +280,8 @@ export interface GestionImpagoActualizarEstadoPayload {
   fechaEstado?: string | null;
   notas?: string | null;
   importe?: number | null;
+  abogadoResponsable?: string | null;
+  fechaEnvioDemanda?: string | null;
 }
 
 export interface GestionImpagoRegistrarContactoPayload {
@@ -287,6 +289,7 @@ export interface GestionImpagoRegistrarContactoPayload {
   notes?: string | null;
   promesaFecha?: string | null;
   promesaImporte?: number | null;
+  targetStep?: number;
 }
 
 // ── Stats ─────────────────────────────────────────────────────────────────────

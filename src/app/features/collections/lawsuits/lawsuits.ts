@@ -68,15 +68,16 @@ export class Lawsuits implements OnDestroy {
     });
   });
 
+  // ── Demanda dialog ────────────────────────────────────────────────────────
+  protected readonly demandaDialogRow = signal<GestionImpago | null>(null);
+  protected demandaDialogForm = { abogadoResponsable: '', fechaEnvioDemanda: '' };
+
   // ── KPIs ──────────────────────────────────────────────────────────────────
   protected readonly totalPredemanda = computed(() =>
     this.rows().filter(r => r.estado === 'predemanda').length,
   );
   protected readonly totalDemanda = computed(() =>
     this.rows().filter(r => r.estado === 'demanda').length,
-  );
-  protected readonly totalJuicio = computed(() =>
-    this.rows().filter(r => r.estado === 'juicio').length,
   );
   protected readonly totalDeuda = computed(() =>
     this.rows().reduce((s, r) => s + r.importePendiente, 0),
@@ -196,9 +197,37 @@ export class Lawsuits implements OnDestroy {
 
   // ── Estado update ─────────────────────────────────────────────────────────
   protected actualizarEstado(r: GestionImpago, estado: EstadoGestionImpago): void {
+    if (estado === 'demanda') {
+      this.demandaDialogForm = {
+        abogadoResponsable: r.abogadoResponsable ?? '',
+        fechaEnvioDemanda:  r.fechaEnvioDemanda  ?? '',
+      };
+      this.demandaDialogRow.set(r);
+      return;
+    }
+    this.doActualizarEstado(r, { estado });
+  }
+
+  protected confirmDemanda(): void {
+    const r = this.demandaDialogRow();
+    if (!r) return;
+    const { abogadoResponsable, fechaEnvioDemanda } = this.demandaDialogForm;
+    if (!abogadoResponsable.trim() || !fechaEnvioDemanda) {
+      this.notify.error('El abogado responsable y la fecha de envío son obligatorios');
+      return;
+    }
+    this.demandaDialogRow.set(null);
+    this.doActualizarEstado(r, { estado: 'demanda', abogadoResponsable, fechaEnvioDemanda });
+  }
+
+  protected cancelDemanda(): void {
+    this.demandaDialogRow.set(null);
+  }
+
+  private doActualizarEstado(r: GestionImpago, payload: GestionImpagoActualizarEstadoPayload): void {
     this.updatingId.set(r.id);
     this.globalLoading.start('Actualizando', '');
-    this.service.actualizarEstado(r.id, { estado }).subscribe({
+    this.service.actualizarEstado(r.id, payload).subscribe({
       next: (updated) => {
         this.updatingId.set(null);
         this.globalLoading.stop();

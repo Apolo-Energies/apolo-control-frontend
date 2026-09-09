@@ -7,12 +7,11 @@
 </app-page-header>
 
 <!-- KPI row -->
-<div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-  <app-kpi-card label="Total expedientes" [value]="rows().length"        icon="scale"     tone="purple" />
-  <app-kpi-card label="Pre-demanda"       [value]="totalPredemanda()"    icon="file-text" tone="warning" />
-  <app-kpi-card label="Demanda"           [value]="totalDemanda()"       icon="scale"     tone="danger" />
-  <app-kpi-card label="Juicio"            [value]="totalJuicio()"        icon="scale"     tone="danger" />
-  <app-kpi-card label="Deuda en litigio"  [value]="formatEur(totalDeuda())" icon="euro"  tone="danger" />
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+  <app-kpi-card label="Total expedientes" [value]="rows().length"           icon="scale"     tone="purple" />
+  <app-kpi-card label="Pre-demanda"       [value]="totalPredemanda()"       icon="file-text" tone="warning" />
+  <app-kpi-card label="Demanda"           [value]="totalDemanda()"          icon="scale"     tone="danger" />
+  <app-kpi-card label="Deuda en litigio"  [value]="formatEur(totalDeuda())" icon="euro"      tone="danger" />
 </div>
 
 <!-- Search + filter -->
@@ -46,13 +45,6 @@
       ? 'bg-danger text-danger-foreground'
       : 'border border-border text-muted-foreground hover:bg-accent/40'">
     Demanda ({{ totalDemanda() }})
-  </button>
-  <button type="button" (click)="estadoFilter.set('juicio')"
-    class="h-8 px-3 rounded-lg text-xs font-medium transition-colors"
-    [class]="estadoFilter() === 'juicio'
-      ? 'bg-danger text-danger-foreground'
-      : 'border border-border text-muted-foreground hover:bg-accent/40'">
-    Juicio ({{ totalJuicio() }})
   </button>
 </div>
 
@@ -110,7 +102,6 @@
                   <option value="ovc"         [selected]="r.estado === 'ovc'">En OVC</option>
                   <option value="predemanda"  [selected]="r.estado === 'predemanda'">Pre-demanda</option>
                   <option value="demanda"     [selected]="r.estado === 'demanda'">Demanda</option>
-                  <option value="juicio"      [selected]="r.estado === 'juicio'">Juicio</option>
                   <option value="va_a_pagar"  [selected]="r.estado === 'va_a_pagar'">Va a pagar</option>
                   <option value="pagado"      [selected]="r.estado === 'pagado'">Cobrado</option>
                 </select>
@@ -238,6 +229,70 @@
           }
         </tbody>
       </table>
+    </div>
+  </div>
+}
+
+<!-- Demanda dialog -->
+@if (demandaDialogRow(); as dr) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    style="background:rgba(0,0,0,.45)" (click)="cancelDemanda()">
+    <div class="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg p-6"
+      (click)="$event.stopPropagation()">
+      <p class="text-base font-semibold text-foreground mb-1">Pasar a Demanda</p>
+      <p class="text-xs text-muted-foreground mb-5">
+        Completa los datos obligatorios para registrar la demanda.
+      </p>
+
+      <!-- OVC history -->
+      @if (dr.ovcCheck) {
+        <div class="rounded-lg border border-border bg-accent/20 px-4 py-3 mb-5 text-xs space-y-1">
+          <p class="font-semibold text-muted-foreground uppercase tracking-wide mb-2">Historial OVC</p>
+          <div class="flex gap-6 flex-wrap">
+            <span><span class="text-muted-foreground">Inicio OVC:</span>
+              <span class="ml-1 font-mono text-foreground">{{ fmt(dr.ovcStartDate) }}</span></span>
+            @if (dr.ovcSubstatus) {
+              <span><span class="text-muted-foreground">Substatus:</span>
+                <span class="ml-1 text-foreground">{{ dr.ovcSubstatus }}</span></span>
+            }
+            <span><span class="text-muted-foreground">OVC enviada:</span>
+              <span class="ml-1 font-semibold" [class]="dr.ovcEnviado ? 'text-success-fg' : 'text-warning-fg'">
+                {{ dr.ovcEnviado ? 'Sí' : 'No' }}
+              </span></span>
+          </div>
+        </div>
+      }
+
+      <!-- Form fields -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div>
+          <label class="block text-xs font-medium text-foreground mb-1">
+            Abogado responsable <span class="text-danger-fg">*</span>
+          </label>
+          <input type="text" [(ngModel)]="demandaDialogForm.abogadoResponsable"
+            placeholder="Nombre del abogado"
+            class="h-9 w-full px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-foreground mb-1">
+            Fecha envío demanda <span class="text-danger-fg">*</span>
+          </label>
+          <input type="date" [(ngModel)]="demandaDialogForm.fechaEnvioDemanda"
+            class="h-9 w-full px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex justify-end gap-2">
+        <button type="button" (click)="cancelDemanda()"
+          class="h-9 px-4 rounded-lg border border-border text-sm text-muted-foreground hover:bg-accent/40 transition-colors">
+          Cancelar
+        </button>
+        <button type="button" (click)="confirmDemanda()"
+          class="h-9 px-5 rounded-lg bg-danger text-danger-foreground text-sm font-semibold hover:bg-danger/90 transition-colors">
+          Confirmar demanda
+        </button>
+      </div>
     </div>
   </div>
 }

@@ -231,10 +231,11 @@ export class UnpaidDetail implements OnInit {
     this.contactoSubmitting.set(true);
     this.contactoError.set(null);
     this.service.registrarContacto(imp.id, {
-      actionKey: v.actionKey!,
-      notes: v.notes || null,
-      promesaFecha: v.promesaFecha || null,
+      actionKey:     v.actionKey!,
+      notes:         v.notes || null,
+      promesaFecha:  v.promesaFecha || null,
       promesaImporte: v.promesaImporte ?? null,
+      targetStep:    this.contactoTargetStep(),
     }).subscribe({
       next: (updated) => {
         this.impago.set(updated);

@@ -612,6 +612,7 @@ export class Unpaid implements OnDestroy {
       notes:          form.notes          || null,
       promesaFecha:   form.promesaFecha   || null,
       promesaImporte: form.promesaImporte ? parseFloat(form.promesaImporte) : null,
+      targetStep:     form.targetStep,
     }).subscribe({
       next: (updated) => {
         const page = this.result();
