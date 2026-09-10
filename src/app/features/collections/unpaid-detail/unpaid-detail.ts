@@ -467,6 +467,45 @@ export class UnpaidDetail implements OnInit {
     });
   }
 
+  // ── Expediente judicial edit ──────────────────────────────────────────────
+  protected readonly demandaInfoOpen       = signal(false);
+  protected readonly demandaInfoSubmitting = signal(false);
+  protected demandaInfoForm = { abogadoResponsable: '', fechaEnvioDemanda: '', cantidadDemandada: '' };
+
+  protected openDemandaInfoDialog(): void {
+    const imp = this.impago();
+    if (!imp) return;
+    this.demandaInfoForm = {
+      abogadoResponsable: imp.abogadoResponsable ?? '',
+      fechaEnvioDemanda:  imp.fechaEnvioDemanda  ?? '',
+      cantidadDemandada:  imp.cantidadDemandada  != null ? String(imp.cantidadDemandada) : '',
+    };
+    this.demandaInfoOpen.set(true);
+  }
+
+  protected submitDemandaInfo(): void {
+    const imp = this.impago();
+    if (!imp) return;
+    this.demandaInfoSubmitting.set(true);
+    this.service.actualizarDemandaInfo(imp.id, {
+      abogadoResponsable: this.demandaInfoForm.abogadoResponsable || null,
+      fechaEnvioDemanda:  this.demandaInfoForm.fechaEnvioDemanda  || null,
+      cantidadDemandada:  this.demandaInfoForm.cantidadDemandada
+        ? parseFloat(this.demandaInfoForm.cantidadDemandada) : null,
+    }).subscribe({
+      next: (updated) => {
+        this.impago.set(updated);
+        this.demandaInfoSubmitting.set(false);
+        this.demandaInfoOpen.set(false);
+        this.notify.success('Expediente actualizado');
+      },
+      error: (err: HttpErrorResponse) => {
+        this.demandaInfoSubmitting.set(false);
+        this.notify.error(extractMessage(err));
+      },
+    });
+  }
+
   // ── Documentos ────────────────────────────────────────────────────────────
   protected readonly docUploading = signal(false);
 

@@ -436,10 +436,17 @@
     <!-- Expediente judicial -->
     @if (imp.demandaCheck || imp.estado === 'predemanda' || imp.estado === 'demanda') {
       <div class="bg-card border border-danger/20 rounded-xl p-5">
-        <h3 class="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-          <ui-icon name="scale" [size]="14" />
-          Expediente judicial
-        </h3>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-semibold text-foreground flex items-center gap-2">
+            <ui-icon name="scale" [size]="14" />
+            Expediente judicial
+          </h3>
+          <button type="button" (click)="openDemandaInfoDialog()"
+            class="h-7 px-2.5 inline-flex items-center gap-1 rounded-md border border-border text-xs text-muted-foreground hover:bg-accent/40 transition-colors">
+            <ui-icon name="edit" [size]="11" />
+            Editar
+          </button>
+        </div>
         <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm mb-4">
           <div>
             <p class="text-xs text-muted-foreground">Abogado responsable</p>
@@ -752,6 +759,46 @@
   }
 </div>
 
+}
+
+<!-- Demanda info edit dialog -->
+@if (demandaInfoOpen()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    style="background:rgba(0,0,0,.45)" (click)="demandaInfoOpen.set(false)">
+    <div class="bg-card border border-border rounded-xl shadow-2xl w-full max-w-md p-6"
+      (click)="$event.stopPropagation()">
+      <p class="text-base font-semibold text-foreground mb-5">Editar expediente judicial</p>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-foreground mb-1">Abogado responsable</label>
+          <input type="text" [(ngModel)]="demandaInfoForm.abogadoResponsable"
+            placeholder="Nombre del abogado"
+            class="h-9 w-full px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-foreground mb-1">Fecha envío demanda</label>
+          <input type="date" [(ngModel)]="demandaInfoForm.fechaEnvioDemanda"
+            class="h-9 w-full px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-foreground mb-1">Cantidad demandada (€)</label>
+          <input type="number" [(ngModel)]="demandaInfoForm.cantidadDemandada"
+            min="0" step="0.01" placeholder="0.00"
+            class="h-9 w-full px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-6">
+        <button type="button" (click)="demandaInfoOpen.set(false)"
+          class="h-9 px-4 rounded-lg border border-border text-sm text-muted-foreground hover:bg-accent/40 transition-colors">
+          Cancelar
+        </button>
+        <button type="button" (click)="submitDemandaInfo()" [disabled]="demandaInfoSubmitting()"
+          class="h-9 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-40">
+          {{ demandaInfoSubmitting() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </div>
 }
 
 <!-- Estado dialog -->
