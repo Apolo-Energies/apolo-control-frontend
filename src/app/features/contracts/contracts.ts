@@ -29,6 +29,7 @@ import {
   ContractStatus,
   CONTRACT_STATUS_LABEL,
   CONTRACT_STATUS_VALUES,
+  ContratoAnexo,
   Page,
   SuministroPayload,
   TarifaPenalizacion,
@@ -238,6 +239,14 @@ export class Contracts implements OnDestroy {
   protected readonly isReadOnly = computed(() => this.editingContract()?.estado === 'renovado');
   protected readonly isRenovando = computed(() => !!this.renovandoId());
   protected readonly editTab = signal<'form' | 'info'>('form');
+
+  // ── Adjuntos del contrato en edición ─────────────────────────────────────────
+  protected readonly contractAnexos        = signal<ContratoAnexo[]>([]);
+  protected readonly contractAnexosLoading = signal(false);
+  protected readonly uploadAnexoOpen       = signal(false);
+  protected readonly uploadAnexoSaving     = signal(false);
+  protected uploadAnexoFile: File | null   = null;
+  protected uploadAnexoDescripcion         = '';
 
   // Ofertas en formulario de creación/edición (compartido, no pueden estar abiertos a la vez)
   protected readonly fOfertaTar20 = signal(false);
@@ -647,6 +656,70 @@ export class Contracts implements OnDestroy {
       this.editForm.enable();
     }
     this.editOpen.set(true);
+    this.contractAnexos.set([]);
+    this.contractAnexosLoading.set(true);
+    this.service.getAnexos(contract.id).subscribe({
+      next:  list => { this.contractAnexos.set(list); this.contractAnexosLoading.set(false); },
+      error: ()   => { this.contractAnexosLoading.set(false); },
+    });
+  }
+
+  protected openUploadAnexo(): void {
+    this.uploadAnexoFile = null;
+    this.uploadAnexoDescripcion = '';
+    this.uploadAnexoOpen.set(true);
+  }
+
+  protected onUploadAnexoFileSelected(event: Event): void {
+    this.uploadAnexoFile = (event.target as HTMLInputElement).files?.[0] ?? null;
+  }
+
+  protected submitUploadAnexo(): void {
+    const c = this.editingContract();
+    if (!c || !this.uploadAnexoFile) return;
+    this.uploadAnexoSaving.set(true);
+    this.service.uploadAnexo(c.id, this.uploadAnexoFile, this.uploadAnexoDescripcion || undefined).subscribe({
+      next: (anexo) => {
+        this.contractAnexos.update(list => [anexo, ...list]);
+        this.uploadAnexoSaving.set(false);
+        this.uploadAnexoOpen.set(false);
+        this.notify.success('Archivo subido');
+      },
+      error: () => {
+        this.uploadAnexoSaving.set(false);
+        this.notify.error('Error al subir el archivo');
+      },
+    });
+  }
+
+  protected downloadContractAnexo(anexo: ContratoAnexo): void {
+    const c = this.editingContract();
+    if (!c) return;
+    this.service.downloadAnexo(c.id, anexo.id).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = anexo.nombreArchivo; a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.notify.error('Error al descargar'),
+    });
+  }
+
+  protected deleteContractAnexo(anexoId: string): void {
+    const c = this.editingContract();
+    if (!c) return;
+    this.service.deleteAnexo(c.id, anexoId).subscribe({
+      next:  () => { this.contractAnexos.update(list => list.filter(a => a.id !== anexoId)); this.notify.success('Archivo eliminado'); },
+      error: () => this.notify.error('Error al eliminar'),
+    });
+  }
+
+  protected formatAnexoBytes(bytes: number | null): string {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   }
 
   protected closeEdit(): void {
