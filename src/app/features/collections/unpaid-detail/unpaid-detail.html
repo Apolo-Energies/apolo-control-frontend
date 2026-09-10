@@ -770,12 +770,57 @@
     <div>
       <label class="block text-sm font-medium text-foreground mb-1">Estado *</label>
       <select formControlName="estado"
+        (change)="onEstadoChange($any($event.target).value)"
         class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary">
         @for (s of estadoValues; track s) {
           <option [value]="s">{{ estadoLabel[s] }}</option>
         }
+        @if (impago()?.estado === 'juicio') {
+          <option value="juicio">Juicio</option>
+        }
       </select>
     </div>
+
+    @if (selectedEstado() === 'demanda') {
+      <!-- OVC history -->
+      @if (impago()?.ovcCheck) {
+        @let imp2 = impago()!;
+        <div class="rounded-lg border border-border bg-accent/20 px-4 py-3 text-xs space-y-1">
+          <p class="font-semibold text-muted-foreground uppercase tracking-wide mb-2">Historial OVC</p>
+          <div class="flex gap-6 flex-wrap">
+            <span><span class="text-muted-foreground">Inicio OVC:</span>
+              <span class="ml-1 font-mono text-foreground">{{ fmt(imp2.ovcStartDate) }}</span></span>
+            @if (imp2.ovcSubstatus) {
+              <span><span class="text-muted-foreground">Substatus:</span>
+                <span class="ml-1 text-foreground">{{ imp2.ovcSubstatus }}</span></span>
+            }
+            <span><span class="text-muted-foreground">OVC enviada:</span>
+              <span class="ml-1 font-semibold" [class]="imp2.ovcEnviado ? 'text-success-fg' : 'text-warning-fg'">
+                {{ imp2.ovcEnviado ? 'Sí' : 'No' }}
+              </span></span>
+          </div>
+        </div>
+      }
+      <!-- Demanda required fields -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-foreground mb-1">
+            Abogado responsable <span class="text-danger-fg">*</span>
+          </label>
+          <input type="text" formControlName="abogadoResponsable"
+            placeholder="Nombre del abogado"
+            class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-foreground mb-1">
+            Fecha envío demanda <span class="text-danger-fg">*</span>
+          </label>
+          <input type="date" formControlName="fechaEnvioDemanda"
+            class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary" />
+        </div>
+      </div>
+    }
+
     <div>
       <label class="block text-sm font-medium text-foreground mb-1">Notas</label>
       <textarea formControlName="notas" rows="3"

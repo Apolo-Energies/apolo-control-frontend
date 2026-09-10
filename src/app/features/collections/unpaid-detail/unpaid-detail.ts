@@ -77,7 +77,11 @@ export class UnpaidDetail implements OnInit {
   protected readonly estadoForm = this.fb.group({
     estado: ['', Validators.required],
     notas: [''],
+    abogadoResponsable: [''],
+    fechaEnvioDemanda: [''],
   });
+  protected readonly selectedEstado = signal<string>('');
+
 
   // ── Registrar contacto dialog ─────────────────────────────────────────────
   protected readonly contactoDialogOpen  = signal(false);
@@ -128,7 +132,7 @@ export class UnpaidDetail implements OnInit {
   });
 
   // ── Constants ─────────────────────────────────────────────────────────────
-  protected readonly estadoValues    = ESTADO_GESTION_IMPAGO_VALUES;
+  protected readonly estadoValues    = ESTADO_GESTION_IMPAGO_VALUES.filter(s => s !== 'juicio');
   protected readonly estadoLabel     = ESTADO_GESTION_IMPAGO_LABEL;
   protected readonly tipoAccionLabel = TIPO_ACCION_LABEL;
   protected readonly resultadoLabel  = RESULTADO_ACCION_LABEL;
@@ -175,9 +179,20 @@ export class UnpaidDetail implements OnInit {
   protected openEstadoDialog(): void {
     const imp = this.impago();
     if (!imp) return;
-    this.estadoForm.patchValue({ estado: imp.estado, notas: '' });
+    this.estadoForm.patchValue({
+      estado: imp.estado,
+      notas: '',
+      abogadoResponsable: imp.abogadoResponsable ?? '',
+      fechaEnvioDemanda: imp.fechaEnvioDemanda ?? '',
+    });
+    this.selectedEstado.set(imp.estado);
     this.estadoError.set(null);
     this.estadoDialogOpen.set(true);
+  }
+
+  protected onEstadoChange(value: string): void {
+    this.selectedEstado.set(value);
+    this.estadoForm.patchValue({ estado: value });
   }
 
   protected submitEstado(): void {
@@ -185,11 +200,19 @@ export class UnpaidDetail implements OnInit {
     const imp = this.impago();
     if (!imp) return;
     const v = this.estadoForm.getRawValue();
+    if (v.estado === 'demanda') {
+      if (!v.abogadoResponsable?.trim() || !v.fechaEnvioDemanda) {
+        this.estadoError.set('El abogado responsable y la fecha de envío son obligatorios');
+        return;
+      }
+    }
     this.estadoSubmitting.set(true);
     this.estadoError.set(null);
     this.service.actualizarEstado(imp.id, {
       estado: v.estado as EstadoGestionImpago,
       notas: v.notas || null,
+      abogadoResponsable: v.estado === 'demanda' ? (v.abogadoResponsable || null) : null,
+      fechaEnvioDemanda:  v.estado === 'demanda' ? (v.fechaEnvioDemanda  || null) : null,
     }).subscribe({
       next: (updated) => {
         this.impago.set(updated);

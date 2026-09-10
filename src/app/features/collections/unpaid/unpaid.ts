@@ -252,7 +252,7 @@ export class Unpaid implements OnDestroy {
   }
 
   // ── Constants ─────────────────────────────────────────────────────────────
-  protected readonly estadoValues    = ESTADO_GESTION_IMPAGO_VALUES;
+  protected readonly estadoValues    = ESTADO_GESTION_IMPAGO_VALUES.filter(s => s !== 'juicio');
   protected readonly estadoLabel     = ESTADO_GESTION_IMPAGO_LABEL;
   protected readonly prioridadLabel  = PRIORIDAD_GESTION_IMPAGO_LABEL;
   protected readonly prioridadValues: PrioridadGestionImpago[] = ['baja', 'media', 'alta', 'urgente'];
@@ -671,8 +671,20 @@ export class Unpaid implements OnDestroy {
   private readonly ESTADO_CON_MODAL: ReadonlySet<string> = new Set(['pagado', 'cortado', 'va_a_pagar']);
   protected readonly ESTADO_CON_PAGO_PARCIAL: ReadonlySet<string> = new Set(['va_a_pagar']);
 
+  // ── Demanda dialog ────────────────────────────────────────────────────────
+  protected readonly demandaDialogRow = signal<GestionImpago | null>(null);
+  protected demandaDialogForm = { abogadoResponsable: '', fechaEnvioDemanda: '' };
+
   protected changeEstado(r: GestionImpago, newEstado: string): void {
     if (newEstado === r.estado || this.savingEstadoId()) return;
+    if (newEstado === 'demanda') {
+      this.demandaDialogForm = {
+        abogadoResponsable: r.abogadoResponsable ?? '',
+        fechaEnvioDemanda:  r.fechaEnvioDemanda  ?? '',
+      };
+      this.demandaDialogRow.set(r);
+      return;
+    }
     if (this.ESTADO_CON_MODAL.has(newEstado)) {
       this.pagadoFecha   = new Date().toISOString().slice(0, 10);
       this.pagadoNotas   = '';
@@ -683,6 +695,24 @@ export class Unpaid implements OnDestroy {
       return;
     }
     this.doActualizarEstado(r, { estado: newEstado as EstadoGestionImpago });
+  }
+
+  protected confirmDemanda(): void {
+    const r = this.demandaDialogRow();
+    if (!r) return;
+    const { abogadoResponsable, fechaEnvioDemanda } = this.demandaDialogForm;
+    if (!abogadoResponsable.trim() || !fechaEnvioDemanda) {
+      this.notify.error('El abogado responsable y la fecha de envío son obligatorios');
+      return;
+    }
+    this.demandaDialogRow.set(null);
+    this.doActualizarEstado(r, { estado: 'demanda', abogadoResponsable, fechaEnvioDemanda });
+  }
+
+  protected cancelDemanda(): void {
+    this.demandaDialogRow.set(null);
+    const page = this.result();
+    if (page) this.result.set({ ...page, content: [...page.content] });
   }
 
   protected confirmarPago(): void {

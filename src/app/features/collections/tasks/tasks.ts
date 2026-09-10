@@ -75,6 +75,10 @@ export class Tasks implements OnDestroy {
 
   protected readonly estadoLabel = ESTADO_GESTION_IMPAGO_LABEL;
 
+  // ── Demanda dialog ────────────────────────────────────────────────────────
+  protected readonly demandaDialogRow = signal<GestionImpago | null>(null);
+  protected demandaDialogForm = { abogadoResponsable: '', fechaEnvioDemanda: '' };
+
   protected readonly lista = computed(() => {
     const q          = this.q().toLowerCase().trim();
     const cFilter    = this.contactoFilter();
@@ -179,8 +183,36 @@ export class Tasks implements OnDestroy {
   }
 
   protected actualizarEstado(r: GestionImpago, estado: EstadoGestionImpago): void {
+    if (estado === 'demanda') {
+      this.demandaDialogForm = {
+        abogadoResponsable: r.abogadoResponsable ?? '',
+        fechaEnvioDemanda:  r.fechaEnvioDemanda  ?? '',
+      };
+      this.demandaDialogRow.set(r);
+      return;
+    }
+    this.doActualizarEstado(r, { estado });
+  }
+
+  protected confirmDemanda(): void {
+    const r = this.demandaDialogRow();
+    if (!r) return;
+    const { abogadoResponsable, fechaEnvioDemanda } = this.demandaDialogForm;
+    if (!abogadoResponsable.trim() || !fechaEnvioDemanda) {
+      this.notify.error('El abogado responsable y la fecha de envío son obligatorios');
+      return;
+    }
+    this.demandaDialogRow.set(null);
+    this.doActualizarEstado(r, { estado: 'demanda', abogadoResponsable, fechaEnvioDemanda });
+  }
+
+  protected cancelDemanda(): void {
+    this.demandaDialogRow.set(null);
+  }
+
+  private doActualizarEstado(r: GestionImpago, payload: GestionImpagoActualizarEstadoPayload): void {
     this.updatingId.set(r.id);
-    this.service.actualizarEstado(r.id, { estado }).subscribe({
+    this.service.actualizarEstado(r.id, payload).subscribe({
       next: (updated) => {
         this.updatingId.set(null);
         this.rows.update(list => list.map(item => item.id === updated.id ? updated : item));
