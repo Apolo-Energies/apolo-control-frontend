@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
-import { ReactiveFormsModule, FormControl } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { Router } from '@angular/router';
 
 import { PageHeader }    from '../../../shared/components/page-header/page-header';
@@ -11,7 +11,8 @@ import { StatusBadge, StatusTone } from '../../../shared/components/status-badge
 
 import { ContractService }  from '../../../core/services/contract.service';
 import { CustomerService }  from '../../../core/services/customer.service';
-import { ContratoIncidencia, ContratoCheckItem } from '../../../core/models';
+import { NotificationService } from '../../../core/services/notification.service';
+import { ContratoIncidencia, ContratoCheckItem, ContratoAnexo } from '../../../core/models';
 
 const ESTADO_LABEL: Record<string, string> = {
   previo:         'Previo',
@@ -32,12 +33,13 @@ const ESTADO_TONE: Record<string, StatusTone> = {
 @Component({
   selector: 'app-incidencias',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PageHeader, TableSkeleton, EmptyState, FormDialog, Icon, StatusBadge, ReactiveFormsModule],
+  imports: [PageHeader, TableSkeleton, EmptyState, FormDialog, Icon, StatusBadge, FormsModule, ReactiveFormsModule],
   templateUrl: './incidencias.html',
 })
 export class Incidencias implements OnInit {
   private readonly contractService = inject(ContractService);
   private readonly customerService = inject(CustomerService);
+  private readonly notify          = inject(NotificationService);
   private readonly router = inject(Router);
 
   protected readonly loading    = signal(true);
@@ -127,6 +129,13 @@ export class Incidencias implements OnInit {
   protected readonly formError   = signal<string | null>(null);
   protected readonly editValue   = new FormControl<string>('', { nonNullable: true });
 
+  // ── Adjuntos ─────────────────────────────────────────────────────────────
+  protected readonly anexosMap     = signal<Partial<Record<string, ContratoAnexo[]>>>({});
+  protected readonly anexosLoading = signal<Partial<Record<string, boolean>>>({});
+  protected readonly uploadOpen    = signal<string | null>(null);
+  protected uploadDescripcion = '';
+  protected uploadFile: File | null = null;
+
   ngOnInit(): void {
     this.load();
   }
@@ -140,7 +149,88 @@ export class Incidencias implements OnInit {
   }
 
   protected toggleExpand(id: string): void {
+    const isOpening = this.expandedId() !== id;
     this.expandedId.update(curr => curr === id ? null : id);
+    if (isOpening && this.anexosMap()[id] === undefined) {
+      this.loadAnexos(id);
+    }
+  }
+
+  private loadAnexos(contratoId: string): void {
+    this.anexosLoading.update(m => ({ ...m, [contratoId]: true }));
+    this.contractService.getAnexos(contratoId).subscribe({
+      next: (list) => {
+        this.anexosMap.update(m => ({ ...m, [contratoId]: list }));
+        this.anexosLoading.update(m => ({ ...m, [contratoId]: false }));
+      },
+      error: () => {
+        this.anexosMap.update(m => ({ ...m, [contratoId]: [] }));
+        this.anexosLoading.update(m => ({ ...m, [contratoId]: false }));
+      },
+    });
+  }
+
+  protected openUpload(contratoId: string): void {
+    this.uploadDescripcion = '';
+    this.uploadFile = null;
+    this.uploadOpen.set(contratoId);
+  }
+
+  protected onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.uploadFile = input.files?.[0] ?? null;
+  }
+
+  protected submitUpload(): void {
+    const contratoId = this.uploadOpen();
+    if (!contratoId || !this.uploadFile) return;
+    this.saving.set(true);
+    this.contractService.uploadAnexo(contratoId, this.uploadFile, this.uploadDescripcion || undefined).subscribe({
+      next: (anexo) => {
+        this.anexosMap.update(m => ({ ...m, [contratoId]: [anexo, ...(m[contratoId] ?? [])] }));
+        this.saving.set(false);
+        this.uploadOpen.set(null);
+        this.notify.success('Archivo subido');
+      },
+      error: () => {
+        this.saving.set(false);
+        this.notify.error('Error al subir el archivo');
+      },
+    });
+  }
+
+  protected deleteAnexo(contratoId: string, anexoId: string): void {
+    this.contractService.deleteAnexo(contratoId, anexoId).subscribe({
+      next: () => {
+        this.anexosMap.update(m => ({
+          ...m,
+          [contratoId]: (m[contratoId] ?? []).filter(a => a.id !== anexoId),
+        }));
+        this.notify.success('Archivo eliminado');
+      },
+      error: () => this.notify.error('Error al eliminar el archivo'),
+    });
+  }
+
+  protected downloadAnexo(contratoId: string, anexo: ContratoAnexo): void {
+    this.contractService.downloadAnexo(contratoId, anexo.id).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href     = url;
+        a.download = anexo.nombreArchivo;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.notify.error('Error al descargar el archivo'),
+    });
+  }
+
+  protected formatBytes(bytes: number | null): string {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   }
 
   protected groupItems(checklist: ContratoCheckItem[], group: string): ContratoCheckItem[] {

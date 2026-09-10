@@ -31,6 +31,7 @@ import {
   CONTRACT_STATUS_VALUES,
   Page,
   SuministroPayload,
+  TarifaPenalizacion,
 } from '../../core/models';
 import { formatDate, formatEuro, safeText, tarifaBadgeClass } from '../../shared/utils/format';
 import { Observable, of } from 'rxjs';
@@ -204,7 +205,8 @@ export class Contracts implements OnDestroy {
 
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
-  protected readonly result = signal<Page<Contract> | null>(null);
+  protected readonly result           = signal<Page<Contract> | null>(null);
+  protected readonly tarifasActivas   = signal<TarifaPenalizacion[]>([]);
   protected readonly page = signal(0);
   protected readonly size = signal(20);
 
@@ -424,7 +426,7 @@ export class Contracts implements OnDestroy {
     this.loading.set(true);
     this.errorMessage.set(null);
     this.service
-      .list(
+      .init(
         {
           status: this.statusFilter || undefined,
           q: this.q.trim() || undefined,
@@ -436,7 +438,8 @@ export class Contracts implements OnDestroy {
       )
       .subscribe({
         next: (response) => {
-          this.result.set(response);
+          this.result.set(response.contratos);
+          if (response.tarifasActivas.length) this.tarifasActivas.set(response.tarifasActivas);
           this.loading.set(false);
         },
         error: (err: HttpErrorResponse) => {

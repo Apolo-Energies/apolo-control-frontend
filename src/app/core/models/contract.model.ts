@@ -1,6 +1,7 @@
 import { ContractStatus } from './enums';
 import { CustomerScoring } from './customer.model';
 import { Page } from './page.model';
+import { TarifaPenalizacion } from './tarifa-penalizacion.model';
 
 export interface ContractOfferTarifa {
   nombre?: string | null;
@@ -164,6 +165,20 @@ export interface ContratoCheckItem {
   currentValue: string | null;
   entity: string | null;
   field: string | null;
+}
+
+export interface ContratoAnexo {
+  id: string;
+  nombreArchivo: string;
+  tipoContenido: string;
+  tamanio: number | null;
+  descripcion: string | null;
+  createdAt: string;
+}
+
+export interface ContratosPageData {
+  contratos: Page<Contract>;
+  tarifasActivas: TarifaPenalizacion[];
 }
 
 export interface ContratoIncidencia {

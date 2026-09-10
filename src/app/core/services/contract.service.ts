@@ -9,6 +9,8 @@ import {
   ContractFilter,
   ContractPayload,
   ContractRenovaciones,
+  ContratosPageData,
+  ContratoAnexo,
   ContratoIncidencia,
   Page,
   PageRequest,
@@ -87,7 +89,39 @@ export class ContractService {
     return this.http.patch<Contract>(`${this.baseUrl}/${id}/validado`, {});
   }
 
+  init(filter: ContractFilter = {}, page: PageRequest = {}): Observable<ContratosPageData> {
+    return this.http.get<ContratosPageData>(`${this.baseUrl}/init`, {
+      params: buildParams({
+        estado: filter.status,
+        q: filter.q,
+        startDate: filter.startDate,
+        endDate: filter.endDate,
+        motivoRechazo: filter.motivoRechazo,
+        ...page,
+      }),
+    });
+  }
+
   getIncidencias(): Observable<ContratoIncidencia[]> {
     return this.http.get<ContratoIncidencia[]>(`${this.baseUrl}/incidencias`);
+  }
+
+  getAnexos(contratoId: string): Observable<ContratoAnexo[]> {
+    return this.http.get<ContratoAnexo[]>(`${this.baseUrl}/${contratoId}/anexos`);
+  }
+
+  uploadAnexo(contratoId: string, file: File, descripcion?: string): Observable<ContratoAnexo> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    if (descripcion) form.append('descripcion', descripcion);
+    return this.http.post<ContratoAnexo>(`${this.baseUrl}/${contratoId}/anexos`, form);
+  }
+
+  deleteAnexo(contratoId: string, anexoId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${contratoId}/anexos/${anexoId}`);
+  }
+
+  downloadAnexo(contratoId: string, anexoId: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/${contratoId}/anexos/${anexoId}/descargar`, { responseType: 'blob' });
   }
 }

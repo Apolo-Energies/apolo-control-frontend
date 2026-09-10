@@ -31,6 +31,8 @@ export class BajaDialog implements OnDestroy {
   preselectedContract = input<Contract | null>(null);
   /** Fecha de baja pre-rellenada cuando se viene del diálogo "Cambiar estado". */
   fechaBajaInicial    = input<string>('');
+  /** Tarifas pre-cargadas por el componente padre (evita una petición extra al montar el diálogo). */
+  tarifasActivas      = input<TarifaPenalizacion[]>([]);
 
   // ── Outputs ──────────────────────────────────────────────────────────────────
   saved     = output<void>();
@@ -86,7 +88,14 @@ export class BajaDialog implements OnDestroy {
   });
 
   constructor() {
-    this.loadTarifas();
+    effect(() => {
+      const provided = this.tarifasActivas();
+      if (provided.length) {
+        untracked(() => { this.tarifas.set(provided); this.autoSelectTarifa(); });
+      } else {
+        untracked(() => this.loadTarifas());
+      }
+    });
     effect(() => {
       const isOpen     = this.open();
       const editing    = this.editingBaja();
@@ -96,6 +105,7 @@ export class BajaDialog implements OnDestroy {
   }
 
   private loadTarifas(): void {
+    if (this.tarifas().length) return;
     this.tarifaService.list(true).subscribe({
       next: (list) => {
         this.tarifas.set(list);
