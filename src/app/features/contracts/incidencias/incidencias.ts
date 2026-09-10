@@ -75,10 +75,45 @@ export class Incidencias implements OnInit {
     });
   });
 
+  // ── Paginación ───────────────────────────────────────────────────────────────
+  private readonly PAGE_SIZE = 25;
+  protected readonly page = signal(0);
+
+  protected readonly totalPages = computed(() =>
+    Math.max(1, Math.ceil(this.filteredRows().length / this.PAGE_SIZE)),
+  );
+
+  protected readonly pagedRows = computed(() =>
+    this.filteredRows().slice(
+      this.page() * this.PAGE_SIZE,
+      (this.page() + 1) * this.PAGE_SIZE,
+    ),
+  );
+
+  protected readonly paginationInfo = computed(() => {
+    const total = this.filteredRows().length;
+    const p     = this.page();
+    return {
+      from:    total === 0 ? 0 : p * this.PAGE_SIZE + 1,
+      to:      Math.min((p + 1) * this.PAGE_SIZE, total),
+      total,
+      current: p + 1,
+      pages:   this.totalPages(),
+    };
+  });
+
+  protected prevPage(): void { if (this.page() > 0) this.page.update(p => p - 1); }
+  protected nextPage(): void { if (this.page() < this.totalPages() - 1) this.page.update(p => p + 1); }
+
+  protected setQ(v: string):        void { this.filterQ.set(v);        this.page.set(0); }
+  protected setEstado(v: string):   void { this.filterEstado.set(v);   this.page.set(0); }
+  protected setFaltante(v: string): void { this.filterFaltante.set(v); this.page.set(0); }
+
   protected clearFilters(): void {
     this.filterQ.set('');
     this.filterEstado.set('');
     this.filterFaltante.set('');
+    this.page.set(0);
   }
 
   protected get hasFilters(): boolean {

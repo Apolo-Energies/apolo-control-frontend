@@ -14,6 +14,7 @@ import { NotificationService }  from '../../../core/services/notification.servic
 import { ListStateService }     from '../../../core/services/list-state.service';
 import {
   GestionImpago, EstadoGestionImpago, ESTADO_GESTION_IMPAGO_LABEL,
+  GestionImpagoActualizarEstadoPayload,
 } from '../../../core/models';
 
 const EXCLUDED: EstadoGestionImpago[] = ['pagado', 'ovc', 'predemanda', 'demanda', 'juicio', 'va_a_pagar'];

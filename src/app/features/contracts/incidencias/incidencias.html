@@ -55,7 +55,7 @@
         type="text"
         placeholder="Nombre, NIF o CUPS…"
         [value]="filterQ()"
-        (input)="filterQ.set($any($event.target).value)"
+        (input)="setQ($any($event.target).value)"
         class="rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground w-56 focus:outline-none focus:ring-2 focus:ring-primary/40"
       />
     </label>
@@ -65,7 +65,7 @@
       <span class="text-xs text-muted-foreground">Estado</span>
       <select
         [value]="filterEstado()"
-        (change)="filterEstado.set($any($event.target).value)"
+        (change)="setEstado($any($event.target).value)"
         class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
       >
         <option value="">Todos</option>
@@ -82,7 +82,7 @@
       <span class="text-xs text-muted-foreground">Campo faltante</span>
       <select
         [value]="filterFaltante()"
-        (change)="filterFaltante.set($any($event.target).value)"
+        (change)="setFaltante($any($event.target).value)"
         class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
       >
         <option value="">Todos</option>
@@ -145,7 +145,7 @@
         </tr>
       </thead>
       <tbody>
-        @for (r of filteredRows(); track r.id) {
+        @for (r of pagedRows(); track r.id) {
           @let expanded = expandedId() === r.id;
 
           <!-- Master row -->
@@ -326,6 +326,25 @@
         }
       </tbody>
     </table>
+
+    <!-- Pagination bar -->
+    @if (totalPages() > 1) {
+      @let pi = paginationInfo();
+      <div class="flex items-center justify-between px-4 py-3 border-t border-border text-xs text-muted-foreground">
+        <span>{{ pi.from }}–{{ pi.to }} de {{ pi.total }} contratos</span>
+        <div class="flex items-center gap-1">
+          <button type="button" (click)="prevPage()" [disabled]="page() === 0"
+            class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border hover:bg-accent/40 transition-colors disabled:opacity-30">
+            <ui-icon name="chevron-left" [size]="13" />
+          </button>
+          <span class="px-2">{{ pi.current }} / {{ pi.pages }}</span>
+          <button type="button" (click)="nextPage()" [disabled]="page() === totalPages() - 1"
+            class="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border hover:bg-accent/40 transition-colors disabled:opacity-30">
+            <ui-icon name="chevron-right" [size]="13" />
+          </button>
+        </div>
+      </div>
+    }
   </div>
 
   } <!-- end @else filteredRows -->
