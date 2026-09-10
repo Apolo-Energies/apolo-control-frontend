@@ -27,6 +27,8 @@ export class NotificationInboxService {
 
   private currentPage = 0;
   private eventSource: EventSource | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private retryDelay = 5_000;
 
   constructor() {
     effect(() => {
@@ -140,6 +142,7 @@ export class NotificationInboxService {
 
   private connectSSE(): void {
     this.disconnect();
+    if (document.visibilityState === 'hidden') return; // no conectar si la pestaña está oculta
     const token = this.tokenStorage.read()?.token;
     if (!token) return;
     const url = `${this.baseUrl}/sse?token=${encodeURIComponent(token)}`;
@@ -147,24 +150,38 @@ export class NotificationInboxService {
     this.eventSource.addEventListener('notification', (event: MessageEvent) => {
       try {
         const incoming: AppNotification = JSON.parse(event.data);
-        // Prepend to list (visible immediately if panel is open)
         this.notifications.update(list => [incoming, ...list]);
         this.unreadCount.update(c => c + 1);
-        // Show ephemeral toast alert
         const toastMsg = `${incoming.system}: ${incoming.title}`;
         if (incoming.level === 'ERROR') this.toast.error(incoming.message ?? toastMsg, incoming.title);
         else if (incoming.level === 'WARNING') this.toast.warn(incoming.message ?? toastMsg, incoming.title);
         else if (incoming.level === 'SUCCESS') this.toast.success(incoming.message ?? toastMsg, incoming.title);
         else this.toast.info(incoming.message ?? toastMsg, incoming.title);
+        this.retryDelay = 5_000; // reset backoff on successful message
       } catch {
         // ignore malformed events
       }
     });
+    this.eventSource.onopen = () => { this.retryDelay = 5_000; }; // reset backoff on connect
     this.eventSource.onerror = () => {
       this.disconnect();
-      setTimeout(() => { if (this.auth.user()) this.connectSSE(); }, 5000);
+      if (!this.auth.user()) return;
+      const delay = this.retryDelay;
+      this.retryDelay = Math.min(this.retryDelay * 2, 60_000); // exponential backoff, max 60s
+      this.reconnectTimer = setTimeout(() => this.connectSSE(), delay);
     };
+
+    // Reconectar inmediatamente cuando la pestaña vuelve a ser visible
+    document.addEventListener('visibilitychange', this.onVisibilityChange, { once: true });
   }
+
+  private readonly onVisibilityChange = () => {
+    if (document.visibilityState === 'visible' && this.auth.user() && !this.eventSource) {
+      this.retryDelay = 5_000;
+      if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+      this.connectSSE();
+    }
+  };
 
   private checkOverdueTasks(userId: string): void {
     const today = new Date().toISOString().slice(0, 10);
@@ -212,5 +229,7 @@ export class NotificationInboxService {
   private disconnect(): void {
     this.eventSource?.close();
     this.eventSource = null;
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
+    if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
   }
 }
