@@ -68,6 +68,7 @@ export class Bajas implements OnDestroy {
   protected selectedProducto   = '';
   protected startDate          = '';
   protected endDate            = '';
+  protected filterPenalizacion: boolean | null = null;
   protected readonly monthOptions = generateMonthOptions();
   private activeStartDate: string | undefined;
   private activeEndDate: string | undefined;
@@ -93,7 +94,7 @@ export class Bajas implements OnDestroy {
   protected readonly bajaPreselected = signal<Contract | null>(null);
 
   constructor() {
-    const s = this.listState.get<{ searchQ: string; selectedMonth: string; selectedColaborador: string; selectedProducto: string; startDate: string; endDate: string; page: number; size: number }>('bajas');
+    const s = this.listState.get<{ searchQ: string; selectedMonth: string; selectedColaborador: string; selectedProducto: string; startDate: string; endDate: string; filterPenalizacion: boolean | null; page: number; size: number }>('bajas');
     if (s) {
       this.searchQ = s.searchQ;
       this.selectedMonth = s.selectedMonth;
@@ -101,6 +102,7 @@ export class Bajas implements OnDestroy {
       this.selectedProducto = s.selectedProducto;
       this.startDate = s.startDate;
       this.endDate = s.endDate;
+      this.filterPenalizacion = s.filterPenalizacion ?? null;
       if (s.selectedMonth) {
         const r = monthToRange(s.selectedMonth);
         this.activeStartDate = r.start;
@@ -120,7 +122,8 @@ export class Bajas implements OnDestroy {
     this.listState.save('bajas', {
       searchQ: this.searchQ, selectedMonth: this.selectedMonth,
       selectedColaborador: this.selectedColaborador, selectedProducto: this.selectedProducto,
-      startDate: this.startDate, endDate: this.endDate, page: this.page(), size: this.size(),
+      startDate: this.startDate, endDate: this.endDate,
+      filterPenalizacion: this.filterPenalizacion, page: this.page(), size: this.size(),
     });
   }
 
@@ -193,14 +196,15 @@ export class Bajas implements OnDestroy {
   }
 
   protected clearFilters(): void {
-    this.searchQ           = '';
-    this.selectedMonth     = '';
+    this.searchQ             = '';
+    this.selectedMonth       = '';
     this.selectedColaborador = '';
-    this.selectedProducto  = '';
-    this.startDate         = '';
-    this.endDate           = '';
-    this.activeStartDate   = undefined;
-    this.activeEndDate     = undefined;
+    this.selectedProducto    = '';
+    this.startDate           = '';
+    this.endDate             = '';
+    this.filterPenalizacion  = null;
+    this.activeStartDate     = undefined;
+    this.activeEndDate       = undefined;
     this.applyFilters();
   }
 
@@ -215,7 +219,13 @@ export class Bajas implements OnDestroy {
     this.loading.set(true);
     this.errorMessage.set(null);
     this.service.listBajas(
-      { q: this.searchQ || undefined, startDate: this.activeStartDate, endDate: this.activeEndDate, idOferta: this.selectedProducto || undefined },
+      {
+        q: this.searchQ || undefined,
+        startDate: this.activeStartDate,
+        endDate: this.activeEndDate,
+        idOferta: this.selectedProducto || undefined,
+        conPenalizacion: this.filterPenalizacion ?? undefined,
+      },
       p, this.size(),
     ).subscribe({
       next: (res) => { this.result.set(res); this.loading.set(false); },

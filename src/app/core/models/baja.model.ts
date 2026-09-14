@@ -1,6 +1,7 @@
 export interface BajaPayload {
   contratoId: string;
   feedbackCliente?: string | null;
+  feedbackApolo?: string | null;
   tienePenalizacion: boolean;
   montoLiquidacion?: number | null;
   fechaBaja?: string | null;
@@ -10,6 +11,7 @@ export interface BajaPayload {
 
 export interface BajaUpdatePayload {
   feedbackCliente?: string | null;
+  feedbackApolo?: string | null;
   tienePenalizacion: boolean;
   montoLiquidacion?: number | null;
   fechaBaja?: string | null;

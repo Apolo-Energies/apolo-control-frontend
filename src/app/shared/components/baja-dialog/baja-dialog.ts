@@ -80,11 +80,12 @@ export class BajaDialog implements OnDestroy {
   protected readonly chipContract = computed(() => this.editingBaja() ?? this.preselectedContract());
 
   protected readonly form = this.fb.group({
-    contratoId:       ['', Validators.required],
-    feedbackCliente:  [''],
+    contratoId:        ['', Validators.required],
+    feedbackCliente:   [''],
+    feedbackApolo:     [''],
     tienePenalizacion: [false],
-    montoLiquidacion: [null as number | null],
-    fechaBaja:        [''],
+    montoLiquidacion:  [null as number | null],
+    fechaBaja:         [''],
   });
 
   constructor() {
@@ -151,6 +152,7 @@ export class BajaDialog implements OnDestroy {
       this.form.reset({
         contratoId:        editing.id,
         feedbackCliente:   editing.feedbackBaja ?? '',
+        feedbackApolo:     editing.feedbackApolo ?? '',
         tienePenalizacion: editing.tienePenalizacion ?? false,
         montoLiquidacion:  editing.montoLiquidacion ?? null,
         fechaBaja:         editing.fechaEstado ?? '',
@@ -285,6 +287,7 @@ export class BajaDialog implements OnDestroy {
       this.globalLoading.start('Procesando', 'Guardando cambios…');
       this.bajaService.update(editing.id, {
         feedbackCliente:   v.feedbackCliente || null,
+        feedbackApolo:     v.feedbackApolo || null,
         tienePenalizacion: v.tienePenalizacion ?? false,
         montoLiquidacion:  v.montoLiquidacion ?? null,
         fechaBaja:         v.fechaBaja || null,
@@ -308,6 +311,7 @@ export class BajaDialog implements OnDestroy {
       this.bajaService.registrar({
         contratoId:        v.contratoId!,
         feedbackCliente:   v.feedbackCliente || null,
+        feedbackApolo:     v.feedbackApolo || null,
         tienePenalizacion: v.tienePenalizacion ?? false,
         montoLiquidacion:  v.montoLiquidacion ?? null,
         fechaBaja:         v.fechaBaja || null,

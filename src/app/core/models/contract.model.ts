@@ -61,6 +61,7 @@ export interface Contract {
   margenNeto: number | null;
   motivoRechazo: string | null;
   feedbackBaja: string | null;
+  feedbackApolo: string | null;
   validado: boolean;
   tienePenalizacion: boolean;
   montoLiquidacion: number | null;
