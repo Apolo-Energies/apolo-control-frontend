@@ -12,7 +12,7 @@ export class BajaService {
   private readonly baseUrl = `${environment.apiUrl}/bajas`;
 
   listBajas(
-    filter: { q?: string; startDate?: string; endDate?: string; idOferta?: string; conPenalizacion?: boolean } = {},
+    filter: { q?: string; startDate?: string; endDate?: string; idOferta?: string; conPenalizacion?: boolean; minDiasDif?: number; antesFinPrevista?: boolean } = {},
     page: number = 0,
     size: number = 20,
   ): Observable<Page<Contract>> {

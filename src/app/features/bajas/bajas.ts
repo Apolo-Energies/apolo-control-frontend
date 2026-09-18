@@ -69,6 +69,8 @@ export class Bajas implements OnDestroy {
   protected startDate          = '';
   protected endDate            = '';
   protected filterPenalizacion: boolean | null = null;
+  protected filterMinDiasDif: number | null = null;
+  protected filterAntesFinPrevista: boolean | null = null;
   protected readonly monthOptions = generateMonthOptions();
   private activeStartDate: string | undefined;
   private activeEndDate: string | undefined;
@@ -94,7 +96,7 @@ export class Bajas implements OnDestroy {
   protected readonly bajaPreselected = signal<Contract | null>(null);
 
   constructor() {
-    const s = this.listState.get<{ searchQ: string; selectedMonth: string; selectedColaborador: string; selectedProducto: string; startDate: string; endDate: string; filterPenalizacion: boolean | null; page: number; size: number }>('bajas');
+    const s = this.listState.get<{ searchQ: string; selectedMonth: string; selectedColaborador: string; selectedProducto: string; startDate: string; endDate: string; filterPenalizacion: boolean | null; filterMinDiasDif: number | null; filterAntesFinPrevista: boolean | null; page: number; size: number }>('bajas');
     if (s) {
       this.searchQ = s.searchQ;
       this.selectedMonth = s.selectedMonth;
@@ -103,10 +105,15 @@ export class Bajas implements OnDestroy {
       this.startDate = s.startDate;
       this.endDate = s.endDate;
       this.filterPenalizacion = s.filterPenalizacion ?? null;
+      this.filterMinDiasDif = s.filterMinDiasDif ?? null;
+      this.filterAntesFinPrevista = s.filterAntesFinPrevista ?? null;
       if (s.selectedMonth) {
         const r = monthToRange(s.selectedMonth);
         this.activeStartDate = r.start;
         this.activeEndDate = r.end;
+      } else {
+        this.activeStartDate = s.startDate || undefined;
+        this.activeEndDate = s.endDate || undefined;
       }
       this.page.set(s.page);
       this.size.set(s.size);
@@ -123,7 +130,7 @@ export class Bajas implements OnDestroy {
       searchQ: this.searchQ, selectedMonth: this.selectedMonth,
       selectedColaborador: this.selectedColaborador, selectedProducto: this.selectedProducto,
       startDate: this.startDate, endDate: this.endDate,
-      filterPenalizacion: this.filterPenalizacion, page: this.page(), size: this.size(),
+      filterPenalizacion: this.filterPenalizacion, filterMinDiasDif: this.filterMinDiasDif, filterAntesFinPrevista: this.filterAntesFinPrevista, page: this.page(), size: this.size(),
     });
   }
 
@@ -196,15 +203,17 @@ export class Bajas implements OnDestroy {
   }
 
   protected clearFilters(): void {
-    this.searchQ             = '';
-    this.selectedMonth       = '';
-    this.selectedColaborador = '';
-    this.selectedProducto    = '';
-    this.startDate           = '';
-    this.endDate             = '';
-    this.filterPenalizacion  = null;
-    this.activeStartDate     = undefined;
-    this.activeEndDate       = undefined;
+    this.searchQ                = '';
+    this.selectedMonth          = '';
+    this.selectedColaborador    = '';
+    this.selectedProducto       = '';
+    this.startDate              = '';
+    this.endDate                = '';
+    this.filterPenalizacion     = null;
+    this.filterMinDiasDif       = null;
+    this.filterAntesFinPrevista = null;
+    this.activeStartDate        = undefined;
+    this.activeEndDate          = undefined;
     this.applyFilters();
   }
 
@@ -225,6 +234,8 @@ export class Bajas implements OnDestroy {
         endDate: this.activeEndDate,
         idOferta: this.selectedProducto || undefined,
         conPenalizacion: this.filterPenalizacion ?? undefined,
+        minDiasDif: this.filterMinDiasDif ?? undefined,
+        antesFinPrevista: this.filterAntesFinPrevista ?? undefined,
       },
       p, this.size(),
     ).subscribe({
@@ -278,4 +289,11 @@ export class Bajas implements OnDestroy {
   protected date(v: string | null): string { return formatDate(v); }
   protected text(v: string | null): string { return safeText(v); }
   protected readonly tarifaBadge = tarifaBadgeClass;
+
+  protected daysDiff(row: Contract): number | null {
+    if (!row.fechaEstado || !row.fechaFinPrevista) return null;
+    const a = new Date(row.fechaEstado).getTime();
+    const b = new Date(row.fechaFinPrevista).getTime();
+    return Math.round((b - a) / (1000 * 60 * 60 * 24));
+  }
 }
