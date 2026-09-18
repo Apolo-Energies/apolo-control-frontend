@@ -166,6 +166,7 @@ export interface ContratoCheckItem {
   currentValue: string | null;
   entity: string | null;
   field: string | null;
+  verificado: boolean;
 }
 
 export interface ContratoAnexo {

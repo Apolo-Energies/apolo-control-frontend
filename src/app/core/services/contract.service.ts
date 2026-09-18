@@ -124,4 +124,20 @@ export class ContractService {
   downloadAnexo(contratoId: string, anexoId: string): Observable<Blob> {
     return this.http.get(`${this.baseUrl}/${contratoId}/anexos/${anexoId}/descargar`, { responseType: 'blob' });
   }
+
+  verificarCampoCliente(clienteId: string, campo: string): Observable<void> {
+    return this.http.patch<void>(
+      `${environment.apiUrl}/clientes/${clienteId}/verificar-campo`,
+      null,
+      { params: { campo } },
+    );
+  }
+
+  marcarCampoPendienteCliente(clienteId: string, campo: string): Observable<void> {
+    return this.http.patch<void>(
+      `${environment.apiUrl}/clientes/${clienteId}/marcar-pendiente`,
+      null,
+      { params: { campo } },
+    );
+  }
 }

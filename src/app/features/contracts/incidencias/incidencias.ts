@@ -12,6 +12,7 @@ import { StatusBadge, StatusTone } from '../../../shared/components/status-badge
 import { ContractService }  from '../../../core/services/contract.service';
 import { CustomerService }  from '../../../core/services/customer.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { TareaService } from '../../../core/services/tarea.service';
 import { ContratoIncidencia, ContratoCheckItem, ContratoAnexo } from '../../../core/models';
 
 const ESTADO_LABEL: Record<string, string> = {
@@ -40,6 +41,7 @@ export class Incidencias implements OnInit {
   private readonly contractService = inject(ContractService);
   private readonly customerService = inject(CustomerService);
   private readonly notify          = inject(NotificationService);
+  private readonly tareaService    = inject(TareaService);
   private readonly router = inject(Router);
 
   protected readonly loading    = signal(true);
@@ -48,14 +50,16 @@ export class Incidencias implements OnInit {
   protected readonly expandedId = signal<string | null>(null);
 
   // ── Filtros ─────────────────────────────────────────────────────────────────
-  protected readonly filterQ        = signal('');
-  protected readonly filterEstado   = signal('');
-  protected readonly filterFaltante = signal('');
+  protected readonly filterQ               = signal('');
+  protected readonly filterEstado          = signal('');
+  protected readonly filterFaltante        = signal('');
+  protected readonly filterPendienteVerif  = signal(false);
 
   protected readonly filteredRows = computed(() => {
-    const q        = this.filterQ().toLowerCase().trim();
-    const estado   = this.filterEstado();
-    const faltante = this.filterFaltante();
+    const q               = this.filterQ().toLowerCase().trim();
+    const estado          = this.filterEstado();
+    const faltante        = this.filterFaltante();
+    const pendienteVerif  = this.filterPendienteVerif();
 
     return this.rows().filter(r => {
       if (estado && r.estado !== estado) return false;
@@ -73,6 +77,7 @@ export class Incidencias implements OnInit {
           : r.checklist.find(i => i.key === faltante);
         if (!item || item.completed) return false;
       }
+      if (pendienteVerif && !r.checklist.some(i => i.completed && !i.verificado)) return false;
       return true;
     });
   });
@@ -115,19 +120,21 @@ export class Incidencias implements OnInit {
     this.filterQ.set('');
     this.filterEstado.set('');
     this.filterFaltante.set('');
+    this.filterPendienteVerif.set(false);
     this.page.set(0);
   }
 
   protected get hasFilters(): boolean {
-    return !!(this.filterQ() || this.filterEstado() || this.filterFaltante());
+    return !!(this.filterQ() || this.filterEstado() || this.filterFaltante() || this.filterPendienteVerif());
   }
 
-  protected readonly editOpen    = signal(false);
-  protected readonly editItem    = signal<ContratoCheckItem | null>(null);
+  protected readonly editOpen     = signal(false);
+  protected readonly editItem     = signal<ContratoCheckItem | null>(null);
   protected readonly editContrato = signal<ContratoIncidencia | null>(null);
-  protected readonly saving      = signal(false);
-  protected readonly formError   = signal<string | null>(null);
-  protected readonly editValue   = new FormControl<string>('', { nonNullable: true });
+  protected readonly saving       = signal(false);
+  protected readonly formError    = signal<string | null>(null);
+  protected readonly editValue    = new FormControl<string>('', { nonNullable: true });
+  protected readonly verificandoKey = signal<string | null>(null);
 
   // ── Adjuntos ─────────────────────────────────────────────────────────────
   protected readonly anexosMap     = signal<Partial<Record<string, ContratoAnexo[]>>>({});
@@ -296,20 +303,68 @@ export class Incidencias implements OnInit {
     this.customerService.patch(contrato.clienteId, { [item.field]: this.editValue.value }).subscribe({
       next: () => {
         const newValue = this.editValue.value;
+        const hasValue = newValue.trim().length > 0;
         this.rows.update(rows => rows.map(r => {
           if (r.id !== contrato.id) return r;
           const newChecklist = r.checklist.map(i =>
-            i.key === item.key ? { ...i, completed: newValue.trim().length > 0, currentValue: newValue } : i
+            i.key === item.key
+              ? { ...i, completed: hasValue, currentValue: newValue, verificado: false }
+              : i
           );
           const completedItems = newChecklist.filter(i => !i.optional && i.completed).length;
           return { ...r, checklist: newChecklist, completedItems };
         }));
+        if (hasValue) {
+          const cupsStr = contrato.cups?.[0] ?? '';
+          const context = [cupsStr, contrato.clienteNombre].filter(Boolean).join(' - ');
+          this.tareaService.create({
+            titulo: `Verificar ${item.label}${context ? ` — ${context}` : ''}`,
+            descripcion: `El campo "${item.label}" fue rellenado manualmente. Verifica que el dato está correctamente cargado en los demás sistemas (EE, etc.) y pulsa Verificar en el checklist.\nverificar-campo:${contrato.clienteId}:${item.field}`,
+            fechaVencimiento: '2099-12-31',
+            prioridad: 'ALTA',
+          }).subscribe();
+        }
         this.saving.set(false);
         this.closeEdit();
       },
       error: () => {
         this.saving.set(false);
         this.formError.set('Error al guardar. Inténtalo de nuevo.');
+      },
+    });
+  }
+
+  protected marcarVerificado(contrato: ContratoIncidencia, item: ContratoCheckItem): void {
+    if (!item.field) return;
+    this.verificandoKey.set(item.key);
+    this.contractService.verificarCampoCliente(contrato.clienteId, item.field).subscribe({
+      next: () => {
+        this.rows.update(rows => rows.map(r => {
+          if (r.id !== contrato.id) return r;
+          const newChecklist = r.checklist.map(i =>
+            i.key === item.key ? { ...i, verificado: true } : i
+          );
+          return { ...r, checklist: newChecklist };
+        }));
+        this.verificandoKey.set(null);
+        this.notify.success(`${item.label} verificado`);
+        this.completarTareaVerificacion(item, contrato);
+      },
+      error: () => {
+        this.verificandoKey.set(null);
+        this.notify.error('Error al verificar el campo');
+      },
+    });
+  }
+
+  private completarTareaVerificacion(item: ContratoCheckItem, contrato: ContratoIncidencia): void {
+    const cupsStr = contrato.cups?.[0] ?? '';
+    const context = [cupsStr, contrato.clienteNombre].filter(Boolean).join(' - ');
+    const expectedTitle = `Verificar ${item.label}${context ? ` — ${context}` : ''}`;
+    this.tareaService.findByRango('2020-01-01', '2099-12-31').subscribe({
+      next: tareas => {
+        const tarea = tareas.find(t => t.titulo === expectedTitle && !t.completada);
+        if (tarea) this.tareaService.toggleCompletar(tarea.id).subscribe();
       },
     });
   }

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { forkJoin } from 'rxjs';
 
 import { PageHeader } from '../../shared/components/page-header/page-header';
 import { Icon, IconName } from '../../shared/icons/icon';
@@ -21,6 +22,7 @@ import { DashboardService } from '../../core/services/dashboard.service';
 import { MasterDataService } from '../../core/services/master-data.service';
 import { GestionImpagoService } from '../../core/services/gestion-impago.service';
 import { TareaService } from '../../core/services/tarea.service';
+import { ContractService } from '../../core/services/contract.service';
 import {
   ActividadDelegacion,
   ApiErrorResponse,
@@ -31,10 +33,20 @@ import {
   GestionImpagoStats,
   Page,
 } from '../../core/models';
-import { TareaStats, TareaRequest } from '../../core/models/tarea.model';
+import { Tarea, TareaStats, TareaRequest } from '../../core/models/tarea.model';
 import { formatEnergy, formatMonthShort, formatMwh } from '../../shared/utils/format';
 
 type RangeId = 'today' | 'week' | 'month' | 'year' | 'all';
+
+const VERIFICAR_LABEL_TO_FIELD: Record<string, string> = {
+  'IBAN':                  'iban',
+  'Email':                 'email',
+  'Teléfono':              'telefono',
+  'NIF / CIF':             'nif',
+  'Nombre / Razón Social': 'nombre',
+  'Titular':               'titular',
+  'NIF Titular':           'nifTitular',
+};
 
 interface RangeOption {
   id: RangeId;
@@ -126,11 +138,12 @@ const STATUS_COLORS: Record<ContractStatus, { color: string; colorSoft: string; 
   templateUrl: './dashboard.html',
 })
 export class Dashboard {
-  private readonly service       = inject(DashboardService);
-  private readonly masterData    = inject(MasterDataService);
-  private readonly impagoService = inject(GestionImpagoService);
-  private readonly tareaService  = inject(TareaService);
-  private readonly router        = inject(Router);
+  private readonly service         = inject(DashboardService);
+  private readonly masterData      = inject(MasterDataService);
+  private readonly impagoService   = inject(GestionImpagoService);
+  private readonly tareaService    = inject(TareaService);
+  private readonly contractService = inject(ContractService);
+  private readonly router          = inject(Router);
 
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
@@ -138,10 +151,18 @@ export class Dashboard {
   protected readonly range = signal<RangeId>('all');
 
   // ── Tareas de hoy ─────────────────────────────────────────────────────────
-  protected readonly tareasStats   = signal<TareaStats | null>(null);
-  protected readonly tareasLoading = signal(false);
+  protected readonly tareasStats      = signal<TareaStats | null>(null);
+  protected readonly tareasVencidas   = signal<Tarea[]>([]);
+  protected readonly tareasLoading    = signal(false);
   protected readonly tareasFormVisible = signal(false);
   protected nuevaTarea: TareaRequest = { titulo: '', fechaVencimiento: new Date().toISOString().slice(0, 10) };
+
+  protected readonly tareasAll = computed(() => {
+    const hoy = this.tareasStats()?.tareasHoy ?? [];
+    const hoyIds = new Set(hoy.map(t => t.id));
+    const vencidas = this.tareasVencidas().filter(t => !hoyIds.has(t.id));
+    return [...hoy, ...vencidas];
+  });
 
   // ── Impagos stats ─────────────────────────────────────────────────────────
   protected readonly impagoStats        = signal<GestionImpagoStats | null>(null);
@@ -380,14 +401,67 @@ export class Dashboard {
 
   protected loadTareas(): void {
     this.tareasLoading.set(true);
-    this.tareaService.getHoy().subscribe({
-      next:  (s) => { this.tareasStats.set(s); this.tareasLoading.set(false); },
-      error: ()  => this.tareasLoading.set(false),
+    forkJoin({
+      stats:    this.tareaService.getHoy(),
+      vencidas: this.tareaService.getVencidas(),
+    }).subscribe({
+      next: ({ stats, vencidas }) => {
+        this.tareasStats.set(stats);
+        const hoyIds = new Set(stats.tareasHoy.map(t => t.id));
+        this.tareasVencidas.set(vencidas.filter(t => !hoyIds.has(t.id) && !t.completada));
+        this.tareasLoading.set(false);
+      },
+      error: () => this.tareasLoading.set(false),
     });
   }
 
-  protected toggleTarea(id: string): void {
-    this.tareaService.toggleCompletar(id).subscribe(() => this.loadTareas());
+  protected toggleTarea(tarea: Tarea): void {
+    const marcandoHecho = !tarea.completada;
+    this.tareaService.toggleCompletar(tarea.id).subscribe(updated => {
+      // Actualizar en local sin recargar lista (evita spinner que oculta las demás tareas)
+      this.tareasStats.update(s => s ? {
+        ...s,
+        tareasHoy:      s.tareasHoy.map(t => t.id === tarea.id ? updated : t),
+        completadasHoy: s.completadasHoy + (marcandoHecho ? 1 : -1),
+        pendientesHoy:  s.pendientesHoy  + (marcandoHecho ? -1 : 1),
+      } : s);
+      this.tareasVencidas.update(vs => vs.map(t => t.id === tarea.id ? updated : t));
+
+      const descMatch = tarea.descripcion?.match(/verificar-campo:([^:\n]+):([^\n]+)/);
+      if (descMatch) {
+        const [, clienteId, campo] = descMatch;
+        if (marcandoHecho) {
+          this.contractService.verificarCampoCliente(clienteId, campo).subscribe();
+        } else {
+          this.contractService.marcarCampoPendienteCliente(clienteId, campo).subscribe();
+        }
+      } else {
+        this.accionVerificacionPorTitulo(tarea.titulo, marcandoHecho);
+      }
+    });
+  }
+
+  private accionVerificacionPorTitulo(titulo: string, verificar: boolean): void {
+    if (!titulo.startsWith('Verificar ')) return;
+    const emDash = titulo.indexOf(' — ');
+    if (emDash === -1) return;
+    const label   = titulo.substring('Verificar '.length, emDash);
+    const rest    = titulo.substring(emDash + ' — '.length);
+    const cupsEnd = rest.indexOf(' - ');
+    const cups    = (cupsEnd === -1 ? rest : rest.substring(0, cupsEnd)).trim();
+    const campo   = VERIFICAR_LABEL_TO_FIELD[label];
+    if (!campo || !cups) return;
+    this.contractService.getIncidencias().subscribe({
+      next: rows => {
+        const row = rows.find(r => r.cups.includes(cups));
+        if (!row) return;
+        if (verificar) {
+          this.contractService.verificarCampoCliente(row.clienteId, campo).subscribe();
+        } else {
+          this.contractService.marcarCampoPendienteCliente(row.clienteId, campo).subscribe();
+        }
+      },
+    });
   }
 
   protected saveTarea(): void {

@@ -20,7 +20,7 @@
 } @else {
 
   <!-- KPIs -->
-  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+  <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
     <div class="bg-card border border-border rounded-lg p-4">
       <div class="text-2xl font-bold text-foreground">{{ filteredRows().length }}</div>
       <div class="text-xs text-muted-foreground mt-0.5">Contratos</div>
@@ -42,6 +42,12 @@
         {{ filteredRows().filter(r => r.estado === 'incidencia').length }}
       </div>
       <div class="text-xs text-muted-foreground mt-0.5">Incidencias</div>
+    </div>
+    <div class="bg-card border border-border rounded-lg p-4 cursor-pointer hover:bg-accent/30 transition-colors" (click)="filterPendienteVerif.set(!filterPendienteVerif())">
+      <div class="text-2xl font-bold text-amber-600">
+        {{ filteredRows().filter(r => r.checklist.some(i => i.completed && !i.verificado)).length }}
+      </div>
+      <div class="text-xs text-muted-foreground mt-0.5">Pend. verificar</div>
     </div>
   </div>
 
@@ -101,6 +107,19 @@
           <option value="firmaSms">Sin firma SMS</option>
           <option value="verificacion">Sin verificación llamada</option>
         </optgroup>
+      </select>
+    </label>
+
+    <!-- Pendiente de verificar -->
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-muted-foreground">Verificación</span>
+      <select
+        [value]="filterPendienteVerif() ? 'si' : ''"
+        (change)="filterPendienteVerif.set($any($event.target).value === 'si'); page.set(0)"
+        class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      >
+        <option value="">Todos</option>
+        <option value="si">Pendiente de verificar</option>
       </select>
     </label>
 
@@ -205,16 +224,28 @@
                     <div class="space-y-2.5">
                       @for (item of groupItems(r.checklist, 'datos'); track item.key) {
                         <div class="flex items-start gap-2">
-                          <ui-icon
-                            [name]="item.completed ? 'check-circle' : 'alert-circle'"
-                            [size]="15"
-                            class="mt-0.5 shrink-0"
-                            [class]="item.completed ? 'text-green-500' : 'text-red-500'"
-                          />
+                          @if (item.completed && !item.verificado) {
+                            <ui-icon
+                              name="clock"
+                              [size]="15"
+                              class="mt-0.5 shrink-0 text-amber-500"
+                              title="Pendiente de verificar en sistemas externos"
+                            />
+                          } @else {
+                            <ui-icon
+                              [name]="item.completed ? 'check-circle' : 'alert-circle'"
+                              [size]="15"
+                              class="mt-0.5 shrink-0"
+                              [class]="item.completed ? 'text-green-500' : 'text-red-500'"
+                            />
+                          }
                           <div class="flex-1 min-w-0">
                             <div class="text-xs font-medium text-foreground">{{ item.label }}</div>
                             @if (item.currentValue) {
                               <div class="text-xs text-muted-foreground truncate">{{ item.currentValue }}</div>
+                            }
+                            @if (item.completed && !item.verificado) {
+                              <div class="text-[11px] text-amber-600 font-medium">Pendiente de verificar</div>
                             }
                           </div>
                           @if (!item.completed) {
@@ -233,6 +264,19 @@
                                 Ir
                               </button>
                             }
+                          } @else if (!item.verificado && item.field) {
+                            <button
+                              (click)="marcarVerificado(r, item); $event.stopPropagation()"
+                              [disabled]="verificandoKey() === item.key"
+                              class="text-xs text-green-600 hover:underline shrink-0 font-medium disabled:opacity-50 inline-flex items-center gap-1"
+                            >
+                              @if (verificandoKey() === item.key) {
+                                <ui-icon name="loader" [size]="11" class="animate-spin" />
+                              } @else {
+                                <ui-icon name="check" [size]="11" />
+                              }
+                              Completado
+                            </button>
                           }
                         </div>
                       }
