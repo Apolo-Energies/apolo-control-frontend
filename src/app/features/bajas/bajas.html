@@ -187,23 +187,23 @@
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
             <thead>
-              <tr class="border-b border-border bg-muted/40">
-                <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Contrato</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Cliente</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Delegación</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Tarifa</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Producto</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Fecha baja</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Fin prevista</th>
-                <th class="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wide">Días dif.</th>
-                <th class="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wide">Consumo (MWh)</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Penalización</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Motivo / Feedback cliente</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Feedback Apolo</th>
+              <tr class="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+                <th class="px-4 py-3 text-left font-medium">Contrato</th>
+                <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-medium hover:text-foreground" (click)="setSort('clienteNombre')">Cliente <ui-icon [name]="sortIcon('clienteNombre')" [size]="11" [class]="sortIconClass('clienteNombre')" /></button></th>
+                <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-medium hover:text-foreground" (click)="setSort('clienteDelegacion')">Delegación <ui-icon [name]="sortIcon('clienteDelegacion')" [size]="11" [class]="sortIconClass('clienteDelegacion')" /></button></th>
+                <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-medium hover:text-foreground" (click)="setSort('suministroTarifa')">Tarifa <ui-icon [name]="sortIcon('suministroTarifa')" [size]="11" [class]="sortIconClass('suministroTarifa')" /></button></th>
+                <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-medium hover:text-foreground" (click)="setSort('idOferta')">Producto <ui-icon [name]="sortIcon('idOferta')" [size]="11" [class]="sortIconClass('idOferta')" /></button></th>
+                <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-medium hover:text-foreground" (click)="setSort('fechaEstado')">Fecha baja <ui-icon [name]="sortIcon('fechaEstado')" [size]="11" [class]="sortIconClass('fechaEstado')" /></button></th>
+                <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-medium hover:text-foreground" (click)="setSort('fechaFinPrevista')">Fin prevista <ui-icon [name]="sortIcon('fechaFinPrevista')" [size]="11" [class]="sortIconClass('fechaFinPrevista')" /></button></th>
+                <th class="px-4 py-3 text-right"><button class="flex items-center gap-1 font-medium hover:text-foreground ml-auto" (click)="setSort('daysDiff')">Días dif. <ui-icon [name]="sortIcon('daysDiff')" [size]="11" [class]="sortIconClass('daysDiff')" /></button></th>
+                <th class="px-4 py-3 text-right"><button class="flex items-center gap-1 font-medium hover:text-foreground ml-auto" (click)="setSort('consumoTotal')">Consumo (MWh) <ui-icon [name]="sortIcon('consumoTotal')" [size]="11" [class]="sortIconClass('consumoTotal')" /></button></th>
+                <th class="px-4 py-3 text-left font-medium">Penalización</th>
+                <th class="px-4 py-3 text-left font-medium">Motivo / Feedback cliente</th>
+                <th class="px-4 py-3 text-left font-medium">Feedback Apolo</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border">
-              @for (row of rows(); track row.id) {
+              @for (row of sortedRows(); track row.id) {
                 <tr class="hover:bg-muted/30 transition-colors cursor-pointer" (click)="openEdit(row)">
                   <td class="px-4 py-3">
                     <span class="font-mono text-xs font-medium text-foreground">{{ text(row.idExterno) }}</span>

@@ -15,6 +15,11 @@ import { ContractService } from '../../core/services/contract.service';
 import { ListStateService } from '../../core/services/list-state.service';
 import { Contract, DelegacionBajaStats, Page } from '../../core/models';
 import { formatDate, safeText, tarifaBadgeClass } from '../../shared/utils/format';
+import { IconName } from '../../shared/icons/icon';
+
+type SortDir = 'asc' | 'desc';
+type SortCol = 'clienteNombre' | 'clienteDelegacion' | 'idOferta' | 'suministroTarifa'
+             | 'fechaEstado' | 'fechaFinPrevista' | 'consumoTotal' | 'daysDiff';
 
 function generateMonthOptions(): { label: string; value: string }[] {
   const opts: { label: string; value: string }[] = [];
@@ -60,6 +65,32 @@ export class Bajas implements OnDestroy {
   protected readonly totalElements = computed(() => this.result()?.totalElements ?? 0);
   protected readonly totalPages    = computed(() => this.result()?.totalPages ?? 0);
   protected readonly errorMessage  = signal<string | null>(null);
+
+  // ── Sort ─────────────────────────────────────────────────────────────────────
+  protected readonly sortCol = signal<SortCol | null>(null);
+  protected readonly sortDir = signal<SortDir>('asc');
+  protected readonly sortedRows = computed(() => {
+    const col = this.sortCol();
+    const data = this.rows();
+    if (!col) return data;
+    const dir = this.sortDir() === 'asc' ? 1 : -1;
+    return [...data].sort((a, b) => {
+      let va: string | number | null;
+      let vb: string | number | null;
+      if (col === 'daysDiff') {
+        va = this.daysDiff(a);
+        vb = this.daysDiff(b);
+      } else {
+        va = (a[col] ?? null) as string | number | null;
+        vb = (b[col] ?? null) as string | number | null;
+      }
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+      return String(va).localeCompare(String(vb), 'es', { numeric: true }) * dir;
+    });
+  });
 
   // ── Filters ─────────────────────────────────────────────────────────────────
   protected searchQ            = '';
@@ -289,6 +320,24 @@ export class Bajas implements OnDestroy {
   protected date(v: string | null): string { return formatDate(v); }
   protected text(v: string | null): string { return safeText(v); }
   protected readonly tarifaBadge = tarifaBadgeClass;
+
+  protected setSort(col: SortCol): void {
+    if (this.sortCol() === col) {
+      this.sortDir.update(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      this.sortCol.set(col);
+      this.sortDir.set('asc');
+    }
+  }
+
+  protected sortIcon(col: SortCol): IconName {
+    if (this.sortCol() !== col) return 'arrow-down';
+    return this.sortDir() === 'asc' ? 'arrow-up' : 'arrow-down';
+  }
+
+  protected sortIconClass(col: SortCol): string {
+    return this.sortCol() === col ? 'text-primary' : 'opacity-25';
+  }
 
   protected daysDiff(row: Contract): number | null {
     if (!row.fechaEstado || !row.fechaFinPrevista) return null;
