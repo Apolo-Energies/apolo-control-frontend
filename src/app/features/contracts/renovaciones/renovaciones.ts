@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -20,6 +20,7 @@ import {
   CONTRACT_STATUS_LABEL,
 } from '../../../core/models';
 import { formatDate, safeText } from '../../../shared/utils/format';
+import { IconName } from '../../../shared/icons/icon';
 
 const STATUS_TONE: Record<ContractStatus, StatusTone> = {
   previo: 'info',
@@ -45,6 +46,10 @@ function extractMessage(err: HttpErrorResponse): string {
 }
 
 const SIZE = 10;
+
+type SortDir = 'asc' | 'desc';
+type SortCol = 'clienteNombre' | 'clienteDelegacion' | 'cups' | 'estado'
+             | 'fechaInicio' | 'fechaFinPrevista' | 'fechaEstado' | 'consumoTotal';
 
 @Component({
   selector: 'app-renovaciones',
@@ -77,6 +82,35 @@ export class Renovaciones implements OnDestroy {
   protected readonly q = signal('');
   protected readonly fechaDesde = signal('');
   protected readonly fechaHasta = signal('');
+  protected readonly filterCandidatos = signal(false);
+  protected readonly filterDelegacion = signal('');
+  protected readonly filterEstado = signal<ContractStatus | ''>('');
+
+  // Sort
+  protected readonly sortCol = signal<SortCol | null>(null);
+  protected readonly sortDir = signal<SortDir>('asc');
+
+  /** Delegaciones únicas derivadas de la página actual */
+  protected readonly delegaciones = computed<string[]>(() => {
+    const d = this.data();
+    if (!d) return [];
+    const set = new Set<string>();
+    for (const row of [...d.vencidos.content, ...d.porVencer.content, ...d.renovados.content]) {
+      if (row.clienteDelegacion) set.add(row.clienteDelegacion);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'es'));
+  });
+
+  /** Estados únicos derivados de la página actual */
+  protected readonly estados = computed<ContractStatus[]>(() => {
+    const d = this.data();
+    if (!d) return [];
+    const set = new Set<ContractStatus>();
+    for (const row of [...d.vencidos.content, ...d.porVencer.content, ...d.renovados.content]) {
+      if (row.estado) set.add(row.estado);
+    }
+    return [...set].sort((a, b) => (CONTRACT_STATUS_LABEL[a] ?? a).localeCompare(CONTRACT_STATUS_LABEL[b] ?? b, 'es'));
+  });
 
   constructor() {
     this.searchChange$.pipe(debounceTime(400), takeUntilDestroyed()).subscribe(() => {
@@ -133,12 +167,16 @@ export class Renovaciones implements OnDestroy {
     this.q.set('');
     this.fechaDesde.set('');
     this.fechaHasta.set('');
+    this.filterCandidatos.set(false);
+    this.filterDelegacion.set('');
+    this.filterEstado.set('');
     this.resetPages();
     this.load();
   }
 
   protected get hasFilters(): boolean {
-    return !!(this.q() || this.fechaDesde() || this.fechaHasta());
+    return !!(this.q() || this.fechaDesde() || this.fechaHasta() || this.filterCandidatos()
+      || this.filterDelegacion() || this.filterEstado());
   }
 
   private resetPages(): void {
@@ -168,8 +206,59 @@ export class Renovaciones implements OnDestroy {
     void this.router.navigate(['/contracts'], { queryParams: { id } });
   }
 
+  // ── Sort & filter ─────────────────────────────────────────────────────────
+
+  protected setSort(col: SortCol): void {
+    if (this.sortCol() === col) {
+      this.sortDir.update(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      this.sortCol.set(col);
+      this.sortDir.set('asc');
+    }
+  }
+
+  /** Aplica filtros (candidatos, delegación, estado) + sort a una lista de contratos. */
+  protected applyRows(rows: Contract[], applyCandidatos = false): Contract[] {
+    let result = rows;
+    if (applyCandidatos && this.filterCandidatos()) {
+      result = result.filter(r =>
+        r.fechaFinReal && r.fechaFinPrevista && r.fechaFinReal === r.fechaFinPrevista,
+      );
+    }
+    const deleg = this.filterDelegacion();
+    if (deleg) result = result.filter(r => r.clienteDelegacion === deleg);
+    const estado = this.filterEstado();
+    if (estado) result = result.filter(r => r.estado === estado);
+    const col = this.sortCol();
+    if (!col) return result;
+    const dir = this.sortDir() === 'asc' ? 1 : -1;
+    return [...result].sort((a, b) => {
+      const va = (a[col] ?? '') as string | number;
+      const vb = (b[col] ?? '') as string | number;
+      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+      return String(va).localeCompare(String(vb), 'es', { numeric: true }) * dir;
+    });
+  }
+
+  // ── Formatting ────────────────────────────────────────────────────────────
+
   protected tone(status: ContractStatus): StatusTone { return STATUS_TONE[status] ?? 'neutral'; }
   protected label(status: ContractStatus): string { return CONTRACT_STATUS_LABEL[status] ?? status; }
   protected date(v: string | null): string { return formatDate(v); }
   protected text(v: string | null): string { return safeText(v); }
+
+  protected consumo(v: number | null): string {
+    if (v == null) return '—';
+    if (v >= 1000) return `${(v / 1000).toFixed(1)} GWh`;
+    return `${v.toFixed(1)} MWh`;
+  }
+
+  protected sortIcon(col: SortCol): IconName {
+    if (this.sortCol() !== col) return 'arrow-down';
+    return this.sortDir() === 'asc' ? 'arrow-up' : 'arrow-down';
+  }
+
+  protected sortIconClass(col: SortCol): string {
+    return this.sortCol() === col ? 'text-primary' : 'opacity-25';
+  }
 }

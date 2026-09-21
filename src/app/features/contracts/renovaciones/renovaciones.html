@@ -10,7 +10,6 @@
 <!-- ── Filtros ── -->
 <div class="flex flex-wrap items-end gap-3 mb-4 p-4 rounded-xl border border-border bg-card">
 
-  <!-- Búsqueda texto -->
   <div class="flex-1 min-w-48">
     <label class="block text-xs font-medium text-muted-foreground mb-1">CUPS o nombre cliente</label>
     <div class="relative">
@@ -25,46 +24,78 @@
     </div>
   </div>
 
-  <!-- Fecha desde -->
   <div>
     <label class="block text-xs font-medium text-muted-foreground mb-1">Fecha desde</label>
-    <input
-      type="date"
-      [ngModel]="fechaDesde()"
-      (ngModelChange)="fechaDesde.set($event); onDateChange()"
-      class="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-    />
+    <input type="date" [ngModel]="fechaDesde()" (ngModelChange)="fechaDesde.set($event); onDateChange()"
+      class="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" />
   </div>
 
-  <!-- Fecha hasta -->
   <div>
     <label class="block text-xs font-medium text-muted-foreground mb-1">Fecha hasta</label>
-    <input
-      type="date"
-      [ngModel]="fechaHasta()"
-      (ngModelChange)="fechaHasta.set($event); onDateChange()"
-      class="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-    />
+    <input type="date" [ngModel]="fechaHasta()" (ngModelChange)="fechaHasta.set($event); onDateChange()"
+      class="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" />
   </div>
 
-  <!-- Limpiar filtros -->
+  @if (delegaciones().length > 0) {
+    <div>
+      <label class="block text-xs font-medium text-muted-foreground mb-1">Delegación</label>
+      <select [ngModel]="filterDelegacion()" (ngModelChange)="filterDelegacion.set($event)"
+        class="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30">
+        <option value="">Todas</option>
+        @for (d of delegaciones(); track d) { <option [value]="d">{{ d }}</option> }
+      </select>
+    </div>
+  }
+
+  @if (estados().length > 0) {
+    <div>
+      <label class="block text-xs font-medium text-muted-foreground mb-1">Estado</label>
+      <select [ngModel]="filterEstado()" (ngModelChange)="filterEstado.set($event)"
+        class="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30">
+        <option value="">Todos</option>
+        @for (e of estados(); track e) { <option [value]="e">{{ label(e) }}</option> }
+      </select>
+    </div>
+  }
+
+  <!-- Candidatos a renovar -->
+  <div class="flex flex-col gap-1">
+    <span class="text-xs font-medium text-muted-foreground">Filtro especial</span>
+    <button type="button" (click)="filterCandidatos.set(!filterCandidatos())"
+      class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border text-sm font-medium transition-colors"
+      [class]="filterCandidatos()
+        ? 'bg-primary border-primary text-primary-foreground'
+        : 'border-border text-muted-foreground hover:bg-accent/40'">
+      <ui-icon name="filter" [size]="13" />
+      Candidatos a renovar
+    </button>
+  </div>
+
   @if (hasFilters) {
-    <button type="button" (click)="clearFilters()"
-      class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:bg-accent/40 transition-colors">
+    <button type="button" (click)="clearFilters()" class="h-9 px-3 self-end inline-flex items-center gap-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:bg-accent/40 transition-colors">
       <ui-icon name="x" [size]="13" />
       Limpiar
     </button>
   }
 </div>
 
+<!-- Indicador de sort activo -->
+@if (sortCol()) {
+  <div class="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground">
+    <ui-icon [name]="sortDir() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="12" />
+    Ordenado por <strong class="text-foreground">{{ sortCol() }}</strong>
+    <button type="button" (click)="sortCol.set(null)" class="ml-1 underline hover:text-foreground">Quitar</button>
+  </div>
+}
+
 @if (error(); as msg) {
   <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm mb-4">{{ msg }}</div>
 }
 
 @if (loading() && !data()) {
-  <app-table-skeleton [cols]="7" [rows]="5" class="mb-4" />
-  <app-table-skeleton [cols]="7" [rows]="5" class="mb-4" />
-  <app-table-skeleton [cols]="7" [rows]="5" />
+  <app-table-skeleton [cols]="8" [rows]="5" class="mb-4" />
+  <app-table-skeleton [cols]="8" [rows]="5" class="mb-4" />
+  <app-table-skeleton [cols]="8" [rows]="5" />
 } @else if (data(); as d) {
 
   <!-- ── Ya vencidos ── -->
@@ -75,6 +106,11 @@
         <ui-icon name="alert-triangle" [size]="15" class="text-danger-fg" />
         <span class="text-sm font-semibold text-foreground">Ya vencidos</span>
         <span class="text-xs text-muted-foreground">({{ d.vencidos.totalElements }})</span>
+        @if (filterCandidatos()) {
+          <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
+            {{ applyRows(d.vencidos.content, true).length }} candidatos
+          </span>
+        }
       </div>
       <ui-icon name="chevron-down" [size]="15" [class]="vOpen() ? 'text-muted-foreground rotate-180 transition-transform' : 'text-muted-foreground transition-transform'" />
     </button>
@@ -88,36 +124,27 @@
             <table class="w-full text-sm">
               <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th class="px-4 py-3 text-left font-semibold">Cliente</th>
-                  <th class="px-4 py-3 text-left font-semibold">CUPS</th>
-                  <th class="px-4 py-3 text-left font-semibold">Servicio</th>
-                  <th class="px-4 py-3 text-left font-semibold">Estado</th>
-                  <th class="px-4 py-3 text-left font-semibold">F. inicio</th>
-                  <th class="px-4 py-3 text-left font-semibold">F. fin prevista</th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('clienteNombre')">Cliente <ui-icon [name]="sortIcon('clienteNombre')" [size]="11" [class]="sortIconClass('clienteNombre')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('clienteDelegacion')">Delegación <ui-icon [name]="sortIcon('clienteDelegacion')" [size]="11" [class]="sortIconClass('clienteDelegacion')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('cups')">CUPS <ui-icon [name]="sortIcon('cups')" [size]="11" [class]="sortIconClass('cups')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('estado')">Estado <ui-icon [name]="sortIcon('estado')" [size]="11" [class]="sortIconClass('estado')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('fechaInicio')">F. inicio <ui-icon [name]="sortIcon('fechaInicio')" [size]="11" [class]="sortIconClass('fechaInicio')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('fechaFinPrevista')">F. fin prevista <ui-icon [name]="sortIcon('fechaFinPrevista')" [size]="11" [class]="sortIconClass('fechaFinPrevista')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('consumoTotal')">Consumo <ui-icon [name]="sortIcon('consumoTotal')" [size]="11" [class]="sortIconClass('consumoTotal')" /></button></th>
                   <th class="px-4 py-3 text-right font-semibold">Acciones</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-border/40">
-                @for (row of d.vencidos.content; track row.id) {
+                @for (row of applyRows(d.vencidos.content, true); track row.id) {
                   <tr class="hover:bg-accent/20 transition-colors cursor-pointer" (click)="verContrato(row.id)">
-                    <td class="px-4 py-3">
-                      <p class="font-medium text-foreground">{{ row.clienteNombre }}</p>
-                      @if (row.clienteNif) { <p class="text-xs text-muted-foreground font-mono">{{ row.clienteNif }}</p> }
-                    </td>
+                    <td class="px-4 py-3"><p class="font-medium text-foreground">{{ row.clienteNombre }}</p>@if (row.clienteNif) { <p class="text-xs text-muted-foreground font-mono">{{ row.clienteNif }}</p> }</td>
+                    <td class="px-4 py-3 text-xs text-foreground/80">{{ text(row.clienteDelegacion) }}</td>
                     <td class="px-4 py-3 font-mono text-xs text-foreground/80">{{ text(row.cups) }}</td>
-                    <td class="px-4 py-3 text-foreground/80">{{ text(row.servicio) }}</td>
                     <td class="px-4 py-3"><app-status-badge [tone]="tone(row.estado)">{{ label(row.estado) }}</app-status-badge></td>
                     <td class="px-4 py-3 text-foreground/80 text-xs">{{ date(row.fechaInicio) }}</td>
                     <td class="px-4 py-3 text-danger-fg font-semibold text-xs">{{ date(row.fechaFinPrevista) }}</td>
-                    <td class="px-4 py-3">
-                      <div class="flex justify-end">
-                        <button (click)="renovar(row); $event.stopPropagation()"
-                          class="h-7 px-2.5 inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground text-xs hover:opacity-90 transition-opacity">
-                          <ui-icon name="refresh-cw" [size]="12" />
-                          Renovar
-                        </button>
-                      </div>
-                    </td>
+                    <td class="px-4 py-3 text-xs text-foreground/80 tabular-nums">{{ consumo(row.consumoTotal) }}</td>
+                    <td class="px-4 py-3"><div class="flex justify-end"><button (click)="renovar(row); $event.stopPropagation()" class="h-7 px-2.5 inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground text-xs hover:opacity-90 transition-opacity"><ui-icon name="refresh-cw" [size]="12" />Renovar</button></div></td>
                   </tr>
                 }
               </tbody>
@@ -125,11 +152,7 @@
           </div>
         </div>
         @if (d.vencidos.totalPages > 1) {
-          <app-pagination
-            [page]="vPage()" [pageSize]="pageSize()"
-            [totalElements]="d.vencidos.totalElements" [totalPages]="d.vencidos.totalPages"
-            [pageSizes]="[10, 25, 50]" (pageChange)="onVPage($event)"
-            (pageSizeChange)="onSizeChange($event)" />
+          <app-pagination [page]="vPage()" [pageSize]="pageSize()" [totalElements]="d.vencidos.totalElements" [totalPages]="d.vencidos.totalPages" [pageSizes]="[10, 25, 50]" (pageChange)="onVPage($event)" (pageSizeChange)="onSizeChange($event)" />
         }
       }
     }
@@ -156,36 +179,27 @@
             <table class="w-full text-sm">
               <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th class="px-4 py-3 text-left font-semibold">Cliente</th>
-                  <th class="px-4 py-3 text-left font-semibold">CUPS</th>
-                  <th class="px-4 py-3 text-left font-semibold">Servicio</th>
-                  <th class="px-4 py-3 text-left font-semibold">Estado</th>
-                  <th class="px-4 py-3 text-left font-semibold">F. inicio</th>
-                  <th class="px-4 py-3 text-left font-semibold">F. fin prevista</th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('clienteNombre')">Cliente <ui-icon [name]="sortIcon('clienteNombre')" [size]="11" [class]="sortIconClass('clienteNombre')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('clienteDelegacion')">Delegación <ui-icon [name]="sortIcon('clienteDelegacion')" [size]="11" [class]="sortIconClass('clienteDelegacion')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('cups')">CUPS <ui-icon [name]="sortIcon('cups')" [size]="11" [class]="sortIconClass('cups')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('estado')">Estado <ui-icon [name]="sortIcon('estado')" [size]="11" [class]="sortIconClass('estado')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('fechaInicio')">F. inicio <ui-icon [name]="sortIcon('fechaInicio')" [size]="11" [class]="sortIconClass('fechaInicio')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('fechaFinPrevista')">F. fin prevista <ui-icon [name]="sortIcon('fechaFinPrevista')" [size]="11" [class]="sortIconClass('fechaFinPrevista')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('consumoTotal')">Consumo <ui-icon [name]="sortIcon('consumoTotal')" [size]="11" [class]="sortIconClass('consumoTotal')" /></button></th>
                   <th class="px-4 py-3 text-right font-semibold">Acciones</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-border/40">
-                @for (row of d.porVencer.content; track row.id) {
+                @for (row of applyRows(d.porVencer.content); track row.id) {
                   <tr class="hover:bg-accent/20 transition-colors cursor-pointer" (click)="verContrato(row.id)">
-                    <td class="px-4 py-3">
-                      <p class="font-medium text-foreground">{{ row.clienteNombre }}</p>
-                      @if (row.clienteNif) { <p class="text-xs text-muted-foreground font-mono">{{ row.clienteNif }}</p> }
-                    </td>
+                    <td class="px-4 py-3"><p class="font-medium text-foreground">{{ row.clienteNombre }}</p>@if (row.clienteNif) { <p class="text-xs text-muted-foreground font-mono">{{ row.clienteNif }}</p> }</td>
+                    <td class="px-4 py-3 text-xs text-foreground/80">{{ text(row.clienteDelegacion) }}</td>
                     <td class="px-4 py-3 font-mono text-xs text-foreground/80">{{ text(row.cups) }}</td>
-                    <td class="px-4 py-3 text-foreground/80">{{ text(row.servicio) }}</td>
                     <td class="px-4 py-3"><app-status-badge [tone]="tone(row.estado)">{{ label(row.estado) }}</app-status-badge></td>
                     <td class="px-4 py-3 text-foreground/80 text-xs">{{ date(row.fechaInicio) }}</td>
                     <td class="px-4 py-3 text-warning-fg font-semibold text-xs">{{ date(row.fechaFinPrevista) }}</td>
-                    <td class="px-4 py-3">
-                      <div class="flex justify-end">
-                        <button (click)="renovar(row); $event.stopPropagation()"
-                          class="h-7 px-2.5 inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground text-xs hover:opacity-90 transition-opacity">
-                          <ui-icon name="refresh-cw" [size]="12" />
-                          Renovar
-                        </button>
-                      </div>
-                    </td>
+                    <td class="px-4 py-3 text-xs text-foreground/80 tabular-nums">{{ consumo(row.consumoTotal) }}</td>
+                    <td class="px-4 py-3"><div class="flex justify-end"><button (click)="renovar(row); $event.stopPropagation()" class="h-7 px-2.5 inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground text-xs hover:opacity-90 transition-opacity"><ui-icon name="refresh-cw" [size]="12" />Renovar</button></div></td>
                   </tr>
                 }
               </tbody>
@@ -193,11 +207,7 @@
           </div>
         </div>
         @if (d.porVencer.totalPages > 1) {
-          <app-pagination
-            [page]="pvPage()" [pageSize]="pageSize()"
-            [totalElements]="d.porVencer.totalElements" [totalPages]="d.porVencer.totalPages"
-            [pageSizes]="[10, 25, 50]" (pageChange)="onPvPage($event)"
-            (pageSizeChange)="onSizeChange($event)" />
+          <app-pagination [page]="pvPage()" [pageSize]="pageSize()" [totalElements]="d.porVencer.totalElements" [totalPages]="d.porVencer.totalPages" [pageSizes]="[10, 25, 50]" (pageChange)="onPvPage($event)" (pageSizeChange)="onSizeChange($event)" />
         }
       }
     }
@@ -224,38 +234,27 @@
             <table class="w-full text-sm">
               <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th class="px-4 py-3 text-left font-semibold">Cliente</th>
-                  <th class="px-4 py-3 text-left font-semibold">CUPS</th>
-                  <th class="px-4 py-3 text-left font-semibold">Servicio</th>
-                  <th class="px-4 py-3 text-left font-semibold">Estado</th>
-                  <th class="px-4 py-3 text-left font-semibold">Renovado el</th>
-                  <th class="px-4 py-3 text-left font-semibold">F. fin prevista</th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('clienteNombre')">Cliente <ui-icon [name]="sortIcon('clienteNombre')" [size]="11" [class]="sortIconClass('clienteNombre')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('clienteDelegacion')">Delegación <ui-icon [name]="sortIcon('clienteDelegacion')" [size]="11" [class]="sortIconClass('clienteDelegacion')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('cups')">CUPS <ui-icon [name]="sortIcon('cups')" [size]="11" [class]="sortIconClass('cups')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('estado')">Estado <ui-icon [name]="sortIcon('estado')" [size]="11" [class]="sortIconClass('estado')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('fechaEstado')">Renovado el <ui-icon [name]="sortIcon('fechaEstado')" [size]="11" [class]="sortIconClass('fechaEstado')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('fechaFinPrevista')">F. fin prevista <ui-icon [name]="sortIcon('fechaFinPrevista')" [size]="11" [class]="sortIconClass('fechaFinPrevista')" /></button></th>
+                  <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('consumoTotal')">Consumo <ui-icon [name]="sortIcon('consumoTotal')" [size]="11" [class]="sortIconClass('consumoTotal')" /></button></th>
                   <th class="px-4 py-3 text-right font-semibold">Acciones</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-border/40">
-                @for (row of d.renovados.content; track row.id) {
+                @for (row of applyRows(d.renovados.content); track row.id) {
                   <tr class="hover:bg-accent/20 transition-colors cursor-pointer" (click)="verContrato(row.id)">
-                    <td class="px-4 py-3">
-                      <p class="font-medium text-foreground">{{ row.clienteNombre }}</p>
-                      @if (row.clienteNif) { <p class="text-xs text-muted-foreground font-mono">{{ row.clienteNif }}</p> }
-                    </td>
+                    <td class="px-4 py-3"><p class="font-medium text-foreground">{{ row.clienteNombre }}</p>@if (row.clienteNif) { <p class="text-xs text-muted-foreground font-mono">{{ row.clienteNif }}</p> }</td>
+                    <td class="px-4 py-3 text-xs text-foreground/80">{{ text(row.clienteDelegacion) }}</td>
                     <td class="px-4 py-3 font-mono text-xs text-foreground/80">{{ text(row.cups) }}</td>
-                    <td class="px-4 py-3 text-foreground/80">{{ text(row.servicio) }}</td>
                     <td class="px-4 py-3"><app-status-badge [tone]="tone(row.estado)">{{ label(row.estado) }}</app-status-badge></td>
                     <td class="px-4 py-3 text-foreground/80 text-xs">{{ date(row.fechaEstado) }}</td>
                     <td class="px-4 py-3 text-foreground/80 text-xs">{{ date(row.fechaFinPrevista) }}</td>
-                    <td class="px-4 py-3">
-                      <div class="flex justify-end">
-                        @if (row.contratoVinculadoId) {
-                          <button (click)="verContrato(row.contratoVinculadoId); $event.stopPropagation()"
-                            class="h-7 px-2.5 inline-flex items-center gap-1 rounded-md border border-border text-xs text-muted-foreground hover:bg-accent/40 transition-colors">
-                            <ui-icon name="arrow-up-right" [size]="12" />
-                            Ver nuevo
-                          </button>
-                        }
-                      </div>
-                    </td>
+                    <td class="px-4 py-3 text-xs text-foreground/80 tabular-nums">{{ consumo(row.consumoTotal) }}</td>
+                    <td class="px-4 py-3"><div class="flex justify-end">@if (row.contratoVinculadoId) {<button (click)="verContrato(row.contratoVinculadoId); $event.stopPropagation()" class="h-7 px-2.5 inline-flex items-center gap-1 rounded-md border border-border text-xs text-muted-foreground hover:bg-accent/40 transition-colors"><ui-icon name="arrow-up-right" [size]="12" />Ver nuevo</button>}</div></td>
                   </tr>
                 }
               </tbody>
@@ -263,11 +262,7 @@
           </div>
         </div>
         @if (d.renovados.totalPages > 1) {
-          <app-pagination
-            [page]="rPage()" [pageSize]="pageSize()"
-            [totalElements]="d.renovados.totalElements" [totalPages]="d.renovados.totalPages"
-            [pageSizes]="[10, 25, 50]" (pageChange)="onRPage($event)"
-            (pageSizeChange)="onSizeChange($event)" />
+          <app-pagination [page]="rPage()" [pageSize]="pageSize()" [totalElements]="d.renovados.totalElements" [totalPages]="d.renovados.totalPages" [pageSizes]="[10, 25, 50]" (pageChange)="onRPage($event)" (pageSizeChange)="onSizeChange($event)" />
         }
       }
     }
