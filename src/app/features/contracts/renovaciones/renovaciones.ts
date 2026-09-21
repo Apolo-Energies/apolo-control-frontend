@@ -150,6 +150,7 @@ export class Renovaciones implements OnDestroy {
       q: this.q() || undefined,
       fechaDesde: this.fechaDesde() || undefined,
       fechaHasta: this.fechaHasta() || undefined,
+      candidatos: this.filterCandidatos() || undefined,
     }).subscribe({
       next: (d) => { this.data.set(d); this.loading.set(false); },
       error: (err: HttpErrorResponse) => { this.error.set(extractMessage(err)); this.loading.set(false); },
@@ -198,6 +199,12 @@ export class Renovaciones implements OnDestroy {
     this.load();
   }
 
+  protected toggleCandidatos(): void {
+    this.filterCandidatos.update(v => !v);
+    this.resetPages();
+    this.load();
+  }
+
   protected renovar(contract: Contract): void {
     void this.router.navigate(['/contracts'], { queryParams: { renovar: contract.id } });
   }
@@ -217,14 +224,9 @@ export class Renovaciones implements OnDestroy {
     }
   }
 
-  /** Aplica filtros (candidatos, delegación, estado) + sort a una lista de contratos. */
-  protected applyRows(rows: Contract[], applyCandidatos = false): Contract[] {
+  /** Aplica filtros client-side (delegación, estado) + sort a una lista de contratos. */
+  protected applyRows(rows: Contract[]): Contract[] {
     let result = rows;
-    if (applyCandidatos && this.filterCandidatos()) {
-      result = result.filter(r =>
-        r.fechaFinReal && r.fechaFinPrevista && r.fechaFinReal === r.fechaFinPrevista,
-      );
-    }
     const deleg = this.filterDelegacion();
     if (deleg) result = result.filter(r => r.clienteDelegacion === deleg);
     const estado = this.filterEstado();

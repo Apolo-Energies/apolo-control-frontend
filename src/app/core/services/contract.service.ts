@@ -68,7 +68,7 @@ export class ContractService {
     vPage: number; vSize: number;
     pvPage: number; pvSize: number;
     rPage: number; rSize: number;
-    q?: string; fechaDesde?: string; fechaHasta?: string;
+    q?: string; fechaDesde?: string; fechaHasta?: string; candidatos?: boolean;
   } = { vPage: 0, vSize: 10, pvPage: 0, pvSize: 10, rPage: 0, rSize: 10 }): Observable<ContractRenovaciones> {
     const p: Record<string, string> = {
       vPage: params.vPage.toString(), vSize: params.vSize.toString(),
@@ -78,6 +78,7 @@ export class ContractService {
     if (params.q?.trim()) p['q'] = params.q.trim();
     if (params.fechaDesde) p['fechaDesde'] = params.fechaDesde;
     if (params.fechaHasta) p['fechaHasta'] = params.fechaHasta;
+    if (params.candidatos) p['candidatos'] = 'true';
     return this.http.get<ContractRenovaciones>(`${this.baseUrl}/renovaciones`, { params: p });
   }
 

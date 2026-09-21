@@ -61,7 +61,7 @@
   <!-- Candidatos a renovar -->
   <div class="flex flex-col gap-1">
     <span class="text-xs font-medium text-muted-foreground">Filtro especial</span>
-    <button type="button" (click)="filterCandidatos.set(!filterCandidatos())"
+    <button type="button" (click)="toggleCandidatos()"
       class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border text-sm font-medium transition-colors"
       [class]="filterCandidatos()
         ? 'bg-primary border-primary text-primary-foreground'
@@ -98,26 +98,31 @@
   <app-table-skeleton [cols]="8" [rows]="5" />
 } @else if (data(); as d) {
 
-  <!-- ── Ya vencidos ── -->
+  <!-- ── Ya vencidos / Candidatos ── -->
   <section class="mb-4">
     <button type="button" (click)="vOpen.set(!vOpen())"
-      class="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-danger/8 border border-danger/20 hover:bg-danger/12 transition-colors mb-1">
+      class="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border transition-colors mb-1"
+      [class]="filterCandidatos()
+        ? 'bg-primary/8 border-primary/20 hover:bg-primary/12'
+        : 'bg-danger/8 border-danger/20 hover:bg-danger/12'">
       <div class="flex items-center gap-2">
-        <ui-icon name="alert-triangle" [size]="15" class="text-danger-fg" />
-        <span class="text-sm font-semibold text-foreground">Ya vencidos</span>
-        <span class="text-xs text-muted-foreground">({{ d.vencidos.totalElements }})</span>
         @if (filterCandidatos()) {
-          <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
-            {{ applyRows(d.vencidos.content, true).length }} candidatos
-          </span>
+          <ui-icon name="filter" [size]="15" class="text-primary" />
+          <span class="text-sm font-semibold text-foreground">Candidatos a renovar</span>
+        } @else {
+          <ui-icon name="alert-triangle" [size]="15" class="text-danger-fg" />
+          <span class="text-sm font-semibold text-foreground">Ya vencidos</span>
         }
+        <span class="text-xs text-muted-foreground">({{ d.vencidos.totalElements }})</span>
       </div>
       <ui-icon name="chevron-down" [size]="15" [class]="vOpen() ? 'text-muted-foreground rotate-180 transition-transform' : 'text-muted-foreground transition-transform'" />
     </button>
 
     @if (vOpen()) {
       @if (d.vencidos.content.length === 0) {
-        <p class="text-sm text-muted-foreground py-6 text-center">No hay contratos vencidos pendientes de renovar.</p>
+        <p class="text-sm text-muted-foreground py-6 text-center">
+          {{ filterCandidatos() ? 'No hay candidatos a renovar con los filtros actuales.' : 'No hay contratos vencidos pendientes de renovar.' }}
+        </p>
       } @else {
         <div class="bg-card border border-border rounded-xl overflow-hidden">
           <div class="overflow-x-auto">
@@ -131,11 +136,15 @@
                   <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('fechaInicio')">F. inicio <ui-icon [name]="sortIcon('fechaInicio')" [size]="11" [class]="sortIconClass('fechaInicio')" /></button></th>
                   <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('fechaFinPrevista')">F. fin prevista <ui-icon [name]="sortIcon('fechaFinPrevista')" [size]="11" [class]="sortIconClass('fechaFinPrevista')" /></button></th>
                   <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('consumoTotal')">Consumo <ui-icon [name]="sortIcon('consumoTotal')" [size]="11" [class]="sortIconClass('consumoTotal')" /></button></th>
+                  @if (filterCandidatos()) {
+                    <th class="px-4 py-3 text-left font-semibold">Feedback cliente</th>
+                    <th class="px-4 py-3 text-left font-semibold">Feedback Apolo</th>
+                  }
                   <th class="px-4 py-3 text-right font-semibold">Acciones</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-border/40">
-                @for (row of applyRows(d.vencidos.content, true); track row.id) {
+                @for (row of applyRows(d.vencidos.content); track row.id) {
                   <tr class="hover:bg-accent/20 transition-colors cursor-pointer" (click)="verContrato(row.id)">
                     <td class="px-4 py-3"><p class="font-medium text-foreground">{{ row.clienteNombre }}</p>@if (row.clienteNif) { <p class="text-xs text-muted-foreground font-mono">{{ row.clienteNif }}</p> }</td>
                     <td class="px-4 py-3 text-xs text-foreground/80">{{ text(row.clienteDelegacion) }}</td>
@@ -144,6 +153,16 @@
                     <td class="px-4 py-3 text-foreground/80 text-xs">{{ date(row.fechaInicio) }}</td>
                     <td class="px-4 py-3 text-danger-fg font-semibold text-xs">{{ date(row.fechaFinPrevista) }}</td>
                     <td class="px-4 py-3 text-xs text-foreground/80 tabular-nums">{{ consumo(row.consumoTotal) }}</td>
+                    @if (filterCandidatos()) {
+                      <td class="px-4 py-3 text-xs text-foreground/80 max-w-48">
+                        @if (row.feedbackBaja) { <span class="line-clamp-2" [title]="row.feedbackBaja">{{ row.feedbackBaja }}</span> }
+                        @else { <span class="text-muted-foreground/50">—</span> }
+                      </td>
+                      <td class="px-4 py-3 text-xs text-foreground/80 max-w-48">
+                        @if (row.feedbackApolo) { <span class="line-clamp-2" [title]="row.feedbackApolo">{{ row.feedbackApolo }}</span> }
+                        @else { <span class="text-muted-foreground/50">—</span> }
+                      </td>
+                    }
                     <td class="px-4 py-3"><div class="flex justify-end"><button (click)="renovar(row); $event.stopPropagation()" class="h-7 px-2.5 inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground text-xs hover:opacity-90 transition-opacity"><ui-icon name="refresh-cw" [size]="12" />Renovar</button></div></td>
                   </tr>
                 }
@@ -159,6 +178,7 @@
   </section>
 
   <!-- ── Por vencer ── -->
+  @if (!filterCandidatos()) {
   <section class="mb-4">
     <button type="button" (click)="pvOpen.set(!pvOpen())"
       class="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-warning/8 border border-warning/20 hover:bg-warning/12 transition-colors mb-1">
@@ -212,8 +232,10 @@
       }
     }
   </section>
+  } <!-- /if !filterCandidatos -->
 
   <!-- ── Renovados ── -->
+  @if (!filterCandidatos()) {
   <section class="mb-4">
     <button type="button" (click)="rOpen.set(!rOpen())"
       class="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-purple-500/8 border border-purple-500/20 hover:bg-purple-500/12 transition-colors mb-1">
@@ -267,5 +289,6 @@
       }
     }
   </section>
+  } <!-- /if !filterCandidatos -->
 
 }
