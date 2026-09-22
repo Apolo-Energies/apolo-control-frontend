@@ -1,9 +1,11 @@
 import {
   ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { of } from 'rxjs';
+import { ActivatedRoute, ParamMap } from '@angular/router';
+import { of, skip } from 'rxjs';
 
 import { PageHeader } from '../../shared/components/page-header/page-header';
 import { TableSkeleton } from '../../shared/components/table-skeleton/table-skeleton';
@@ -65,6 +67,7 @@ export class Cambios implements OnDestroy {
   private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
   private readonly listState = inject(ListStateService);
+  private readonly route = inject(ActivatedRoute);
 
   // ── List state ────────────────────────────────────────────────────────────
   protected readonly loading = signal(false);
@@ -152,7 +155,38 @@ export class Cambios implements OnDestroy {
       this.gestionadoFilter = s.gestionadoFilter as '' | 'true' | 'false';
       this.size.set(s.size);
     }
-    this.reload(s?.page ?? 0);
+
+    const qp = this.route.snapshot.queryParamMap;
+    let startPage = s?.page ?? 0;
+    if (this.applyQueryParams(qp)) startPage = 0;
+
+    this.route.queryParamMap.pipe(skip(1), takeUntilDestroyed()).subscribe(params => {
+      if (this.applyQueryParams(params)) this.reload(0);
+    });
+
+    this.reload(startPage);
+  }
+
+  private applyQueryParams(qp: ParamMap): boolean {
+    let changed = false;
+    if (qp.has('tipoSolicitud')) {
+      this.tipoFilter = (qp.get('tipoSolicitud') ?? '') as TipoCambio | '';
+      changed = true;
+    }
+    if (qp.has('gestionado')) {
+      const v = qp.get('gestionado');
+      this.gestionadoFilter = v === 'true' ? 'true' : v === 'false' ? 'false' : '';
+      changed = true;
+    }
+    if (qp.has('resultado')) {
+      this.resultadoFilter = (qp.get('resultado') ?? '') as ResultadoCambio | '';
+      changed = true;
+    }
+    if (qp.has('q')) {
+      this.q = qp.get('q') ?? '';
+      changed = true;
+    }
+    return changed;
   }
 
   ngOnDestroy(): void {
