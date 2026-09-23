@@ -12,10 +12,11 @@ import { Pagination }    from '../../../shared/components/pagination/pagination'
 import { KpiCard }       from '../../../shared/components/kpi-card/kpi-card';
 import { Icon }          from '../../../shared/icons/icon';
 
-import { GestionImpagoService } from '../../../core/services/gestion-impago.service';
-import { NotificationService }  from '../../../core/services/notification.service';
-import { GlobalLoadingService } from '../../../core/services/global-loading.service';
-import { ListStateService }     from '../../../core/services/list-state.service';
+import { GestionImpagoService }         from '../../../core/services/gestion-impago.service';
+import { GestionImpagoClienteService }  from '../../../core/services/gestion-impago-cliente.service';
+import { NotificationService }          from '../../../core/services/notification.service';
+import { GlobalLoadingService }         from '../../../core/services/global-loading.service';
+import { ListStateService }             from '../../../core/services/list-state.service';
 import {
   GestionImpago, GestionImpagoPayload,
   EstadoGestionImpago, GestionImpagoActualizarEstadoPayload,
@@ -50,8 +51,9 @@ function estadoToneFn(estado: EstadoGestionImpago): StatusTone {
   templateUrl: './disconnection.html',
 })
 export class Disconnection implements OnDestroy {
-  private readonly service       = inject(GestionImpagoService);
-  private readonly notify        = inject(NotificationService);
+  private readonly service        = inject(GestionImpagoService);
+  private readonly clienteService = inject(GestionImpagoClienteService);
+  private readonly notify         = inject(NotificationService);
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly listState     = inject(ListStateService);
 
@@ -266,6 +268,7 @@ export class Disconnection implements OnDestroy {
   protected registrarContacto(r: GestionImpago): void {
     const form = this.contactoForms[r.id];
     if (!form?.actionKey) return;
+    if (form.actionKey === 'whatsapp') this.abrirWhatsApp(r);
     this.updatingId.set(r.id);
     this.service.registrarContacto(r.id, {
       actionKey:      form.actionKey,
@@ -285,6 +288,26 @@ export class Disconnection implements OnDestroy {
         this.notify.error(extractMessage(err));
       },
     });
+  }
+
+  // ── WhatsApp ──────────────────────────────────────────────────────────────
+  private abrirWhatsApp(r: GestionImpago): void {
+    this.clienteService.getById(r.clienteId).subscribe({
+      next: (cliente) => {
+        const tel = (cliente.telefono ?? '').replace(/\D/g, '');
+        if (!tel) { this.notify.warn('El cliente no tiene número de teléfono registrado'); return; }
+        const numero = tel.length <= 9 ? '34' + tel : tel;
+        window.open(`https://wa.me/${numero}?text=${encodeURIComponent(this.buildMensajeWhatsApp(r))}`, '_blank');
+      },
+      error: () => this.notify.warn('No se pudo obtener el teléfono del cliente'),
+    });
+  }
+
+  private buildMensajeWhatsApp(r: GestionImpago): string {
+    const nombre  = r.clienteNombre ?? 'cliente';
+    const factura = r.numeroFactura ?? '—';
+    const importe = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(r.importePendiente ?? 0);
+    return `Hola ${nombre}, buen día.\n\nLe escribimos desde Apolo Energies, su compañía de suministro eléctrico, para informarle de que tenemos constancia de un impago en su cuenta:\nNº de factura: ${factura}\nImporte pendiente: ${importe}\nTransferencia a: ES96 0049 5332 1822 1000 5857\nLe agradeceríamos que regularizara este importe a la mayor brevedad posible, con el fin de evitar cualquier interrupción en su suministro.\n\nUna vez realizado el pago, le rogamos nos facilite el comprobante del mismo.\n\nGracias por su atención. Quedamos a su disposición para cualquier consulta.\n\nEquipo de Apolo Energies`;
   }
 
   // ── Motivo editing ────────────────────────────────────────────────────────

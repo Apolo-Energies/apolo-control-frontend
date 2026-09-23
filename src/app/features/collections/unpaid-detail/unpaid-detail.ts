@@ -11,6 +11,7 @@ import { Icon }          from '../../../shared/icons/icon';
 
 import { GestionImpagoService }         from '../../../core/services/gestion-impago.service';
 import { GestionAccionCobranzaService } from '../../../core/services/gestion-accion-cobranza.service';
+import { GestionImpagoClienteService }  from '../../../core/services/gestion-impago-cliente.service';
 import { NotificationService }          from '../../../core/services/notification.service';
 import { GlobalLoadingService }         from '../../../core/services/global-loading.service';
 import { MasterDataService }            from '../../../core/services/master-data.service';
@@ -55,6 +56,7 @@ export class UnpaidDetail implements OnInit {
   private readonly route          = inject(ActivatedRoute);
   private readonly service        = inject(GestionImpagoService);
   private readonly accionService  = inject(GestionAccionCobranzaService);
+  private readonly clienteService = inject(GestionImpagoClienteService);
   private readonly notify         = inject(NotificationService);
   private readonly globalLoading  = inject(GlobalLoadingService);
   private readonly fb             = inject(FormBuilder);
@@ -251,6 +253,7 @@ export class UnpaidDetail implements OnInit {
     const imp = this.impago();
     if (!imp) return;
     const v = this.contactoForm.getRawValue();
+    if (v.actionKey === 'whatsapp') this.abrirWhatsApp(imp);
     this.contactoSubmitting.set(true);
     this.contactoError.set(null);
     this.service.registrarContacto(imp.id, {
@@ -561,6 +564,26 @@ export class UnpaidDetail implements OnInit {
       },
       error: () => this.notify.error('Error al descargar el documento'),
     });
+  }
+
+  // ── WhatsApp ──────────────────────────────────────────────────────────────
+  private abrirWhatsApp(imp: GestionImpago): void {
+    this.clienteService.getById(imp.clienteId).subscribe({
+      next: (cliente) => {
+        const tel = (cliente.telefono ?? '').replace(/\D/g, '');
+        if (!tel) { this.notify.warn('El cliente no tiene número de teléfono registrado'); return; }
+        const numero = tel.length <= 9 ? '34' + tel : tel;
+        window.open(`https://wa.me/${numero}?text=${encodeURIComponent(this.buildMensajeWhatsApp(imp))}`, '_blank');
+      },
+      error: () => this.notify.warn('No se pudo obtener el teléfono del cliente'),
+    });
+  }
+
+  private buildMensajeWhatsApp(imp: GestionImpago): string {
+    const nombre  = imp.clienteNombre ?? 'cliente';
+    const factura = imp.numeroFactura ?? '—';
+    const importe = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(imp.importePendiente ?? 0);
+    return `Hola ${nombre}, buen día.\n\nLe escribimos desde Apolo Energies, su compañía de suministro eléctrico, para informarle de que tenemos constancia de un impago en su cuenta:\nNº de factura: ${factura}\nImporte pendiente: ${importe}\nTransferencia a: ES96 0049 5332 1822 1000 5857\nLe agradeceríamos que regularizara este importe a la mayor brevedad posible, con el fin de evitar cualquier interrupción en su suministro.\n\nUna vez realizado el pago, le rogamos nos facilite el comprobante del mismo.\n\nGracias por su atención. Quedamos a su disposición para cualquier consulta.\n\nEquipo de Apolo Energies`;
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

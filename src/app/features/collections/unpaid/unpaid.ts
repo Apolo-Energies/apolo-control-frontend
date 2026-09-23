@@ -606,6 +606,7 @@ export class Unpaid implements OnDestroy {
   protected registrarContacto(r: GestionImpago): void {
     const form = this.contactoForms[r.id];
     if (!form?.actionKey) return;
+    if (form.actionKey === 'whatsapp') this.abrirWhatsApp(r);
     this.updatingContactoId.set(r.id);
     this.service.registrarContacto(r.id, {
       actionKey:      form.actionKey,
@@ -869,6 +870,26 @@ export class Unpaid implements OnDestroy {
       next:  () => { this.globalLoading.stop(); this.notify.success('Eliminado'); this.reload(this.page()); },
       error: (err: HttpErrorResponse) => { this.globalLoading.stop(); this.notify.error(extractMessage(err)); },
     });
+  }
+
+  // ── WhatsApp ──────────────────────────────────────────────────────────────
+  private abrirWhatsApp(r: GestionImpago): void {
+    this.clienteService.getById(r.clienteId).subscribe({
+      next: (cliente) => {
+        const tel = (cliente.telefono ?? '').replace(/\D/g, '');
+        if (!tel) { this.notify.warn('El cliente no tiene número de teléfono registrado'); return; }
+        const numero = tel.length <= 9 ? '34' + tel : tel;
+        window.open(`https://wa.me/${numero}?text=${encodeURIComponent(this.buildMensajeWhatsApp(r))}`, '_blank');
+      },
+      error: () => this.notify.warn('No se pudo obtener el teléfono del cliente'),
+    });
+  }
+
+  private buildMensajeWhatsApp(r: GestionImpago): string {
+    const nombre  = r.clienteNombre ?? 'cliente';
+    const factura = r.numeroFactura ?? '—';
+    const importe = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(r.importePendiente ?? 0);
+    return `Hola ${nombre}, buen día.\n\nLe escribimos desde Apolo Energies, su compañía de suministro eléctrico, para informarle de que tenemos constancia de un impago en su cuenta:\nNº de factura: ${factura}\nImporte pendiente: ${importe}\nTransferencia a: ES96 0049 5332 1822 1000 5857\nLe agradeceríamos que regularizara este importe a la mayor brevedad posible, con el fin de evitar cualquier interrupción en su suministro.\n\nUna vez realizado el pago, le rogamos nos facilite el comprobante del mismo.\n\nGracias por su atención. Quedamos a su disposición para cualquier consulta.\n\nEquipo de Apolo Energies`;
   }
 
   // ── Display helpers ───────────────────────────────────────────────────────
