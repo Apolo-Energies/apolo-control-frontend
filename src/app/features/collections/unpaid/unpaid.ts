@@ -288,8 +288,8 @@ export class Unpaid implements OnDestroy {
   protected readonly form = this.fb.group({
     clienteId:        ['', Validators.required],
     numeroFactura:    [''],
-    importe:          [0],
-    parcialPagado:    [0],
+    importe:          [''],
+    parcialPagado:    [''],
     fechaVencimiento: [''],
     fechaDevolucion:  [''],
     estado:           ['nuevo'],
@@ -430,7 +430,7 @@ export class Unpaid implements OnDestroy {
   protected openCreate(): void {
     this.editing.set(null);
     this.formError.set(null);
-    this.form.reset({ estado: 'nuevo', prioridad: 'media', importe: 0 });
+    this.form.reset({ estado: 'nuevo', prioridad: 'media', importe: '', parcialPagado: '' });
     this.clienteNombre.set(null);
     this.clienteQuery = '';
     this.clienteResults.set([]);
@@ -446,8 +446,8 @@ export class Unpaid implements OnDestroy {
     this.form.patchValue({
       clienteId:        r.clienteId,
       numeroFactura:    r.numeroFactura ?? '',
-      importe:          r.importe,
-      parcialPagado:    r.parcialPagado,
+      importe:          r.importe != null ? String(r.importe) : '',
+      parcialPagado:    r.parcialPagado != null ? String(r.parcialPagado) : '',
       fechaVencimiento: r.fechaVencimiento ?? '',
       fechaDevolucion:  r.fechaDevolucion ?? '',
       estado:           r.estado,
@@ -534,8 +534,8 @@ export class Unpaid implements OnDestroy {
     const payload: GestionImpagoPayload = {
       clienteId:        v.clienteId!,
       numeroFactura:    v.numeroFactura   || null,
-      importe:          v.importe         ?? 0,
-      parcialPagado:    v.parcialPagado   ?? 0,
+      importe:          this.parseAmount(v.importe),
+      parcialPagado:    this.parseAmount(v.parcialPagado),
       fechaVencimiento: v.fechaVencimiento || null,
       fechaDevolucion:  v.fechaDevolucion  || null,
       estado:           (v.estado    as EstadoGestionImpago)     || 'nuevo',
@@ -612,7 +612,7 @@ export class Unpaid implements OnDestroy {
       actionKey:      form.actionKey,
       notes:          form.notes          || null,
       promesaFecha:   form.promesaFecha   || null,
-      promesaImporte: form.promesaImporte ? parseFloat(form.promesaImporte) : null,
+      promesaImporte: form.promesaImporte ? this.parseAmount(form.promesaImporte) : null,
       targetStep:     form.targetStep,
     }).subscribe({
       next: (updated) => {
@@ -667,7 +667,7 @@ export class Unpaid implements OnDestroy {
   protected readonly pagadoModal = signal<{ row: GestionImpago; newEstado: EstadoGestionImpago } | null>(null);
   protected pagadoFecha   = '';
   protected pagadoNotas   = '';
-  protected pagadoImporte = 0;
+  protected pagadoImporte: number | string = 0;
 
   private readonly ESTADO_CON_MODAL: ReadonlySet<string> = new Set(['pagado', 'cortado', 'va_a_pagar']);
   protected readonly ESTADO_CON_PAGO_PARCIAL: ReadonlySet<string> = new Set(['va_a_pagar']);
@@ -731,10 +731,11 @@ export class Unpaid implements OnDestroy {
     });
 
     // Para acuerdos, si pusieron importe, registrar también el pago parcial
-    if (esParcial && this.pagadoImporte > 0) {
+    const pagadoImporteParsed = this.parseAmount(String(this.pagadoImporte));
+    if (esParcial && pagadoImporteParsed > 0) {
       this.service.registrarPago(modal.row.id, {
         fecha:   this.pagadoFecha,
-        importe: this.pagadoImporte,
+        importe: pagadoImporteParsed,
         notas:   this.pagadoNotas || null,
       }).subscribe({
         next: (updated) => {
@@ -895,6 +896,21 @@ export class Unpaid implements OnDestroy {
   // ── Display helpers ───────────────────────────────────────────────────────
   protected estadoTone(estado: EstadoGestionImpago): StatusTone     { return estadoToneFn(estado); }
   protected prioridadTone(p: PrioridadGestionImpago): StatusTone    { return prioridadToneFn(p); }
+  protected parseAmount(value: string | null | undefined): number {
+    const s = (value ?? '').toString().trim();
+    if (!s) return 0;
+    const lastDot   = s.lastIndexOf('.');
+    const lastComma = s.lastIndexOf(',');
+    let normalized: string;
+    if (lastComma > lastDot) {
+      normalized = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      normalized = s.replace(/,/g, '');
+    }
+    const n = parseFloat(normalized);
+    return isNaN(n) ? 0 : n;
+  }
+
   protected formatEur(v: number): string {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(v);
   }
