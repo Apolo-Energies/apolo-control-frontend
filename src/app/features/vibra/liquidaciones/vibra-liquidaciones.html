@@ -1,0 +1,98 @@
+<app-page-header title="Liquidaciones" [subtitle]="total() + ' de ' + total() + ' registros'">
+  <a routerLink="/vibra/dashboard" class="text-sm text-muted-foreground hover:text-foreground">← Volver al Dashboard</a>
+  <button (click)="exportExcel()" class="ml-auto inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
+    <ui-icon name="download" [size]="16" /> Exportar
+  </button>
+</app-page-header>
+
+<div class="flex flex-wrap items-center gap-2 mb-4">
+  <div class="relative flex-1 max-w-md">
+    <ui-icon name="search" [size]="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+    <input
+      [(ngModel)]="q" (keyup.enter)="applyFilters()"
+      placeholder="Buscar titular, CUPS, NIF…"
+      class="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-sm bg-input" />
+  </div>
+  <select [(ngModel)]="colaboradorFilter" (change)="applyFilters()"
+    class="border border-border rounded-lg px-3 py-2 text-sm bg-input">
+    <option value="">Filtrar por colaborador</option>
+    @for (c of colaboradores(); track c) {<option [value]="c">{{ c }}</option>}
+  </select>
+  <select [(ngModel)]="liquidadoFilter" (change)="applyFilters()"
+    class="border border-border rounded-lg px-3 py-2 text-sm bg-input">
+    <option value="">Liq. colaborador: todos</option>
+    <option value="Pagado">Pagado</option>
+    <option value="No pagado">No pagado</option>
+    <option value="Sí">Sí</option>
+    <option value="No">No</option>
+    <option value="Liquidado">Liquidado</option>
+    <option value="No Liquidado">No Liquidado</option>
+  </select>
+</div>
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4">
+    {{ msg }} <button (click)="load()" class="ml-2 underline">Reintentar</button>
+  </div>
+}
+
+@if (loading() && !result()) {
+  <app-table-skeleton [cols]="10" [rows]="8" />
+} @else {
+  <div class="rounded-2xl border border-border bg-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-border text-left text-muted-foreground bg-neutral-soft/50">
+            <th class="py-3 px-4 font-medium">Fecha</th>
+            <th class="py-3 px-4 font-medium">Titular</th>
+            <th class="py-3 px-4 font-medium">NIF/CIF</th>
+            <th class="py-3 px-4 font-medium">Email</th>
+            <th class="py-3 px-4 font-medium">Teléfono</th>
+            <th class="py-3 px-4 font-medium">Colaborador</th>
+            <th class="py-3 px-4 font-medium">Producto</th>
+            <th class="py-3 px-4 font-medium text-right">Consumo</th>
+            <th class="py-3 px-4 font-medium">Liq. Colaborador</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of rows(); track r.id) {
+            <tr class="border-b border-border/50 hover:bg-accent/40">
+              <td class="py-2 px-4">{{ r.fecha ?? '—' }}</td>
+              <td class="py-2 px-4">{{ r.titular ?? '—' }}</td>
+              <td class="py-2 px-4 text-muted-foreground tabular-nums">{{ r.nifCif ?? '—' }}</td>
+              <td class="py-2 px-4 text-muted-foreground text-xs">{{ r.email ?? '—' }}</td>
+              <td class="py-2 px-4 text-muted-foreground tabular-nums">{{ r.telefono ?? '—' }}</td>
+              <td class="py-2 px-4">{{ r.colaborador ?? '—' }}</td>
+              <td class="py-2 px-4 text-muted-foreground">{{ r.producto ?? '—' }}</td>
+              <td class="py-2 px-4 text-right tabular-nums">{{ fmtNumber(r.consumo) }}</td>
+              <td class="py-2 px-4">
+                <select [value]="r.liquidado ?? ''"
+                  (change)="changeLiquidado(r, $any($event.target).value)"
+                  class="border border-border rounded-md px-2 py-1 text-xs bg-input">
+                  <option value="No pagado">No pagado</option>
+                  <option value="Pagado">Pagado</option>
+                  <option value="Sí">Sí</option>
+                  <option value="No">No</option>
+                  <option value="Liquidado">Liquidado</option>
+                  <option value="No Liquidado">No Liquidado</option>
+                </select>
+              </td>
+            </tr>
+          }
+          @if (rows().length === 0) {
+            <tr><td colspan="9" class="py-12 text-center text-muted-foreground">Sin liquidaciones</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (totalPages() > 1) {
+      <div class="border-t border-border">
+        <app-pagination
+          [page]="page()" [pageSize]="size()"
+          [totalElements]="total()" [totalPages]="totalPages()"
+          (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+      </div>
+    }
+  </div>
+}

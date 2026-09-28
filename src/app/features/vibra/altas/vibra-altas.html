@@ -1,0 +1,258 @@
+<app-page-header title="Altas" [subtitle]="total() + ' de ' + total() + ' registros'">
+  <a routerLink="/vibra/dashboard" class="text-sm text-muted-foreground hover:text-foreground">← Volver al Dashboard</a>
+  <div class="ml-auto flex flex-wrap items-center gap-2">
+    <button (click)="exportExcel()" class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-accent">
+      <ui-icon name="download" [size]="16" /> Exportar
+    </button>
+    <button (click)="openRotacion()" class="inline-flex items-center gap-2 rounded-lg bg-purple text-white px-3 py-2 text-sm font-medium hover:opacity-90">
+      <ui-icon name="refresh-cw" [size]="16" /> Rotación Semestral
+    </button>
+    <button (click)="triggerImportExcel()" class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-accent">
+      <ui-icon name="upload" [size]="16" /> Importar Excel
+    </button>
+    <input #fileInput type="file" accept=".xlsx" class="hidden" (change)="onFileSelected($event)" />
+    <button (click)="openCreate()" class="inline-flex items-center gap-2 rounded-lg bg-success text-white px-3 py-2 text-sm font-medium hover:opacity-90">
+      <ui-icon name="plus" [size]="16" /> Nueva Alta
+    </button>
+  </div>
+</app-page-header>
+
+<!-- Filtros -->
+<div class="flex flex-wrap items-center gap-2 mb-4">
+  <div class="relative flex-1 max-w-md">
+    <ui-icon name="search" [size]="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+    <input [(ngModel)]="q" (keyup.enter)="applyFilters()" placeholder="Buscar titular, CUPS, NIF, email..."
+      class="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-sm bg-input" />
+  </div>
+  <select [(ngModel)]="estadoFilter" (change)="applyFilters()" class="border border-border rounded-lg px-3 py-2 text-sm bg-input">
+    <option value="">Todos los estados</option>
+    @for (e of estadoValues; track e) {<option [value]="e">{{ e }}</option>}
+  </select>
+  <select [(ngModel)]="comercializadoraFilter" (change)="applyFilters()" class="border border-border rounded-lg px-3 py-2 text-sm bg-input">
+    <option value="">Todas las comercializadoras</option>
+    @for (c of comercializadoraValues; track c) {<option [value]="c">{{ c }}</option>}
+  </select>
+  <input [(ngModel)]="colaboradorFilter" (keyup.enter)="applyFilters()" placeholder="Colaborador"
+    class="border border-border rounded-lg px-3 py-2 text-sm bg-input w-40" />
+  <button (click)="applyFilters()" class="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90">Buscar</button>
+</div>
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4">
+    {{ msg }} <button (click)="load()" class="ml-2 underline">Reintentar</button>
+  </div>
+}
+
+@if (loading() && !result()) {
+  <app-table-skeleton [cols]="12" [rows]="8" />
+} @else {
+  <div class="rounded-2xl border border-border bg-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-border text-left text-muted-foreground bg-neutral-soft/50">
+            <th class="py-3 px-3 font-medium">Fecha</th>
+            <th class="py-3 px-3 font-medium">CUPS</th>
+            <th class="py-3 px-3 font-medium">Titular</th>
+            <th class="py-3 px-3 font-medium">Dirección</th>
+            <th class="py-3 px-3 font-medium">Población</th>
+            <th class="py-3 px-3 font-medium">Provincia</th>
+            <th class="py-3 px-3 font-medium">Potencia</th>
+            <th class="py-3 px-3 font-medium">Estado</th>
+            <th class="py-3 px-3 font-medium">Fecha Firma</th>
+            <th class="py-3 px-3 font-medium">Comercializadora</th>
+            <th class="py-3 px-3 font-medium">Fec. Cambio</th>
+            <th class="py-3 px-3 font-medium">Fec. Renovación</th>
+            <th class="py-3 px-3 font-medium">Fec. Activación</th>
+            <th class="py-3 px-3 font-medium text-right">Acc.</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of rows(); track r.id) {
+            <tr class="border-b border-border/50 hover:bg-accent/40">
+              <td class="py-2 px-3 whitespace-nowrap">{{ fmtDate(r.fecha) }}</td>
+              <td class="py-2 px-3 tabular-nums text-xs">{{ r.cups ?? '—' }}</td>
+              <td class="py-2 px-3 font-medium">{{ r.titular ?? '—' }}</td>
+              <td class="py-2 px-3 text-xs">{{ r.direccionSuministro ?? '—' }}</td>
+              <td class="py-2 px-3">{{ r.poblacion ?? '—' }}</td>
+              <td class="py-2 px-3">{{ r.provincia ?? '—' }}</td>
+              <td class="py-2 px-3 text-xs">{{ r.potenciaOriginal ?? '—' }}</td>
+              <td class="py-2 px-3">
+                <select [value]="r.estado" (change)="changeEstado(r, $any($event.target).value)"
+                  class="border border-border rounded-md px-2 py-1 text-xs bg-input">
+                  <option value="">-- Estado --</option>
+                  @for (e of estadoValues; track e) {<option [value]="e">{{ e }}</option>}
+                </select>
+              </td>
+              <td class="py-2 px-3 whitespace-nowrap tabular-nums">{{ fmtDate(r.fechaFirma) }}</td>
+              <td class="py-2 px-3">
+                <select [value]="r.comercializadora ?? ''" (change)="changeComercializadora(r, $any($event.target).value)"
+                  class="border border-border rounded-md px-2 py-1 text-xs bg-input">
+                  <option value="">—</option>
+                  @for (c of comercializadoraValues; track c) {<option [value]="c">{{ c }}</option>}
+                </select>
+              </td>
+              <td class="py-2 px-3 whitespace-nowrap tabular-nums">
+                @if (r.fechaCambioComercializadora) {
+                  <span class="inline-flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-danger"></span>
+                    {{ fmtDate(r.fechaCambioComercializadora) }}
+                  </span>
+                } @else {
+                  <span class="inline-flex items-center gap-1 text-muted-foreground">
+                    <span class="w-2 h-2 rounded-full bg-muted-foreground/30"></span> —
+                  </span>
+                }
+              </td>
+              <td class="py-2 px-3 whitespace-nowrap tabular-nums">{{ fmtDate(r.fechaRenovacion) }}</td>
+              <td class="py-2 px-3 whitespace-nowrap tabular-nums">{{ fmtDate(r.fechaActivacionContrato) }}</td>
+              <td class="py-2 px-3 text-right whitespace-nowrap">
+                <button (click)="openEdit(r)" class="p-1 hover:bg-info-soft rounded" title="Editar">
+                  <ui-icon name="edit" [size]="16" />
+                </button>
+                <button (click)="confirmDelete(r)" class="p-1 hover:bg-danger-soft text-danger-fg rounded ml-1" title="Borrar">
+                  <ui-icon name="trash" [size]="16" />
+                </button>
+              </td>
+            </tr>
+          }
+          @if (rows().length === 0) {
+            <tr><td colspan="14" class="py-12 text-center text-muted-foreground">Sin altas</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (totalPages() > 1) {
+      <div class="border-t border-border">
+        <app-pagination [page]="page()" [pageSize]="size()"
+          [totalElements]="total()" [totalPages]="totalPages()"
+          (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+      </div>
+    }
+  </div>
+}
+
+<!-- Dialog Rotacion Semestral -->
+<app-form-dialog
+  [open]="rotacionDialogOpen()" title="Rotación Semestral de Comercializadoras"
+  subtitle="Actualiza contratos con más de 6 meses de antigüedad"
+  icon="refresh-cw" [saving]="rotacionRunning()" [canSave]="!!nuevaComercializadora"
+  saveLabel="Ejecutar rotación" (cancel)="closeRotacion()" (save)="ejecutarRotacion()">
+  <div class="space-y-4">
+    <p class="text-sm">
+      Esta acción actualizará los contratos con más de 6 meses de antigüedad:
+      cambiará su comercializadora y pondrá su liquidación en <strong>"No"</strong>.
+    </p>
+    <div class="rounded-lg bg-purple-soft text-purple-fg border border-purple/25 px-4 py-3 text-sm">
+      Contratos elegibles (> 6 meses): <span class="font-bold text-lg">{{ rotacionElegibles() }}</span>
+      <span class="text-xs opacity-70 ml-2">(fecha &lt; {{ rotacionCutoff() }})</span>
+    </div>
+    <div>
+      <label class="text-sm font-medium">Nueva Comercializadora</label>
+      <select [(ngModel)]="nuevaComercializadora" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
+        <option value="">-- Seleccionar --</option>
+        @for (c of comercializadoraValues; track c) {<option [value]="c">{{ c }}</option>}
+      </select>
+    </div>
+  </div>
+</app-form-dialog>
+
+<!-- Dialog crear/editar Alta -->
+<app-form-dialog
+  [open]="dialogOpen()" [title]="editing() ? 'Editar alta' : 'Nueva alta'"
+  [saving]="submitting()" [canSave]="form.valid"
+  (cancel)="closeDialog()" (save)="submit()">
+  <form [formGroup]="form" class="space-y-4">
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="text-sm font-medium">Titular *</label>
+        <input formControlName="titular" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">NIF/CIF</label>
+        <input formControlName="nifCif" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">CUPS</label>
+        <input formControlName="cups" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Estado</label>
+        <select formControlName="estado" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
+          @for (e of estadoValues; track e) {<option [value]="e">{{ e }}</option>}
+        </select>
+      </div>
+      <div class="col-span-2">
+        <label class="text-sm font-medium">Dirección suministro</label>
+        <input formControlName="direccionSuministro" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Población</label>
+        <input formControlName="poblacion" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Provincia</label>
+        <input formControlName="provincia" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Teléfono</label>
+        <input formControlName="telefono" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Email</label>
+        <input type="email" formControlName="email" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div class="col-span-2">
+        <label class="text-sm font-medium">Cuenta bancaria</label>
+        <input formControlName="cuentaBancaria" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Comercializadora</label>
+        <select formControlName="comercializadora" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
+          <option value="">—</option>
+          @for (c of comercializadoraValues; track c) {<option [value]="c">{{ c }}</option>}
+        </select>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Colaborador</label>
+        <input formControlName="colaborador" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Consumo (kWh)</label>
+        <input type="number" step="0.01" formControlName="consumo" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Potencia (raw)</label>
+        <input formControlName="potenciaOriginal" placeholder="P1: 5 | P2: 5 | ..." class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Fecha</label>
+        <input type="date" formControlName="fecha" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Fecha firma</label>
+        <input type="date" formControlName="fechaFirma" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Fecha cambio comerc.</label>
+        <input type="date" formControlName="fechaCambioComercializadora" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Fecha renovación</label>
+        <input type="date" formControlName="fechaRenovacion" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Fecha activación</label>
+        <input type="date" formControlName="fechaActivacionContrato" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Mes liquidación</label>
+        <input formControlName="mesLiquidacion" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+    </div>
+    <div>
+      <label class="text-sm font-medium">Comentarios</label>
+      <textarea formControlName="comentarios" rows="3" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"></textarea>
+    </div>
+  </form>
+</app-form-dialog>

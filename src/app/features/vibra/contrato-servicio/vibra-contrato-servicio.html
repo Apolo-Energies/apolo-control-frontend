@@ -1,0 +1,33 @@
+<app-page-header title="Contrato Servicio" subtitle="Generador de Contratos de Servicios Energéticos">
+  <a routerLink="/vibra/dashboard" class="text-sm text-muted-foreground hover:text-foreground">← Volver al Dashboard</a>
+</app-page-header>
+
+<div class="max-w-2xl mx-auto mt-8">
+  <div class="rounded-2xl border-2 border-dashed border-success/40 bg-success-soft/30 p-10 text-center">
+    <div class="flex items-center justify-center w-16 h-16 rounded-full bg-success-soft text-success-fg mx-auto mb-4">
+      <ui-icon name="upload" [size]="28" />
+    </div>
+    <h2 class="text-xl font-bold mb-2">Sube la factura del cliente</h2>
+    <p class="text-sm text-muted-foreground mb-4">Se extraerán automáticamente:</p>
+    <div class="flex flex-wrap justify-center gap-2 mb-6">
+      <span class="rounded-full bg-success-soft text-success-fg text-xs font-medium px-3 py-1 border border-success/20">Nombre / CIF</span>
+      <span class="rounded-full bg-success-soft text-success-fg text-xs font-medium px-3 py-1 border border-success/20">CUPS</span>
+      <span class="rounded-full bg-success-soft text-success-fg text-xs font-medium px-3 py-1 border border-success/20">Dirección suministro</span>
+      <span class="rounded-full bg-success-soft text-success-fg text-xs font-medium px-3 py-1 border border-success/20">Potencia contratada</span>
+    </div>
+    <button
+      disabled
+      class="inline-flex items-center gap-2 rounded-lg bg-success text-white px-6 py-3 text-sm font-medium opacity-60 cursor-not-allowed"
+      title="OCR próximamente disponible"
+    >
+      <ui-icon name="upload" [size]="16" />
+      Seleccionar factura
+    </button>
+    <p class="text-xs text-muted-foreground mt-2">OCR próximamente disponible</p>
+    <div class="mt-6">
+      <button (click)="goManual()" class="text-sm text-primary underline hover:opacity-80">
+        Rellenar manualmente sin subir factura
+      </button>
+    </div>
+  </div>
+</div>
