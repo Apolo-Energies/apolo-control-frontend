@@ -1,0 +1,114 @@
+<app-page-header title="Vibra" subtitle="Plataforma de Gestión Energética" />
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4">
+    {{ msg }}
+    <button (click)="load()" class="ml-2 underline">Reintentar</button>
+  </div>
+}
+
+<!-- ── Secciones (cards de navegacion) ── -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+  @for (s of sections; track s.url) {
+    <a
+      [routerLink]="s.url"
+      class="rounded-2xl border border-border bg-card p-6 hover:border-primary hover:shadow-md transition-all group"
+    >
+      <div class="flex items-center justify-center w-14 h-14 rounded-full mb-3"
+           [class.bg-info-soft]="s.tone === 'info'"
+           [class.text-info-fg]="s.tone === 'info'"
+           [class.bg-success-soft]="s.tone === 'success'"
+           [class.text-success-fg]="s.tone === 'success'"
+           [class.bg-warning-soft]="s.tone === 'warning'"
+           [class.text-warning-fg]="s.tone === 'warning'"
+           [class.bg-danger-soft]="s.tone === 'danger'"
+           [class.text-danger-fg]="s.tone === 'danger'"
+           [class.bg-purple-soft]="s.tone === 'purple'"
+           [class.text-purple-fg]="s.tone === 'purple'">
+        <ui-icon [name]="s.icon" [size]="24" />
+      </div>
+      <h3 class="text-lg font-semibold mb-1 group-hover:text-primary">{{ s.label }}</h3>
+      <p class="text-sm text-muted-foreground">{{ s.description }}</p>
+    </a>
+  }
+</section>
+
+<!-- ── KPIs ── -->
+@if (loading() && !data()) {
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    @for (_ of [0, 1, 2]; track $index) {
+      <div class="rounded-xl border border-border bg-card p-6 h-32 animate-pulse"></div>
+    }
+  </div>
+} @else if (data(); as d) {
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <app-kpi-card
+      label="Total de Contratos" [value]="formatNumber(d.totalContratos)"
+      sublabel="Altas registradas" icon="file-text" tone="info" />
+    <app-kpi-card
+      label="Consumo Total" [value]="formatConsumo(d.consumoTotal)"
+      sublabel="kWh estimados" icon="bolt" tone="warning" />
+    <app-kpi-card
+      label="Colaboradores Activos" [value]="formatNumber(d.colaboradoresActivos)"
+      sublabel="Agentes registrados" icon="users" tone="success" />
+  </div>
+}
+
+<!-- ── Ranking Colaboradores (grafico + tabla) ── -->
+<section class="rounded-2xl border border-border bg-card p-6 mb-6">
+  <header class="mb-4">
+    <h2 class="text-xl font-bold">Ranking de Colaboradores</h2>
+    <p class="text-sm text-muted-foreground">Contratos y consumo por colaborador</p>
+  </header>
+
+  @if (loading() && !data()) {
+    <div class="h-64 bg-neutral-soft rounded-lg animate-pulse"></div>
+  } @else if (rankingLabels().length > 0) {
+    <app-grouped-bar-chart
+      [series]="rankingSeries()"
+      [labels]="rankingLabels()"
+      [height]="280"
+      emptyLabel="Sin colaboradores" />
+  } @else {
+    <div class="text-center py-12 text-muted-foreground">Sin colaboradores registrados</div>
+  }
+</section>
+
+<!-- ── Detalle Colaboradores (tabla) ── -->
+<section class="rounded-2xl border border-border bg-card p-6">
+  <header class="mb-4">
+    <h2 class="text-xl font-bold">Detalle de Colaboradores</h2>
+  </header>
+
+  @if (loading() && !data()) {
+    <app-table-skeleton [cols]="4" [rows]="6" />
+  } @else if (data(); as d) {
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-border text-muted-foreground text-left">
+            <th class="py-2 pr-4 font-medium">Posición</th>
+            <th class="py-2 pr-4 font-medium">Colaborador</th>
+            <th class="py-2 pr-4 font-medium text-right">Contratos</th>
+            <th class="py-2 pr-4 font-medium text-right">Consumo Total (kWh)</th>
+            <th class="py-2 pr-0 font-medium text-right">% del Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of d.ranking; track r.colaborador) {
+            <tr class="border-b border-border/50 hover:bg-accent/40">
+              <td class="py-2 pr-4 font-bold">#{{ r.posicion }}</td>
+              <td class="py-2 pr-4">{{ r.colaborador }}</td>
+              <td class="py-2 pr-4 text-right tabular-nums">{{ formatNumber(r.contratos) }}</td>
+              <td class="py-2 pr-4 text-right tabular-nums">{{ formatConsumo(r.consumoTotal) }}</td>
+              <td class="py-2 pr-0 text-right tabular-nums">{{ r.porcentajeDelTotal }}%</td>
+            </tr>
+          }
+          @if (d.ranking.length === 0) {
+            <tr><td colspan="5" class="py-8 text-center text-muted-foreground">Sin datos</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
