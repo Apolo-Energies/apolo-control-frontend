@@ -35,7 +35,13 @@ import * as XLSX from 'xlsx';
 interface ImportRow {
   idx: number;
   clienteNombre: string;
-  clienteId?: string;
+  clienteId?: string;           // ID en GestionImpagoCliente (ya existe)
+  crmClientData?: {             // Datos del cliente CRM (se creará en deudores al confirmar)
+    nombre: string;
+    nif?: string | null;
+    email?: string | null;
+    telefono?: string | null;
+  };
   numeroFactura?: string;
   importe?: number;
   parcialPagado?: number;
@@ -874,13 +880,15 @@ export class Unpaid implements OnDestroy {
   protected readonly importRawData     = signal<Record<string, unknown>[]>([]);
   protected readonly importHeaders     = signal<string[]>([]);
   protected readonly importMapping     = signal<ImportMapping>({} as ImportMapping);
-  protected readonly importStep        = signal<'map' | 'preview' | 'done'>('map');
+  protected readonly importClients     = signal<GestionImpagoCliente[]>([]);
+  protected readonly importStep        = signal<'loading' | 'map' | 'preview' | 'done'>('map');
   protected readonly importOpen        = signal(false);
   protected readonly importing         = signal(false);
   protected readonly importResult      = signal<{ success: number; failed: number } | null>(null);
   protected readonly importProgress    = signal<{ done: number; total: number } | null>(null);
-  protected readonly importErrorCount  = computed(() => this.importRows().filter(r => !r.ok).length);
-  protected readonly importReadyCount  = computed(() => this.importRows().filter(r => r.ok).length);
+  protected readonly importErrorCount    = computed(() => this.importRows().filter(r => !r.ok).length);
+  protected readonly importReadyCount    = computed(() => this.importRows().filter(r => r.ok).length);
+  protected readonly importNewClientCount = computed(() => this.importRows().filter(r => r.ok && !!r.crmClientData).length);
 
   protected openImport(): void {
     const input = document.createElement('input');
@@ -908,8 +916,19 @@ export class Unpaid implements OnDestroy {
         this.importRows.set([]);
         this.importResult.set(null);
         this.importProgress.set(null);
-        this.importStep.set('map');
+        this.importStep.set('loading');
         this.importOpen.set(true);
+        // Cargar todos los clientes deudores para el matching
+        this.clienteService.list({}, { page: 0, size: 2000 }).subscribe({
+          next: (page) => {
+            this.importClients.set(page.content);
+            this.importStep.set('map');
+          },
+          error: () => {
+            this.notify.error('No se pudieron cargar los clientes deudores');
+            this.importOpen.set(false);
+          },
+        });
       } catch {
         this.notify.error('Error al leer el archivo XLSX');
       }
@@ -949,10 +968,11 @@ export class Unpaid implements OnDestroy {
   }
 
   protected previewImport(): void {
-    const raw = this.importRawData();
+    const raw     = this.importRawData();
     const mapping = this.importMapping();
-    const clients = this.masterData.clientesActivos();
-    this.importRows.set(raw.map((r, i) => this.parseImportRow(r, i + 1, clients, mapping)));
+    const deudores   = this.importClients();
+    const crmClients = this.masterData.clientesActivos();
+    this.importRows.set(raw.map((r, i) => this.parseImportRow(r, i + 1, deudores, crmClients, mapping)));
     this.importStep.set('preview');
   }
 
@@ -961,20 +981,42 @@ export class Unpaid implements OnDestroy {
   }
 
   protected resolveImportClient(idx: number, nombre: string): void {
-    const clients = this.masterData.clientesActivos();
-    const n = (s: string) =>
+    const deudores   = this.importClients();
+    const crmClients = this.masterData.clientesActivos();
+    const norm = (s: string) =>
       s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
-    const byName  = clients.find(c => n(c.nombre) === n(nombre));
-    const byNif   = clients.find(c => c.nif?.toUpperCase().replace(/\s/g, '') === nombre.toUpperCase().replace(/\s/g, ''));
-    const found   = byName ?? byNif;
-    const error   = !found ? `Cliente no encontrado: "${nombre || '(vacío)'}"` : undefined;
+    const nifNorm = nombre.toUpperCase().replace(/\s/g, '');
+
+    const foundD = deudores.find(c => norm(c.nombre) === norm(nombre))
+                ?? deudores.find(c => !!c.nif && c.nif.toUpperCase().replace(/\s/g, '') === nifNorm);
+    if (foundD) {
+      this.importRows.update(rows => rows.map(r => r.idx === idx
+        ? { ...r, clienteNombre: foundD.nombre, clienteId: foundD.id, crmClientData: undefined, error: undefined, ok: true }
+        : r
+      ));
+      return;
+    }
+
+    const foundC = crmClients.find(c => norm(c.nombre) === norm(nombre))
+                ?? crmClients.find(c => !!c.nif && c.nif.toUpperCase().replace(/\s/g, '') === nifNorm);
+    if (foundC) {
+      this.importRows.update(rows => rows.map(r => r.idx === idx
+        ? { ...r, clienteNombre: foundC.nombre, clienteId: undefined,
+            crmClientData: { nombre: foundC.nombre, nif: foundC.nif, email: foundC.email, telefono: foundC.telefono },
+            error: undefined, ok: true }
+        : r
+      ));
+      return;
+    }
+
+    const error = `No encontrado en deudores ni en Control: "${nombre || '(vacío)'}"`;
     this.importRows.update(rows => rows.map(r => r.idx === idx
-      ? { ...r, clienteNombre: found?.nombre ?? nombre, clienteId: found?.id, error, ok: !error }
+      ? { ...r, clienteNombre: nombre, clienteId: undefined, crmClientData: undefined, error, ok: false }
       : r
     ));
   }
 
-  private parseImportRow(r: Record<string, unknown>, idx: number, clients: Customer[], mapping: ImportMapping): ImportRow {
+  private parseImportRow(r: Record<string, unknown>, idx: number, deudores: GestionImpagoCliente[], crmClients: Customer[], mapping: ImportMapping): ImportRow {
     const col = (key: keyof ImportMapping): unknown => {
       const colName = mapping[key];
       if (!colName) return undefined;
@@ -1009,22 +1051,38 @@ export class Unpaid implements OnDestroy {
     const nifRaw           = colStr('nif');
     const clienteNombreRaw = colStr('cliente');
 
+    const norm = (s: string) =>
+      s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+
     let clienteId: string | undefined;
     let clienteNombre = clienteNombreRaw;
+    let crmClientData: ImportRow['crmClientData'];
 
+    // 1. Buscar por UUID directo en deudores
     if (clienteIdDirect) {
-      clienteId = clienteIdDirect;
-      clienteNombre = clients.find(c => c.id === clienteIdDirect)?.nombre ?? clienteIdDirect;
-    } else if (nifRaw) {
-      const nifNorm = nifRaw.toUpperCase().replace(/\s/g, '');
-      const found = clients.find(c => c.nif?.toUpperCase().replace(/\s/g, '') === nifNorm);
-      clienteId = found?.id;
-      clienteNombre = found?.nombre ?? nifRaw;
-    } else if (clienteNombreRaw) {
-      const n = (s: string) =>
-        s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
-      const found = clients.find(c => n(c.nombre) === n(clienteNombreRaw));
-      clienteId = found?.id;
+      const found = deudores.find(c => c.id === clienteIdDirect);
+      clienteId = found?.id ?? clienteIdDirect;
+      clienteNombre = found?.nombre ?? clienteIdDirect;
+    } else {
+      const nifNorm = nifRaw ? nifRaw.toUpperCase().replace(/\s/g, '') : '';
+
+      // 2. Buscar en deudores por NIF o nombre
+      const foundD = (nifRaw ? deudores.find(c => !!c.nif && c.nif.toUpperCase().replace(/\s/g, '') === nifNorm) : undefined)
+                  ?? (clienteNombreRaw ? deudores.find(c => norm(c.nombre) === norm(clienteNombreRaw)) : undefined);
+
+      if (foundD) {
+        clienteId     = foundD.id;
+        clienteNombre = foundD.nombre;
+      } else {
+        // 3. Fallback: buscar en clientes CRM
+        const foundC = (nifRaw ? crmClients.find(c => !!c.nif && c.nif.toUpperCase().replace(/\s/g, '') === nifNorm) : undefined)
+                    ?? (clienteNombreRaw ? crmClients.find(c => norm(c.nombre) === norm(clienteNombreRaw)) : undefined);
+
+        if (foundC) {
+          clienteNombre  = foundC.nombre;
+          crmClientData  = { nombre: foundC.nombre, nif: foundC.nif, email: foundC.email, telefono: foundC.telefono };
+        }
+      }
     }
 
     const estadoRaw = colStr('estado');
@@ -1035,14 +1093,14 @@ export class Unpaid implements OnDestroy {
     const prioridad = (['urgente', 'alta', 'media', 'baja'] as string[]).includes(prioridadRaw)
       ? prioridadRaw as PrioridadGestionImpago : undefined;
 
-    const error = !clienteId
-      ? `Cliente no encontrado: "${clienteNombre || '(vacío)'}"`
-      : undefined;
+    const ok    = !!(clienteId || crmClientData);
+    const error = ok ? undefined : `No encontrado en deudores ni en Control: "${clienteNombre || '(vacío)'}"`;
 
     return {
       idx,
       clienteNombre,
       clienteId,
+      crmClientData,
       numeroFactura:    colStr('numeroFactura') || undefined,
       importe:          toNum(col('importe')),
       parcialPagado:    toNum(col('parcialPagado')),
@@ -1054,28 +1112,20 @@ export class Unpaid implements OnDestroy {
       motivoDevolucion: colStr('motivoDevolucion') || undefined,
       observaciones:    colStr('observaciones') || undefined,
       error,
-      ok: !error,
+      ok,
     };
   }
 
   protected confirmImport(): void {
-    const rows = this.importRows().filter(r => r.ok && r.clienteId);
+    const rows = this.importRows().filter(r => r.ok);
     if (!rows.length) return;
     this.importing.set(true);
     this.importProgress.set({ done: 0, total: rows.length });
     let success = 0, failed = 0;
-    const next = (i: number) => {
-      if (i >= rows.length) {
-        this.importing.set(false);
-        this.importResult.set({ success, failed });
-        this.importProgress.set(null);
-        this.importStep.set('done');
-        if (success > 0) this.reload(0);
-        return;
-      }
-      const row = rows[i];
+
+    const createImpago = (clienteId: string, row: ImportRow, onDone: () => void) => {
       this.service.create({
-        clienteId:        row.clienteId!,
+        clienteId,
         numeroFactura:    row.numeroFactura    ?? null,
         importe:          row.importe,
         parcialPagado:    row.parcialPagado,
@@ -1087,9 +1137,32 @@ export class Unpaid implements OnDestroy {
         motivoDevolucion: row.motivoDevolucion ?? null,
         observaciones:    row.observaciones    ?? null,
       }).subscribe({
-        next:  () => { success++; this.importProgress.set({ done: success + failed, total: rows.length }); next(i + 1); },
-        error: () => { failed++;  this.importProgress.set({ done: success + failed, total: rows.length }); next(i + 1); },
+        next:  () => { success++; this.importProgress.set({ done: success + failed, total: rows.length }); onDone(); },
+        error: () => { failed++;  this.importProgress.set({ done: success + failed, total: rows.length }); onDone(); },
       });
+    };
+
+    const next = (i: number) => {
+      if (i >= rows.length) {
+        this.importing.set(false);
+        this.importResult.set({ success, failed });
+        this.importProgress.set(null);
+        this.importStep.set('done');
+        if (success > 0) this.reload(0);
+        return;
+      }
+      const row = rows[i];
+      if (row.clienteId) {
+        createImpago(row.clienteId, row, () => next(i + 1));
+      } else if (row.crmClientData) {
+        // Crear primero el cliente deudor desde los datos CRM y luego el impago
+        this.clienteService.create(row.crmClientData).subscribe({
+          next:  (nuevoCliente) => createImpago(nuevoCliente.id, row, () => next(i + 1)),
+          error: () => { failed++; this.importProgress.set({ done: success + failed, total: rows.length }); next(i + 1); },
+        });
+      } else {
+        next(i + 1);
+      }
     };
     next(0);
   }
@@ -1099,6 +1172,7 @@ export class Unpaid implements OnDestroy {
     this.importRows.set([]);
     this.importRawData.set([]);
     this.importHeaders.set([]);
+    this.importClients.set([]);
     this.importResult.set(null);
     this.importProgress.set(null);
     this.importing.set(false);
