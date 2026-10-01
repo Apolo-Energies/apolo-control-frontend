@@ -126,6 +126,22 @@ export class ContractService {
     return this.http.get(`${this.baseUrl}/${contratoId}/anexos/${anexoId}/descargar`, { responseType: 'blob' });
   }
 
+  exportarArchivos(filter: ContractFilter = {}): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.baseUrl}/exportar-archivos`, null, {
+      params: buildParams({
+        estado: filter.status,
+        q: filter.q,
+        startDate: filter.startDate,
+        endDate: filter.endDate,
+        motivoRechazo: filter.motivoRechazo,
+      }),
+    });
+  }
+
+  getEstadoExportacion(): Observable<{ inProgress: boolean }> {
+    return this.http.get<{ inProgress: boolean }>(`${this.baseUrl}/exportar-archivos/estado`);
+  }
+
   verificarCampoCliente(clienteId: string, campo: string): Observable<void> {
     return this.http.patch<void>(
       `${environment.apiUrl}/clientes/${clienteId}/verificar-campo`,

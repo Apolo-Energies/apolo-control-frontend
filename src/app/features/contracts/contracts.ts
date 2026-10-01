@@ -204,7 +204,8 @@ export class Contracts implements OnDestroy {
   // Motivos de rechazo desde caché local (sin llamada HTTP)
   protected readonly motivosRechazo = this.masterData.motivosRechazo;
 
-  protected readonly loading = signal(false);
+  protected readonly loading    = signal(false);
+  protected readonly exportando = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly result           = signal<Page<Contract> | null>(null);
   protected readonly tarifasActivas   = signal<TarifaPenalizacion[]>([]);
@@ -461,6 +462,30 @@ export class Contracts implements OnDestroy {
   protected onSizeChange(size: number): void {
     this.size.set(size);
     this.reload(0);
+  }
+
+  protected exportarArchivos(): void {
+    if (this.exportando()) return;
+    this.exportando.set(true);
+    this.service
+      .exportarArchivos({
+        status:        this.statusFilter || undefined,
+        q:             this.q.trim() || undefined,
+        startDate:     this.startDate || undefined,
+        endDate:       this.endDate || undefined,
+        motivoRechazo: this.motivoRechazo || undefined,
+      })
+      .subscribe({
+        next: (res) => {
+          this.notify.info(res.message);
+          this.exportando.set(false);
+        },
+        error: (err) => {
+          const msg = err?.error?.message ?? 'Error al iniciar la exportación';
+          this.notify.error(msg);
+          this.exportando.set(false);
+        },
+      });
   }
 
   protected clearFilters(): void {
