@@ -54,22 +54,20 @@
   </div>
 }
 
-<!-- ── Ranking Colaboradores (grafico + tabla) ── -->
+<!-- ── Ranking Colaboradores (Chart.js — top 10, doble eje Y) ── -->
 <section class="rounded-2xl border border-border bg-card p-6 mb-6">
   <header class="mb-4">
     <h2 class="text-xl font-bold">Ranking de Colaboradores</h2>
     <p class="text-sm text-muted-foreground">Contratos y consumo por colaborador</p>
   </header>
 
+  <!-- Canvas siempre en el DOM (ViewChild lo captura al arranque); [hidden] oculta sin desmontar. -->
+  <div class="relative h-96" [hidden]="loading() || topRanking().length === 0">
+    <canvas #chartCanvas></canvas>
+  </div>
   @if (loading() && !data()) {
-    <div class="h-64 bg-neutral-soft rounded-lg animate-pulse"></div>
-  } @else if (rankingLabels().length > 0) {
-    <app-grouped-bar-chart
-      [series]="rankingSeries()"
-      [labels]="rankingLabels()"
-      [height]="280"
-      emptyLabel="Sin colaboradores" />
-  } @else {
+    <div class="h-96 bg-neutral-soft rounded-lg animate-pulse"></div>
+  } @else if (topRanking().length === 0) {
     <div class="text-center py-12 text-muted-foreground">Sin colaboradores registrados</div>
   }
 </section>

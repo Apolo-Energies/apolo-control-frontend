@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 
 import { PageHeader } from '../../../shared/components/page-header/page-header';
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
+import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
@@ -16,7 +17,7 @@ import { VibraTarifa, VibraTarifaPayload } from '../../../core/models';
 @Component({
   selector: 'app-vibra-preciario',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, PageHeader, FormDialog, StatusBadge, TableSkeleton, Icon],
+  imports: [ReactiveFormsModule, RouterLink, PageHeader, FormDialog, ConfirmDialog, StatusBadge, TableSkeleton, Icon],
   templateUrl: './vibra-preciario.html',
 })
 export class VibraPreciario {
@@ -31,6 +32,16 @@ export class VibraPreciario {
   protected readonly dialogOpen = signal(false);
   protected readonly editing = signal<VibraTarifa | null>(null);
   protected readonly submitting = signal(false);
+
+  // Confirm delete
+  protected readonly confirmOpen = signal(false);
+  protected readonly pendingDelete = signal<VibraTarifa | null>(null);
+  protected readonly deleting = signal(false);
+
+  // Detail modal
+  protected readonly detailOpen = signal(false);
+  protected readonly detailData = signal<VibraTarifa | null>(null);
+  protected readonly detailLoading = signal(false);
 
   protected readonly tarifas20 = computed(() => this.all().filter(t => t.tipo === '2.0TD'));
   protected readonly tarifas30 = computed(() => this.all().filter(t => t.tipo === '3.0TD'));
@@ -107,16 +118,55 @@ export class VibraPreciario {
     });
   }
 
-  protected confirmDelete(t: VibraTarifa): void {
-    if (!confirm(`Eliminar la tarifa "${t.nombre}"?`)) return;
+  protected askDelete(t: VibraTarifa): void {
+    this.pendingDelete.set(t);
+    this.confirmOpen.set(true);
+  }
+
+  protected cancelDelete(): void {
+    this.confirmOpen.set(false);
+    this.pendingDelete.set(null);
+  }
+
+  protected doDelete(): void {
+    const t = this.pendingDelete();
+    if (!t) return;
+    this.deleting.set(true);
     this.service.delete(t.id).subscribe({
-      next: () => { this.notify.success('Tarifa eliminada'); this.load(); },
-      error: (err: HttpErrorResponse) => this.notify.error(err.error?.message ?? 'Error al eliminar'),
+      next: () => {
+        this.deleting.set(false);
+        this.notify.success('Tarifa eliminada');
+        this.cancelDelete();
+        this.load();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.deleting.set(false);
+        this.notify.error(err.error?.message ?? 'Error al eliminar');
+      },
     });
   }
 
   protected fmt(n: number | null): string {
     if (n == null) return '—';
     return n.toFixed(6);
+  }
+
+  protected verDetalle(id: string): void {
+    this.detailOpen.set(true);
+    this.detailLoading.set(true);
+    this.detailData.set(null);
+    this.service.getById(id).subscribe({
+      next: (d) => { this.detailData.set(d); this.detailLoading.set(false); },
+      error: (err: HttpErrorResponse) => {
+        this.detailLoading.set(false);
+        this.notify.error(err.error?.message ?? 'Error al cargar detalle');
+        this.detailOpen.set(false);
+      },
+    });
+  }
+
+  protected closeDetail(): void {
+    this.detailOpen.set(false);
+    this.detailData.set(null);
   }
 }

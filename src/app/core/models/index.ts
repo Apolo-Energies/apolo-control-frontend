@@ -27,3 +27,4 @@ export * from './vibra-tarifa.model';
 export * from './vibra-dashboard.model';
 export * from './vibra-liquidacion.model';
 export * from './vibra-rotacion.model';
+export * from './vibra-ocr.model';

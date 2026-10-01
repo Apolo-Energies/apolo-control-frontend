@@ -5,6 +5,8 @@ import { RouterLink } from '@angular/router';
 
 import { PageHeader } from '../../../shared/components/page-header/page-header';
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
+import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
+import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { Pagination } from '../../../shared/components/pagination/pagination';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
@@ -24,7 +26,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule, ReactiveFormsModule, RouterLink,
-    PageHeader, FormDialog, Pagination, TableSkeleton, Icon,
+    PageHeader, FormDialog, ConfirmDialog, StatusBadge, Pagination, TableSkeleton, Icon,
   ],
   templateUrl: './vibra-altas.html',
 })
@@ -45,6 +47,22 @@ export class VibraAltas {
   protected estadoFilter = '';
   protected colaboradorFilter = '';
   protected comercializadoraFilter = '';
+  protected fechaDesdeFilter = '';
+  protected fechaHastaFilter = '';
+
+  protected readonly sortField = signal<string>('fecha');
+  protected readonly sortDir = signal<'asc' | 'desc'>('desc');
+
+  protected setSort(field: string): void {
+    if (this.sortField() === field) {
+      this.sortDir.set(this.sortDir() === 'asc' ? 'desc' : 'asc');
+    } else {
+      this.sortField.set(field);
+      this.sortDir.set('desc');
+    }
+    this.page.set(0);
+    this.load();
+  }
 
   protected readonly estadoValues = ESTADO_VIBRA_ALTA_VALUES;
   protected readonly comercializadoraValues = COMERCIALIZADORA_VIBRA_VALUES;
@@ -57,6 +75,16 @@ export class VibraAltas {
   protected readonly dialogOpen = signal(false);
   protected readonly editing = signal<VibraAlta | null>(null);
   protected readonly submitting = signal(false);
+
+  // Confirm delete
+  protected readonly confirmOpen = signal(false);
+  protected readonly pendingDelete = signal<VibraAlta | null>(null);
+  protected readonly deleting = signal(false);
+
+  // Detail modal
+  protected readonly detailOpen = signal(false);
+  protected readonly detailData = signal<VibraAlta | null>(null);
+  protected readonly detailLoading = signal(false);
 
   // Dialog Rotacion Semestral
   protected readonly rotacionDialogOpen = signal(false);
@@ -86,6 +114,9 @@ export class VibraAltas {
     colaborador: [''],
     mesLiquidacion: [''],
     potenciaOriginal: [''],
+    tramitado: [false],
+    liquidado: [''],
+    historialLiquidaciones: [''],
     comentarios: [''],
   });
 
@@ -100,8 +131,10 @@ export class VibraAltas {
         estado: this.estadoFilter || undefined,
         colaborador: this.colaboradorFilter || undefined,
         comercializadora: this.comercializadoraFilter || undefined,
+        fechaDesde: this.fechaDesdeFilter || undefined,
+        fechaHasta: this.fechaHastaFilter || undefined,
       },
-      { page: this.page(), size: this.size(), sort: 'fecha,desc' },
+      { page: this.page(), size: this.size(), sort: `${this.sortField()},${this.sortDir()}` },
     ).subscribe({
       next: (r) => { this.result.set(r); this.loading.set(false); },
       error: (err: HttpErrorResponse) => {
@@ -165,7 +198,10 @@ export class VibraAltas {
       fechaFirma: r.fechaFirma, fechaCambioComercializadora: r.fechaCambioComercializadora,
       fechaRenovacion: r.fechaRenovacion, fechaActivacionContrato: r.fechaActivacionContrato,
       colaborador: r.colaborador ?? '', mesLiquidacion: r.mesLiquidacion ?? '',
-      potenciaOriginal: r.potenciaOriginal ?? '', comentarios: r.comentarios ?? '',
+      potenciaOriginal: r.potenciaOriginal ?? '',
+      tramitado: r.tramitado ?? false, liquidado: r.liquidado ?? '',
+      historialLiquidaciones: r.historialLiquidaciones ?? '',
+      comentarios: r.comentarios ?? '',
     });
     this.dialogOpen.set(true);
   }
@@ -192,11 +228,31 @@ export class VibraAltas {
     });
   }
 
-  protected confirmDelete(r: VibraAlta): void {
-    if (!confirm(`Eliminar alta de ${r.titular}?`)) return;
+  protected askDelete(r: VibraAlta): void {
+    this.pendingDelete.set(r);
+    this.confirmOpen.set(true);
+  }
+
+  protected cancelDelete(): void {
+    this.confirmOpen.set(false);
+    this.pendingDelete.set(null);
+  }
+
+  protected doDelete(): void {
+    const r = this.pendingDelete();
+    if (!r) return;
+    this.deleting.set(true);
     this.service.delete(r.id).subscribe({
-      next: () => { this.notify.success('Alta eliminada'); this.load(); },
-      error: (err: HttpErrorResponse) => this.notify.error(err.error?.message ?? 'Error'),
+      next: () => {
+        this.deleting.set(false);
+        this.notify.success('Alta eliminada');
+        this.cancelDelete();
+        this.load();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.deleting.set(false);
+        this.notify.error(err.error?.message ?? 'Error');
+      },
     });
   }
 
@@ -269,6 +325,30 @@ export class VibraAltas {
         input.value = '';
       },
     });
+  }
+
+  protected verDetalle(id: string): void {
+    this.detailOpen.set(true);
+    this.detailLoading.set(true);
+    this.detailData.set(null);
+    this.service.getById(id).subscribe({
+      next: (d) => { this.detailData.set(d); this.detailLoading.set(false); },
+      error: (err: HttpErrorResponse) => {
+        this.detailLoading.set(false);
+        this.notify.error(err.error?.message ?? 'Error al cargar detalle');
+        this.detailOpen.set(false);
+      },
+    });
+  }
+
+  protected closeDetail(): void {
+    this.detailOpen.set(false);
+    this.detailData.set(null);
+  }
+
+  protected fmtNumber(n: number | null | undefined): string {
+    if (n == null) return '—';
+    return new Intl.NumberFormat('es-ES').format(n);
   }
 
   protected fmtDate(d: string | null): string {

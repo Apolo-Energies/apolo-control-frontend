@@ -28,6 +28,10 @@ export class VibraImpagoService {
     return this.http.get<VibraImpago>(`${this.baseUrl}/${id}`);
   }
 
+  clientes(): Observable<string[]> {
+    return this.http.get<string[]>(`${this.baseUrl}/clientes`);
+  }
+
   create(payload: VibraImpagoPayload): Observable<VibraImpago> {
     return this.http.post<VibraImpago>(this.baseUrl, payload);
   }

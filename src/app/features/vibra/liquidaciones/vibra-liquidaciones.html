@@ -44,15 +44,47 @@
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b border-border text-left text-muted-foreground bg-neutral-soft/50">
-            <th class="py-3 px-4 font-medium">Fecha</th>
-            <th class="py-3 px-4 font-medium">Titular</th>
-            <th class="py-3 px-4 font-medium">NIF/CIF</th>
-            <th class="py-3 px-4 font-medium">Email</th>
+            <th (click)="setSort('fecha')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Fecha
+                @if (sortField()==='fecha') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('titular')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Titular
+                @if (sortField()==='titular') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('nifCif')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">NIF/CIF
+                @if (sortField()==='nifCif') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('email')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Email
+                @if (sortField()==='email') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
             <th class="py-3 px-4 font-medium">Teléfono</th>
-            <th class="py-3 px-4 font-medium">Colaborador</th>
-            <th class="py-3 px-4 font-medium">Producto</th>
-            <th class="py-3 px-4 font-medium text-right">Consumo</th>
-            <th class="py-3 px-4 font-medium">Liq. Colaborador</th>
+            <th (click)="setSort('colaborador')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Colaborador
+                @if (sortField()==='colaborador') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('mesLiquidacion')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Producto
+                @if (sortField()==='mesLiquidacion') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('consumo')" class="py-3 px-4 font-medium text-right cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Consumo
+                @if (sortField()==='consumo') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('liquidado')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Liq. Colaborador
+                @if (sortField()==='liquidado') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -67,21 +99,26 @@
               <td class="py-2 px-4 text-muted-foreground">{{ r.producto ?? '—' }}</td>
               <td class="py-2 px-4 text-right tabular-nums">{{ fmtNumber(r.consumo) }}</td>
               <td class="py-2 px-4">
-                <select [value]="r.liquidado ?? ''"
-                  (change)="changeLiquidado(r, $any($event.target).value)"
+                <select (change)="changeLiquidado(r, $any($event.target).value)"
                   class="border border-border rounded-md px-2 py-1 text-xs bg-input">
-                  <option value="No pagado">No pagado</option>
-                  <option value="Pagado">Pagado</option>
-                  <option value="Sí">Sí</option>
-                  <option value="No">No</option>
-                  <option value="Liquidado">Liquidado</option>
-                  <option value="No Liquidado">No Liquidado</option>
+                  @for (opt of liquidadoOpts; track opt) {
+                    <option [value]="opt" [selected]="(r.liquidado ?? '') === opt">{{ opt }}</option>
+                  }
+                  @if (r.liquidado && !liquidadoOpts.includes(r.liquidado)) {
+                    <option [value]="r.liquidado" selected>{{ r.liquidado }}</option>
+                  }
                 </select>
               </td>
             </tr>
           }
           @if (rows().length === 0) {
-            <tr><td colspan="9" class="py-12 text-center text-muted-foreground">Sin liquidaciones</td></tr>
+            <tr><td colspan="9" class="py-16">
+              <div class="flex flex-col items-center gap-2 text-muted-foreground">
+                <ui-icon name="search" [size]="40" class="opacity-30"/>
+                <p class="font-medium text-base">Sin liquidaciones</p>
+                <p class="text-xs">Probá ajustar los filtros</p>
+              </div>
+            </td></tr>
           }
         </tbody>
       </table>

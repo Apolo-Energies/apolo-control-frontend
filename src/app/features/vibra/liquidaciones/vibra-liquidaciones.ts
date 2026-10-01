@@ -36,6 +36,22 @@ export class VibraLiquidaciones {
   protected liquidadoFilter = '';
 
   protected readonly colaboradores = signal<string[]>([]);
+  protected readonly sortField = signal<string>('fecha');
+  protected readonly sortDir = signal<'asc' | 'desc'>('desc');
+
+  protected readonly liquidadoOpts = ['No pagado', 'Pagado', 'Sí', 'No', 'Liquidado', 'No Liquidado'];
+
+  protected setSort(field: string): void {
+    if (this.sortField() === field) {
+      this.sortDir.set(this.sortDir() === 'asc' ? 'desc' : 'asc');
+    } else {
+      this.sortField.set(field);
+      this.sortDir.set('desc');
+    }
+    this.page.set(0);
+    this.load();
+  }
+
   protected readonly rows = computed(() => this.result()?.content ?? []);
   protected readonly total = computed(() => this.result()?.totalElements ?? 0);
   protected readonly totalPages = computed(() => this.result()?.totalPages ?? 0);
@@ -57,7 +73,7 @@ export class VibraLiquidaciones {
     this.error.set(null);
     this.service.list(
       { q: this.q, colaborador: this.colaboradorFilter || undefined, liquidado: this.liquidadoFilter || undefined },
-      { page: this.page(), size: this.size(), sort: 'fecha,desc' },
+      { page: this.page(), size: this.size(), sort: `${this.sortField()},${this.sortDir()}` },
     ).subscribe({
       next: (r) => { this.result.set(r); this.loading.set(false); },
       error: (err: HttpErrorResponse) => {

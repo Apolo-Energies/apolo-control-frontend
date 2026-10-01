@@ -77,6 +77,36 @@
       <ui-icon name="receipt-x" [size]="14" />
       Impagos Base44
     </button>
+    <button type="button"
+      (click)="activeTab.set('vibraAltas')"
+      [class.bg-background]="activeTab() === 'vibraAltas'"
+      [class.shadow-sm]="activeTab() === 'vibraAltas'"
+      [class.text-foreground]="activeTab() === 'vibraAltas'"
+      [class.text-muted-foreground]="activeTab() !== 'vibraAltas'"
+      class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all">
+      <ui-icon name="bolt" [size]="14" />
+      Vibra Altas
+    </button>
+    <button type="button"
+      (click)="activeTab.set('vibraImpagos')"
+      [class.bg-background]="activeTab() === 'vibraImpagos'"
+      [class.shadow-sm]="activeTab() === 'vibraImpagos'"
+      [class.text-foreground]="activeTab() === 'vibraImpagos'"
+      [class.text-muted-foreground]="activeTab() !== 'vibraImpagos'"
+      class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all">
+      <ui-icon name="bolt" [size]="14" />
+      Vibra Impagos
+    </button>
+    <button type="button"
+      (click)="activeTab.set('vibraTarifas')"
+      [class.bg-background]="activeTab() === 'vibraTarifas'"
+      [class.shadow-sm]="activeTab() === 'vibraTarifas'"
+      [class.text-foreground]="activeTab() === 'vibraTarifas'"
+      [class.text-muted-foreground]="activeTab() !== 'vibraTarifas'"
+      class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all">
+      <ui-icon name="bolt" [size]="14" />
+      Vibra Tarifas
+    </button>
   </div>
 
   <!-- ══════════════ TAB: ContratosServicios ══════════════ -->
@@ -405,6 +435,95 @@
         }
       </div>
     }
+  }
+
+  <!-- ══════════════ TAB: Vibra Altas ══════════════ -->
+  @if (activeTab() === 'vibraAltas') {
+    @if (!vibraAltasFile()) {
+      <label class="flex flex-col items-center justify-center gap-3 h-44 rounded-xl border-2 border-dashed border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+        (dragover)="$event.preventDefault()" (drop)="onVibraAltasDrop($event)">
+        <ui-icon name="upload" [size]="32" class="text-muted-foreground" />
+        <div class="text-center">
+          <p class="text-sm font-medium text-foreground">Arrastra el CSV de Vibra aquí</p>
+          <p class="text-xs text-muted-foreground mt-1">o haz clic para seleccionar — Alta_export.csv</p>
+        </div>
+        <input type="file" accept=".csv" (change)="onVibraAltasFileChange($event)" class="hidden" />
+      </label>
+    } @else {
+      <ng-container *ngTemplateOutlet="fileCard; context: { file: vibraAltasFile(), clear: clearVibraAltasFile.bind(this) }" />
+      <div class="flex gap-2">
+        <ng-container *ngTemplateOutlet="btnPreview; context: { loading: vibraAltasLoading(), preview: previewVibraAltas.bind(this) }" />
+        <ng-container *ngTemplateOutlet="btnImport; context: { loading: vibraAltasLoading(), label: 'Importar altas Vibra', import: importarVibraAltas.bind(this) }" />
+      </div>
+      <ng-container *ngTemplateOutlet="resultPanel; context: { r: vibraAltasResult(), showCreated: true }" />
+    }
+    <div class="rounded-lg border border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+      <div class="flex items-center gap-2 mb-2"><ui-icon name="info" [size]="14"/><strong>Cómo funciona</strong></div>
+      <ul class="list-disc pl-5 space-y-1 text-xs">
+        <li>El CSV se identifica por <strong>id_externo</strong> de Base44.</li>
+        <li>Si ya existe la fila → se actualiza. Si no → se crea.</li>
+        <li>Idempotente: podés re-importar el mismo CSV sin duplicar.</li>
+        <li>Usa <strong>Vista previa</strong> para simular sin guardar.</li>
+      </ul>
+    </div>
+  }
+
+  <!-- ══════════════ TAB: Vibra Impagos ══════════════ -->
+  @if (activeTab() === 'vibraImpagos') {
+    @if (!vibraImpagosFile()) {
+      <label class="flex flex-col items-center justify-center gap-3 h-44 rounded-xl border-2 border-dashed border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+        (dragover)="$event.preventDefault()" (drop)="onVibraImpagosDrop($event)">
+        <ui-icon name="upload" [size]="32" class="text-muted-foreground" />
+        <div class="text-center">
+          <p class="text-sm font-medium text-foreground">Arrastra el CSV de Vibra aquí</p>
+          <p class="text-xs text-muted-foreground mt-1">o haz clic para seleccionar — Impago_export.csv</p>
+        </div>
+        <input type="file" accept=".csv" (change)="onVibraImpagosFileChange($event)" class="hidden" />
+      </label>
+    } @else {
+      <ng-container *ngTemplateOutlet="fileCard; context: { file: vibraImpagosFile(), clear: clearVibraImpagosFile.bind(this) }" />
+      <div class="flex gap-2">
+        <ng-container *ngTemplateOutlet="btnPreview; context: { loading: vibraImpagosLoading(), preview: previewVibraImpagos.bind(this) }" />
+        <ng-container *ngTemplateOutlet="btnImport; context: { loading: vibraImpagosLoading(), label: 'Importar impagos Vibra', import: importarVibraImpagos.bind(this) }" />
+      </div>
+      <ng-container *ngTemplateOutlet="resultPanel; context: { r: vibraImpagosResult(), showCreated: true }" />
+    }
+    <div class="rounded-lg border border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+      <div class="flex items-center gap-2 mb-2"><ui-icon name="info" [size]="14"/><strong>Cómo funciona</strong></div>
+      <ul class="list-disc pl-5 space-y-1 text-xs">
+        <li>Idempotente por <strong>id_externo</strong> de Base44.</li>
+        <li>El motivo de devolución se normaliza (Saldo insuficiente, Cuenta cancelada, etc.).</li>
+      </ul>
+    </div>
+  }
+
+  <!-- ══════════════ TAB: Vibra Tarifas ══════════════ -->
+  @if (activeTab() === 'vibraTarifas') {
+    @if (!vibraTarifasFile()) {
+      <label class="flex flex-col items-center justify-center gap-3 h-44 rounded-xl border-2 border-dashed border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+        (dragover)="$event.preventDefault()" (drop)="onVibraTarifasDrop($event)">
+        <ui-icon name="upload" [size]="32" class="text-muted-foreground" />
+        <div class="text-center">
+          <p class="text-sm font-medium text-foreground">Arrastra el CSV de Vibra aquí</p>
+          <p class="text-xs text-muted-foreground mt-1">o haz clic para seleccionar — Tarifa_export.csv</p>
+        </div>
+        <input type="file" accept=".csv" (change)="onVibraTarifasFileChange($event)" class="hidden" />
+      </label>
+    } @else {
+      <ng-container *ngTemplateOutlet="fileCard; context: { file: vibraTarifasFile(), clear: clearVibraTarifasFile.bind(this) }" />
+      <div class="flex gap-2">
+        <ng-container *ngTemplateOutlet="btnPreview; context: { loading: vibraTarifasLoading(), preview: previewVibraTarifas.bind(this) }" />
+        <ng-container *ngTemplateOutlet="btnImport; context: { loading: vibraTarifasLoading(), label: 'Importar tarifas Vibra', import: importarVibraTarifas.bind(this) }" />
+      </div>
+      <ng-container *ngTemplateOutlet="resultPanel; context: { r: vibraTarifasResult(), showCreated: true }" />
+    }
+    <div class="rounded-lg border border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+      <div class="flex items-center gap-2 mb-2"><ui-icon name="info" [size]="14"/><strong>Cómo funciona</strong></div>
+      <ul class="list-disc pl-5 space-y-1 text-xs">
+        <li>Idempotente por <strong>id_externo</strong> de Base44.</li>
+        <li>2.0TD usa P1-P3, 3.0TD usa P1-P6.</li>
+      </ul>
+    </div>
   }
 
 <!-- ════════ Shared templates ════════ -->
