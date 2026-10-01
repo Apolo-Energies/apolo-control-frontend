@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { BajaPayload, BajaUpdatePayload, Contract, DelegacionBajaStats, Page } from '../models';
+import { BajaPayload, BajaStats, BajaUpdatePayload, Contract, DelegacionBajaStats, Page } from '../models';
 import { buildParams } from '../http/http-params.util';
 
 @Injectable({ providedIn: 'root' })
@@ -34,6 +34,12 @@ export class BajaService {
   ): Observable<DelegacionBajaStats[]> {
     return this.http.get<DelegacionBajaStats[]>(`${this.baseUrl}/top-delegaciones`, {
       params: buildParams({ limit: params.limit ?? 100, startDate: params.startDate, endDate: params.endDate }),
+    });
+  }
+
+  stats(params: { startDate?: string; endDate?: string } = {}): Observable<BajaStats> {
+    return this.http.get<BajaStats>(`${this.baseUrl}/stats`, {
+      params: buildParams(params),
     });
   }
 

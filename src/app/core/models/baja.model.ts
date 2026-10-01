@@ -24,3 +24,10 @@ export interface DelegacionBajaStats {
   totalBajas: number;
   totalConsumo: number;
 }
+
+export interface BajaStats {
+  totalBajas: number;
+  totalConsumoMwh: number;
+  totalPenalizacionEur: number;
+  bajasConPenalizacion: number;
+}

@@ -20,7 +20,7 @@
   <div class="inline-flex items-center gap-1 rounded-lg border border-border bg-card p-1">
     <button
       type="button"
-      (click)="activeTab.set('list')"
+      (click)="setActiveTab('list')"
       class="h-8 px-4 rounded-md text-sm font-medium transition-colors"
       [class.bg-foreground]="activeTab() === 'list'"
       [class.text-background]="activeTab() === 'list'"
@@ -31,7 +31,7 @@
     </button>
     <button
       type="button"
-      (click)="activeTab.set('top')"
+      (click)="setActiveTab('top')"
       class="h-8 px-4 rounded-md text-sm font-medium transition-colors"
       [class.bg-foreground]="activeTab() === 'top'"
       [class.text-background]="activeTab() === 'top'"
@@ -40,9 +40,21 @@
     >
       🏆 Top Colaboradores
     </button>
+    <button
+      type="button"
+      (click)="setActiveTab('resumen')"
+      class="h-8 px-4 rounded-md text-sm font-medium transition-colors"
+      [class.bg-foreground]="activeTab() === 'resumen'"
+      [class.text-background]="activeTab() === 'resumen'"
+      [class.text-muted-foreground]="activeTab() !== 'resumen'"
+      [class.hover:bg-accent]="activeTab() !== 'resumen'"
+    >
+      📊 Resumen
+    </button>
   </div>
 
-  <!-- Filter bar -->
+  <!-- Filter bar (hidden on Resumen tab) -->
+  @if (activeTab() !== 'resumen') {
   <section class="bg-card border border-border rounded-xl p-4 mb-2 flex flex-col gap-3 lg:flex-row lg:items-end lg:flex-wrap">
     <label class="flex flex-col gap-1">
       <span class="text-xs text-muted-foreground">Búsqueda</span>
@@ -165,6 +177,7 @@
       </button>
     }
   </section>
+  } <!-- /Filter bar -->
 
   @if (errorMessage(); as msg) {
     <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm mb-2">
@@ -361,6 +374,107 @@
         </div>
       }
     </div>
+  }
+
+  <!-- ── RESUMEN TAB ─────────────────────────────────────────────────────────── -->
+  @if (activeTab() === 'resumen') {
+
+    <!-- Range filter -->
+    <section class="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-2 flex-wrap">
+      <span class="text-xs text-muted-foreground font-medium mr-1">Período:</span>
+      <div class="inline-flex items-center gap-1 rounded-lg border border-border bg-background p-1">
+        @for (r of resRanges; track r.id) {
+          <button
+            type="button"
+            (click)="setResRange(r.id)"
+            class="h-7 px-3 rounded-md text-xs font-medium transition-colors"
+            [class.bg-foreground]="resRange() === r.id"
+            [class.text-background]="resRange() === r.id"
+            [class.text-muted-foreground]="resRange() !== r.id"
+            [class.hover:bg-accent]="resRange() !== r.id"
+          >
+            {{ r.label }}
+          </button>
+        }
+      </div>
+    </section>
+
+    <!-- KPI grid -->
+    @if (resError(); as err) {
+      <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm">{{ err }}</div>
+    }
+    @if (resLoading()) {
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        @for (_ of [1,2,3,4]; track $index) {
+          <div class="bg-card border border-border rounded-xl p-6 animate-pulse">
+            <div class="h-9 w-9 rounded-lg bg-muted mb-3"></div>
+            <div class="h-10 w-24 bg-muted rounded mb-2"></div>
+            <div class="h-3 w-32 bg-muted rounded"></div>
+          </div>
+        }
+      </div>
+    } @else if (resStats(); as s) {
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+        <!-- Total bajas -->
+        <div class="bg-card border border-border rounded-xl p-6">
+          <header class="flex items-center gap-3 mb-3">
+            <div class="h-9 w-9 rounded-lg bg-danger-soft text-danger-fg ring-1 ring-danger/20 flex items-center justify-center">
+              <ui-icon name="trending-down" [size]="18" />
+            </div>
+            <span class="text-[12px] font-medium text-muted-foreground uppercase tracking-wide">Total Bajas</span>
+          </header>
+          <p class="text-[40px] font-bold leading-tight text-foreground">{{ s.totalBajas }}</p>
+          <p class="text-xs text-muted-foreground mt-2">contratos dados de baja</p>
+        </div>
+
+        <!-- Consumo -->
+        <div class="bg-card border border-border rounded-xl p-6">
+          <header class="flex items-center gap-3 mb-3">
+            <div class="h-9 w-9 rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20 flex items-center justify-center">
+              <ui-icon name="bolt" [size]="18" />
+            </div>
+            <span class="text-[12px] font-medium text-muted-foreground uppercase tracking-wide">Consumo perdido</span>
+          </header>
+          <p class="text-[32px] font-bold leading-tight text-foreground">{{ formatConsumoStats(s.totalConsumoMwh) }}</p>
+          <p class="text-xs text-muted-foreground mt-2">consumo contratado acumulado</p>
+        </div>
+
+        <!-- Penalización -->
+        <div class="bg-card border border-border rounded-xl p-6">
+          <header class="flex items-center gap-3 mb-3">
+            <div class="h-9 w-9 rounded-lg bg-orange-100 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 ring-1 ring-orange-200 dark:ring-orange-700 flex items-center justify-center">
+              <ui-icon name="alert-triangle" [size]="18" />
+            </div>
+            <span class="text-[12px] font-medium text-muted-foreground uppercase tracking-wide">Penalización</span>
+          </header>
+          <p class="text-[32px] font-bold leading-tight text-foreground">{{ formatEurStats(s.totalPenalizacionEur) }}</p>
+          <p class="text-xs text-muted-foreground mt-2">
+            en {{ s.bajasConPenalizacion }} baja{{ s.bajasConPenalizacion !== 1 ? 's' : '' }} con penalización
+            @if (s.totalBajas > 0) {
+              <span class="font-medium text-foreground/70">
+                ({{ ((s.bajasConPenalizacion / s.totalBajas) * 100).toFixed(0) }}%)
+              </span>
+            }
+          </p>
+        </div>
+
+        <!-- Espacio reservado para futuras métricas -->
+        <div class="bg-card border border-dashed border-border/50 rounded-xl p-6 flex items-center justify-center min-h-[148px]">
+          <p class="text-xs text-muted-foreground/40 text-center">Espacio disponible</p>
+        </div>
+
+      </div>
+
+      <!-- Segunda fila: espacio reservado -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        @for (_ of [1,2,3,4]; track $index) {
+          <div class="bg-card border border-dashed border-border/50 rounded-xl p-6 flex items-center justify-center min-h-[120px]">
+            <p class="text-xs text-muted-foreground/40 text-center">Espacio disponible</p>
+          </div>
+        }
+      </div>
+    }
   }
 
 </div>

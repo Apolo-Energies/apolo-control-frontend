@@ -13,13 +13,14 @@ import { BajaDialog } from '../../shared/components/baja-dialog/baja-dialog';
 import { BajaService } from '../../core/services/baja.service';
 import { ContractService } from '../../core/services/contract.service';
 import { ListStateService } from '../../core/services/list-state.service';
-import { Contract, DelegacionBajaStats, Page } from '../../core/models';
+import { BajaStats, Contract, DelegacionBajaStats, Page } from '../../core/models';
 import { formatDate, safeText, tarifaBadgeClass } from '../../shared/utils/format';
 import { IconName } from '../../shared/icons/icon';
 
 type SortDir = 'asc' | 'desc';
 type SortCol = 'clienteNombre' | 'clienteDelegacion' | 'idOferta' | 'suministroTarifa'
              | 'fechaEstado' | 'fechaFinPrevista' | 'consumoTotal' | 'daysDiff';
+type ResRange = 'semana' | 'mes' | 'trimestre' | 'anio' | 'historico';
 
 function generateMonthOptions(): { label: string; value: string }[] {
   const opts: { label: string; value: string }[] = [];
@@ -54,7 +55,20 @@ export class Bajas implements OnDestroy {
   private readonly listState       = inject(ListStateService);
 
   // ── Tabs ────────────────────────────────────────────────────────────────────
-  protected readonly activeTab = signal<'list' | 'top'>('list');
+  protected readonly activeTab = signal<'list' | 'top' | 'resumen'>('list');
+
+  // ── Resumen tab ──────────────────────────────────────────────────────────────
+  protected readonly resRange   = signal<ResRange>('mes');
+  protected readonly resStats   = signal<BajaStats | null>(null);
+  protected readonly resLoading = signal(false);
+  protected readonly resError   = signal<string | null>(null);
+  protected readonly resRanges: { id: ResRange; label: string }[] = [
+    { id: 'semana',    label: 'Semana' },
+    { id: 'mes',       label: 'Mes' },
+    { id: 'trimestre', label: 'Trimestre' },
+    { id: 'anio',      label: 'Año' },
+    { id: 'historico', label: 'Histórico' },
+  ];
 
   // ── List state ──────────────────────────────────────────────────────────────
   protected readonly loading       = signal(false);
@@ -285,6 +299,51 @@ export class Bajas implements OnDestroy {
         next: (list) => { this.topDelegaciones.set(list); this.topLoading.set(false); },
         error: () => this.topLoading.set(false),
       });
+  }
+
+  // ── Resumen ──────────────────────────────────────────────────────────────────
+  protected setActiveTab(tab: 'list' | 'top' | 'resumen'): void {
+    this.activeTab.set(tab);
+    if (tab === 'resumen') this.loadResStats();
+  }
+
+  protected setResRange(range: ResRange): void {
+    this.resRange.set(range);
+    this.loadResStats();
+  }
+
+  private resDateRange(range: ResRange): { startDate?: string; endDate?: string } {
+    if (range === 'historico') return {};
+    const now  = new Date();
+    const end  = now.toISOString().slice(0, 10);
+    const from = new Date(now);
+    if      (range === 'semana')    from.setDate(now.getDate() - 7);
+    else if (range === 'mes')       return { startDate: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`, endDate: end };
+    else if (range === 'trimestre') from.setMonth(now.getMonth() - 3);
+    else                            from.setFullYear(now.getFullYear(), 0, 1);
+    return { startDate: from.toISOString().slice(0, 10), endDate: end };
+  }
+
+  private loadResStats(): void {
+    const params = this.resDateRange(this.resRange());
+    this.resLoading.set(true);
+    this.resError.set(null);
+    this.service.stats(params).subscribe({
+      next: s => { this.resStats.set(s); this.resLoading.set(false); },
+      error: (err: { status?: number; message?: string }) => {
+        this.resLoading.set(false);
+        this.resError.set(err.status === 404 ? 'Endpoint no encontrado — reinicia el servidor backend.' : (err.message ?? 'Error al cargar estadísticas'));
+      },
+    });
+  }
+
+  protected formatConsumoStats(mwh: number): string {
+    if (mwh >= 1_000) return `${(mwh / 1_000).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} GWh`;
+    return `${mwh.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MWh`;
+  }
+
+  protected formatEurStats(v: number): string {
+    return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 }).format(v);
   }
 
   // ── CSV export ────────────────────────────────────────────────────────────────
