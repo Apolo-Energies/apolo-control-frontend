@@ -366,4 +366,16 @@ export class Disconnection implements OnDestroy {
     const ordinals = ['', '1er', '2do', '3er', '4to', '5to'];
     return step > 0 ? `${ordinals[step] ?? step + 'º'} Contacto` : '';
   }
+
+  protected downloadCsv(): void {
+    this.service.exportCorteCsv({
+      q: this.q || undefined,
+      estado: this.estadoFilter || undefined,
+    }).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'corte.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 }

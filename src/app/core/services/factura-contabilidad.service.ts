@@ -40,4 +40,17 @@ export class FacturaContabilidadService {
   update(id: string, payload: FacturaContabilidadPayload): Observable<FacturaContabilidad> {
     return this.http.put<FacturaContabilidad>(`${this.baseUrl}/${id}`, payload);
   }
+
+  exportCsv(filter: FacturaContabilidadFilter = {}): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/export/csv`, {
+      params: buildParams({
+        delegacionId: filter.delegacionId,
+        estado: filter.estado,
+        startDate: filter.startDate,
+        endDate: filter.endDate,
+        q: filter.q,
+      }),
+      responseType: 'blob',
+    });
+  }
 }

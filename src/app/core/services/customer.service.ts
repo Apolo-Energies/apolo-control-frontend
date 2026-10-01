@@ -52,4 +52,11 @@ export class CustomerService {
   patch(id: string, body: Record<string, string | null>): Observable<Customer> {
     return this.http.patch<Customer>(`${this.baseUrl}/${id}`, body);
   }
+
+  exportCsv(filter: CustomerFilter = {}): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/export/csv`, {
+      params: buildParams({ q: filter.q }),
+      responseType: 'blob',
+    });
+  }
 }

@@ -148,6 +148,23 @@ export class ScoringList implements OnDestroy {
   protected date(value: string | null): string {
     return formatDate(value);
   }
+
+  protected downloadCsv(): void {
+    const filter: ScoringFilter = {
+      busqueda: this.busqueda.trim() || undefined,
+      minPuntuacion: this.minPuntuacion !== '' ? Number(this.minPuntuacion) : undefined,
+      maxPuntuacion: this.maxPuntuacion !== '' ? Number(this.maxPuntuacion) : undefined,
+      fechaInicioVigilancia: this.fechaInicioVigilancia || undefined,
+      fechaFinVigilancia: this.fechaFinVigilancia || undefined,
+      vigilanciaActiva: this.vigilanciaActiva || undefined,
+    };
+    this.service.exportCsv(filter).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'scoring.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 }
 
 function extractMessage(error: HttpErrorResponse): string {

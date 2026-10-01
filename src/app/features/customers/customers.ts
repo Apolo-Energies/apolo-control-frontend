@@ -320,6 +320,15 @@ export class Customers {
   protected date(value: string | null): string {
     return formatDate(value);
   }
+
+  protected downloadCsv(): void {
+    this.service.exportCsv({ q: this.search || undefined }).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'clientes.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 }
 
 function extractMessage(error: HttpErrorResponse): string {

@@ -208,4 +208,13 @@ export class Fraccionados {
   protected formatEur(v: number): string {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(v);
   }
+
+  protected downloadCsv(): void {
+    this.service.exportFraccionadosCsv({ q: this.q || undefined }).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'fraccionados.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 }

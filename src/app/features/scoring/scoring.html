@@ -1,4 +1,10 @@
-<app-page-header title="Scoring de clientes" subtitle="Calificación de riesgo por cliente" />
+<app-page-header title="Scoring de clientes" subtitle="Calificación de riesgo por cliente">
+  <button type="button" (click)="downloadCsv()"
+    class="h-9 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-background text-sm font-semibold hover:bg-muted transition-colors">
+    <ui-icon name="download" [size]="15" />
+    CSV
+  </button>
+</app-page-header>
 
 <!-- Filtros -->
 <section class="bg-card border border-border rounded-xl p-4 mb-4 flex flex-col gap-3">

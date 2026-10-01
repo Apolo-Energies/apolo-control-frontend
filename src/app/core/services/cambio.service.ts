@@ -52,4 +52,15 @@ export class CambioService {
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/${id}`);
   }
+
+  exportCsv(filters: CambioFilters = {}): Observable<Blob> {
+    let params = new HttpParams();
+    if (filters.tipoSolicitud) params = params.set('tipoSolicitud', filters.tipoSolicitud);
+    if (filters.resultado)     params = params.set('resultado', filters.resultado);
+    if (filters.gestionado != null) params = params.set('gestionado', String(filters.gestionado));
+    if (filters.startDate)     params = params.set('startDate', filters.startDate);
+    if (filters.endDate)       params = params.set('endDate', filters.endDate);
+    if (filters.q)             params = params.set('q', filters.q);
+    return this.http.get(`${this.base}/export/csv`, { params, responseType: 'blob' });
+  }
 }

@@ -1,4 +1,9 @@
 <app-page-header title="Acuerdo Verbal" subtitle="Clientes con promesa verbal de pago (va_a_pagar)">
+  <button type="button" (click)="downloadCsv()"
+    class="h-9 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-background text-sm font-semibold hover:bg-muted transition-colors">
+    <ui-icon name="download" [size]="15" />
+    CSV
+  </button>
 </app-page-header>
 
 <!-- Filters -->

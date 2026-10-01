@@ -1139,6 +1139,21 @@ export class Contracts implements OnDestroy {
       }),
     });
   }
+
+  protected downloadCsv(): void {
+    this.service.exportCsv({
+      status: this.statusFilter || undefined,
+      q: this.q || undefined,
+      startDate: this.startDate || undefined,
+      endDate: this.endDate || undefined,
+      motivoRechazo: this.motivoRechazo || undefined,
+    }).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'contratos.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 }
 
 function extractMessage(error: HttpErrorResponse): string {

@@ -188,4 +188,13 @@ export class GestionClients implements OnDestroy {
   protected formatEur(v: number): string {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(v);
   }
+
+  protected downloadCsv(): void {
+    this.service.exportCsv({ q: this.q || undefined }).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'clientes-impago.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 }

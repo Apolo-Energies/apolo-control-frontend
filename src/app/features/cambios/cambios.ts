@@ -316,4 +316,18 @@ export class Cambios implements OnDestroy {
       },
     });
   }
+
+  protected downloadCsv(): void {
+    this.service.exportCsv({
+      q: this.q || undefined,
+      tipoSolicitud: this.tipoFilter || undefined,
+      resultado: this.resultadoFilter || undefined,
+      gestionado: this.gestionadoFilter ? this.gestionadoFilter === 'true' : undefined,
+    }).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'cambios.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 }

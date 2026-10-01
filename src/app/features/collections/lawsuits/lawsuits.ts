@@ -259,4 +259,13 @@ export class Lawsuits implements OnDestroy {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   }
+
+  protected downloadCsv(): void {
+    this.service.exportDemandaCsv().subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'demandas.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 }

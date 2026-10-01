@@ -1,4 +1,9 @@
 <app-page-header title="Bajas" subtitle="Registro de contratos dados de baja">
+  <button type="button" (click)="downloadCsv()"
+    class="h-9 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-background text-sm font-semibold hover:bg-muted transition-colors">
+    <ui-icon name="download" [size]="15" />
+    CSV
+  </button>
   <button
     type="button"
     (click)="openAddDialog()"

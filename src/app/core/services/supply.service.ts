@@ -38,4 +38,11 @@ export class SupplyService {
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
+
+  exportCsv(filter: SupplyFilter = {}): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/export/csv`, {
+      params: buildParams({ q: filter.cups }),
+      responseType: 'blob',
+    });
+  }
 }

@@ -46,4 +46,18 @@ export class PagosLiquidacionService {
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
+
+  exportCsv(filter: PagoLiquidacionFilter = {}): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/export/csv`, {
+      params: buildParams({
+        delegacionId: filter.delegacionId,
+        estado: filter.estado,
+        tipo: filter.tipo,
+        startDate: filter.startDate,
+        endDate: filter.endDate,
+        q: filter.q,
+      }),
+      responseType: 'blob',
+    });
+  }
 }

@@ -345,4 +345,20 @@ export class Bajas implements OnDestroy {
     const b = new Date(row.fechaFinPrevista).getTime();
     return Math.round((b - a) / (1000 * 60 * 60 * 24));
   }
+
+  protected downloadCsv(): void {
+    this.service.exportCsv({
+      q: this.searchQ || undefined,
+      startDate: this.startDate || undefined,
+      endDate: this.endDate || undefined,
+      conPenalizacion: this.filterPenalizacion ?? undefined,
+      minDiasDif: this.filterMinDiasDif ?? undefined,
+      antesFinPrevista: this.filterAntesFinPrevista ?? undefined,
+    }).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'bajas.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 }

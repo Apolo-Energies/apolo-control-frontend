@@ -355,6 +355,22 @@ export class PagosLiquidacion implements OnDestroy {
   protected formaLabel(f: FormaPago | null): string { return f ? FORMA_PAGO_LABEL[f] : '—'; }
   protected date(v: string | null): string { return formatDate(v); }
   protected euro(v: number | null | undefined): string { return formatEuro(v ?? null); }
+
+  protected downloadCsv(): void {
+    this.service.exportCsv({
+      q: this.q || undefined,
+      estado: this.estado || undefined,
+      tipo: this.tipo || undefined,
+      delegacionId: this.delegacionId || undefined,
+      startDate: this.startDate || undefined,
+      endDate: this.endDate || undefined,
+    }).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'pagos.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 }
 
 type FormValue = {

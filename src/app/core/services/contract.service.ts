@@ -157,4 +157,17 @@ export class ContractService {
       { params: { campo } },
     );
   }
+
+  exportCsv(filter: ContractFilter = {}): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/export/csv`, {
+      params: buildParams({
+        estado: filter.status,
+        q: filter.q,
+        startDate: filter.startDate,
+        endDate: filter.endDate,
+        motivoRechazo: filter.motivoRechazo,
+      }),
+      responseType: 'blob',
+    });
+  }
 }

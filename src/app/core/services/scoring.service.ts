@@ -52,4 +52,19 @@ export class ScoringService {
   update(id: string, payload: ScoringPayload): Observable<CustomerScoring> {
     return this.http.patch<CustomerScoring>(`${this.baseUrl}/${id}`, payload);
   }
+
+  exportCsv(filter: ScoringFilter = {}): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/export/csv`, {
+      params: buildParams({
+        clienteId: filter.clienteId,
+        busqueda: filter.busqueda,
+        minPuntuacion: filter.minPuntuacion,
+        maxPuntuacion: filter.maxPuntuacion,
+        fechaInicioVigilancia: filter.fechaInicioVigilancia,
+        fechaFinVigilancia: filter.fechaFinVigilancia,
+        vigilanciaActiva: filter.vigilanciaActiva,
+      }),
+      responseType: 'blob',
+    });
+  }
 }

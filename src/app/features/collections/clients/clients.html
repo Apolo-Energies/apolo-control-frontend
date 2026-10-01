@@ -1,4 +1,9 @@
 <app-page-header title="Clientes Deudores" subtitle="Gestión de clientes con facturas impagadas">
+  <button type="button" (click)="downloadCsv()"
+    class="h-9 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-background text-sm font-semibold hover:bg-muted transition-colors">
+    <ui-icon name="download" [size]="15" />
+    CSV
+  </button>
   <button type="button" (click)="openCreate()"
     class="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
     <ui-icon name="plus" [size]="15" />

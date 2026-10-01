@@ -60,4 +60,11 @@ export class RechazoService {
   downloadAnexoUrl(id: string, anexoId: string): string {
     return `${this.baseUrl}/${id}/anexos/${anexoId}`;
   }
+
+  exportCsv(filter: RechazoFilter = {}): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/export/csv`, {
+      params: buildParams({ q: filter.q, estado: filter.estado, resultado: filter.resultado, plataforma: filter.plataforma }),
+      responseType: 'blob',
+    });
+  }
 }

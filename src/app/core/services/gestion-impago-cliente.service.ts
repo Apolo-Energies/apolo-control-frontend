@@ -38,4 +38,11 @@ export class GestionImpagoClienteService {
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
+
+  exportCsv(filter: GestionImpagoClienteFilter = {}): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/export/csv`, {
+      params: buildParams({ q: filter.q }),
+      responseType: 'blob',
+    });
+  }
 }

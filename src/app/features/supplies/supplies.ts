@@ -248,6 +248,15 @@ export class Supplies {
   protected mwh(value: number | null): string {
     return formatMwh(value);
   }
+
+  protected downloadCsv(): void {
+    this.service.exportCsv({ cups: this.cups || undefined }).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'suministros.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 }
 
 function extractMessage(error: HttpErrorResponse): string {

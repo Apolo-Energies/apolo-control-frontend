@@ -263,4 +263,18 @@ export class Renovaciones implements OnDestroy {
   protected sortIconClass(col: SortCol): string {
     return this.sortCol() === col ? 'text-primary' : 'opacity-25';
   }
+
+  protected downloadCsv(): void {
+    this.service.exportCsv({
+      status: this.filterEstado() || undefined,
+      q: this.q() || undefined,
+      startDate: this.fechaDesde() || undefined,
+      endDate: this.fechaHasta() || undefined,
+    }).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'renovaciones.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 }

@@ -389,4 +389,17 @@ export class Rechazos implements OnDestroy {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
+
+  protected downloadCsv(): void {
+    this.service.exportCsv({
+      q: this.q || undefined,
+      estado: this.estadoFilter || undefined,
+      resultado: this.resultadoFilter || undefined,
+    }).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'rechazos.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 }

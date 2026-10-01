@@ -1,4 +1,9 @@
 <app-page-header title="Renovaciones" subtitle="Contratos vencidos, próximos a vencer y ya renovados">
+  <button type="button" (click)="downloadCsv()"
+    class="h-9 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-background text-sm font-semibold hover:bg-muted transition-colors">
+    <ui-icon name="download" [size]="15" />
+    CSV
+  </button>
   <button type="button" (click)="refresh()" [disabled]="loading()"
     class="h-9 px-3 inline-flex items-center gap-2 rounded-lg border border-border text-sm text-muted-foreground hover:bg-accent/40 transition-colors disabled:opacity-40">
     @if (loading()) { <ui-icon name="loader" [size]="14" class="animate-spin" /> }

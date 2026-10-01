@@ -171,4 +171,33 @@ export class GestionImpagoService {
       responseType: 'blob',
     });
   }
+
+  exportOvcCsv(): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/ovc/export/csv`, { responseType: 'blob' });
+  }
+
+  exportCorteCsv(filter: { q?: string; estado?: string } = {}): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/corte/export/csv`, {
+      params: buildParams(filter),
+      responseType: 'blob',
+    });
+  }
+
+  exportDemandaCsv(): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/demandas-judicial/export/csv`, { responseType: 'blob' });
+  }
+
+  exportPromesasCsv(filter: { q?: string } = {}): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/promesas/export/csv`, {
+      params: buildParams(filter),
+      responseType: 'blob',
+    });
+  }
+
+  exportFraccionadosCsv(filter: { q?: string } = {}): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/fraccionados/export/csv`, {
+      params: buildParams(filter),
+      responseType: 'blob',
+    });
+  }
 }

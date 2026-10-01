@@ -126,4 +126,13 @@ export class VerbalAgreement implements OnDestroy {
   protected fmt(v: string | null): string {
     return v ? new Date(v).toLocaleDateString('es-ES') : '—';
   }
+
+  protected downloadCsv(): void {
+    this.service.exportPromesasCsv({ q: this.q || undefined }).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'promesas.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 }

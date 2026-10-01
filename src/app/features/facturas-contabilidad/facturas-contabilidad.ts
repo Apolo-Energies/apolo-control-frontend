@@ -288,6 +288,20 @@ export class FacturasContabilidad implements OnDestroy {
   protected pct(value: number): string {
     return `${value}%`;
   }
+
+  protected downloadCsv(): void {
+    this.service.exportCsv({
+      q: this.q || undefined,
+      estado: this.estado || undefined,
+      startDate: this.startDate || undefined,
+      endDate: this.endDate || undefined,
+    }).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'facturas.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 }
 
 function extractMessage(error: HttpErrorResponse): string {
