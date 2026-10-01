@@ -379,25 +379,53 @@
   <!-- ── RESUMEN TAB ─────────────────────────────────────────────────────────── -->
   @if (activeTab() === 'resumen') {
 
-    <!-- Range filter -->
-    <section class="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-2 flex-wrap">
-      <span class="text-xs text-muted-foreground font-medium mr-1">Período:</span>
-      <div class="inline-flex items-center gap-1 rounded-lg border border-border bg-background p-1">
-        @for (r of resRanges; track r.id) {
-          <button
-            type="button"
-            (click)="setResRange(r.id)"
-            class="h-7 px-3 rounded-md text-xs font-medium transition-colors"
-            [class.bg-foreground]="resRange() === r.id"
-            [class.text-background]="resRange() === r.id"
-            [class.text-muted-foreground]="resRange() !== r.id"
-            [class.hover:bg-accent]="resRange() !== r.id"
-          >
-            {{ r.label }}
-          </button>
+    <!-- Range pills -->
+    <div class="inline-flex items-center gap-1 rounded-lg border border-border bg-card p-1">
+      @for (r of resRanges; track r.id) {
+        <button type="button" (click)="setResRange(r.id)"
+          class="h-8 px-3 rounded-md text-xs font-medium transition-colors"
+          [class.bg-foreground]="resRange() === r.id"
+          [class.text-background]="resRange() === r.id"
+          [class.text-muted-foreground]="resRange() !== r.id"
+          [class.hover:bg-accent]="resRange() !== r.id">
+          {{ r.label }}
+        </button>
+      }
+    </div>
+
+    <!-- Sub-picker -->
+    @if (resRange() === 'week' || resRange() === 'month' || resRange() === 'year' || resRange() === 'custom') {
+      <section class="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-3 text-sm flex-wrap">
+        @if (resRange() === 'week') {
+          <span class="text-muted-foreground font-medium">Semana del</span>
+          <input type="week" [value]="resSelectedWeek()" (change)="onResWeekChange($event)"
+            class="border border-border rounded-lg px-3 py-1.5 text-sm bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          <span class="text-muted-foreground">{{ resWeekLabel() }}</span>
         }
-      </div>
-    </section>
+        @if (resRange() === 'month') {
+          <span class="text-muted-foreground font-medium">Mes:</span>
+          <input type="month" [value]="resSelectedMonth()" (change)="onResMonthChange($event)"
+            class="border border-border rounded-lg px-3 py-1.5 text-sm bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+        }
+        @if (resRange() === 'year') {
+          <span class="text-muted-foreground font-medium">Año:</span>
+          <select [value]="resSelectedYear()" (change)="onResYearChange($event)"
+            class="border border-border rounded-lg px-3 py-1.5 text-sm bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+            @for (y of resAvailableYears; track y) {
+              <option [value]="y">{{ y }}</option>
+            }
+          </select>
+        }
+        @if (resRange() === 'custom') {
+          <span class="text-muted-foreground font-medium">Desde:</span>
+          <input type="date" [value]="resCustomStart()" (change)="resCustomStart.set($any($event.target).value); onResCustomChange()"
+            class="border border-border rounded-lg px-3 py-1.5 text-sm bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          <span class="text-muted-foreground font-medium">Hasta:</span>
+          <input type="date" [value]="resCustomEnd()" (change)="resCustomEnd.set($any($event.target).value); onResCustomChange()"
+            class="border border-border rounded-lg px-3 py-1.5 text-sm bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+        }
+      </section>
+    }
 
     <!-- KPI grid -->
     @if (resError(); as err) {

@@ -20,7 +20,32 @@ import { IconName } from '../../shared/icons/icon';
 type SortDir = 'asc' | 'desc';
 type SortCol = 'clienteNombre' | 'clienteDelegacion' | 'idOferta' | 'suministroTarifa'
              | 'fechaEstado' | 'fechaFinPrevista' | 'consumoTotal' | 'daysDiff';
-type ResRange = 'semana' | 'mes' | 'trimestre' | 'anio' | 'historico';
+type ResRange = 'today' | 'week' | 'month' | 'year' | 'all' | 'custom';
+
+function toIsoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function toIsoWeek(d: Date): string {
+  const t = new Date(d); t.setDate(t.getDate() + 4 - (t.getDay() || 7));
+  const y = t.getFullYear();
+  const jan1 = new Date(y, 0, 1);
+  return `${y}-W${String(Math.ceil(((t.getTime()-jan1.getTime())/86400000+jan1.getDay()+1)/7)).padStart(2,'0')}`;
+}
+function toIsoMonth(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function weekBounds(isoWeek: string): { start: Date; end: Date } {
+  const [yearStr, wStr] = isoWeek.split('-W');
+  const year = +yearStr, week = +wStr;
+  const jan4 = new Date(year, 0, 4);
+  const dow = jan4.getDay() || 7;
+  const mon = new Date(jan4); mon.setDate(jan4.getDate() - dow + 1 + (week-1)*7);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  return { start: mon, end: sun };
+}
+function fmtDayMonth(d: Date): string {
+  return `${d.getDate()} ${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][d.getMonth()]}`;
+}
 
 function generateMonthOptions(): { label: string; value: string }[] {
   const opts: { label: string; value: string }[] = [];
@@ -58,16 +83,29 @@ export class Bajas implements OnDestroy {
   protected readonly activeTab = signal<'list' | 'top' | 'resumen'>('list');
 
   // ── Resumen tab ──────────────────────────────────────────────────────────────
-  protected readonly resRange   = signal<ResRange>('mes');
-  protected readonly resStats   = signal<BajaStats | null>(null);
-  protected readonly resLoading = signal(false);
-  protected readonly resError   = signal<string | null>(null);
+  protected readonly resRange        = signal<ResRange>('month');
+  protected readonly resStats        = signal<BajaStats | null>(null);
+  protected readonly resLoading      = signal(false);
+  protected readonly resError        = signal<string | null>(null);
+  protected readonly resSelectedWeek  = signal(toIsoWeek(new Date()));
+  protected readonly resSelectedMonth = signal(toIsoMonth(new Date()));
+  protected readonly resSelectedYear  = signal(new Date().getFullYear());
+  protected readonly resCustomStart   = signal('');
+  protected readonly resCustomEnd     = signal('');
+  protected readonly resAvailableYears = Array.from(
+    { length: new Date().getFullYear() - 2020 + 1 }, (_, i) => new Date().getFullYear() - i,
+  );
+  protected readonly resWeekLabel = computed(() => {
+    const { start, end } = weekBounds(this.resSelectedWeek());
+    return `${fmtDayMonth(start)} – ${fmtDayMonth(end)} ${start.getFullYear()}`;
+  });
   protected readonly resRanges: { id: ResRange; label: string }[] = [
-    { id: 'semana',    label: 'Semana' },
-    { id: 'mes',       label: 'Mes' },
-    { id: 'trimestre', label: 'Trimestre' },
-    { id: 'anio',      label: 'Año' },
-    { id: 'historico', label: 'Histórico' },
+    { id: 'today',  label: 'Hoy' },
+    { id: 'week',   label: 'Semana' },
+    { id: 'month',  label: 'Mes' },
+    { id: 'year',   label: 'Año' },
+    { id: 'all',    label: 'Histórico' },
+    { id: 'custom', label: 'Personalizado' },
   ];
 
   // ── List state ──────────────────────────────────────────────────────────────
@@ -307,32 +345,71 @@ export class Bajas implements OnDestroy {
     if (tab === 'resumen') this.loadResStats();
   }
 
-  protected setResRange(range: ResRange): void {
-    this.resRange.set(range);
+  protected setResRange(id: ResRange): void {
+    if (this.resRange() === id) return;
+    this.resRange.set(id);
+    const now = new Date();
+    if (id === 'week')  this.resSelectedWeek.set(toIsoWeek(now));
+    if (id === 'month') this.resSelectedMonth.set(toIsoMonth(now));
+    if (id === 'year')  this.resSelectedYear.set(now.getFullYear());
+    if (id !== 'custom') this.loadResStats();
+  }
+
+  protected onResWeekChange(e: Event): void {
+    this.resSelectedWeek.set((e.target as HTMLInputElement).value);
     this.loadResStats();
   }
 
-  private resDateRange(range: ResRange): { startDate?: string; endDate?: string } {
-    if (range === 'historico') return {};
-    const now  = new Date();
-    const end  = now.toISOString().slice(0, 10);
-    const from = new Date(now);
-    if      (range === 'semana')    from.setDate(now.getDate() - 7);
-    else if (range === 'mes')       return { startDate: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`, endDate: end };
-    else if (range === 'trimestre') from.setMonth(now.getMonth() - 3);
-    else                            from.setFullYear(now.getFullYear(), 0, 1);
-    return { startDate: from.toISOString().slice(0, 10), endDate: end };
+  protected onResMonthChange(e: Event): void {
+    this.resSelectedMonth.set((e.target as HTMLInputElement).value);
+    this.loadResStats();
+  }
+
+  protected onResYearChange(e: Event): void {
+    this.resSelectedYear.set(+(e.target as HTMLSelectElement).value);
+    this.loadResStats();
+  }
+
+  protected onResCustomChange(): void {
+    if (this.resCustomStart() && this.resCustomEnd()) this.loadResStats();
+  }
+
+  private buildResFilter(): { startDate?: string; endDate?: string } {
+    const r = this.resRange();
+    if (r === 'all') return {};
+    const today = new Date();
+    switch (r) {
+      case 'today': { const d = toIsoDate(today); return { startDate: d, endDate: d }; }
+      case 'week': {
+        const w = this.resSelectedWeek();
+        if (!w || !/^\d{4}-W\d{2}$/.test(w)) return {};
+        const { start, end } = weekBounds(w);
+        return { startDate: toIsoDate(start), endDate: toIsoDate(end) };
+      }
+      case 'month': {
+        const m = this.resSelectedMonth();
+        if (!m || !/^\d{4}-\d{2}$/.test(m)) return {};
+        const [y, mo] = m.split('-').map(Number);
+        return { startDate: `${m}-01`, endDate: toIsoDate(new Date(y, mo, 0)) };
+      }
+      case 'year': { const y = this.resSelectedYear(); return { startDate: `${y}-01-01`, endDate: `${y}-12-31` }; }
+      case 'custom': {
+        const s = this.resCustomStart(), e = this.resCustomEnd();
+        return s && e ? { startDate: s, endDate: e } : {};
+      }
+    }
   }
 
   private loadResStats(): void {
-    const params = this.resDateRange(this.resRange());
     this.resLoading.set(true);
     this.resError.set(null);
-    this.service.stats(params).subscribe({
+    this.service.stats(this.buildResFilter()).subscribe({
       next: s => { this.resStats.set(s); this.resLoading.set(false); },
       error: (err: { status?: number; message?: string }) => {
         this.resLoading.set(false);
-        this.resError.set(err.status === 404 ? 'Endpoint no encontrado — reinicia el servidor backend.' : (err.message ?? 'Error al cargar estadísticas'));
+        this.resError.set(err.status === 404
+          ? 'Endpoint no encontrado — reinicia el servidor backend.'
+          : ((err as { error?: { message?: string } }).error?.message ?? 'Error al cargar estadísticas'));
       },
     });
   }
