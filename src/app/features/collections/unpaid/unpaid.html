@@ -17,6 +17,11 @@
       <ui-icon name="download" [size]="14" />
       {{ exporting() ? 'Exportando…' : 'Exportar CSV' }}
     </button>
+    <button type="button" (click)="openImport()"
+      class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+      <ui-icon name="upload" [size]="14" />
+      Importar XLSX
+    </button>
     <button type="button" (click)="openCreate()"
       class="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
       <ui-icon name="plus" [size]="15" />
@@ -775,6 +780,419 @@
           Confirmar demanda
         </button>
       </div>
+    </div>
+  </div>
+}
+
+<!-- ── Import XLSX modal ──────────────────────────────────────────────────── -->
+@if (importOpen()) {
+  <div class="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 overflow-y-auto">
+    <div class="bg-card border border-border rounded-xl shadow-2xl flex flex-col w-full my-8"
+      [class.max-w-2xl]="importStep() === 'map'"
+      [class.max-w-6xl]="importStep() !== 'map'">
+
+      <!-- Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+        <div>
+          <h2 class="text-base font-semibold">Importar Impagos desde XLSX</h2>
+          <p class="text-xs text-muted-foreground mt-0.5">
+            @if (importStep() === 'map') {
+              {{ importHeaders().length }} columnas detectadas · Configura el mapeo y pulsa Vista previa
+            } @else if (importStep() === 'preview') {
+              {{ importRows().length }} registros ·
+              <span class="text-success-fg font-medium">{{ importReadyCount() }} listos</span>
+              @if (importErrorCount() > 0) {
+                · <span class="text-destructive font-medium">{{ importErrorCount() }} con error (se omitirán)</span>
+              }
+            } @else {
+              Importación completada
+            }
+          </p>
+        </div>
+        <button type="button" (click)="closeImport()" [disabled]="importing()"
+          class="text-muted-foreground hover:text-foreground disabled:opacity-40">
+          <ui-icon name="x" [size]="18" />
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="px-6 py-5">
+
+        @if (importStep() === 'map') {
+          <!-- Step 1: Column mapping -->
+          <div class="mb-5 p-3 rounded-lg bg-muted/50 border border-border">
+            <p class="text-xs font-medium text-muted-foreground mb-1">Columnas detectadas en el archivo:</p>
+            <p class="text-xs font-mono text-foreground break-all">{{ importHeaders().join('  ·  ') }}</p>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            <div>
+              <label class="block text-xs font-semibold text-foreground mb-1">
+                Cliente <span class="text-destructive">*</span>
+                <span class="text-muted-foreground font-normal ml-1">(nombre o razón social)</span>
+              </label>
+              <select [ngModel]="importMapping().cliente"
+                (ngModelChange)="importMapping.set({...importMapping(), cliente: $event})"
+                class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <option value="">(No mapear)</option>
+                @for (h of importHeaders(); track h) {
+                  <option [value]="h">{{ h }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-foreground mb-1">
+                NIF / CIF
+                <span class="text-muted-foreground font-normal ml-1">(alternativa al nombre)</span>
+              </label>
+              <select [ngModel]="importMapping().nif"
+                (ngModelChange)="importMapping.set({...importMapping(), nif: $event})"
+                class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <option value="">(No mapear)</option>
+                @for (h of importHeaders(); track h) {
+                  <option [value]="h">{{ h }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-foreground mb-1">Nº Factura</label>
+              <select [ngModel]="importMapping().numeroFactura"
+                (ngModelChange)="importMapping.set({...importMapping(), numeroFactura: $event})"
+                class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <option value="">(No mapear)</option>
+                @for (h of importHeaders(); track h) {
+                  <option [value]="h">{{ h }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-foreground mb-1">Importe</label>
+              <select [ngModel]="importMapping().importe"
+                (ngModelChange)="importMapping.set({...importMapping(), importe: $event})"
+                class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <option value="">(No mapear)</option>
+                @for (h of importHeaders(); track h) {
+                  <option [value]="h">{{ h }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-foreground mb-1">Parcial pagado</label>
+              <select [ngModel]="importMapping().parcialPagado"
+                (ngModelChange)="importMapping.set({...importMapping(), parcialPagado: $event})"
+                class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <option value="">(No mapear)</option>
+                @for (h of importHeaders(); track h) {
+                  <option [value]="h">{{ h }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-foreground mb-1">Fecha vencimiento</label>
+              <select [ngModel]="importMapping().fechaVencimiento"
+                (ngModelChange)="importMapping.set({...importMapping(), fechaVencimiento: $event})"
+                class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <option value="">(No mapear)</option>
+                @for (h of importHeaders(); track h) {
+                  <option [value]="h">{{ h }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-foreground mb-1">Fecha devolución</label>
+              <select [ngModel]="importMapping().fechaDevolucion"
+                (ngModelChange)="importMapping.set({...importMapping(), fechaDevolucion: $event})"
+                class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <option value="">(No mapear)</option>
+                @for (h of importHeaders(); track h) {
+                  <option [value]="h">{{ h }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-foreground mb-1">Estado</label>
+              <select [ngModel]="importMapping().estado"
+                (ngModelChange)="importMapping.set({...importMapping(), estado: $event})"
+                class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <option value="">(No mapear)</option>
+                @for (h of importHeaders(); track h) {
+                  <option [value]="h">{{ h }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-foreground mb-1">Prioridad</label>
+              <select [ngModel]="importMapping().prioridad"
+                (ngModelChange)="importMapping.set({...importMapping(), prioridad: $event})"
+                class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <option value="">(No mapear)</option>
+                @for (h of importHeaders(); track h) {
+                  <option [value]="h">{{ h }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-foreground mb-1">Colaborador</label>
+              <select [ngModel]="importMapping().colaborador"
+                (ngModelChange)="importMapping.set({...importMapping(), colaborador: $event})"
+                class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <option value="">(No mapear)</option>
+                @for (h of importHeaders(); track h) {
+                  <option [value]="h">{{ h }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-foreground mb-1">Motivo devolución</label>
+              <select [ngModel]="importMapping().motivoDevolucion"
+                (ngModelChange)="importMapping.set({...importMapping(), motivoDevolucion: $event})"
+                class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <option value="">(No mapear)</option>
+                @for (h of importHeaders(); track h) {
+                  <option [value]="h">{{ h }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-foreground mb-1">Observaciones</label>
+              <select [ngModel]="importMapping().observaciones"
+                (ngModelChange)="importMapping.set({...importMapping(), observaciones: $event})"
+                class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <option value="">(No mapear)</option>
+                @for (h of importHeaders(); track h) {
+                  <option [value]="h">{{ h }}</option>
+                }
+              </select>
+            </div>
+
+          </div>
+
+        } @else if (importStep() === 'preview') {
+          <!-- Step 2: Preview table (editable) -->
+          <p class="text-xs text-muted-foreground mb-3">Puedes editar cualquier celda antes de confirmar. El campo <strong>Cliente</strong> busca por nombre o NIF al salir del campo.</p>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs border-collapse min-w-[1000px]">
+              <thead>
+                <tr class="text-left text-muted-foreground border-b border-border bg-muted/30">
+                  <th class="py-2 px-2 font-medium w-8 text-center">#</th>
+                  <th class="py-2 px-2 font-medium min-w-[160px]">Cliente</th>
+                  <th class="py-2 px-2 font-medium min-w-[110px]">Nº Factura</th>
+                  <th class="py-2 px-2 font-medium min-w-[90px]">Importe</th>
+                  <th class="py-2 px-2 font-medium min-w-[90px]">Parcial pag.</th>
+                  <th class="py-2 px-2 font-medium min-w-[120px]">Vencimiento</th>
+                  <th class="py-2 px-2 font-medium min-w-[120px]">Devolución</th>
+                  <th class="py-2 px-2 font-medium min-w-[110px]">Estado</th>
+                  <th class="py-2 px-2 font-medium min-w-[90px]">Prioridad</th>
+                  <th class="py-2 px-2 font-medium min-w-[110px]">Colaborador</th>
+                  <th class="py-2 px-2 font-medium w-28">Validación</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of importRows(); track row.idx) {
+                  <tr class="border-b border-border/40 transition-colors"
+                    [class.bg-destructive/5]="!row.ok"
+                    [class.hover:bg-accent/10]="row.ok">
+
+                    <td class="py-1 px-2 text-muted-foreground text-center shrink-0">{{ row.idx }}</td>
+
+                    <!-- Cliente (busca al salir) -->
+                    <td class="py-1 px-1">
+                      <input type="text"
+                        [value]="row.clienteNombre"
+                        (blur)="resolveImportClient(row.idx, $any($event.target).value)"
+                        placeholder="Nombre o NIF…"
+                        class="w-full bg-transparent px-1.5 py-1 rounded text-xs text-foreground placeholder:text-muted-foreground/50
+                          border border-transparent hover:border-border focus:border-primary focus:outline-none focus:bg-background transition-colors"
+                        [class.text-destructive]="!row.ok"
+                        [class.font-medium]="row.ok" />
+                    </td>
+
+                    <!-- Nº Factura -->
+                    <td class="py-1 px-1">
+                      <input type="text"
+                        [value]="row.numeroFactura ?? ''"
+                        (blur)="updateImportField(row.idx, 'numeroFactura', $any($event.target).value.trim())"
+                        placeholder="—"
+                        class="w-full bg-transparent px-1.5 py-1 rounded text-xs font-mono text-muted-foreground placeholder:text-muted-foreground/40
+                          border border-transparent hover:border-border focus:border-primary focus:outline-none focus:bg-background transition-colors" />
+                    </td>
+
+                    <!-- Importe -->
+                    <td class="py-1 px-1">
+                      <input type="number" step="0.01"
+                        [value]="row.importe ?? ''"
+                        (blur)="updateImportField(row.idx, 'importe', +$any($event.target).value || undefined)"
+                        placeholder="—"
+                        class="w-full bg-transparent px-1.5 py-1 rounded text-xs text-right tabular-nums text-foreground placeholder:text-muted-foreground/40
+                          border border-transparent hover:border-border focus:border-primary focus:outline-none focus:bg-background transition-colors" />
+                    </td>
+
+                    <!-- Parcial pagado -->
+                    <td class="py-1 px-1">
+                      <input type="number" step="0.01"
+                        [value]="row.parcialPagado ?? ''"
+                        (blur)="updateImportField(row.idx, 'parcialPagado', +$any($event.target).value || undefined)"
+                        placeholder="—"
+                        class="w-full bg-transparent px-1.5 py-1 rounded text-xs text-right tabular-nums text-foreground placeholder:text-muted-foreground/40
+                          border border-transparent hover:border-border focus:border-primary focus:outline-none focus:bg-background transition-colors" />
+                    </td>
+
+                    <!-- Fecha vencimiento -->
+                    <td class="py-1 px-1">
+                      <input type="date"
+                        [value]="row.fechaVencimiento ?? ''"
+                        (change)="updateImportField(row.idx, 'fechaVencimiento', $any($event.target).value || undefined)"
+                        class="w-full bg-transparent px-1.5 py-1 rounded text-xs text-foreground
+                          border border-transparent hover:border-border focus:border-primary focus:outline-none focus:bg-background transition-colors" />
+                    </td>
+
+                    <!-- Fecha devolución -->
+                    <td class="py-1 px-1">
+                      <input type="date"
+                        [value]="row.fechaDevolucion ?? ''"
+                        (change)="updateImportField(row.idx, 'fechaDevolucion', $any($event.target).value || undefined)"
+                        class="w-full bg-transparent px-1.5 py-1 rounded text-xs text-foreground
+                          border border-transparent hover:border-border focus:border-primary focus:outline-none focus:bg-background transition-colors" />
+                    </td>
+
+                    <!-- Estado -->
+                    <td class="py-1 px-1">
+                      <select
+                        [value]="row.estado ?? ''"
+                        (change)="updateImportField(row.idx, 'estado', $any($event.target).value || undefined)"
+                        class="w-full bg-transparent px-1 py-1 rounded text-xs text-foreground
+                          border border-transparent hover:border-border focus:border-primary focus:outline-none focus:bg-background transition-colors">
+                        <option value="">—</option>
+                        @for (e of estadoValues; track e) {
+                          <option [value]="e">{{ estadoLabel[e] }}</option>
+                        }
+                      </select>
+                    </td>
+
+                    <!-- Prioridad -->
+                    <td class="py-1 px-1">
+                      <select
+                        [value]="row.prioridad ?? ''"
+                        (change)="updateImportField(row.idx, 'prioridad', $any($event.target).value || undefined)"
+                        class="w-full bg-transparent px-1 py-1 rounded text-xs text-foreground
+                          border border-transparent hover:border-border focus:border-primary focus:outline-none focus:bg-background transition-colors">
+                        <option value="">—</option>
+                        @for (p of prioridadValues; track p) {
+                          <option [value]="p">{{ prioridadLabel[p] }}</option>
+                        }
+                      </select>
+                    </td>
+
+                    <!-- Colaborador -->
+                    <td class="py-1 px-1">
+                      <input type="text"
+                        [value]="row.colaborador ?? ''"
+                        (blur)="updateImportField(row.idx, 'colaborador', $any($event.target).value.trim())"
+                        placeholder="—"
+                        class="w-full bg-transparent px-1.5 py-1 rounded text-xs text-foreground placeholder:text-muted-foreground/40
+                          border border-transparent hover:border-border focus:border-primary focus:outline-none focus:bg-background transition-colors" />
+                    </td>
+
+                    <!-- Validación -->
+                    <td class="py-1 px-2">
+                      @if (row.ok) {
+                        <span class="inline-flex items-center gap-1 text-success-fg font-semibold">
+                          <ui-icon name="check-circle" [size]="13" /> OK
+                        </span>
+                      } @else {
+                        <span class="inline-flex items-center gap-1 text-destructive text-[11px]" [title]="row.error ?? ''">
+                          <ui-icon name="alert-triangle" [size]="12" />
+                          <span class="max-w-[120px] truncate leading-tight">{{ row.error }}</span>
+                        </span>
+                      }
+                    </td>
+
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+        } @else {
+          <!-- Step 3: Done -->
+          @if (importResult(); as result) {
+            <div class="flex flex-col items-center justify-center py-16 gap-3 text-center">
+              <ui-icon name="check-circle" [size]="48" class="text-success-fg" />
+              <p class="text-lg font-semibold">Importación completada</p>
+              <p class="text-sm text-muted-foreground">
+                <span class="text-success-fg font-semibold">{{ result.success }}</span> registros creados correctamente
+                @if (result.failed > 0) {
+                  · <span class="text-destructive font-semibold">{{ result.failed }}</span> fallidos
+                }
+              </p>
+            </div>
+          }
+        }
+
+      </div>
+
+      <!-- Footer -->
+      <div class="flex items-center justify-between px-6 py-4 border-t border-border shrink-0 gap-4">
+        @if (importStep() === 'map') {
+          <p class="text-xs text-muted-foreground">
+            {{ importRawData().length }} filas · Selecciona al menos la columna de Cliente o NIF para continuar.
+          </p>
+          <div class="flex gap-3 shrink-0">
+            <button type="button" (click)="closeImport()"
+              class="h-9 px-4 rounded-lg border border-border text-sm hover:bg-muted transition-colors">
+              Cancelar
+            </button>
+            <button type="button" (click)="previewImport()"
+              [disabled]="!importMapping().cliente && !importMapping().nif && !importMapping().clienteId"
+              class="h-9 px-5 inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50">
+              <ui-icon name="eye" [size]="14" />
+              Vista previa
+            </button>
+          </div>
+        } @else if (importStep() === 'preview') {
+          <p class="text-xs text-muted-foreground">
+            Las filas con error serán omitidas. Se crearán <strong>{{ importReadyCount() }}</strong> impagos.
+            @if (importProgress(); as p) {
+              &nbsp;·&nbsp; Procesando {{ p.done }} / {{ p.total }}…
+            }
+          </p>
+          <div class="flex gap-3 shrink-0">
+            <button type="button" (click)="importStep.set('map')" [disabled]="importing()"
+              class="h-9 px-4 rounded-lg border border-border text-sm hover:bg-muted transition-colors disabled:opacity-40">
+              ← Volver
+            </button>
+            <button type="button" (click)="confirmImport()"
+              [disabled]="importing() || importReadyCount() === 0"
+              class="h-9 px-5 inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50">
+              @if (importing()) {
+                <ui-icon name="loader" [size]="14" class="animate-spin" />
+                Importando…
+              } @else {
+                <ui-icon name="upload" [size]="14" />
+                Confirmar importación ({{ importReadyCount() }})
+              }
+            </button>
+          </div>
+        } @else {
+          <span></span>
+          <button type="button" (click)="closeImport()"
+            class="h-9 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
+            Cerrar
+          </button>
+        }
+      </div>
+
     </div>
   </div>
 }

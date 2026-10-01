@@ -26,9 +26,45 @@ import {
   EstadoGestionImpago, PrioridadGestionImpago,
   ESTADO_GESTION_IMPAGO_VALUES, ESTADO_GESTION_IMPAGO_LABEL,
   PRIORIDAD_GESTION_IMPAGO_LABEL, Page,
+  Customer,
 } from '../../../core/models';
 import { GestionImpagoClienteService } from '../../../core/services/gestion-impago-cliente.service';
 import { ListStateService } from '../../../core/services/list-state.service';
+import * as XLSX from 'xlsx';
+
+interface ImportRow {
+  idx: number;
+  clienteNombre: string;
+  clienteId?: string;
+  numeroFactura?: string;
+  importe?: number;
+  parcialPagado?: number;
+  fechaVencimiento?: string;
+  fechaDevolucion?: string;
+  estado?: EstadoGestionImpago;
+  prioridad?: PrioridadGestionImpago;
+  colaborador?: string;
+  motivoDevolucion?: string;
+  observaciones?: string;
+  error?: string;
+  ok: boolean;
+}
+
+interface ImportMapping {
+  cliente:          string;
+  nif:              string;
+  clienteId:        string;
+  numeroFactura:    string;
+  importe:          string;
+  parcialPagado:    string;
+  fechaVencimiento: string;
+  fechaDevolucion:  string;
+  estado:           string;
+  prioridad:        string;
+  colaborador:      string;
+  motivoDevolucion: string;
+  observaciones:    string;
+}
 
 function extractMessage(err: HttpErrorResponse): string {
   return (err.error as { message?: string })?.message ?? err.message ?? 'Error inesperado';
@@ -831,6 +867,242 @@ export class Unpaid implements OnDestroy {
     if (valor === 'activo')  return `${base} bg-emerald-100 text-emerald-800 dark:bg-emerald-700 dark:text-emerald-50`;
     if (valor === 'cortado') return `${base} bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-50`;
     return `${base} bg-slate-100 text-slate-600 dark:bg-slate-600 dark:text-slate-100`;
+  }
+
+  // ── Import XLSX ───────────────────────────────────────────────────────────
+  protected readonly importRows        = signal<ImportRow[]>([]);
+  protected readonly importRawData     = signal<Record<string, unknown>[]>([]);
+  protected readonly importHeaders     = signal<string[]>([]);
+  protected readonly importMapping     = signal<ImportMapping>({} as ImportMapping);
+  protected readonly importStep        = signal<'map' | 'preview' | 'done'>('map');
+  protected readonly importOpen        = signal(false);
+  protected readonly importing         = signal(false);
+  protected readonly importResult      = signal<{ success: number; failed: number } | null>(null);
+  protected readonly importProgress    = signal<{ done: number; total: number } | null>(null);
+  protected readonly importErrorCount  = computed(() => this.importRows().filter(r => !r.ok).length);
+  protected readonly importReadyCount  = computed(() => this.importRows().filter(r => r.ok).length);
+
+  protected openImport(): void {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls';
+    input.onchange = (e) => this.onFileSelected(e);
+    input.click();
+  }
+
+  protected onFileSelected(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target!.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: 'array', cellDates: true });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
+        if (!raw.length) { this.notify.error('El archivo está vacío'); return; }
+        const headers = Object.keys(raw[0]);
+        this.importRawData.set(raw);
+        this.importHeaders.set(headers);
+        this.importMapping.set(this.autoDetectMapping(headers));
+        this.importRows.set([]);
+        this.importResult.set(null);
+        this.importProgress.set(null);
+        this.importStep.set('map');
+        this.importOpen.set(true);
+      } catch {
+        this.notify.error('Error al leer el archivo XLSX');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  private normHeader(s: string): string {
+    return s.toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[\s\-\.]/g, '_');
+  }
+
+  private autoDetectMapping(headers: string[]): ImportMapping {
+    const find = (...patterns: string[]): string => {
+      for (const p of patterns) {
+        const h = headers.find(h => this.normHeader(h) === p || this.normHeader(h).includes(p));
+        if (h) return h;
+      }
+      return '';
+    };
+    return {
+      cliente:          find('cliente', 'nombre_cliente', 'nombre', 'razon_social', 'empresa', 'client_name', 'company', 'titular'),
+      nif:              find('nif', 'cif', 'dni', 'tax_id', 'vat'),
+      clienteId:        find('cliente_id', 'client_id', 'id_cliente'),
+      numeroFactura:    find('numero_factura', 'n_factura', 'num_factura', 'factura', 'invoice_number', 'invoice', 'ref'),
+      importe:          find('importe', 'amount', 'total', 'valor', 'deuda', 'importe_total'),
+      parcialPagado:    find('parcial_pagado', 'partial_paid', 'pagado', 'pago_parcial'),
+      fechaVencimiento: find('fecha_vencimiento', 'vencimiento', 'fecha_vto', 'vto', 'due_date', 'fecha_limite'),
+      fechaDevolucion:  find('fecha_devolucion', 'devolucion', 'fecha_dev', 'return_date'),
+      estado:           find('estado', 'status', 'situacion'),
+      prioridad:        find('prioridad', 'priority', 'urgencia'),
+      colaborador:      find('colaborador', 'responsable', 'agente', 'assignee'),
+      motivoDevolucion: find('motivo_devolucion', 'motivo', 'reason', 'causa'),
+      observaciones:    find('observaciones', 'observations', 'notas', 'notes', 'comentarios'),
+    };
+  }
+
+  protected previewImport(): void {
+    const raw = this.importRawData();
+    const mapping = this.importMapping();
+    const clients = this.masterData.clientesActivos();
+    this.importRows.set(raw.map((r, i) => this.parseImportRow(r, i + 1, clients, mapping)));
+    this.importStep.set('preview');
+  }
+
+  protected updateImportField(idx: number, field: keyof ImportRow, value: unknown): void {
+    this.importRows.update(rows => rows.map(r => r.idx === idx ? { ...r, [field]: value || undefined } : r));
+  }
+
+  protected resolveImportClient(idx: number, nombre: string): void {
+    const clients = this.masterData.clientesActivos();
+    const n = (s: string) =>
+      s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+    const byName  = clients.find(c => n(c.nombre) === n(nombre));
+    const byNif   = clients.find(c => c.nif?.toUpperCase().replace(/\s/g, '') === nombre.toUpperCase().replace(/\s/g, ''));
+    const found   = byName ?? byNif;
+    const error   = !found ? `Cliente no encontrado: "${nombre || '(vacío)'}"` : undefined;
+    this.importRows.update(rows => rows.map(r => r.idx === idx
+      ? { ...r, clienteNombre: found?.nombre ?? nombre, clienteId: found?.id, error, ok: !error }
+      : r
+    ));
+  }
+
+  private parseImportRow(r: Record<string, unknown>, idx: number, clients: Customer[], mapping: ImportMapping): ImportRow {
+    const col = (key: keyof ImportMapping): unknown => {
+      const colName = mapping[key];
+      if (!colName) return undefined;
+      const v = r[colName];
+      return (v != null && String(v).trim() !== '') ? v : undefined;
+    };
+    const colStr = (key: keyof ImportMapping): string => {
+      const v = col(key);
+      return v != null ? String(v).trim() : '';
+    };
+
+    const toNum = (v: unknown): number | undefined => {
+      if (v == null || v === '') return undefined;
+      if (typeof v === 'number') return v;
+      return this.parseAmount(String(v)) || undefined;
+    };
+
+    const toDate = (v: unknown): string | undefined => {
+      if (v == null || v === '') return undefined;
+      if (v instanceof Date) return toIsoDate(v);
+      const s = String(v).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      const m = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$/);
+      if (m) {
+        const yr = m[3].length === 2 ? '20' + m[3] : m[3];
+        return `${yr}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+      }
+      return undefined;
+    };
+
+    const clienteIdDirect  = colStr('clienteId');
+    const nifRaw           = colStr('nif');
+    const clienteNombreRaw = colStr('cliente');
+
+    let clienteId: string | undefined;
+    let clienteNombre = clienteNombreRaw;
+
+    if (clienteIdDirect) {
+      clienteId = clienteIdDirect;
+      clienteNombre = clients.find(c => c.id === clienteIdDirect)?.nombre ?? clienteIdDirect;
+    } else if (nifRaw) {
+      const nifNorm = nifRaw.toUpperCase().replace(/\s/g, '');
+      const found = clients.find(c => c.nif?.toUpperCase().replace(/\s/g, '') === nifNorm);
+      clienteId = found?.id;
+      clienteNombre = found?.nombre ?? nifRaw;
+    } else if (clienteNombreRaw) {
+      const n = (s: string) =>
+        s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+      const found = clients.find(c => n(c.nombre) === n(clienteNombreRaw));
+      clienteId = found?.id;
+    }
+
+    const estadoRaw = colStr('estado');
+    const estado = (ESTADO_GESTION_IMPAGO_VALUES as readonly string[]).includes(estadoRaw)
+      ? estadoRaw as EstadoGestionImpago : undefined;
+
+    const prioridadRaw = colStr('prioridad');
+    const prioridad = (['urgente', 'alta', 'media', 'baja'] as string[]).includes(prioridadRaw)
+      ? prioridadRaw as PrioridadGestionImpago : undefined;
+
+    const error = !clienteId
+      ? `Cliente no encontrado: "${clienteNombre || '(vacío)'}"`
+      : undefined;
+
+    return {
+      idx,
+      clienteNombre,
+      clienteId,
+      numeroFactura:    colStr('numeroFactura') || undefined,
+      importe:          toNum(col('importe')),
+      parcialPagado:    toNum(col('parcialPagado')),
+      fechaVencimiento: toDate(col('fechaVencimiento')),
+      fechaDevolucion:  toDate(col('fechaDevolucion')),
+      estado,
+      prioridad,
+      colaborador:      colStr('colaborador') || undefined,
+      motivoDevolucion: colStr('motivoDevolucion') || undefined,
+      observaciones:    colStr('observaciones') || undefined,
+      error,
+      ok: !error,
+    };
+  }
+
+  protected confirmImport(): void {
+    const rows = this.importRows().filter(r => r.ok && r.clienteId);
+    if (!rows.length) return;
+    this.importing.set(true);
+    this.importProgress.set({ done: 0, total: rows.length });
+    let success = 0, failed = 0;
+    const next = (i: number) => {
+      if (i >= rows.length) {
+        this.importing.set(false);
+        this.importResult.set({ success, failed });
+        this.importProgress.set(null);
+        this.importStep.set('done');
+        if (success > 0) this.reload(0);
+        return;
+      }
+      const row = rows[i];
+      this.service.create({
+        clienteId:        row.clienteId!,
+        numeroFactura:    row.numeroFactura    ?? null,
+        importe:          row.importe,
+        parcialPagado:    row.parcialPagado,
+        fechaVencimiento: row.fechaVencimiento ?? null,
+        fechaDevolucion:  row.fechaDevolucion  ?? null,
+        estado:           row.estado,
+        prioridad:        row.prioridad,
+        colaborador:      row.colaborador      ?? null,
+        motivoDevolucion: row.motivoDevolucion ?? null,
+        observaciones:    row.observaciones    ?? null,
+      }).subscribe({
+        next:  () => { success++; this.importProgress.set({ done: success + failed, total: rows.length }); next(i + 1); },
+        error: () => { failed++;  this.importProgress.set({ done: success + failed, total: rows.length }); next(i + 1); },
+      });
+    };
+    next(0);
+  }
+
+  protected closeImport(): void {
+    this.importOpen.set(false);
+    this.importRows.set([]);
+    this.importRawData.set([]);
+    this.importHeaders.set([]);
+    this.importResult.set(null);
+    this.importProgress.set(null);
+    this.importing.set(false);
+    this.importStep.set('map');
   }
 
   // ── Export CSV ────────────────────────────────────────────────────────────
