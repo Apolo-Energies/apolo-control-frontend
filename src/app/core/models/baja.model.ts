@@ -27,7 +27,10 @@ export interface DelegacionBajaStats {
 
 export interface BajaStats {
   totalBajas: number;
-  totalConsumoMwh: number;
+  totalConsumoGwh: number;
   totalPenalizacionEur: number;
   bajasConPenalizacion: number;
+  clientesBajaSinActivo: number;
+  consumoClientesBajaGwh: number;
+  penalizacionClientesBajaEur: number;
 }

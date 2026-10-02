@@ -464,7 +464,7 @@
             </div>
             <span class="text-[12px] font-medium text-muted-foreground uppercase tracking-wide">Consumo perdido</span>
           </header>
-          <p class="text-[32px] font-bold leading-tight text-foreground">{{ formatConsumoStats(s.totalConsumoMwh) }}</p>
+          <p class="text-[32px] font-bold leading-tight text-foreground">{{ formatConsumoStats(s.totalConsumoGwh) }}</p>
           <p class="text-xs text-muted-foreground mt-2">consumo contratado acumulado</p>
         </div>
 
@@ -487,20 +487,55 @@
           </p>
         </div>
 
-        <!-- Espacio reservado para futuras métricas -->
-        <div class="bg-card border border-dashed border-border/50 rounded-xl p-6 flex items-center justify-center min-h-[148px]">
-          <p class="text-xs text-muted-foreground/40 text-center">Espacio disponible</p>
+        <!-- Clientes únicos de baja -->
+        <div class="bg-card border border-border rounded-xl p-6">
+          <header class="flex items-center gap-3 mb-3">
+            <div class="h-9 w-9 rounded-lg bg-violet-100 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 ring-1 ring-violet-200 dark:ring-violet-700 flex items-center justify-center">
+              <ui-icon name="users" [size]="18" />
+            </div>
+            <span class="text-[12px] font-medium text-muted-foreground uppercase tracking-wide">Clientes únicos de baja</span>
+          </header>
+          <p class="text-[40px] font-bold leading-tight text-foreground">{{ s.clientesBajaSinActivo }}</p>
+          <p class="text-xs text-muted-foreground mt-2">clientes sin ningún contrato activo</p>
         </div>
 
       </div>
 
-      <!-- Segunda fila: espacio reservado -->
+      <!-- Segunda fila: métricas de clientes únicos -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        @for (_ of [1,2,3,4]; track $index) {
-          <div class="bg-card border border-dashed border-border/50 rounded-xl p-6 flex items-center justify-center min-h-[120px]">
-            <p class="text-xs text-muted-foreground/40 text-center">Espacio disponible</p>
-          </div>
-        }
+
+        <!-- Consumo perdido (únicos) -->
+        <div class="bg-card border border-border rounded-xl p-6">
+          <header class="flex items-center gap-3 mb-3">
+            <div class="h-9 w-9 rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20 flex items-center justify-center">
+              <ui-icon name="bolt" [size]="18" />
+            </div>
+            <span class="text-[12px] font-medium text-muted-foreground uppercase tracking-wide">Consumo perdido (únicos)</span>
+          </header>
+          <p class="text-[32px] font-bold leading-tight text-foreground">{{ formatConsumoStats(s.consumoClientesBajaGwh) }}</p>
+          <p class="text-xs text-muted-foreground mt-2">consumo de clientes sin contrato activo</p>
+        </div>
+
+        <!-- Penalización (únicos) -->
+        <div class="bg-card border border-border rounded-xl p-6">
+          <header class="flex items-center gap-3 mb-3">
+            <div class="h-9 w-9 rounded-lg bg-orange-100 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 ring-1 ring-orange-200 dark:ring-orange-700 flex items-center justify-center">
+              <ui-icon name="alert-triangle" [size]="18" />
+            </div>
+            <span class="text-[12px] font-medium text-muted-foreground uppercase tracking-wide">Penalización (únicos)</span>
+          </header>
+          <p class="text-[32px] font-bold leading-tight text-foreground">{{ formatEurStats(s.penalizacionClientesBajaEur) }}</p>
+          <p class="text-xs text-muted-foreground mt-2">penalización de clientes sin contrato activo</p>
+        </div>
+
+        <!-- Espacio reservado -->
+        <div class="bg-card border border-dashed border-border/50 rounded-xl p-6 flex items-center justify-center min-h-[120px]">
+          <p class="text-xs text-muted-foreground/40 text-center">Espacio disponible</p>
+        </div>
+        <div class="bg-card border border-dashed border-border/50 rounded-xl p-6 flex items-center justify-center min-h-[120px]">
+          <p class="text-xs text-muted-foreground/40 text-center">Espacio disponible</p>
+        </div>
+
       </div>
     }
   }

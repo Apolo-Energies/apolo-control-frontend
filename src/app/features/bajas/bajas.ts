@@ -414,9 +414,8 @@ export class Bajas implements OnDestroy {
     });
   }
 
-  protected formatConsumoStats(mwh: number): string {
-    if (mwh >= 1_000) return `${(mwh / 1_000).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} GWh`;
-    return `${mwh.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MWh`;
+  protected formatConsumoStats(gwh: number): string {
+    return `${gwh.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} GWh`;
   }
 
   protected formatEurStats(v: number): string {
