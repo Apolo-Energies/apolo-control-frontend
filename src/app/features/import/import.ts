@@ -11,9 +11,12 @@ import {
   ContratosServiciosImportService,
   ImportResult,
 } from '../../core/services/contratos-servicios-import.service';
+import { VibraMigrationService } from '../../core/services/vibra-migration.service';
+import { VibraImportResult } from '../../core/models';
 import { environment } from '../../../environments/environment';
 
-type Tab = 'contratos' | 'ventas' | 'rechazos' | 'pagos' | 'facturas' | 'cambios' | 'impagos';
+type Tab = 'contratos' | 'ventas' | 'rechazos' | 'pagos' | 'facturas' | 'cambios' | 'impagos'
+         | 'vibraAltas' | 'vibraImpagos' | 'vibraTarifas';
 
 interface MigrationResult {
   entityName: string;
@@ -34,9 +37,121 @@ interface MigrationResult {
   templateUrl: './import.html',
 })
 export class Import {
-  private readonly importService = inject(ContratosServiciosImportService);
-  private readonly http          = inject(HttpClient);
-  private readonly notify        = inject(NotificationService);
+  private readonly importService  = inject(ContratosServiciosImportService);
+  private readonly vibraMigration = inject(VibraMigrationService);
+  private readonly http           = inject(HttpClient);
+  private readonly notify         = inject(NotificationService);
+
+  // ── Vibra Altas (CSV Base44) ────────────────────────────────
+  protected readonly vibraAltasFile    = signal<File | null>(null);
+  protected readonly vibraAltasLoading = signal(false);
+  protected readonly vibraAltasResult  = signal<VibraImportResult | null>(null);
+
+  protected onVibraAltasFileChange(event: Event): void {
+    const f = (event.target as HTMLInputElement).files?.[0] ?? null;
+    this.vibraAltasFile.set(f); this.vibraAltasResult.set(null);
+  }
+  protected onVibraAltasDrop(event: DragEvent): void {
+    event.preventDefault();
+    const f = event.dataTransfer?.files?.[0] ?? null;
+    if (f) { this.vibraAltasFile.set(f); this.vibraAltasResult.set(null); }
+  }
+  protected clearVibraAltasFile(): void { this.vibraAltasFile.set(null); this.vibraAltasResult.set(null); }
+  protected previewVibraAltas(): void { this.runVibraAltas(true); }
+  protected importarVibraAltas(): void { this.runVibraAltas(false); }
+
+  private runVibraAltas(dryRun: boolean): void {
+    const f = this.vibraAltasFile();
+    if (!f) return;
+    this.vibraAltasLoading.set(true);
+    this.vibraAltasResult.set(null);
+    this.vibraMigration.importarAltas(f, dryRun).subscribe({
+      next: (r) => {
+        this.vibraAltasLoading.set(false);
+        this.vibraAltasResult.set(r);
+        if (!dryRun && r.errors === 0)
+          this.notify.success(`Vibra Altas: ${r.created} nuevas, ${r.updated} actualizadas`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.vibraAltasLoading.set(false);
+        this.notify.error((err.error as { message?: string })?.message ?? 'Error importando Vibra Altas');
+      },
+    });
+  }
+
+  // ── Vibra Impagos (CSV Base44) ──────────────────────────────
+  protected readonly vibraImpagosFile    = signal<File | null>(null);
+  protected readonly vibraImpagosLoading = signal(false);
+  protected readonly vibraImpagosResult  = signal<VibraImportResult | null>(null);
+
+  protected onVibraImpagosFileChange(event: Event): void {
+    const f = (event.target as HTMLInputElement).files?.[0] ?? null;
+    this.vibraImpagosFile.set(f); this.vibraImpagosResult.set(null);
+  }
+  protected onVibraImpagosDrop(event: DragEvent): void {
+    event.preventDefault();
+    const f = event.dataTransfer?.files?.[0] ?? null;
+    if (f) { this.vibraImpagosFile.set(f); this.vibraImpagosResult.set(null); }
+  }
+  protected clearVibraImpagosFile(): void { this.vibraImpagosFile.set(null); this.vibraImpagosResult.set(null); }
+  protected previewVibraImpagos(): void { this.runVibraImpagos(true); }
+  protected importarVibraImpagos(): void { this.runVibraImpagos(false); }
+
+  private runVibraImpagos(dryRun: boolean): void {
+    const f = this.vibraImpagosFile();
+    if (!f) return;
+    this.vibraImpagosLoading.set(true);
+    this.vibraImpagosResult.set(null);
+    this.vibraMigration.importarImpagos(f, dryRun).subscribe({
+      next: (r) => {
+        this.vibraImpagosLoading.set(false);
+        this.vibraImpagosResult.set(r);
+        if (!dryRun && r.errors === 0)
+          this.notify.success(`Vibra Impagos: ${r.created} nuevos, ${r.updated} actualizados`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.vibraImpagosLoading.set(false);
+        this.notify.error((err.error as { message?: string })?.message ?? 'Error importando Vibra Impagos');
+      },
+    });
+  }
+
+  // ── Vibra Tarifas (CSV Base44) ──────────────────────────────
+  protected readonly vibraTarifasFile    = signal<File | null>(null);
+  protected readonly vibraTarifasLoading = signal(false);
+  protected readonly vibraTarifasResult  = signal<VibraImportResult | null>(null);
+
+  protected onVibraTarifasFileChange(event: Event): void {
+    const f = (event.target as HTMLInputElement).files?.[0] ?? null;
+    this.vibraTarifasFile.set(f); this.vibraTarifasResult.set(null);
+  }
+  protected onVibraTarifasDrop(event: DragEvent): void {
+    event.preventDefault();
+    const f = event.dataTransfer?.files?.[0] ?? null;
+    if (f) { this.vibraTarifasFile.set(f); this.vibraTarifasResult.set(null); }
+  }
+  protected clearVibraTarifasFile(): void { this.vibraTarifasFile.set(null); this.vibraTarifasResult.set(null); }
+  protected previewVibraTarifas(): void { this.runVibraTarifas(true); }
+  protected importarVibraTarifas(): void { this.runVibraTarifas(false); }
+
+  private runVibraTarifas(dryRun: boolean): void {
+    const f = this.vibraTarifasFile();
+    if (!f) return;
+    this.vibraTarifasLoading.set(true);
+    this.vibraTarifasResult.set(null);
+    this.vibraMigration.importarTarifas(f, dryRun).subscribe({
+      next: (r) => {
+        this.vibraTarifasLoading.set(false);
+        this.vibraTarifasResult.set(r);
+        if (!dryRun && r.errors === 0)
+          this.notify.success(`Vibra Tarifas: ${r.created} nuevas, ${r.updated} actualizadas`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.vibraTarifasLoading.set(false);
+        this.notify.error((err.error as { message?: string })?.message ?? 'Error importando Vibra Tarifas');
+      },
+    });
+  }
 
   protected readonly activeTab = signal<Tab>('contratos');
 

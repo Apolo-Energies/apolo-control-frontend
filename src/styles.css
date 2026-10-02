@@ -190,6 +190,19 @@
     -webkit-box-shadow: 0 0 0px 1000px var(--color-card) inset !important;
     -webkit-text-fill-color: var(--color-foreground) !important;
   }
+
+  /* Cursor manito por defecto en todos los interactivos (Tailwind Preflight lo resetea a auto) */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  select:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"],
+  select:disabled {
+    cursor: not-allowed;
+  }
 }
 
 /* ============================================================

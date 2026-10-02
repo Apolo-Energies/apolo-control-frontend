@@ -230,6 +230,49 @@ export const routes: Routes = [
         loadComponent: () => import('./features/perfil/perfil').then((m) => m.Perfil),
       },
 
+      // ── Vibra (workspace Base44 "Control Vibra") ──
+      {
+        path: 'vibra',
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+          {
+            path: 'dashboard',
+            loadComponent: () =>
+              import('./features/vibra/dashboard/vibra-dashboard').then((m) => m.VibraDashboard),
+          },
+          {
+            path: 'altas',
+            loadComponent: () =>
+              import('./features/vibra/altas/vibra-altas').then((m) => m.VibraAltas),
+          },
+          {
+            path: 'tramitacion',
+            loadComponent: () =>
+              import('./features/vibra/tramitacion/vibra-tramitacion').then((m) => m.VibraTramitacion),
+          },
+          {
+            path: 'impagos',
+            loadComponent: () =>
+              import('./features/vibra/impagos/vibra-impagos').then((m) => m.VibraImpagos),
+          },
+          {
+            path: 'preciario',
+            loadComponent: () =>
+              import('./features/vibra/preciario/vibra-preciario').then((m) => m.VibraPreciario),
+          },
+          {
+            path: 'liquidaciones',
+            loadComponent: () =>
+              import('./features/vibra/liquidaciones/vibra-liquidaciones').then((m) => m.VibraLiquidaciones),
+          },
+          {
+            path: 'contrato-servicio',
+            loadComponent: () =>
+              import('./features/vibra/contrato-servicio/vibra-contrato-servicio').then((m) => m.VibraContratoServicio),
+          },
+        ],
+      },
+
       { path: '**', redirectTo: 'dashboard' },
     ],
   },
