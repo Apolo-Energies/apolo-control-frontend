@@ -26,7 +26,7 @@ export const FORMA_PAGO_LABEL: Record<FormaPago, string> = {
 };
 
 export const ESTADO_PAGO_VALUES: EstadoPago[] = ['pendiente', 'pagado', 'cancelado'];
-export const TIPO_PAGO_VALUES: TipoPago[] = ['comision', 'liquidacion', 'bonus', 'multa', 'penalizacion', 'adelanto', 'diferencia', 'embargo', 'otro'];
+export const TIPO_PAGO_VALUES: TipoPago[] = ['liquidacion', 'multa', 'penalizacion', 'adelanto', 'diferencia', 'embargo', 'otro'];
 export const FORMA_PAGO_VALUES: FormaPago[] = ['factura', 'pago_unico'];
 
 export interface PagoLiquidacion {
