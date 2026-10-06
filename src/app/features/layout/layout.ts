@@ -69,6 +69,16 @@ export class Layout {
         ],
       },
       {
+        title: 'TELKES',
+        switchable: true,
+        switchIcon: 'bolt',
+        items: [
+          { label: 'Dashboard', url: '/telkes/dashboard', icon: 'layout-dashboard' as const },
+          { label: 'Preciario', url: '/telkes/preciario', icon: 'euro' as const },
+          { label: 'Altas', url: '/telkes/altas', icon: 'users' as const },
+        ],
+      },
+      {
         title: 'IMPAGOS',
         switchable: true,
         switchIcon: 'alert-triangle',

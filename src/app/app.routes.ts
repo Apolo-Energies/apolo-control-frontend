@@ -272,6 +272,27 @@ export const routes: Routes = [
           },
         ],
       },
+      {
+        path: 'telkes',
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+          {
+            path: 'dashboard',
+            loadComponent: () =>
+              import('./features/telkes/dashboard/telkes-dashboard').then((m) => m.TelkesDashboard),
+          },
+          {
+            path: 'altas',
+            loadComponent: () =>
+              import('./features/telkes/altas/telkes-altas').then((m) => m.TelkesAltas),
+          },
+          {
+            path: 'preciario',
+            loadComponent: () =>
+              import('./features/telkes/preciario/telkes-preciario').then((m) => m.TelkesPreciario),
+          },
+        ],
+      },
 
       { path: '**', redirectTo: 'dashboard' },
     ],

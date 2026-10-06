@@ -1,0 +1,49 @@
+<app-page-header title="Telkes" subtitle="Plataforma de Gestión Energética"/>
+
+<!-- Cards de navegación -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+  <a routerLink="/telkes/preciario"
+    class="rounded-2xl border border-border bg-card p-6 hover:bg-accent transition-colors">
+    <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-info-soft text-info-fg mb-3">
+      <ui-icon name="euro" [size]="22"/>
+    </div>
+    <h3 class="text-base font-semibold">Preciario</h3>
+    <p class="text-sm text-muted-foreground mt-1">Gestiona tarifas 2.0TD y 3.0TD</p>
+  </a>
+  <a routerLink="/telkes/altas"
+    class="rounded-2xl border border-border bg-card p-6 hover:bg-accent transition-colors">
+    <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-success-soft text-success-fg mb-3">
+      <ui-icon name="users" [size]="22"/>
+    </div>
+    <h3 class="text-base font-semibold">Altas</h3>
+    <p class="text-sm text-muted-foreground mt-1">Gestiona altas de nuevos puntos de suministro</p>
+  </a>
+</div>
+
+<!-- KPIs -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  <div class="rounded-2xl border border-border bg-card p-5">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm text-muted-foreground">Total de Altas</span>
+      <ui-icon name="file-text" [size]="18" class="text-info-fg"/>
+    </div>
+    <p class="text-3xl font-bold tabular-nums">{{ fmtNumber(stats()?.totalAltas) }}</p>
+    <p class="text-xs text-muted-foreground mt-1">Altas registradas</p>
+  </div>
+  <div class="rounded-2xl border border-border bg-card p-5">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm text-muted-foreground">Consumo Total</span>
+      <ui-icon name="bolt" [size]="18" class="text-warning-fg"/>
+    </div>
+    <p class="text-3xl font-bold tabular-nums">{{ fmtNumber(stats()?.consumoTotal) }}</p>
+    <p class="text-xs text-muted-foreground mt-1">kWh estimados</p>
+  </div>
+  <div class="rounded-2xl border border-border bg-card p-5">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm text-muted-foreground">Colaboradores Activos</span>
+      <ui-icon name="users" [size]="18" class="text-success-fg"/>
+    </div>
+    <p class="text-3xl font-bold tabular-nums">{{ fmtNumber(stats()?.colaboradoresActivos) }}</p>
+    <p class="text-xs text-muted-foreground mt-1">Agentes registrados</p>
+  </div>
+</div>

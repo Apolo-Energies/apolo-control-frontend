@@ -12,11 +12,13 @@ import {
   ImportResult,
 } from '../../core/services/contratos-servicios-import.service';
 import { VibraMigrationService } from '../../core/services/vibra-migration.service';
+import { TelkesAltaService } from '../../core/services/telkes-alta.service';
 import { VibraImportResult } from '../../core/models';
 import { environment } from '../../../environments/environment';
 
 type Tab = 'contratos' | 'ventas' | 'rechazos' | 'pagos' | 'facturas' | 'cambios' | 'impagos'
-         | 'vibraAltas' | 'vibraImpagos' | 'vibraTarifas';
+         | 'vibraAltas' | 'vibraImpagos' | 'vibraTarifas'
+         | 'telkesAltas' | 'telkesTarifas';
 
 interface MigrationResult {
   entityName: string;
@@ -39,6 +41,7 @@ interface MigrationResult {
 export class Import {
   private readonly importService  = inject(ContratosServiciosImportService);
   private readonly vibraMigration = inject(VibraMigrationService);
+  private readonly telkesService  = inject(TelkesAltaService);
   private readonly http           = inject(HttpClient);
   private readonly notify         = inject(NotificationService);
 
@@ -149,6 +152,80 @@ export class Import {
       error: (err: HttpErrorResponse) => {
         this.vibraTarifasLoading.set(false);
         this.notify.error((err.error as { message?: string })?.message ?? 'Error importando Vibra Tarifas');
+      },
+    });
+  }
+
+  // ── Telkes Altas (CSV Base44) ───────────────────────────────
+  protected readonly telkesAltasFile    = signal<File | null>(null);
+  protected readonly telkesAltasLoading = signal(false);
+  protected readonly telkesAltasResult  = signal<VibraImportResult | null>(null);
+
+  protected onTelkesAltasFileChange(event: Event): void {
+    const f = (event.target as HTMLInputElement).files?.[0] ?? null;
+    this.telkesAltasFile.set(f); this.telkesAltasResult.set(null);
+  }
+  protected onTelkesAltasDrop(event: DragEvent): void {
+    event.preventDefault();
+    const f = event.dataTransfer?.files?.[0] ?? null;
+    if (f) { this.telkesAltasFile.set(f); this.telkesAltasResult.set(null); }
+  }
+  protected clearTelkesAltasFile(): void { this.telkesAltasFile.set(null); this.telkesAltasResult.set(null); }
+  protected previewTelkesAltas(): void { this.runTelkesAltas(true); }
+  protected importarTelkesAltas(): void { this.runTelkesAltas(false); }
+
+  private runTelkesAltas(dryRun: boolean): void {
+    const f = this.telkesAltasFile();
+    if (!f) return;
+    this.telkesAltasLoading.set(true);
+    this.telkesAltasResult.set(null);
+    this.telkesService.importAltasCsv(f, dryRun).subscribe({
+      next: (r) => {
+        this.telkesAltasLoading.set(false);
+        this.telkesAltasResult.set(r);
+        if (!dryRun && r.errors === 0)
+          this.notify.success(`Telkes Altas: ${r.created} nuevas, ${r.updated} actualizadas`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.telkesAltasLoading.set(false);
+        this.notify.error((err.error as { message?: string })?.message ?? 'Error importando Telkes Altas');
+      },
+    });
+  }
+
+  // ── Telkes Tarifas (CSV Base44) ─────────────────────────────
+  protected readonly telkesTarifasFile    = signal<File | null>(null);
+  protected readonly telkesTarifasLoading = signal(false);
+  protected readonly telkesTarifasResult  = signal<VibraImportResult | null>(null);
+
+  protected onTelkesTarifasFileChange(event: Event): void {
+    const f = (event.target as HTMLInputElement).files?.[0] ?? null;
+    this.telkesTarifasFile.set(f); this.telkesTarifasResult.set(null);
+  }
+  protected onTelkesTarifasDrop(event: DragEvent): void {
+    event.preventDefault();
+    const f = event.dataTransfer?.files?.[0] ?? null;
+    if (f) { this.telkesTarifasFile.set(f); this.telkesTarifasResult.set(null); }
+  }
+  protected clearTelkesTarifasFile(): void { this.telkesTarifasFile.set(null); this.telkesTarifasResult.set(null); }
+  protected previewTelkesTarifas(): void { this.runTelkesTarifas(true); }
+  protected importarTelkesTarifas(): void { this.runTelkesTarifas(false); }
+
+  private runTelkesTarifas(dryRun: boolean): void {
+    const f = this.telkesTarifasFile();
+    if (!f) return;
+    this.telkesTarifasLoading.set(true);
+    this.telkesTarifasResult.set(null);
+    this.telkesService.importTarifasCsv(f, dryRun).subscribe({
+      next: (r) => {
+        this.telkesTarifasLoading.set(false);
+        this.telkesTarifasResult.set(r);
+        if (!dryRun && r.errors === 0)
+          this.notify.success(`Telkes Tarifas: ${r.created} nuevas, ${r.updated} actualizadas`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.telkesTarifasLoading.set(false);
+        this.notify.error((err.error as { message?: string })?.message ?? 'Error importando Telkes Tarifas');
       },
     });
   }

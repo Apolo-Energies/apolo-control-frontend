@@ -12,7 +12,6 @@ export interface VibraOcrResult {
   poblacion: string | null;
   provincia: string | null;
   codigoPostal: string | null;
-  direccionSocial: string | null;
 
   p1: string | null;
   p2: string | null;
