@@ -379,18 +379,30 @@
   <!-- ── RESUMEN TAB ─────────────────────────────────────────────────────────── -->
   @if (activeTab() === 'resumen') {
 
-    <!-- Range pills -->
-    <div class="inline-flex items-center gap-1 rounded-lg border border-border bg-card p-1">
-      @for (r of resRanges; track r.id) {
-        <button type="button" (click)="setResRange(r.id)"
-          class="h-8 px-3 rounded-md text-xs font-medium transition-colors"
-          [class.bg-foreground]="resRange() === r.id"
-          [class.text-background]="resRange() === r.id"
-          [class.text-muted-foreground]="resRange() !== r.id"
-          [class.hover:bg-accent]="resRange() !== r.id">
-          {{ r.label }}
-        </button>
-      }
+    <!-- Range pills + CSV -->
+    <div class="flex items-center gap-3 flex-wrap">
+      <div class="inline-flex items-center gap-1 rounded-lg border border-border bg-card p-1">
+        @for (r of resRanges; track r.id) {
+          <button type="button" (click)="setResRange(r.id)"
+            class="h-8 px-3 rounded-md text-xs font-medium transition-colors"
+            [class.bg-foreground]="resRange() === r.id"
+            [class.text-background]="resRange() === r.id"
+            [class.text-muted-foreground]="resRange() !== r.id"
+            [class.hover:bg-accent]="resRange() !== r.id">
+            {{ r.label }}
+          </button>
+        }
+      </div>
+      <button type="button" (click)="downloadResumenCsv()"
+        class="h-9 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-background text-sm font-semibold hover:bg-muted transition-colors">
+        <ui-icon name="download" [size]="15" />
+        CSV
+      </button>
+      <button type="button" (click)="downloadClientesUnicosCsv()"
+        class="h-9 px-4 inline-flex items-center gap-2 rounded-lg border border-violet-300 dark:border-violet-700 bg-background text-sm font-semibold text-violet-600 dark:text-violet-400 hover:bg-muted transition-colors">
+        <ui-icon name="download" [size]="15" />
+        CSV únicos
+      </button>
     </div>
 
     <!-- Sub-picker -->

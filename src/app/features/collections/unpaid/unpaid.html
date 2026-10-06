@@ -1004,6 +1004,7 @@
                   <th class="py-2 px-2 font-medium min-w-[110px]">Estado</th>
                   <th class="py-2 px-2 font-medium min-w-[90px]">Prioridad</th>
                   <th class="py-2 px-2 font-medium min-w-[110px]">Colaborador</th>
+                  <th class="py-2 px-2 font-medium min-w-[120px]">Motivo dev.</th>
                   <th class="py-2 px-2 font-medium w-28">Validación</th>
                 </tr>
               </thead>
@@ -1108,6 +1109,16 @@
                       <input type="text"
                         [value]="row.colaborador ?? ''"
                         (blur)="updateImportField(row.idx, 'colaborador', $any($event.target).value.trim())"
+                        placeholder="—"
+                        class="w-full bg-transparent px-1.5 py-1 rounded text-xs text-foreground placeholder:text-muted-foreground/40
+                          border border-transparent hover:border-border focus:border-primary focus:outline-none focus:bg-background transition-colors" />
+                    </td>
+
+                    <!-- Motivo devolución -->
+                    <td class="py-1 px-1">
+                      <input type="text"
+                        [value]="row.motivoDevolucion ?? ''"
+                        (blur)="updateImportField(row.idx, 'motivoDevolucion', $any($event.target).value.trim())"
                         placeholder="—"
                         class="w-full bg-transparent px-1.5 py-1 rounded text-xs text-foreground placeholder:text-muted-foreground/40
                           border border-transparent hover:border-border focus:border-primary focus:outline-none focus:bg-background transition-colors" />

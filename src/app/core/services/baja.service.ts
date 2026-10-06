@@ -43,7 +43,7 @@ export class BajaService {
     });
   }
 
-  exportCsv(filter: { q?: string; startDate?: string; endDate?: string; idOferta?: string; conPenalizacion?: boolean; minDiasDif?: number; antesFinPrevista?: boolean } = {}): Observable<Blob> {
+  exportCsv(filter: { q?: string; startDate?: string; endDate?: string; idOferta?: string; conPenalizacion?: boolean; minDiasDif?: number; antesFinPrevista?: boolean; soloClientesSinActivo?: boolean } = {}): Observable<Blob> {
     return this.http.get(`${this.baseUrl}/export/csv`, {
       params: buildParams(filter),
       responseType: 'blob',

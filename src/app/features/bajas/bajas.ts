@@ -422,6 +422,26 @@ export class Bajas implements OnDestroy {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 }).format(v);
   }
 
+  protected downloadResumenCsv(): void {
+    const filter = this.buildResFilter();
+    this.service.exportCsv(filter).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'bajas-resumen.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  protected downloadClientesUnicosCsv(): void {
+    const filter = this.buildResFilter();
+    this.service.exportCsv({ ...filter, soloClientesSinActivo: true }).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'bajas-clientes-unicos.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
   // ── CSV export ────────────────────────────────────────────────────────────────
   protected exportTopCsv(): void {
     const data   = this.filteredTop();

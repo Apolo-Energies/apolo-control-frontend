@@ -962,7 +962,7 @@ export class Unpaid implements OnDestroy {
       estado:           find('estado', 'status', 'situacion'),
       prioridad:        find('prioridad', 'priority', 'urgencia'),
       colaborador:      find('colaborador', 'responsable', 'agente', 'assignee'),
-      motivoDevolucion: find('motivo_devolucion', 'motivo', 'reason', 'causa'),
+      motivoDevolucion: find('motivo_devolucion', 'motivo_de_devolucion', 'motivo_de_rechazo', 'motivo', 'reason', 'causa'),
       observaciones:    find('observaciones', 'observations', 'notas', 'notes', 'comentarios'),
     };
   }
