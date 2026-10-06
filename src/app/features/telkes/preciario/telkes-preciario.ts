@@ -6,20 +6,18 @@ import { RouterLink } from '@angular/router';
 import { PageHeader } from '../../../shared/components/page-header/page-header';
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
 import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
+import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
+import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
 
 import { TelkesTarifaService } from '../../../core/services/telkes-tarifa.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import {
-  TIPO_TARIFA_TELKES_VALUES,
-  TelkesTarifa,
-  TelkesTarifaPayload,
-} from '../../../core/models';
+import { TelkesTarifa, TelkesTarifaPayload } from '../../../core/models';
 
 @Component({
   selector: 'app-telkes-preciario',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, PageHeader, FormDialog, ConfirmDialog, Icon],
+  imports: [ReactiveFormsModule, RouterLink, PageHeader, FormDialog, ConfirmDialog, StatusBadge, TableSkeleton, Icon],
   templateUrl: './telkes-preciario.html',
 })
 export class TelkesPreciario {
@@ -27,40 +25,54 @@ export class TelkesPreciario {
   private readonly notify = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
 
-  protected readonly tarifas = signal<TelkesTarifa[]>([]);
+  protected readonly all = signal<TelkesTarifa[]>([]);
   protected readonly loading = signal(true);
-  protected readonly tipoValues = TIPO_TARIFA_TELKES_VALUES;
+  protected readonly error = signal<string | null>(null);
 
   protected readonly dialogOpen = signal(false);
   protected readonly editing = signal<TelkesTarifa | null>(null);
   protected readonly submitting = signal(false);
+
+  // Confirm delete
   protected readonly confirmOpen = signal(false);
   protected readonly pendingDelete = signal<TelkesTarifa | null>(null);
   protected readonly deleting = signal(false);
+
+  // Detail modal
+  protected readonly detailOpen = signal(false);
+  protected readonly detailData = signal<TelkesTarifa | null>(null);
+  protected readonly detailLoading = signal(false);
+
+  protected readonly tarifas20 = computed(() => this.all().filter(t => t.tipo === '2.0TD'));
+  protected readonly tarifas30 = computed(() => this.all().filter(t => t.tipo === '3.0TD'));
 
   protected readonly form = this.fb.group({
     nombre: ['', Validators.required],
     tipo: ['2.0TD', Validators.required],
     activa: [true],
-    p1Energia: [null as number | null], p2Energia: [null as number | null],
-    p3Energia: [null as number | null], p4Energia: [null as number | null],
-    p5Energia: [null as number | null], p6Energia: [null as number | null],
-    p1Potencia: [null as number | null], p2Potencia: [null as number | null],
-    p3Potencia: [null as number | null], p4Potencia: [null as number | null],
-    p5Potencia: [null as number | null], p6Potencia: [null as number | null],
+    p1Energia: [null as number | null],
+    p2Energia: [null as number | null],
+    p3Energia: [null as number | null],
+    p4Energia: [null as number | null],
+    p5Energia: [null as number | null],
+    p6Energia: [null as number | null],
+    p1Potencia: [null as number | null],
+    p2Potencia: [null as number | null],
+    p3Potencia: [null as number | null],
+    p4Potencia: [null as number | null],
+    p5Potencia: [null as number | null],
+    p6Potencia: [null as number | null],
   });
-
-  protected readonly tipo20 = computed(() => this.tarifas().filter(t => t.tipo === '2.0TD'));
-  protected readonly tipo30 = computed(() => this.tarifas().filter(t => t.tipo === '3.0TD'));
 
   constructor() { this.load(); }
 
   protected load(): void {
     this.loading.set(true);
+    this.error.set(null);
     this.service.list().subscribe({
-      next: (l) => { this.tarifas.set(l); this.loading.set(false); },
+      next: (list) => { this.all.set(list); this.loading.set(false); },
       error: (err: HttpErrorResponse) => {
-        this.notify.error(err.error?.message ?? 'Error al cargar tarifas');
+        this.error.set(err.error?.message ?? err.message ?? 'Error al cargar tarifas');
         this.loading.set(false);
       },
     });
@@ -129,13 +141,32 @@ export class TelkesPreciario {
       },
       error: (err: HttpErrorResponse) => {
         this.deleting.set(false);
-        this.notify.error(err.error?.message ?? 'Error');
+        this.notify.error(err.error?.message ?? 'Error al eliminar');
       },
     });
   }
 
-  protected fmt(n: number | null | undefined): string {
+  protected fmt(n: number | null): string {
     if (n == null) return '—';
-    return Number(n).toFixed(6);
+    return n.toFixed(6);
+  }
+
+  protected verDetalle(id: string): void {
+    this.detailOpen.set(true);
+    this.detailLoading.set(true);
+    this.detailData.set(null);
+    this.service.getById(id).subscribe({
+      next: (d) => { this.detailData.set(d); this.detailLoading.set(false); },
+      error: (err: HttpErrorResponse) => {
+        this.detailLoading.set(false);
+        this.notify.error(err.error?.message ?? 'Error al cargar detalle');
+        this.detailOpen.set(false);
+      },
+    });
+  }
+
+  protected closeDetail(): void {
+    this.detailOpen.set(false);
+    this.detailData.set(null);
   }
 }

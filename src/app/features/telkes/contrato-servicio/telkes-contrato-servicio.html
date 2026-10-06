@@ -1,0 +1,367 @@
+<app-page-header title="Contrato Servicio" subtitle="Generador de contratos de servicios energéticos">
+  <a routerLink="/telkes/dashboard"
+    class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent">
+    <ui-icon name="chevron-left" [size]="16"/> Volver al Dashboard
+  </a>
+</app-page-header>
+
+@if (!ocrDone()) {
+  <div class="max-w-3xl mx-auto">
+    @if (ocrLoading()) {
+      <div class="rounded-2xl border border-border bg-card p-10">
+        <app-brand-loader
+          [inline]="true"
+          [showBackdrop]="false"
+          [size]="120"
+          title="Extrayendo datos de la factura"
+          description="El OCR está analizando el PDF. Puede tardar 10-30 segundos."
+          microcopy="Esto puede tardar unos segundos"/>
+        @if (file(); as f) {
+          <p class="text-xs text-muted-foreground text-center mt-4">{{ f.name }} · {{ (f.size / 1024).toFixed(1) }} KB</p>
+        }
+      </div>
+    } @else {
+      <div
+        (drop)="onDrop($event)"
+        (dragover)="onDragOver($event)"
+        class="rounded-2xl border-2 border-dashed border-border bg-card p-14 text-center">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-success-soft text-success-fg mx-auto mb-4">
+          <ui-icon name="upload" [size]="28"/>
+        </div>
+        <h2 class="text-xl font-semibold mb-1">Sube la factura del cliente</h2>
+        <p class="text-sm text-muted-foreground mb-4">Se extraerán automáticamente:</p>
+        <div class="flex flex-wrap justify-center gap-2 mb-6">
+          @for (t of ['Nombre / CIF','CUPS','Dirección suministro','Potencia contratada']; track t) {
+            <span class="bg-success-soft text-success-fg text-xs font-medium px-3 py-1 rounded-full">{{ t }}</span>
+          }
+        </div>
+        <button type="button" (click)="triggerFilePicker()"
+          class="inline-flex items-center gap-2 rounded-lg bg-success text-white px-6 py-3 text-sm font-semibold hover:opacity-90 cursor-pointer">
+          <ui-icon name="upload" [size]="18"/> Seleccionar factura
+        </button>
+        <div class="mt-4">
+          <button type="button" (click)="goManual()"
+            class="text-sm text-muted-foreground hover:text-foreground underline cursor-pointer">
+            Rellenar manualmente sin subir factura
+          </button>
+        </div>
+        <input #fileInput type="file" accept=".pdf,.png,.jpg,.jpeg" class="hidden" (change)="onFileSelected($event)"/>
+      </div>
+    }
+  </div>
+}
+
+@if (ocrDone()) {
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <form [formGroup]="form" (ngSubmit)="crearAlta()" class="lg:col-span-2 space-y-4">
+      @if (file()) {
+        <div class="flex items-center gap-2 rounded-lg border border-success/40 bg-success-soft text-success-fg px-4 py-2 text-sm">
+          <ui-icon name="check-circle" [size]="16" class="shrink-0"/>
+          <span>Datos extraídos de la factura. Revisa y completa los campos restantes.</span>
+        </div>
+      }
+
+      <section class="rounded-2xl border border-border bg-card p-6">
+        <header class="flex items-center gap-2 mb-4">
+          <ui-icon [name]="file() ? 'check-circle' : 'file-text'" [size]="18"
+            [class.text-success-fg]="file()" [class.text-info-fg]="!file()"/>
+          <h3 class="text-base font-semibold">
+            Datos del cliente y suministro
+            @if (file()) { <span class="text-xs font-normal text-muted-foreground ml-1">(extraídos de factura)</span> }
+          </h3>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="md:col-span-2">
+            <label class="text-sm font-medium">Nombre / Razón Social *</label>
+            <input formControlName="nombre" placeholder="Nombre completo o razón social"
+              class="w-full border rounded-lg px-3 py-2 mt-1 text-sm bg-input"
+              [class.border-danger]="showError('nombre')" [class.border-border]="!showError('nombre')"/>
+            @if (showError('nombre')) { <p class="text-xs text-danger-fg mt-1">{{ errorMsg('nombre') }}</p> }
+          </div>
+          <div>
+            <label class="text-sm font-medium">Nº de documento *</label>
+            <input formControlName="documentoNum" placeholder="12345678A"
+              class="w-full border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"
+              [class.border-danger]="showError('documentoNum')" [class.border-border]="!showError('documentoNum')"/>
+            @if (showError('documentoNum')) { <p class="text-xs text-danger-fg mt-1">{{ errorMsg('documentoNum') }}</p> }
+          </div>
+          <div>
+            <label class="text-sm font-medium">Tipo</label>
+            <select formControlName="tipoDocumento"
+              class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
+              <option value="DNI">DNI</option>
+              <option value="NIE">NIE</option>
+              <option value="CIF">CIF</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm font-medium">CUPS electricidad *</label>
+            <input formControlName="cups" placeholder="ES0021000000000000XX"
+              class="w-full border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"
+              [class.border-danger]="showError('cups')" [class.border-border]="!showError('cups')"/>
+            @if (showError('cups')) { <p class="text-xs text-danger-fg mt-1">{{ errorMsg('cups') }}</p> }
+          </div>
+          <div>
+            <label class="text-sm font-medium">Tarifa de acceso</label>
+            <input formControlName="tarifaAcceso" placeholder="2.0TD"
+              class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+          </div>
+        </div>
+
+        <div class="mt-5">
+          <p class="text-sm font-medium mb-2">Dirección del suministro *</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="md:col-span-2">
+              <label class="text-xs text-muted-foreground">Calle</label>
+              <input formControlName="direccion" placeholder="Nombre de la calle"
+                class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+            </div>
+            <div>
+              <label class="text-xs text-muted-foreground">Número</label>
+              <input formControlName="numero" placeholder="2"
+                class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+            </div>
+            <div>
+              <label class="text-xs text-muted-foreground">Piso / Puerta</label>
+              <input formControlName="pisoPuerta" placeholder="BAJO 2"
+                class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+            </div>
+            <div>
+              <label class="text-xs text-muted-foreground">Población</label>
+              <input formControlName="poblacion" placeholder="Valencia"
+                class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+            </div>
+            <div>
+              <label class="text-xs text-muted-foreground">Provincia</label>
+              <input formControlName="provincia" placeholder="Valencia"
+                class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+            </div>
+            <div>
+              <label class="text-xs text-muted-foreground">Código postal</label>
+              <input formControlName="codigoPostal" placeholder="46023"
+                class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-5">
+          <p class="text-sm font-medium mb-2">Potencia contratada (kW) *</p>
+          <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
+            @for (p of [1,2,3,4,5,6]; track p) {
+              <div>
+                <label class="block text-xs text-muted-foreground text-center mb-1">P{{ p }}</label>
+                <input [formControlName]="'p' + p" placeholder="0"
+                  class="w-full text-center border border-border rounded-lg px-2 py-2 text-sm bg-input tabular-nums"/>
+              </div>
+            }
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-2xl border border-border bg-card p-6">
+        <header class="flex items-center gap-2 mb-4">
+          <ui-icon name="edit" [size]="18" class="text-info-fg"/>
+          <h3 class="text-base font-semibold">
+            Completar manualmente
+            <span class="text-xs font-normal text-muted-foreground ml-1">(opcional)</span>
+          </h3>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-medium">Consumo anual estimado (kWh)</label>
+            <input formControlName="consumoAnual" placeholder="2142"
+              class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
+          </div>
+          <div>
+            <label class="text-sm font-medium">Fecha de activación</label>
+            <input type="date" formControlName="fechaInicio"
+              class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-sm font-medium">IBAN</label>
+            <input formControlName="iban" placeholder="ES00 0000 0000 0000 0000 0000"
+              class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
+          </div>
+          <div>
+            <label class="text-sm font-medium">Correo electrónico</label>
+            <input type="email" formControlName="email" placeholder="correo@ejemplo.com"
+              class="w-full border rounded-lg px-3 py-2 mt-1 text-sm bg-input"
+              [class.border-danger]="showError('email')" [class.border-border]="!showError('email')"/>
+            @if (showError('email')) { <p class="text-xs text-danger-fg mt-1">{{ errorMsg('email') }}</p> }
+          </div>
+          <div>
+            <label class="text-sm font-medium">Teléfono</label>
+            <input formControlName="telefono" placeholder="600 000 000"
+              class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-sm font-medium">Duración del contrato</label>
+            <input formControlName="duracion" placeholder="12 meses"
+              class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-2xl border border-border bg-card p-6">
+        <header class="flex items-center gap-2 mb-4">
+          <ui-icon name="file-text" [size]="18" class="text-purple"/>
+          <h3 class="text-base font-semibold">Producto contratado</h3>
+        </header>
+
+        <div>
+          <p class="text-sm font-medium mb-2">1. Tipo de tarifa</p>
+          <div class="flex gap-3">
+            @for (t of ['2.0TD','3.0TD']; track t) {
+              <button type="button" (click)="setTipoTarifa(t)"
+                class="px-6 py-3 rounded-lg border-2 font-semibold text-sm transition-colors"
+                [class.border-primary]="tipoTarifaSelec() === t"
+                [class.bg-primary]="tipoTarifaSelec() === t"
+                [class.text-primary-foreground]="tipoTarifaSelec() === t"
+                [class.border-border]="tipoTarifaSelec() !== t"
+                [class.bg-card]="tipoTarifaSelec() !== t"
+                [class.text-muted-foreground]="tipoTarifaSelec() !== t"
+                [class.hover:bg-accent]="tipoTarifaSelec() !== t">
+                {{ t }}
+              </button>
+            }
+          </div>
+        </div>
+
+        @if (tipoTarifaSelec()) {
+          <div class="mt-5">
+            <p class="text-sm font-medium mb-2">2. Producto</p>
+            @if (productos().length === 0) {
+              <p class="text-xs text-muted-foreground italic">No hay productos en el Preciario para {{ tipoTarifaSelec() }}.</p>
+            } @else {
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                @for (t of productos(); track t.id) {
+                  <button type="button" (click)="selectProducto(t)"
+                    class="text-left p-3 rounded-lg border-2 transition-colors"
+                    [class.border-primary]="productoSelec()?.id === t.id"
+                    [class.bg-primary-soft]="productoSelec()?.id === t.id"
+                    [class.border-border]="productoSelec()?.id !== t.id"
+                    [class.bg-card]="productoSelec()?.id !== t.id"
+                    [class.hover:bg-accent]="productoSelec()?.id !== t.id">
+                    <p class="font-semibold text-sm">{{ t.nombre }}</p>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        @if (productoSelec(); as p) {
+          <div class="mt-5 rounded-lg border border-border bg-neutral-soft/50 p-4">
+            <p class="text-sm font-semibold mb-3">Detalle de precios — {{ p.nombre }}</p>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs">
+                <thead>
+                  <tr class="text-muted-foreground">
+                    <th class="text-left pb-1 font-medium">Periodo</th>
+                    <th class="text-center pb-1 font-medium">Energía (€/kWh)</th>
+                    <th class="text-center pb-1 font-medium">Potencia (€/kW·año)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (n of (p.tipo === '3.0TD' ? [1,2,3,4,5,6] : [1,2,3]); track n) {
+                    <tr class="border-t border-border/50">
+                      <td class="py-1 font-medium">P{{ n }}</td>
+                      <td class="py-1 text-center tabular-nums">{{ fmt(getEnergiaPeriodo(p, n)) }}</td>
+                      <td class="py-1 text-center tabular-nums">{{ fmt(getPotenciaPeriodo(p, n)) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+      </section>
+    </form>
+
+    <aside class="lg:col-span-1">
+      <div class="lg:sticky lg:top-4 space-y-4">
+        <div class="rounded-2xl border border-border bg-card p-5">
+          <header class="flex items-center gap-2 mb-3">
+            <ui-icon name="file-text" [size]="18" class="text-info-fg"/>
+            <h3 class="text-sm font-semibold">Factura</h3>
+          </header>
+          @if (file(); as f) {
+            <div class="flex items-start gap-2 rounded-lg bg-success-soft text-success-fg px-3 py-2 text-xs">
+              <ui-icon name="check-circle" [size]="14" class="shrink-0 mt-0.5"/>
+              <div class="min-w-0">
+                <p class="truncate font-medium">{{ f.name }}</p>
+                <p class="opacity-70">{{ (f.size / 1024).toFixed(1) }} KB · OCR aplicado</p>
+              </div>
+            </div>
+            <button type="button" (click)="changeFactura()"
+              class="mt-3 w-full text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 py-1.5 rounded-lg border border-border hover:bg-accent">
+              <ui-icon name="upload" [size]="12"/> Subir otra factura
+            </button>
+          } @else {
+            <p class="text-xs text-muted-foreground">Alta manual sin factura.</p>
+          }
+        </div>
+
+        <div class="rounded-2xl border border-border bg-card p-5">
+          <header class="flex items-center gap-2 mb-3">
+            <ui-icon name="user" [size]="18" class="text-info-fg"/>
+            <h3 class="text-sm font-semibold">Resumen</h3>
+          </header>
+          <dl class="space-y-2 text-xs">
+            <div>
+              <dt class="text-muted-foreground">Titular</dt>
+              <dd class="font-medium truncate">{{ form.value.nombre || '—' }}</dd>
+            </div>
+            <div>
+              <dt class="text-muted-foreground">CUPS</dt>
+              <dd class="tabular-nums truncate">{{ form.value.cups || '—' }}</dd>
+            </div>
+            <div>
+              <dt class="text-muted-foreground">Producto</dt>
+              <dd class="font-medium truncate">{{ productoSelec()?.nombre || '—' }}</dd>
+            </div>
+            <div>
+              <dt class="text-muted-foreground">Tarifa</dt>
+              <dd>{{ tipoTarifaSelec() || form.value.tarifaAcceso || '—' }}</dd>
+            </div>
+            <div>
+              <dt class="text-muted-foreground">Fecha activación</dt>
+              <dd class="tabular-nums">{{ form.value.fechaInicio || '—' }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        @if (saving()) {
+          <div class="rounded-2xl border border-border bg-card p-4">
+            <app-brand-loader
+              [inline]="true"
+              [showBackdrop]="false"
+              [size]="90"
+              title="Creando alta"
+              description="Guardando y preparando PDF"
+              [showMicrocopy]="false"/>
+          </div>
+        }
+
+        <button type="button" (click)="crearAlta()" [disabled]="saving()"
+          class="w-full rounded-xl bg-success text-white py-3 text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 shadow-lg shadow-success/20">
+          <ui-icon name="check-circle" [size]="18"/> Crear alta y generar PDF
+        </button>
+
+        <button type="button" (click)="descargarPdf()" [disabled]="generatingPdf() || saving()"
+          class="w-full rounded-xl border border-border bg-card text-foreground py-2.5 text-sm font-medium flex items-center justify-center gap-2 hover:bg-accent disabled:opacity-50">
+          @if (generatingPdf()) {
+            <ui-icon name="loader" [size]="16" class="animate-spin"/> Generando…
+          } @else {
+            <ui-icon name="download" [size]="16"/> Descargar PDF (vista previa)
+          }
+        </button>
+        <p class="text-xs text-muted-foreground text-center">
+          "Descargar PDF" genera el contrato con los datos actuales sin guardar el alta.
+        </p>
+      </div>
+    </aside>
+  </div>
+}

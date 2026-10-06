@@ -291,6 +291,21 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./features/telkes/preciario/telkes-preciario').then((m) => m.TelkesPreciario),
           },
+          {
+            path: 'tramitacion',
+            loadComponent: () =>
+              import('./features/telkes/tramitacion/telkes-tramitacion').then((m) => m.TelkesTramitacion),
+          },
+          {
+            path: 'impagos',
+            loadComponent: () =>
+              import('./features/telkes/impagos/telkes-impagos').then((m) => m.TelkesImpagos),
+          },
+          {
+            path: 'contrato-servicio',
+            loadComponent: () =>
+              import('./features/telkes/contrato-servicio/telkes-contrato-servicio').then((m) => m.TelkesContratoServicio),
+          },
         ],
       },
 

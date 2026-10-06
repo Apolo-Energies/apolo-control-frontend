@@ -30,3 +30,6 @@ export * from './vibra-rotacion.model';
 export * from './vibra-ocr.model';
 export * from './telkes-alta.model';
 export * from './telkes-tarifa.model';
+export * from './telkes-dashboard.model';
+export * from './telkes-impago.model';
+export * from './telkes-ocr.model';

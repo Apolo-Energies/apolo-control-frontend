@@ -75,7 +75,10 @@ export class Layout {
         items: [
           { label: 'Dashboard', url: '/telkes/dashboard', icon: 'layout-dashboard' as const },
           { label: 'Preciario', url: '/telkes/preciario', icon: 'euro' as const },
+          { label: 'Contrato Servicio', url: '/telkes/contrato-servicio', icon: 'file-plus' as const },
           { label: 'Altas', url: '/telkes/altas', icon: 'users' as const },
+          { label: 'Tramitación', url: '/telkes/tramitacion', icon: 'check-square' as const },
+          { label: 'Impagos', url: '/telkes/impagos', icon: 'alert-triangle' as const },
         ],
       },
       {

@@ -1,17 +1,18 @@
-<app-page-header title="Altas Telkes" [subtitle]="total() + ' registros'">
+<app-page-header title="Altas" [subtitle]="total() + ' de ' + total() + ' registros'">
   <a routerLink="/telkes/dashboard" class="text-sm text-muted-foreground hover:text-foreground">← Volver al Dashboard</a>
   <div class="ml-auto flex flex-wrap items-center gap-2">
     <button (click)="openCreate()" class="inline-flex items-center gap-2 rounded-lg bg-success text-white px-3 py-2 text-sm font-medium hover:opacity-90">
-      <ui-icon name="plus" [size]="16"/> Nueva Alta
+      <ui-icon name="plus" [size]="16" /> Nueva Alta
     </button>
   </div>
 </app-page-header>
 
+<!-- Filtros -->
 <div class="flex flex-wrap items-center gap-2 mb-4">
   <div class="relative flex-1 max-w-md">
-    <ui-icon name="search" [size]="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"/>
+    <ui-icon name="search" [size]="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
     <input [(ngModel)]="q" (keyup.enter)="applyFilters()" placeholder="Buscar titular, CUPS, NIF, email..."
-      class="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-sm bg-input"/>
+      class="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-sm bg-input" />
   </div>
   <select [(ngModel)]="estadoFilter" (change)="applyFilters()" class="border border-border rounded-lg px-3 py-2 text-sm bg-input">
     <option value="">Todos los estados</option>
@@ -22,8 +23,18 @@
     @for (c of comercializadoraValues; track c) {<option [value]="c">{{ c }}</option>}
   </select>
   <input [(ngModel)]="colaboradorFilter" (keyup.enter)="applyFilters()" placeholder="Colaborador"
-    class="border border-border rounded-lg px-3 py-2 text-sm bg-input w-40"/>
-  <button (click)="applyFilters()" class="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90">Buscar</button>
+    class="border border-border rounded-lg px-3 py-2 text-sm bg-input w-40" />
+  <div class="flex flex-col">
+    <label class="text-xs text-muted-foreground mb-0.5">Desde</label>
+    <input type="date" [(ngModel)]="fechaDesdeFilter" (change)="applyFilters()"
+      class="border border-border rounded-lg px-3 py-1.5 text-sm bg-input" />
+  </div>
+  <div class="flex flex-col">
+    <label class="text-xs text-muted-foreground mb-0.5">Hasta</label>
+    <input type="date" [(ngModel)]="fechaHastaFilter" (change)="applyFilters()"
+      class="border border-border rounded-lg px-3 py-1.5 text-sm bg-input" />
+  </div>
+  <button (click)="applyFilters()" class="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90 self-end">Buscar</button>
 </div>
 
 @if (error(); as msg) {
@@ -33,20 +44,70 @@
 }
 
 @if (loading() && !result()) {
-  <app-table-skeleton [cols]="8" [rows]="6"/>
+  <app-table-skeleton [cols]="12" [rows]="8" />
 } @else {
   <div class="rounded-2xl border border-border bg-card overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b border-border text-left text-muted-foreground bg-neutral-soft/50">
-            <th class="py-3 px-3 font-medium">Fecha</th>
-            <th class="py-3 px-3 font-medium">CUPS</th>
-            <th class="py-3 px-3 font-medium">Titular</th>
-            <th class="py-3 px-3 font-medium">Población</th>
+            <th (click)="setSort('fecha')" class="py-3 px-3 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Fecha
+                @if (sortField()==='fecha') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('cups')" class="py-3 px-3 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">CUPS
+                @if (sortField()==='cups') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('titular')" class="py-3 px-3 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Titular
+                @if (sortField()==='titular') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th class="py-3 px-3 font-medium">Dirección</th>
+            <th (click)="setSort('poblacion')" class="py-3 px-3 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Población
+                @if (sortField()==='poblacion') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('provincia')" class="py-3 px-3 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Provincia
+                @if (sortField()==='provincia') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
             <th class="py-3 px-3 font-medium">Potencia</th>
-            <th class="py-3 px-3 font-medium">Estado</th>
-            <th class="py-3 px-3 font-medium">Comerc.</th>
+            <th (click)="setSort('estado')" class="py-3 px-3 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Estado
+                @if (sortField()==='estado') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('fechaFirma')" class="py-3 px-3 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Fecha Firma
+                @if (sortField()==='fechaFirma') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('comercializadora')" class="py-3 px-3 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Comercializadora
+                @if (sortField()==='comercializadora') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('fechaCambioComercializadora')" class="py-3 px-3 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Fecha cambio
+                @if (sortField()==='fechaCambioComercializadora') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('fechaRenovacion')" class="py-3 px-3 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Fecha renovación
+                @if (sortField()==='fechaRenovacion') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('fechaActivacionContrato')" class="py-3 px-3 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Fecha activación
+                @if (sortField()==='fechaActivacionContrato') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
             <th class="py-3 px-3 font-medium text-right">Acc.</th>
           </tr>
         </thead>
@@ -56,26 +117,68 @@
               <td class="py-2 px-3 whitespace-nowrap">{{ fmtDate(r.fecha) }}</td>
               <td class="py-2 px-3 tabular-nums text-xs">{{ r.cups ?? '—' }}</td>
               <td class="py-2 px-3 font-medium">{{ r.titular ?? '—' }}</td>
+              <td class="py-2 px-3 text-xs">{{ r.direccionSuministro ?? '—' }}</td>
               <td class="py-2 px-3">{{ r.poblacion ?? '—' }}</td>
+              <td class="py-2 px-3">{{ r.provincia ?? '—' }}</td>
               <td class="py-2 px-3 text-xs">{{ r.potenciaOriginal ?? '—' }}</td>
-              <td class="py-2 px-3">{{ r.estado ?? '—' }}</td>
-              <td class="py-2 px-3">{{ r.comercializadora ?? '—' }}</td>
+              <td class="py-2 px-3">
+                <select (change)="changeEstado(r, $any($event.target).value)"
+                  class="border border-border rounded-md px-2 py-1 text-xs bg-input">
+                  <option value="" [selected]="!r.estado">-- Estado --</option>
+                  @for (e of estadoValues; track e) {
+                    <option [value]="e" [selected]="r.estado === e">{{ e }}</option>
+                  }
+                  @if (r.estado && !estadoValues.includes($any(r.estado))) {
+                    <option [value]="r.estado" selected>{{ r.estado }}</option>
+                  }
+                </select>
+              </td>
+              <td class="py-2 px-3 whitespace-nowrap tabular-nums">{{ fmtDate(r.fechaFirma) }}</td>
+              <td class="py-2 px-3">
+                <select (change)="changeComercializadora(r, $any($event.target).value)"
+                  class="border border-border rounded-md px-2 py-1 text-xs bg-input">
+                  <option value="" [selected]="!r.comercializadora">—</option>
+                  @for (c of comercializadoraValues; track c) {
+                    <option [value]="c" [selected]="r.comercializadora === c">{{ c }}</option>
+                  }
+                  @if (r.comercializadora && !comercializadoraValues.includes($any(r.comercializadora))) {
+                    <option [value]="r.comercializadora" selected>{{ r.comercializadora }}</option>
+                  }
+                </select>
+              </td>
+              <td class="py-2 px-3 whitespace-nowrap tabular-nums">
+                @if (r.fechaCambioComercializadora) {
+                  <span class="inline-flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-danger"></span>
+                    {{ fmtDate(r.fechaCambioComercializadora) }}
+                  </span>
+                } @else {
+                  <span class="inline-flex items-center gap-1 text-muted-foreground">
+                    <span class="w-2 h-2 rounded-full bg-muted-foreground/30"></span> —
+                  </span>
+                }
+              </td>
+              <td class="py-2 px-3 whitespace-nowrap tabular-nums">{{ fmtDate(r.fechaRenovacion) }}</td>
+              <td class="py-2 px-3 whitespace-nowrap tabular-nums">{{ fmtDate(r.fechaActivacionContrato) }}</td>
               <td class="py-2 px-3 text-right whitespace-nowrap">
-                <button (click)="openEdit(r)" class="p-1 hover:bg-info-soft rounded" title="Editar">
-                  <ui-icon name="edit" [size]="16"/>
+                <button (click)="verDetalle(r.id)" class="p-1 hover:bg-info-soft rounded" title="Ver detalle">
+                  <ui-icon name="eye" [size]="16" />
+                </button>
+                <button (click)="openEdit(r)" class="p-1 hover:bg-info-soft rounded ml-1" title="Editar">
+                  <ui-icon name="edit" [size]="16" />
                 </button>
                 <button (click)="askDelete(r)" class="p-1 hover:bg-danger-soft text-danger-fg rounded ml-1" title="Borrar">
-                  <ui-icon name="trash" [size]="16"/>
+                  <ui-icon name="trash" [size]="16" />
                 </button>
               </td>
             </tr>
           }
           @if (rows().length === 0) {
-            <tr><td colspan="8" class="py-16">
+            <tr><td colspan="14" class="py-16">
               <div class="flex flex-col items-center gap-2 text-muted-foreground">
                 <ui-icon name="search" [size]="40" class="opacity-30"/>
-                <p class="font-medium">Sin altas</p>
-                <p class="text-xs">Importá el CSV desde /import o crea una nueva alta</p>
+                <p class="font-medium text-base">Sin altas</p>
+                <p class="text-xs">Probá ajustar los filtros o crear una nueva alta</p>
               </div>
             </td></tr>
           }
@@ -86,12 +189,13 @@
       <div class="border-t border-border">
         <app-pagination [page]="page()" [pageSize]="size()"
           [totalElements]="total()" [totalPages]="totalPages()"
-          (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)"/>
+          (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
       </div>
     }
   </div>
 }
 
+<!-- Confirm delete -->
 <app-confirm-dialog
   [open]="confirmOpen()"
   title="Eliminar alta"
@@ -99,74 +203,172 @@
   confirmLabel="Eliminar"
   [loading]="deleting()"
   tone="danger"
-  (confirm)="doDelete()" (cancel)="cancelDelete()"/>
+  (confirm)="doDelete()"
+  (cancel)="cancelDelete()" />
 
+<!-- Detail modal -->
+<app-form-dialog
+  [open]="detailOpen()"
+  [title]="detailData()?.titular ?? 'Detalle de alta'"
+  [subtitle]="detailData()?.cups ?? null"
+  icon="eye"
+  [readOnly]="true"
+  width="720px"
+  (cancel)="closeDetail()">
+  @if (detailLoading()) {
+    <div class="py-8 text-center text-muted-foreground">Cargando…</div>
+  } @else if (detailData(); as d) {
+    <div class="space-y-4 py-2 text-sm">
+      <section>
+        <h4 class="text-xs font-semibold uppercase text-muted-foreground mb-2">Suministro</h4>
+        <div class="grid grid-cols-2 gap-3">
+          <div><dt class="text-xs text-muted-foreground">CUPS</dt><dd class="tabular-nums">{{ d.cups ?? '—' }}</dd></div>
+          <div><dt class="text-xs text-muted-foreground">NIF/CIF</dt><dd class="tabular-nums">{{ d.nifCif ?? '—' }}</dd></div>
+          <div class="col-span-2"><dt class="text-xs text-muted-foreground">Dirección</dt><dd>{{ d.direccionSuministro ?? '—' }}</dd></div>
+          <div><dt class="text-xs text-muted-foreground">Población</dt><dd>{{ d.poblacion ?? '—' }}</dd></div>
+          <div><dt class="text-xs text-muted-foreground">Provincia</dt><dd>{{ d.provincia ?? '—' }}</dd></div>
+        </div>
+      </section>
+      <section>
+        <h4 class="text-xs font-semibold uppercase text-muted-foreground mb-2">Contacto</h4>
+        <div class="grid grid-cols-2 gap-3">
+          <div><dt class="text-xs text-muted-foreground">Teléfono</dt><dd>{{ d.telefono ?? '—' }}</dd></div>
+          <div><dt class="text-xs text-muted-foreground">Email</dt><dd class="truncate">{{ d.email ?? '—' }}</dd></div>
+          <div class="col-span-2"><dt class="text-xs text-muted-foreground">Cuenta bancaria</dt><dd class="tabular-nums text-xs break-all">{{ d.cuentaBancaria ?? '—' }}</dd></div>
+        </div>
+      </section>
+      <section>
+        <h4 class="text-xs font-semibold uppercase text-muted-foreground mb-2">Comercial</h4>
+        <div class="grid grid-cols-2 gap-3">
+          <div><dt class="text-xs text-muted-foreground">Comercializadora</dt><dd>{{ d.comercializadora ?? '—' }}</dd></div>
+          <div><dt class="text-xs text-muted-foreground">Estado</dt><dd>{{ d.estado ?? '—' }}</dd></div>
+          <div><dt class="text-xs text-muted-foreground">Consumo (kWh)</dt><dd class="tabular-nums">{{ fmtNumber(d.consumo) }}</dd></div>
+          <div><dt class="text-xs text-muted-foreground">Colaborador</dt><dd>{{ d.colaborador ?? '—' }}</dd></div>
+        </div>
+      </section>
+      <section>
+        <h4 class="text-xs font-semibold uppercase text-muted-foreground mb-2">Fechas</h4>
+        <div class="grid grid-cols-3 gap-3">
+          <div><dt class="text-xs text-muted-foreground">Fecha</dt><dd class="tabular-nums">{{ fmtDate(d.fecha) }}</dd></div>
+          <div><dt class="text-xs text-muted-foreground">Firma</dt><dd class="tabular-nums">{{ fmtDate(d.fechaFirma) }}</dd></div>
+          <div><dt class="text-xs text-muted-foreground">Cambio</dt><dd class="tabular-nums">{{ fmtDate(d.fechaCambioComercializadora) }}</dd></div>
+          <div><dt class="text-xs text-muted-foreground">Renovación</dt><dd class="tabular-nums">{{ fmtDate(d.fechaRenovacion) }}</dd></div>
+          <div><dt class="text-xs text-muted-foreground">Activación</dt><dd class="tabular-nums">{{ fmtDate(d.fechaActivacionContrato) }}</dd></div>
+          <div><dt class="text-xs text-muted-foreground">Tramitación</dt><dd class="tabular-nums">{{ fmtDate(d.fechaTramitacion) }}</dd></div>
+        </div>
+      </section>
+      <section>
+        <h4 class="text-xs font-semibold uppercase text-muted-foreground mb-2">Potencia</h4>
+        <div class="text-xs text-muted-foreground mb-2">Original: {{ d.potenciaOriginal ?? '—' }}</div>
+        <div class="grid grid-cols-6 gap-2">
+          @for (p of [1,2,3,4,5,6]; track p) {
+            <div class="rounded-lg border border-border bg-neutral-soft/50 p-2 text-center">
+              <div class="text-xs text-muted-foreground">P{{ p }}</div>
+              <div class="text-sm font-medium tabular-nums">{{ fmtNumber($any(d)['potenciaP' + p]) }}</div>
+            </div>
+          }
+        </div>
+      </section>
+      <section>
+        <h4 class="text-xs font-semibold uppercase text-muted-foreground mb-2">Gestión</h4>
+        <div class="grid grid-cols-2 gap-3">
+          <div><dt class="text-xs text-muted-foreground">Gestionado</dt><dd><app-status-badge [tone]="d.gestionado ? 'success' : 'warning'">{{ d.gestionado ? 'Sí' : 'No' }}</app-status-badge></dd></div>
+          <div><dt class="text-xs text-muted-foreground">Liquidado</dt><dd>{{ d.liquidado ?? '—' }}</dd></div>
+        </div>
+        @if (d.comentarios) {
+          <div class="mt-3 pt-3 border-t border-border">
+            <dt class="text-xs text-muted-foreground mb-1">Comentarios</dt>
+            <dd class="whitespace-pre-wrap">{{ d.comentarios }}</dd>
+          </div>
+        }
+      </section>
+    </div>
+  }
+</app-form-dialog>
+
+<!-- Dialog crear/editar Alta -->
 <app-form-dialog
   [open]="dialogOpen()" [title]="editing() ? 'Editar alta' : 'Nueva alta'"
   [saving]="submitting()" [canSave]="form.valid"
-  width="820px"
+  width="900px"
   (cancel)="closeDialog()" (save)="submit()">
   <form [formGroup]="form" class="space-y-4">
     <div class="grid grid-cols-2 gap-3">
       <div>
         <label class="text-sm font-medium">CUPS</label>
-        <input formControlName="cups" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
+        <input formControlName="cups" placeholder="CUPS" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
       </div>
       <div>
         <label class="text-sm font-medium">Titular *</label>
-        <input formControlName="titular" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        <input formControlName="titular" placeholder="Titular" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
+
       <div>
         <label class="text-sm font-medium">Fecha</label>
         <input type="date" formControlName="fecha" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
       <div>
-        <label class="text-sm font-medium">Fecha renovación</label>
-        <input type="date" formControlName="fechaRenovacion" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        <label class="text-sm font-medium">Fecha cambio comercializadora</label>
+        <input type="date" formControlName="fechaCambioComercializadora" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
+
       <div>
         <label class="text-sm font-medium">Fecha firma</label>
         <input type="date" formControlName="fechaFirma" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
       <div>
-        <label class="text-sm font-medium">Fecha activación</label>
+        <label class="text-sm font-medium">Fecha renovación contrato</label>
+        <input type="date" formControlName="fechaRenovacion" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+
+      <div>
+        <label class="text-sm font-medium">Fecha activación contrato</label>
         <input type="date" formControlName="fechaActivacionContrato" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
       <div>
+        <label class="text-sm font-medium">Mes liquidación</label>
+        <input formControlName="mesLiquidacion" placeholder="p. ej. septiembre 2026" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+
+      <div>
         <label class="text-sm font-medium">Dirección suministro</label>
-        <input formControlName="direccionSuministro" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        <input formControlName="direccionSuministro" placeholder="Dirección suministro" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
       <div>
         <label class="text-sm font-medium">Población</label>
-        <input formControlName="poblacion" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        <input formControlName="poblacion" placeholder="Población" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
+
       <div>
         <label class="text-sm font-medium">Provincia</label>
-        <input formControlName="provincia" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        <input formControlName="provincia" placeholder="Provincia" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
       <div>
         <label class="text-sm font-medium">Potencia</label>
         <input formControlName="potenciaOriginal" placeholder="P1: 5 | P2: 5 | ..." class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
+
       <div>
         <label class="text-sm font-medium">Cuenta bancaria (IBAN)</label>
-        <input formControlName="cuentaBancaria" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
+        <input formControlName="cuentaBancaria" placeholder="Cuenta bancaria (IBAN)" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
       </div>
       <div>
         <label class="text-sm font-medium">NIF/CIF</label>
-        <input formControlName="nifCif" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
+        <input formControlName="nifCif" placeholder="NIF/CIF" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
       </div>
+
       <div>
         <label class="text-sm font-medium">Email</label>
-        <input type="email" formControlName="email" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        <input type="email" formControlName="email" placeholder="Email" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
       <div>
         <label class="text-sm font-medium">Teléfono</label>
-        <input formControlName="telefono" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        <input formControlName="telefono" placeholder="Teléfono" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
+
       <div>
         <label class="text-sm font-medium">Colaborador</label>
-        <input formControlName="colaborador" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        <input formControlName="colaborador" placeholder="Colaborador" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
       <div>
         <label class="text-sm font-medium">Comercializadora</label>
@@ -175,9 +377,10 @@
           @for (c of comercializadoraValues; track c) {<option [value]="c">{{ c }}</option>}
         </select>
       </div>
+
       <div>
         <label class="text-sm font-medium">Consumo (kWh)</label>
-        <input type="number" step="0.01" formControlName="consumo" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
+        <input type="number" step="0.01" formControlName="consumo" placeholder="Consumo (kWh)" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
       </div>
       <div>
         <label class="text-sm font-medium">Estado</label>
@@ -185,18 +388,29 @@
           @for (e of estadoValues; track e) {<option [value]="e">{{ e }}</option>}
         </select>
       </div>
+
       <div>
-        <label class="text-sm font-medium">Mes liquidación</label>
-        <input formControlName="mesLiquidacion" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        <label class="text-sm font-medium">Tramitado</label>
+        <select formControlName="tramitado" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
+          <option [ngValue]="false">No</option>
+          <option [ngValue]="true">Sí</option>
+        </select>
       </div>
       <div>
-        <label class="text-sm font-medium">Liquidado</label>
-        <input formControlName="liquidado" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        <label class="text-sm font-medium">Liquidado Energaze</label>
+        <input formControlName="liquidado" placeholder="Liquidado Energaze" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+
+      <div class="col-span-2">
+        <label class="text-sm font-medium">Historial liquidación</label>
+        <input formControlName="historialLiquidaciones" placeholder="Historial liquidación" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
     </div>
+
+    <!-- Comentarios (todo el ancho) -->
     <div>
       <label class="text-sm font-medium">Comentarios</label>
-      <textarea formControlName="comentarios" rows="3" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"></textarea>
+      <textarea formControlName="comentarios" rows="3" placeholder="Comentarios" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"></textarea>
     </div>
   </form>
 </app-form-dialog>
