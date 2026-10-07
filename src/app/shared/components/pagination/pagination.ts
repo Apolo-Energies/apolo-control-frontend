@@ -38,6 +38,15 @@ export class Pagination {
     this.pageChange.emit(target);
   }
 
+  protected onGoToPage(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const page = parseInt(input.value, 10) - 1;
+    input.value = '';
+    if (!Number.isNaN(page) && page >= 0 && page < this.totalPages()) {
+      this.pageChange.emit(page);
+    }
+  }
+
   protected onSizeChange(event: Event): void {
     const size = Number((event.target as HTMLSelectElement).value);
     if (!Number.isNaN(size)) {
