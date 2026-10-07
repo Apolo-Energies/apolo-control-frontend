@@ -60,12 +60,35 @@ export class Layout {
         switchIcon: 'bolt',
         items: [
           { label: 'Dashboard', url: '/vibra/dashboard', icon: 'layout-dashboard' as const },
+          {
+            label: 'Contratos', url: '/vibra/altas', icon: 'file-text' as const,
+            children: [
+              { label: 'Contrato Servicio', url: '/vibra/contrato-servicio', icon: 'file-plus' as const },
+              { label: 'Altas', url: '/vibra/altas', icon: 'users' as const },
+              { label: 'Tramitación', url: '/vibra/tramitacion', icon: 'check-square' as const },
+            ],
+          },
           { label: 'Preciario', url: '/vibra/preciario', icon: 'euro' as const },
-          { label: 'Contrato Servicio', url: '/vibra/contrato-servicio', icon: 'file-plus' as const },
-          { label: 'Altas', url: '/vibra/altas', icon: 'users' as const },
-          { label: 'Tramitación', url: '/vibra/tramitacion', icon: 'check-square' as const },
           { label: 'Impagos', url: '/vibra/impagos', icon: 'alert-triangle' as const },
           { label: 'Liquidaciones', url: '/vibra/liquidaciones', icon: 'wallet' as const },
+        ],
+      },
+      {
+        title: 'TELKES',
+        switchable: true,
+        switchIcon: 'bolt',
+        items: [
+          { label: 'Dashboard', url: '/telkes/dashboard', icon: 'layout-dashboard' as const },
+          {
+            label: 'Contratos', url: '/telkes/altas', icon: 'file-text' as const,
+            children: [
+              { label: 'Contrato Servicio', url: '/telkes/contrato-servicio', icon: 'file-plus' as const },
+              { label: 'Altas', url: '/telkes/altas', icon: 'users' as const },
+              { label: 'Tramitación', url: '/telkes/tramitacion', icon: 'check-square' as const },
+            ],
+          },
+          { label: 'Preciario', url: '/telkes/preciario', icon: 'euro' as const },
+          { label: 'Impagos', url: '/telkes/impagos', icon: 'alert-triangle' as const },
         ],
       },
       {
