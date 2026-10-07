@@ -248,8 +248,14 @@ export class Bajas implements OnDestroy {
   }
 
   protected onBajaSaved(): void {
+    const wasEditing = !!this.bajaEditingRow();
     this.closeDialog();
-    this.applyFilters();
+    if (wasEditing) {
+      this.reload(this.page());
+      this.loadTopDelegaciones();
+    } else {
+      this.applyFilters();
+    }
   }
 
   // ── Filter logic ─────────────────────────────────────────────────────────────
