@@ -1,10 +1,12 @@
 import {
   APP_INITIALIZER,
   ApplicationConfig,
+  ErrorHandler,
   LOCALE_ID,
   PLATFORM_ID,
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
+import { ChunkErrorHandler } from './core/http/chunk-error-handler';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { isPlatformBrowser, registerLocaleData } from '@angular/common';
@@ -25,6 +27,7 @@ registerLocaleData(localeEs, 'es-ES');
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
+    { provide: ErrorHandler, useClass: ChunkErrorHandler },
     { provide: LOCALE_ID, useValue: 'es-ES' },
     provideRouter(routes, withComponentInputBinding()),
     providePrimeNG({
@@ -40,20 +43,6 @@ export const appConfig: ApplicationConfig = {
       useFactory: (platformId: object) => () => {
         if (isPlatformBrowser(platformId)) {
           document.title = environment.appTitle;
-
-          // Reload once when a lazy-loaded chunk fails (stale deployment / server error).
-          // sessionStorage flag prevents an infinite reload loop.
-          window.addEventListener('unhandledrejection', (event) => {
-            const msg: string = (event.reason as Error | undefined)?.message ?? '';
-            if (msg.includes('Failed to fetch dynamically imported module') ||
-                msg.includes('Importing a module script failed')) {
-              const key = 'chunk_reload_attempted';
-              if (!sessionStorage.getItem(key)) {
-                sessionStorage.setItem(key, '1');
-                window.location.reload();
-              }
-            }
-          });
         }
       },
     },
