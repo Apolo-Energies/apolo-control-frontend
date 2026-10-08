@@ -320,7 +320,7 @@
                       @if (row.feedbackApolo) { <span class="line-clamp-2" [title]="row.feedbackApolo">{{ row.feedbackApolo }}</span> }
                       @else { <span class="text-muted-foreground/50">—</span> }
                     </td>
-                    <td class="px-4 py-3"><div class="flex justify-end">@if (row.contratoVinculadoId) {<button (click)="verContrato(row.contratoVinculadoId); $event.stopPropagation()" class="h-7 px-2.5 inline-flex items-center gap-1 rounded-md border border-border text-xs text-muted-foreground hover:bg-accent/40 transition-colors"><ui-icon name="arrow-up-right" [size]="12" />Ver nuevo</button>}</div></td>
+                    <td class="px-4 py-3" (click)="$event.stopPropagation()"><div class="flex justify-end">@if (row.contratoVinculadoId) {<button (click)="openVinculado(row.contratoVinculadoId!)" class="h-7 px-2.5 inline-flex items-center gap-1 rounded-md border border-border text-xs text-muted-foreground hover:bg-accent/40 transition-colors"><ui-icon name="arrow-up-right" [size]="12" />Ver anterior</button>}</div></td>
                   </tr>
                 }
               </tbody>
@@ -352,13 +352,29 @@
   @if (editingContract(); as c) {
     <div class="space-y-4">
       <!-- Read-only summary -->
-      <div class="rounded-lg bg-accent/20 px-3 py-2 text-xs text-muted-foreground space-y-1">
-        <p><span class="font-medium text-foreground">Estado:</span> {{ label(c.estado) }}</p>
-        @if (c.suministros?.length) {
-          <p><span class="font-medium text-foreground">CUPS:</span> {{ c.suministros![0].cups }}</p>
+      <div class="rounded-lg bg-accent/20 px-3 py-2 text-xs text-muted-foreground space-y-2">
+        <div class="flex gap-2">
+          <span class="font-medium text-foreground shrink-0">Estado:</span>
+          <app-status-badge [tone]="tone(c.estado)">{{ label(c.estado) }}</app-status-badge>
+        </div>
+        @if (c.fechaInicio || c.fechaFinPrevista) {
+          <p>
+            <span class="font-medium text-foreground">Período:</span>
+            {{ date(c.fechaInicio) }} — {{ date(c.fechaFinPrevista) }}
+          </p>
         }
-        @if (c.fechaFinPrevista) {
-          <p><span class="font-medium text-foreground">Vence:</span> {{ date(c.fechaFinPrevista) }}</p>
+        @if (c.suministros?.length) {
+          <div>
+            <p class="font-medium text-foreground mb-1">Suministros ({{ c.suministros!.length }}):</p>
+            <ul class="space-y-1">
+              @for (s of c.suministros!; track s.id) {
+                <li class="flex items-center gap-2">
+                  <span class="font-mono">{{ s.cups }}</span>
+                  @if (s.tarifa) { <span class="text-muted-foreground/70">· {{ s.tarifa }}</span> }
+                </li>
+              }
+            </ul>
+          </div>
         }
       </div>
 

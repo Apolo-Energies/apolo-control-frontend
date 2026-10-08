@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -61,7 +60,6 @@ type SortCol = 'clienteNombre' | 'clienteDelegacion' | 'cups' | 'estado'
 })
 export class Renovaciones implements OnDestroy {
   private readonly service    = inject(ContractService);
-  private readonly router     = inject(Router);
   private readonly listState  = inject(ListStateService);
   private readonly notify     = inject(NotificationService);
   private readonly searchChange$ = new Subject<void>();
@@ -215,15 +213,17 @@ export class Renovaciones implements OnDestroy {
     this.load();
   }
 
-  protected verContrato(id: string): void {
-    void this.router.navigate(['/contracts'], { queryParams: { id } });
-  }
-
   protected openEdit(row: Contract): void {
     this.editingContract.set(row);
     this.editFeedbackApolo = row.feedbackApolo ?? '';
     this.editError.set(null);
     this.editOpen.set(true);
+  }
+
+  protected openVinculado(id: string): void {
+    this.service.getById(id).subscribe({
+      next: (c) => this.openEdit(c),
+    });
   }
 
   protected closeEdit(): void {
