@@ -378,6 +378,13 @@ export class Contracts implements OnDestroy {
     this.reload(0);
   }
 
+  protected copyCups(cups: string | null | undefined): void {
+    if (!cups) return;
+    navigator.clipboard.writeText(cups).then(() => {
+      this.notify.success(`CUPS copiado: ${cups}`);
+    });
+  }
+
   constructor() {
     const s = this.listState.get<{ q: string; statusFilter: string; startDate: string; endDate: string; motivoRechazo: string; page: number; size: number; sortField: string; sortDir: 'asc' | 'desc' }>('contracts');
     if (s) {
