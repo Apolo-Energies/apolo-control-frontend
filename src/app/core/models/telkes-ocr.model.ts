@@ -1,5 +1,5 @@
 /** Datos extraidos de una factura electrica via OCR del backend. */
-export interface VibraOcrResult {
+export interface TelkesOcrResult {
   nombre: string | null;
   documentoNum: string | null;
   tipoDocumento: string | null;

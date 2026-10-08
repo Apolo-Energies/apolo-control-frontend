@@ -272,6 +272,42 @@ export const routes: Routes = [
           },
         ],
       },
+      {
+        path: 'telkes',
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+          {
+            path: 'dashboard',
+            loadComponent: () =>
+              import('./features/telkes/dashboard/telkes-dashboard').then((m) => m.TelkesDashboard),
+          },
+          {
+            path: 'altas',
+            loadComponent: () =>
+              import('./features/telkes/altas/telkes-altas').then((m) => m.TelkesAltas),
+          },
+          {
+            path: 'preciario',
+            loadComponent: () =>
+              import('./features/telkes/preciario/telkes-preciario').then((m) => m.TelkesPreciario),
+          },
+          {
+            path: 'tramitacion',
+            loadComponent: () =>
+              import('./features/telkes/tramitacion/telkes-tramitacion').then((m) => m.TelkesTramitacion),
+          },
+          {
+            path: 'impagos',
+            loadComponent: () =>
+              import('./features/telkes/impagos/telkes-impagos').then((m) => m.TelkesImpagos),
+          },
+          {
+            path: 'contrato-servicio',
+            loadComponent: () =>
+              import('./features/telkes/contrato-servicio/telkes-contrato-servicio').then((m) => m.TelkesContratoServicio),
+          },
+        ],
+      },
 
       { path: '**', redirectTo: 'dashboard' },
     ],

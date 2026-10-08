@@ -1,0 +1,254 @@
+<app-page-header title="Impagos" [subtitle]="total() + ' de ' + total() + ' registros'">
+  <a routerLink="/telkes/dashboard" class="text-sm text-muted-foreground hover:text-foreground">← Volver al Dashboard</a>
+  <button (click)="openCreate()" class="ml-auto inline-flex items-center gap-2 rounded-lg bg-danger text-white px-4 py-2 text-sm font-medium hover:opacity-90">
+    <ui-icon name="plus" [size]="16" /> Nuevo Impago
+  </button>
+</app-page-header>
+
+<!-- Filtros -->
+<div class="flex flex-wrap items-center gap-2 mb-4">
+  <div class="relative flex-1 max-w-md">
+    <ui-icon name="search" [size]="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+    <input
+      [(ngModel)]="q" (keyup.enter)="applyFilters()"
+      placeholder="Buscar cliente, factura, colaborador…"
+      class="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-sm bg-input" />
+  </div>
+  <select [(ngModel)]="estadoFilter" (change)="applyFilters()"
+    class="border border-border rounded-lg px-3 py-2 text-sm bg-input">
+    <option value="">Todos los estados</option>
+    @for (e of estadoValues; track e) {<option [value]="e">{{ e }}</option>}
+  </select>
+  <button (click)="applyFilters()" class="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90">
+    Buscar
+  </button>
+</div>
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4">
+    {{ msg }} <button (click)="load()" class="ml-2 underline">Reintentar</button>
+  </div>
+}
+
+@if (loading() && !result()) {
+  <app-table-skeleton [cols]="10" [rows]="8" />
+} @else {
+  <div class="rounded-2xl border border-border bg-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-border text-left text-muted-foreground bg-neutral-soft/50">
+            <th (click)="setSort('fechaDevolucion')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Fecha devolución
+                @if (sortField()==='fechaDevolucion') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('cliente')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Cliente
+                @if (sortField()==='cliente') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('factura')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Factura
+                @if (sortField()==='factura') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('importe')" class="py-3 px-4 font-medium text-right cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Importe
+                @if (sortField()==='importe') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('activoBaja')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Activo/Baja
+                @if (sortField()==='activoBaja') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('estado')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Estado
+                @if (sortField()==='estado') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('colaborador')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Colaborador
+                @if (sortField()==='colaborador') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th (click)="setSort('motivoDevolucion')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
+              <span class="inline-flex items-center gap-1">Motivo devolución
+                @if (sortField()==='motivoDevolucion') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+              </span>
+            </th>
+            <th class="py-3 px-4 font-medium">Comentarios</th>
+            <th class="py-3 px-4 font-medium text-right">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of rows(); track r.id) {
+            <tr class="border-b border-border/50 hover:bg-accent/40">
+              <td class="py-2 px-4">{{ r.fechaDevolucion ?? '—' }}</td>
+              <td class="py-2 px-4">{{ r.cliente ?? '—' }}</td>
+              <td class="py-2 px-4 text-muted-foreground">{{ r.factura ?? '—' }}</td>
+              <td class="py-2 px-4 text-right tabular-nums">{{ fmtEur(r.importe) }}</td>
+              <td class="py-2 px-4">
+                <app-status-badge [tone]="activoTone(r.activoBaja)">{{ r.activoBaja ?? '—' }}</app-status-badge>
+              </td>
+              <td class="py-2 px-4">
+                <select (change)="changeEstado(r, $any($event.target).value)"
+                  class="border border-border rounded-md px-2 py-1 text-xs bg-input">
+                  @for (e of estadoValues; track e) {
+                    <option [value]="e" [selected]="r.estado === e">{{ e }}</option>
+                  }
+                  @if (r.estado && !estadoValues.includes($any(r.estado))) {
+                    <option [value]="r.estado" selected>{{ r.estado }}</option>
+                  }
+                </select>
+              </td>
+              <td class="py-2 px-4">{{ r.colaborador ?? '—' }}</td>
+              <td class="py-2 px-4 text-muted-foreground">{{ r.motivoDevolucion ?? '—' }}</td>
+              <td class="py-2 px-4 text-muted-foreground text-xs max-w-xs truncate">{{ r.comentarios ?? '—' }}</td>
+              <td class="py-2 px-4 text-right whitespace-nowrap">
+                <button (click)="verDetalle(r.id)" class="p-1 hover:bg-info-soft rounded" title="Ver detalle">
+                  <ui-icon name="eye" [size]="16" />
+                </button>
+                <button (click)="openEdit(r)" class="p-1 hover:bg-info-soft rounded ml-1" title="Editar">
+                  <ui-icon name="edit" [size]="16" />
+                </button>
+                <button (click)="askDelete(r)" class="p-1 hover:bg-danger-soft text-danger-fg rounded ml-1" title="Borrar">
+                  <ui-icon name="trash" [size]="16" />
+                </button>
+              </td>
+            </tr>
+          }
+          @if (rows().length === 0) {
+            <tr><td colspan="10" class="py-16">
+              <div class="flex flex-col items-center gap-2 text-muted-foreground">
+                <ui-icon name="search" [size]="40" class="opacity-30"/>
+                <p class="font-medium text-base">Sin impagos</p>
+                <p class="text-xs">Probá ajustar los filtros o crear uno nuevo</p>
+              </div>
+            </td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (totalPages() > 1) {
+      <div class="border-t border-border">
+        <app-pagination
+          [page]="page()" [pageSize]="size()"
+          [totalElements]="total()" [totalPages]="totalPages()"
+          (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+      </div>
+    }
+  </div>
+}
+
+<!-- Confirm delete -->
+<app-confirm-dialog
+  [open]="confirmOpen()"
+  title="Eliminar impago"
+  [message]="'¿Eliminar el impago de ' + (pendingDelete()?.cliente ?? '') + '?'"
+  confirmLabel="Eliminar"
+  [loading]="deleting()"
+  tone="danger"
+  (confirm)="doDelete()"
+  (cancel)="cancelDelete()" />
+
+<!-- Detail modal -->
+<app-form-dialog
+  [open]="detailOpen()"
+  [title]="detailData()?.cliente ?? 'Detalle de impago'"
+  [subtitle]="detailData()?.factura ?? null"
+  icon="eye"
+  [readOnly]="true"
+  width="560px"
+  (cancel)="closeDetail()">
+  @if (detailLoading()) {
+    <div class="py-8 text-center text-muted-foreground">Cargando…</div>
+  } @else if (detailData(); as d) {
+    <div class="space-y-3 py-2 text-sm">
+      <div class="grid grid-cols-2 gap-3">
+        <div><dt class="text-xs text-muted-foreground">Fecha devolución</dt><dd class="tabular-nums">{{ d.fechaDevolucion ?? '—' }}</dd></div>
+        <div><dt class="text-xs text-muted-foreground">Importe</dt><dd class="font-medium tabular-nums">{{ fmtEur(d.importe) }}</dd></div>
+        <div><dt class="text-xs text-muted-foreground">Estado</dt><dd><app-status-badge [tone]="estadoTone(d.estado)">{{ d.estado ?? '—' }}</app-status-badge></dd></div>
+        <div><dt class="text-xs text-muted-foreground">Activo/Baja</dt><dd><app-status-badge [tone]="activoTone(d.activoBaja)">{{ d.activoBaja ?? '—' }}</app-status-badge></dd></div>
+        <div><dt class="text-xs text-muted-foreground">Colaborador</dt><dd>{{ d.colaborador ?? '—' }}</dd></div>
+        <div><dt class="text-xs text-muted-foreground">Motivo devolución</dt><dd>{{ d.motivoDevolucion ?? '—' }}</dd></div>
+      </div>
+      @if (d.comentarios) {
+        <div>
+          <dt class="text-xs text-muted-foreground">Comentarios</dt>
+          <dd class="whitespace-pre-wrap">{{ d.comentarios }}</dd>
+        </div>
+      }
+    </div>
+  }
+</app-form-dialog>
+
+<!-- Dialog crear/editar -->
+<app-form-dialog
+  [open]="dialogOpen()" [title]="editing() ? 'Editar impago' : 'Nuevo impago'"
+  [saving]="submitting()" [canSave]="form.valid"
+  width="760px"
+  (cancel)="closeDialog()" (save)="submit()">
+  <form [formGroup]="form" class="space-y-4">
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="text-sm font-medium">Fecha devolución</label>
+        <input type="date" formControlName="fechaDevolucion" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div class="relative">
+        <label class="text-sm font-medium">Cliente *</label>
+        <input formControlName="cliente"
+          (focus)="showClientesDropdown.set(true)"
+          (input)="onClienteInput($event); showClientesDropdown.set(true)"
+          (blur)="onClienteBlur()"
+          placeholder="Escribir o elegir de la lista…"
+          autocomplete="off"
+          class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        @if (showClientesDropdown() && filteredClientes().length > 0) {
+          <div class="absolute z-20 mt-1 w-full max-h-60 overflow-y-auto rounded-lg border border-border bg-card shadow-lg">
+            @for (c of filteredClientes(); track c) {
+              <button type="button" (mousedown)="pickCliente(c)"
+                class="w-full text-left px-3 py-2 text-sm hover:bg-accent">
+                {{ c }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+      <div>
+        <label class="text-sm font-medium">Factura</label>
+        <input formControlName="factura" placeholder="Factura" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Importe (€)</label>
+        <input type="number" step="0.01" formControlName="importe" placeholder="Importe (€)" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Activo/Baja</label>
+        <select formControlName="activoBaja" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
+          <option value="Activo">Activo</option>
+          <option value="Baja">Baja</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Estado</label>
+        <select formControlName="estado" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
+          @for (e of estadoValues; track e) {<option [value]="e">{{ e }}</option>}
+        </select>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Colaborador</label>
+        <input formControlName="colaborador" placeholder="Colaborador" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Motivo devolución</label>
+        <input formControlName="motivoDevolucion" placeholder="Motivo devolución" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+    </div>
+    <div>
+      <label class="text-sm font-medium">Comentarios</label>
+      <textarea formControlName="comentarios" rows="3" placeholder="Comentarios" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"></textarea>
+    </div>
+  </form>
+</app-form-dialog>

@@ -1,0 +1,231 @@
+<app-page-header title="Preciario" [subtitle]="all().length + ' tarifas registradas'">
+  <a routerLink="/telkes/dashboard" class="text-sm text-muted-foreground hover:text-foreground">← Volver al Dashboard</a>
+  <button (click)="openCreate()" class="ml-auto inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90">
+    <ui-icon name="plus" [size]="16" />
+    Nueva Tarifa
+  </button>
+</app-page-header>
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4">
+    {{ msg }} <button (click)="load()" class="ml-2 underline">Reintentar</button>
+  </div>
+}
+
+@if (loading()) {
+  <app-table-skeleton [cols]="8" [rows]="4" />
+} @else {
+  <!-- 2.0TD -->
+  <section class="rounded-2xl border border-border bg-card p-6 mb-6">
+    <header class="mb-4 flex items-center gap-2">
+      <app-status-badge tone="info">2.0TD</app-status-badge>
+      <h2 class="text-lg font-bold">Tarifas 2.0TD — Periodos P1, P2, P3</h2>
+    </header>
+    @if (tarifas20().length === 0) {
+      <div class="text-center py-8 text-muted-foreground">Sin tarifas 2.0TD</div>
+    } @else {
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-border text-muted-foreground">
+            <th class="py-2 text-left font-medium">Nombre</th>
+            <th class="py-2 font-medium">P1 Energía</th>
+            <th class="py-2 font-medium">P2 Energía</th>
+            <th class="py-2 font-medium">P3 Energía</th>
+            <th class="py-2 font-medium">P1 Potencia</th>
+            <th class="py-2 font-medium">P2 Potencia</th>
+            <th class="py-2 font-medium">P3 Potencia</th>
+            <th class="py-2 text-right font-medium">Acciones</th>
+          </tr>
+          <tr class="text-xs text-muted-foreground">
+            <td></td>
+            <td class="text-center">€/kWh</td><td class="text-center">€/kWh</td><td class="text-center">€/kWh</td>
+            <td class="text-center">€/kW·año</td><td class="text-center">€/kW·año</td><td class="text-center">€/kW·año</td>
+            <td></td>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of tarifas20(); track t.id) {
+            <tr class="border-b border-border/50 hover:bg-accent/40">
+              <td class="py-2">{{ t.nombre }}</td>
+              <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p1Energia) }}</td>
+              <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p2Energia) }}</td>
+              <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p3Energia) }}</td>
+              <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p1Potencia) }}</td>
+              <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p2Potencia) }}</td>
+              <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p3Potencia) }}</td>
+              <td class="py-2 text-right">
+                <button (click)="verDetalle(t.id)" class="p-1 hover:bg-info-soft rounded" title="Ver detalle">
+                  <ui-icon name="eye" [size]="16" />
+                </button>
+                <button (click)="openEdit(t)" class="p-1 hover:bg-info-soft rounded ml-1" title="Editar">
+                  <ui-icon name="edit" [size]="16" />
+                </button>
+                <button (click)="askDelete(t)" class="p-1 hover:bg-danger-soft text-danger-fg rounded ml-1" title="Borrar">
+                  <ui-icon name="trash" [size]="16" />
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </section>
+
+  <!-- 3.0TD -->
+  <section class="rounded-2xl border border-border bg-card p-6">
+    <header class="mb-4 flex items-center gap-2">
+      <app-status-badge tone="purple">3.0TD</app-status-badge>
+      <h2 class="text-lg font-bold">Tarifas 3.0TD — Periodos P1 a P6</h2>
+    </header>
+    @if (tarifas30().length === 0) {
+      <div class="text-center py-8 text-muted-foreground">Sin tarifas 3.0TD</div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-border text-muted-foreground">
+              <th class="py-2 text-left font-medium">Nombre</th>
+              @for (p of [1,2,3,4,5,6]; track p) {<th class="py-2 font-medium">P{{p}} Energía</th>}
+              @for (p of [1,2,3,4,5,6]; track p) {<th class="py-2 font-medium">P{{p}} Potencia</th>}
+              <th class="py-2 text-right font-medium">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of tarifas30(); track t.id) {
+              <tr class="border-b border-border/50 hover:bg-accent/40">
+                <td class="py-2">{{ t.nombre }}</td>
+                <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p1Energia) }}</td>
+                <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p2Energia) }}</td>
+                <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p3Energia) }}</td>
+                <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p4Energia) }}</td>
+                <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p5Energia) }}</td>
+                <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p6Energia) }}</td>
+                <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p1Potencia) }}</td>
+                <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p2Potencia) }}</td>
+                <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p3Potencia) }}</td>
+                <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p4Potencia) }}</td>
+                <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p5Potencia) }}</td>
+                <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p6Potencia) }}</td>
+                <td class="py-2 text-right">
+                  <button (click)="openEdit(t)" class="p-1 hover:bg-info-soft rounded" title="Editar">
+                    <ui-icon name="edit" [size]="16" />
+                  </button>
+                  <button (click)="askDelete(t)" class="p-1 hover:bg-danger-soft text-danger-fg rounded ml-1" title="Borrar">
+                    <ui-icon name="trash" [size]="16" />
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+}
+
+<!-- Confirm delete -->
+<app-confirm-dialog
+  [open]="confirmOpen()"
+  title="Eliminar tarifa"
+  [message]="'¿Eliminar la tarifa &quot;' + (pendingDelete()?.nombre ?? '') + '&quot;?'"
+  confirmLabel="Eliminar"
+  [loading]="deleting()"
+  tone="danger"
+  (confirm)="doDelete()"
+  (cancel)="cancelDelete()" />
+
+<!-- Detail modal -->
+<app-form-dialog
+  [open]="detailOpen()"
+  [title]="detailData()?.nombre ?? 'Detalle de tarifa'"
+  [subtitle]="detailData()?.tipo ?? null"
+  icon="eye"
+  [readOnly]="true"
+  width="560px"
+  (cancel)="closeDetail()">
+  @if (detailLoading()) {
+    <div class="py-8 text-center text-muted-foreground">Cargando…</div>
+  } @else if (detailData(); as d) {
+    <div class="space-y-4 py-2">
+      <div class="flex items-center gap-2">
+        <app-status-badge [tone]="d.tipo === '2.0TD' ? 'info' : 'purple'">{{ d.tipo }}</app-status-badge>
+        <app-status-badge [tone]="d.activa ? 'success' : 'neutral'">{{ d.activa ? 'Activa' : 'Inactiva' }}</app-status-badge>
+      </div>
+      <div>
+        <h4 class="text-sm font-semibold mb-2">Energía (€/kWh)</h4>
+        <div class="grid gap-2" [class.grid-cols-3]="d.tipo === '2.0TD'" [class.grid-cols-6]="d.tipo !== '2.0TD'">
+          @for (p of (d.tipo === '2.0TD' ? [1,2,3] : [1,2,3,4,5,6]); track p) {
+            <div class="rounded-lg border border-border bg-neutral-soft/50 p-2 text-center">
+              <div class="text-xs text-muted-foreground">P{{ p }}</div>
+              <div class="text-sm font-medium tabular-nums text-purple-fg">{{ fmt($any(d)['p' + p + 'Energia']) }}</div>
+            </div>
+          }
+        </div>
+      </div>
+      <div>
+        <h4 class="text-sm font-semibold mb-2">Potencia (€/kW·año)</h4>
+        <div class="grid gap-2" [class.grid-cols-3]="d.tipo === '2.0TD'" [class.grid-cols-6]="d.tipo !== '2.0TD'">
+          @for (p of (d.tipo === '2.0TD' ? [1,2,3] : [1,2,3,4,5,6]); track p) {
+            <div class="rounded-lg border border-border bg-neutral-soft/50 p-2 text-center">
+              <div class="text-xs text-muted-foreground">P{{ p }}</div>
+              <div class="text-sm font-medium tabular-nums text-purple-fg">{{ fmt($any(d)['p' + p + 'Potencia']) }}</div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</app-form-dialog>
+
+<!-- Dialog crear/editar -->
+<app-form-dialog
+  [open]="dialogOpen()" [title]="editing() ? 'Editar tarifa' : 'Nueva tarifa'"
+  [saving]="submitting()" [canSave]="form.valid"
+  width="640px"
+  (cancel)="closeDialog()" (save)="submit()">
+  <form [formGroup]="form" class="space-y-4">
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="text-sm font-medium">Nombre *</label>
+        <input formControlName="nombre" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Tipo *</label>
+        <select formControlName="tipo" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
+          <option value="2.0TD">2.0TD</option>
+          <option value="3.0TD">3.0TD</option>
+        </select>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <input type="checkbox" formControlName="activa" id="tarifa-activa" />
+      <label for="tarifa-activa" class="text-sm">Activa</label>
+    </div>
+    <fieldset class="border border-border rounded-lg p-3">
+      <legend class="text-sm font-semibold px-2">Energía (€/kWh)</legend>
+      <div class="grid gap-2" [class.grid-cols-3]="form.value.tipo === '2.0TD'" [class.grid-cols-6]="form.value.tipo !== '2.0TD'">
+        @for (p of (form.value.tipo === '2.0TD' ? [1,2,3] : [1,2,3,4,5,6]); track p) {
+          <div>
+            <label class="text-xs text-muted-foreground">P{{p}}</label>
+            <input type="text" inputmode="decimal" [formControlName]="'p' + p + 'Energia'"
+              class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"
+              placeholder="0.000000"/>
+          </div>
+        }
+      </div>
+    </fieldset>
+    <fieldset class="border border-border rounded-lg p-3">
+      <legend class="text-sm font-semibold px-2">Potencia (€/kW·año)</legend>
+      <div class="grid gap-2" [class.grid-cols-3]="form.value.tipo === '2.0TD'" [class.grid-cols-6]="form.value.tipo !== '2.0TD'">
+        @for (p of (form.value.tipo === '2.0TD' ? [1,2,3] : [1,2,3,4,5,6]); track p) {
+          <div>
+            <label class="text-xs text-muted-foreground">P{{p}}</label>
+            <input type="text" inputmode="decimal" [formControlName]="'p' + p + 'Potencia'"
+              class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"
+              placeholder="0.000000"/>
+          </div>
+        }
+      </div>
+    </fieldset>
+  </form>
+</app-form-dialog>
