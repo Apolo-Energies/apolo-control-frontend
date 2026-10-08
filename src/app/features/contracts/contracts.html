@@ -115,7 +115,7 @@
 }
 
 @if (loading() && rows().length === 0) {
-  <app-table-skeleton [cols]="12" [rows]="8" />
+  <app-table-skeleton [cols]="10" [rows]="8" />
 } @else {
   <div class="relative bg-card border border-border rounded-xl overflow-hidden">
     <app-loading-overlay [loading]="loading() && rows().length > 0" message="Actualizando…" />
@@ -132,8 +132,24 @@
                 } @else { <ui-icon name="chevron-down" [size]="12" class="opacity-30" /> }
               </span>
             </th>
-            <th class="px-4 py-3 text-left font-semibold">CUPS</th>
-            <th class="px-3 py-3 text-center font-semibold w-[90px]">Válido</th>
+            <th class="px-4 py-3 text-left font-semibold cursor-pointer select-none hover:text-foreground"
+                (click)="setSort('cups')">
+              <span class="inline-flex items-center gap-1">
+                CUPS
+                @if (sortField() === 'cups') {
+                  <ui-icon [name]="sortDir() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="12" class="text-primary" />
+                } @else { <ui-icon name="chevron-down" [size]="12" class="opacity-30" /> }
+              </span>
+            </th>
+            <th class="px-3 py-3 text-center font-semibold w-[90px] cursor-pointer select-none hover:text-foreground"
+                (click)="setSort('validado')">
+              <span class="inline-flex items-center justify-center gap-1">
+                Válido
+                @if (sortField() === 'validado') {
+                  <ui-icon [name]="sortDir() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="12" class="text-primary" />
+                } @else { <ui-icon name="chevron-down" [size]="12" class="opacity-30" /> }
+              </span>
+            </th>
             <th class="px-4 py-3 text-left font-semibold">Servicio</th>
             <th class="px-4 py-3 text-left font-semibold cursor-pointer select-none hover:text-foreground"
                 (click)="setSort('estado')">
@@ -162,10 +178,24 @@
                 } @else { <ui-icon name="chevron-down" [size]="12" class="opacity-30" /> }
               </span>
             </th>
-            <th class="px-4 py-3 text-right font-semibold">Consumo (MWh)</th>
-            <th class="px-4 py-3 text-right font-semibold">Margen bruto</th>
-            <th class="px-4 py-3 text-right font-semibold">Margen neto</th>
-            <th class="px-4 py-3 text-left font-semibold">Scoring</th>
+            <th class="px-4 py-3 text-right font-semibold cursor-pointer select-none hover:text-foreground"
+                (click)="setSort('consumoContrato')">
+              <span class="inline-flex items-center justify-end gap-1">
+                Consumo (MWh)
+                @if (sortField() === 'consumoContrato') {
+                  <ui-icon [name]="sortDir() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="12" class="text-primary" />
+                } @else { <ui-icon name="chevron-down" [size]="12" class="opacity-30" /> }
+              </span>
+            </th>
+            <th class="px-4 py-3 text-left font-semibold cursor-pointer select-none hover:text-foreground"
+                (click)="setSort('scoring.puntuacion')">
+              <span class="inline-flex items-center gap-1">
+                Scoring
+                @if (sortField() === 'scoring.puntuacion') {
+                  <ui-icon [name]="sortDir() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="12" class="text-primary" />
+                } @else { <ui-icon name="chevron-down" [size]="12" class="opacity-30" /> }
+              </span>
+            </th>
             <th class="px-4 py-3 text-right font-semibold">Acciones</th>
           </tr>
         </thead>
@@ -178,15 +208,25 @@
                   <p class="text-xs text-muted-foreground font-mono">{{ row.clienteNif }}</p>
                 }
               </td>
-              <td class="px-4 py-3">
+              <td class="px-4 py-3" (click)="$event.stopPropagation()">
                 @if (row.suministros && row.suministros.length > 0) {
                   <div class="flex flex-col gap-0.5">
                     @for (s of row.suministros; track s.id) {
-                      <span class="font-mono text-xs text-foreground/80">{{ s.cups }}</span>
+                      <button type="button"
+                        (click)="copyCups(s.cups)"
+                        class="font-mono text-xs text-foreground/80 hover:text-primary text-left transition-colors"
+                        title="Copiar CUPS">
+                        {{ s.cups }}
+                      </button>
                     }
                   </div>
                 } @else {
-                  <span class="font-mono text-xs text-foreground/80">{{ text(row.cups) }}</span>
+                  <button type="button"
+                    (click)="copyCups(row.cups)"
+                    class="font-mono text-xs text-foreground/80 hover:text-primary text-left transition-colors"
+                    title="Copiar CUPS">
+                    {{ text(row.cups) }}
+                  </button>
                 }
               </td>
               <td class="px-3 py-3 text-center" (click)="$event.stopPropagation()">
@@ -217,12 +257,6 @@
               <td class="px-4 py-3 text-foreground/80">{{ date(row.fechaFinPrevista) }}</td>
               <td class="px-4 py-3 text-right text-sm text-foreground">
                 {{ consumo(row.consumoTotal) }}
-              </td>
-              <td class="px-4 py-3 text-right font-medium text-foreground">
-                {{ euro(row.margenBruto) }}
-              </td>
-              <td class="px-4 py-3 text-right font-medium text-foreground">
-                {{ euro(row.margenNeto) }}
               </td>
               <td class="px-4 py-3">
                 @if (row.scoring != null) {
@@ -276,7 +310,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="12" class="px-4 py-10 text-center text-sm text-muted-foreground">
+              <td colspan="10" class="px-4 py-10 text-center text-sm text-muted-foreground">
                 Sin contratos para los filtros seleccionados.
               </td>
             </tr>
@@ -1091,6 +1125,16 @@
         formControlName="fechaFinPrevista"
         class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
       />
+    </label>
+
+    <label class="flex flex-col gap-1.5 sm:col-span-2">
+      <span class="text-xs font-medium text-foreground/80">Feedback Apolo</span>
+      <textarea
+        formControlName="feedbackApolo"
+        rows="3"
+        placeholder="Notas internas de Apolo…"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+      ></textarea>
     </label>
 
     <!-- Ofertas económicas en edición -->

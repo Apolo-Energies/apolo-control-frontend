@@ -132,6 +132,7 @@ export interface ContractPayload {
   estado?: ContractStatus | null;
   fechaEstado?: string | null;
   motivoRechazo?: string | null;
+  feedbackApolo?: string | null;
   margenBruto?: number | null;
   margenNeto?: number | null;
   margenCobros?: number | null;

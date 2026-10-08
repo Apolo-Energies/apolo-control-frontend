@@ -343,6 +343,7 @@ export class Contracts implements OnDestroy {
     fechaInicio: this.fb.nonNullable.control(''),
     fechaFinPrevista: this.fb.nonNullable.control(''),
     motivoRechazo: this.fb.nonNullable.control(''),
+    feedbackApolo: this.fb.nonNullable.control(''),
   });
 
   protected readonly editEstado = toSignal(
@@ -376,6 +377,13 @@ export class Contracts implements OnDestroy {
       this.sortDir.set('asc');
     }
     this.reload(0);
+  }
+
+  protected copyCups(cups: string | null | undefined): void {
+    if (!cups) return;
+    navigator.clipboard.writeText(cups).then(() => {
+      this.notify.success(`CUPS copiado: ${cups}`);
+    });
   }
 
   constructor() {
@@ -661,6 +669,7 @@ export class Contracts implements OnDestroy {
       fechaInicio: contract.fechaInicio ?? '',
       fechaFinPrevista: contract.fechaFinPrevista ?? '',
       motivoRechazo: motivo,
+      feedbackApolo: contract.feedbackApolo ?? '',
     });
     const savedOfertas = contract.ofertas ?? [];
     if (savedOfertas.length > 0) {
@@ -818,6 +827,7 @@ export class Contracts implements OnDestroy {
         descuento: v.descuento,
         estado: v.estado || null,
         motivoRechazo: v.estado === 'ko' ? (v.motivoRechazo || null) : null,
+        feedbackApolo: v.feedbackApolo || null,
         fechaInicio: v.fechaInicio || null,
         fechaFinPrevista: v.fechaFinPrevista || null,
         ofertas: dlgToContractOfertas(this.fOfertas(), this.fOfertaTar20(), this.fOfertaTar30(), this.fOfertaTar61()),

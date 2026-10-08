@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -11,8 +10,10 @@ import { TableSkeleton } from '../../../shared/components/table-skeleton/table-s
 import { StatusBadge, StatusTone } from '../../../shared/components/status-badge/status-badge';
 import { Pagination } from '../../../shared/components/pagination/pagination';
 import { Icon } from '../../../shared/icons/icon';
+import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
 import { ContractService } from '../../../core/services/contract.service';
 import { ListStateService } from '../../../core/services/list-state.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import {
   Contract,
   ContractRenovaciones,
@@ -54,18 +55,25 @@ type SortCol = 'clienteNombre' | 'clienteDelegacion' | 'cups' | 'estado'
 @Component({
   selector: 'app-renovaciones',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PageHeader, TableSkeleton, StatusBadge, Pagination, Icon, FormsModule],
+  imports: [PageHeader, TableSkeleton, StatusBadge, Pagination, Icon, FormsModule, FormDialog],
   templateUrl: './renovaciones.html',
 })
 export class Renovaciones implements OnDestroy {
   private readonly service    = inject(ContractService);
-  private readonly router     = inject(Router);
   private readonly listState  = inject(ListStateService);
+  private readonly notify     = inject(NotificationService);
   private readonly searchChange$ = new Subject<void>();
 
   protected readonly loading = signal(false);
   protected readonly data = signal<ContractRenovaciones | null>(null);
   protected readonly error = signal<string | null>(null);
+
+  // Edit dialog
+  protected readonly editOpen = signal(false);
+  protected readonly editingContract = signal<Contract | null>(null);
+  protected editFeedbackApolo = '';
+  protected readonly editSubmitting = signal(false);
+  protected readonly editError = signal<string | null>(null);
 
   // Pagination
   protected readonly vPage = signal(0);
@@ -205,12 +213,69 @@ export class Renovaciones implements OnDestroy {
     this.load();
   }
 
-  protected renovar(contract: Contract): void {
-    void this.router.navigate(['/contracts'], { queryParams: { renovar: contract.id } });
+  protected openEdit(row: Contract): void {
+    this.editingContract.set(row);
+    this.editFeedbackApolo = row.feedbackApolo ?? '';
+    this.editError.set(null);
+    this.editOpen.set(true);
   }
 
-  protected verContrato(id: string): void {
-    void this.router.navigate(['/contracts'], { queryParams: { id } });
+  protected openVinculado(id: string): void {
+    this.service.getById(id).subscribe({
+      next: (c) => this.openEdit(c),
+    });
+  }
+
+  protected closeEdit(): void {
+    this.editOpen.set(false);
+    this.editingContract.set(null);
+  }
+
+  protected submitEdit(): void {
+    const c = this.editingContract();
+    if (!c) return;
+    this.editSubmitting.set(true);
+    this.editError.set(null);
+    this.service.update(c.id, {
+      clienteId: c.clienteId,
+      servicio: c.servicio ?? null,
+      campana: c.campana ?? null,
+      descuento: c.descuento,
+      estado: c.estado,
+      fechaInicio: c.fechaInicio ?? null,
+      fechaFinPrevista: c.fechaFinPrevista ?? null,
+      motivoRechazo: c.motivoRechazo ?? null,
+      feedbackApolo: this.editFeedbackApolo || null,
+      ofertas: c.ofertas ?? undefined,
+    }).subscribe({
+      next: (updated) => {
+        this.data.update(d => {
+          if (!d) return d;
+          const patch = (rows: Contract[]) =>
+            rows.map(r => r.id === updated.id ? { ...r, feedbackApolo: updated.feedbackApolo } : r);
+          return {
+            ...d,
+            vencidos:  { ...d.vencidos,  content: patch(d.vencidos.content) },
+            porVencer: { ...d.porVencer, content: patch(d.porVencer.content) },
+            renovados: { ...d.renovados, content: patch(d.renovados.content) },
+          };
+        });
+        this.editSubmitting.set(false);
+        this.notify.success('Contrato actualizado');
+        this.closeEdit();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.editSubmitting.set(false);
+        this.editError.set(extractMessage(err));
+      },
+    });
+  }
+
+  protected copyCups(cups: string | null | undefined): void {
+    if (!cups) return;
+    navigator.clipboard.writeText(cups).then(() => {
+      this.notify.success(`CUPS copiado: ${cups}`);
+    });
   }
 
   // ── Sort & filter ─────────────────────────────────────────────────────────
