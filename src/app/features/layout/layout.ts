@@ -76,7 +76,7 @@ export class Layout {
       {
         title: 'TELKES',
         switchable: true,
-        switchIcon: 'bolt',
+        switchIcon: 'flame',
         items: [
           { label: 'Dashboard', url: '/telkes/dashboard', icon: 'layout-dashboard' as const },
           {
