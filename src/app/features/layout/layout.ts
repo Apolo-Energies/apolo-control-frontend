@@ -49,6 +49,7 @@ export class Layout {
           { label: 'Suministros', url: '/supplies', icon: 'bolt' },
           { label: 'Scoring', url: '/scoring', icon: 'sparkles' },
           { label: 'Facturas Contab.', url: '/facturas-contabilidad', icon: 'receipt-x' },
+          { label: 'Facturación Gas', url: '/facturacion-gas', icon: 'flame' },
           { label: 'Pagos y Liquid.', url: '/pagos-liquidacion', icon: 'wallet' },
           { label: 'Rechazos e Incid.', url: '/rechazos', icon: 'alert-triangle' },
           { label: 'Cambios', url: '/cambios', icon: 'refresh-cw' },

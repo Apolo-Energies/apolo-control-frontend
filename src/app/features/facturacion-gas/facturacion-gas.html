@@ -1,0 +1,524 @@
+<app-page-header title="Facturación Gas" subtitle="Datos de facturación gas desde Quixotic">
+  <ng-container actions>
+    <button
+      (click)="enviarAhora()"
+      [disabled]="sending()"
+      class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors disabled:opacity-50">
+      @if (sending()) {
+        <ui-icon name="loader" [size]="16" class="animate-spin" />Enviando...
+      } @else {
+        <ui-icon name="upload" [size]="16" />Enviar ahora
+      }
+    </button>
+  </ng-container>
+</app-page-header>
+
+<!-- Envío rápido (fechas) -->
+<div class="mx-4 mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card px-4 py-3">
+  <div class="flex flex-col gap-1">
+    <label class="text-xs font-medium text-muted-foreground">Desde</label>
+    <input type="date" [(ngModel)]="envioDesde"
+      class="h-8 rounded-md border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+  </div>
+  <div class="flex flex-col gap-1">
+    <label class="text-xs font-medium text-muted-foreground">Hasta</label>
+    <input type="date" [(ngModel)]="envioHasta"
+      class="h-8 rounded-md border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+  </div>
+  <p class="text-xs text-muted-foreground">Selecciona el rango y pulsa "Enviar ahora"</p>
+</div>
+
+<!-- Tabs -->
+<div class="mx-4 mb-4 flex gap-1 rounded-lg border border-border bg-muted/30 p-1 w-fit">
+  @for (tab of tabs; track tab.id) {
+    <button
+      (click)="setTab(tab.id)"
+      [class.bg-background]="activeTab() === tab.id"
+      [class.shadow-sm]="activeTab() === tab.id"
+      [class.text-foreground]="activeTab() === tab.id"
+      [class.text-muted-foreground]="activeTab() !== tab.id"
+      class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all">
+      <ui-icon [name]="tab.icon" [size]="14" />
+      {{ tab.label }}
+    </button>
+  }
+</div>
+
+<!-- ── Tab: Facturas ────────────────────────────────────────────────────── -->
+@if (activeTab() === 'facturas') {
+  <!-- Filtros -->
+  <div class="mx-4 mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card px-4 py-3">
+    <div class="flex flex-col gap-1">
+      <label class="text-xs font-medium text-muted-foreground">Desde</label>
+      <input type="date" [(ngModel)]="facturasDesde"
+        class="h-8 rounded-md border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label class="text-xs font-medium text-muted-foreground">Hasta</label>
+      <input type="date" [(ngModel)]="facturasHasta"
+        class="h-8 rounded-md border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+    </div>
+    <button (click)="loadFacturas()"
+      class="inline-flex items-center gap-1 h-8 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+      <ui-icon name="search" [size]="14" />Buscar
+    </button>
+    @if (!loadingFacturas() && facturas().length) {
+      <span class="text-sm text-muted-foreground">{{ facturas().length }} facturas</span>
+    }
+  </div>
+
+  @if (loadingFacturas()) {
+    <div class="mx-4 flex items-center gap-2 text-muted-foreground">
+      <ui-icon name="loader" [size]="18" class="animate-spin" />Cargando facturas...
+    </div>
+  } @else if (facturasError()) {
+    <div class="mx-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {{ facturasError() }}
+    </div>
+  } @else if (!facturas().length) {
+    <div class="mx-4 rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground text-sm">
+      Sin facturas en el período seleccionado
+    </div>
+  } @else {
+    <!-- KPIs -->
+    <div class="mx-4 mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div class="rounded-lg border border-border bg-card px-4 py-3">
+        <p class="text-xs text-muted-foreground">Facturas</p>
+        <p class="text-2xl font-semibold">{{ facturas().length }}</p>
+      </div>
+      <div class="rounded-lg border border-border bg-card px-4 py-3">
+        <p class="text-xs text-muted-foreground">Total facturado</p>
+        <p class="text-2xl font-semibold">{{ fmt(facturasTotal) }} €</p>
+      </div>
+      <div class="rounded-lg border border-border bg-card px-4 py-3">
+        <p class="text-xs text-muted-foreground">Pendiente</p>
+        <p class="text-2xl font-semibold text-orange-600 dark:text-orange-400">{{ fmt(facturasPendiente) }} €</p>
+      </div>
+      <div class="rounded-lg border border-border bg-card px-4 py-3">
+        <p class="text-xs text-muted-foreground">Emitidas</p>
+        <p class="text-2xl font-semibold text-green-600 dark:text-green-400">{{ facturasEmitidasCount }}</p>
+      </div>
+    </div>
+
+    <!-- Tabla facturas -->
+    <div class="mx-4 overflow-x-auto rounded-lg border border-border">
+      <table class="w-full min-w-max text-sm">
+        <thead class="bg-muted/50">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Nº Factura</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Fecha Emisión</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Vencimiento</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Tipo</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Estado</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Validación</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-muted-foreground whitespace-nowrap">Base Imp.</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-muted-foreground whitespace-nowrap">IVA</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-muted-foreground whitespace-nowrap">Total</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-muted-foreground whitespace-nowrap">Pagado</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-muted-foreground whitespace-nowrap">Pendiente</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          @for (f of facturas(); track f.id) {
+            <tr class="hover:bg-accent/30 transition-colors">
+              <td class="px-4 py-2.5 text-xs font-mono font-medium whitespace-nowrap">
+                {{ f.legal_document_number || '—' }}
+              </td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap">{{ formatDate(f.issued_date) }}</td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap">{{ formatDate(f.due_date) }}</td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap">
+                @if (f.business_invoice_type === 'b70_R') {
+                  <span class="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">Rectificativa</span>
+                } @else {
+                  <span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Normal</span>
+                }
+              </td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap">
+                @if (f.invoice_status === 'issued') {
+                  <span class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                    <ui-icon name="check-circle" [size]="10" />Emitida
+                  </span>
+                } @else if (f.invoice_status === 'cancelled') {
+                  <span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                    <ui-icon name="circle-x" [size]="10" />Cancelada
+                  </span>
+                } @else {
+                  <span class="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{{ f.invoice_status }}</span>
+                }
+              </td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap">
+                @if (f.validation_status === 'correct') {
+                  <span class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                    <ui-icon name="check" [size]="10" />Correcto
+                  </span>
+                } @else if (f.validation_status === 'error') {
+                  <span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                    <ui-icon name="alert-triangle" [size]="10" />Error
+                  </span>
+                } @else {
+                  <span class="text-muted-foreground">—</span>
+                }
+              </td>
+              <td class="px-4 py-2.5 text-xs text-right whitespace-nowrap">{{ fmt(f.taxable_base_amount) }} €</td>
+              <td class="px-4 py-2.5 text-xs text-right whitespace-nowrap">{{ fmt(f.tax_amount) }} €</td>
+              <td class="px-4 py-2.5 text-xs text-right font-semibold whitespace-nowrap">{{ fmt(f.total_amount) }} €</td>
+              <td class="px-4 py-2.5 text-xs text-right whitespace-nowrap text-green-600 dark:text-green-400">{{ fmt(f.paid_amount) }} €</td>
+              <td class="px-4 py-2.5 text-xs text-right whitespace-nowrap"
+                [class.text-orange-600]="f.pending_amount > 0"
+                [class.dark:text-orange-400]="f.pending_amount > 0">
+                {{ fmt(f.pending_amount) }} €
+              </td>
+            </tr>
+          }
+        </tbody>
+        <!-- Totales -->
+        <tfoot class="border-t-2 border-border bg-muted/30">
+          <tr>
+            <td colspan="6" class="px-4 py-2 text-xs font-medium text-muted-foreground">Totales</td>
+            <td class="px-4 py-2 text-xs text-right font-semibold">{{ fmt(facturasBaseTotal) }} €</td>
+            <td class="px-4 py-2 text-xs text-right font-semibold">{{ fmt(facturasIvaTotal) }} €</td>
+            <td class="px-4 py-2 text-xs text-right font-bold">{{ fmt(facturasTotal) }} €</td>
+            <td class="px-4 py-2 text-xs text-right font-semibold text-green-600 dark:text-green-400">{{ fmt(facturasPagadoTotal) }} €</td>
+            <td class="px-4 py-2 text-xs text-right font-semibold text-orange-600 dark:text-orange-400">{{ fmt(facturasPendiente) }} €</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  }
+}
+
+<!-- ── Tab: Movimientos ──────────────────────────────────────────────────── -->
+@if (activeTab() === 'movimientos') {
+  <!-- Filtros -->
+  <div class="mx-4 mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card px-4 py-3">
+    <div class="flex flex-col gap-1">
+      <label class="text-xs font-medium text-muted-foreground">Desde</label>
+      <input type="date" [(ngModel)]="movimientosDesde"
+        class="h-8 rounded-md border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label class="text-xs font-medium text-muted-foreground">Hasta</label>
+      <input type="date" [(ngModel)]="movimientosHasta"
+        class="h-8 rounded-md border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+    </div>
+    <button (click)="loadMovimientos()"
+      class="inline-flex items-center gap-1 h-8 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+      <ui-icon name="search" [size]="14" />Buscar
+    </button>
+    @if (!loadingMovimientos() && movimientos().length) {
+      <span class="text-sm text-muted-foreground">{{ movimientos().length }} movimientos</span>
+    }
+  </div>
+
+  @if (loadingMovimientos()) {
+    <div class="mx-4 flex items-center gap-2 text-muted-foreground">
+      <ui-icon name="loader" [size]="18" class="animate-spin" />Cargando movimientos...
+    </div>
+  } @else if (movimientosError()) {
+    <div class="mx-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {{ movimientosError() }}
+    </div>
+  } @else if (!movimientos().length) {
+    <div class="mx-4 rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground text-sm">
+      Sin movimientos en el período seleccionado
+    </div>
+  } @else {
+    <!-- KPIs -->
+    <div class="mx-4 mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div class="rounded-lg border border-border bg-card px-4 py-3">
+        <p class="text-xs text-muted-foreground">Movimientos</p>
+        <p class="text-2xl font-semibold">{{ movimientos().length }}</p>
+      </div>
+      <div class="rounded-lg border border-border bg-card px-4 py-3">
+        <p class="text-xs text-muted-foreground">Total Debe</p>
+        <p class="text-2xl font-semibold">{{ fmt(movimientosDebeTotal) }} €</p>
+      </div>
+      <div class="rounded-lg border border-border bg-card px-4 py-3">
+        <p class="text-xs text-muted-foreground">Total Haber</p>
+        <p class="text-2xl font-semibold">{{ fmt(movimientosHaberTotal) }} €</p>
+      </div>
+    </div>
+
+    <!-- Tabla movimientos -->
+    <div class="mx-4 overflow-x-auto rounded-lg border border-border">
+      <table class="w-full min-w-max text-sm">
+        <thead class="bg-muted/50">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Fecha Contable</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Fecha Registro</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Cliente</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Nº Factura</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Cuenta</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Descripción</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Tipo</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Origen</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-muted-foreground whitespace-nowrap">Importe</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-muted-foreground whitespace-nowrap">Total c/IVA</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Cód. IVA</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Estado</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          @for (m of movimientos(); track m.id) {
+            <tr class="hover:bg-accent/30 transition-colors">
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap">{{ formatDate(m.accounting_date) }}</td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap text-muted-foreground">{{ formatDate(m.registration_date) }}</td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap max-w-[160px] truncate" [title]="m.client_full_name ?? ''">
+                {{ m.client_full_name || '—' }}
+              </td>
+              <td class="px-4 py-2.5 text-xs font-mono whitespace-nowrap">{{ m.invoice_legal_document_number || '—' }}</td>
+              <td class="px-4 py-2.5 text-xs font-mono whitespace-nowrap">{{ m.account_number || '—' }}</td>
+              <td class="px-4 py-2.5 text-xs max-w-[240px] truncate" [title]="m.description ?? ''">
+                {{ m.description || '—' }}
+              </td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap">
+                @if (m.movement_type === 'debit') {
+                  <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700 dark:bg-red-900/30 dark:text-red-300">Debe</span>
+                } @else {
+                  <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700 dark:bg-green-900/30 dark:text-green-300">Haber</span>
+                }
+              </td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap">{{ movOrigen(m) }}</td>
+              <td class="px-4 py-2.5 text-xs text-right whitespace-nowrap font-semibold"
+                [class.text-red-600]="m.movement_type === 'debit'"
+                [class.dark:text-red-400]="m.movement_type === 'debit'"
+                [class.text-green-600]="m.movement_type === 'credit'"
+                [class.dark:text-green-400]="m.movement_type === 'credit'">
+                {{ fmt(m.amount) }} €
+              </td>
+              <td class="px-4 py-2.5 text-xs text-right whitespace-nowrap">{{ fmt(m.amount_with_tax) }} €</td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap font-mono text-muted-foreground">{{ m.tax_code || '—' }}</td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap">
+                @if (m.status === 'validated') {
+                  <span class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                    <ui-icon name="check" [size]="10" />Validado
+                  </span>
+                } @else {
+                  <span class="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{{ m.status }}</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+}
+
+<!-- ── Tab: Resumen ─────────────────────────────────────────────────────── -->
+@if (activeTab() === 'resumen') {
+  <!-- Selector de mes -->
+  <div class="mx-4 mb-4 flex flex-wrap items-center gap-3">
+    <select [(ngModel)]="editRecipients" class="hidden"><!-- dummy --></select>
+    <select
+      [ngModel]="selectedYear()"
+      (ngModelChange)="selectedYear.set($event); onMesChange()"
+      class="h-8 rounded-md border border-border bg-background px-2 text-sm focus:outline-none">
+      @for (y of years(); track y) {
+        <option [value]="y">{{ y }}</option>
+      }
+    </select>
+    <select
+      [ngModel]="selectedMonth()"
+      (ngModelChange)="selectedMonth.set($event); onMesChange()"
+      class="h-8 rounded-md border border-border bg-background px-2 text-sm focus:outline-none">
+      @for (m of months; track m.v) {
+        <option [value]="m.v">{{ m.l }}</option>
+      }
+    </select>
+    <button (click)="loadDatos()"
+      class="inline-flex items-center gap-1 h-8 px-3 rounded-md border border-border text-sm hover:bg-accent/40 transition-colors">
+      <ui-icon name="refresh-cw" [size]="14" />Actualizar
+    </button>
+    @if (!loadingDatos() && datos().length) {
+      <span class="text-sm text-muted-foreground">{{ datos().length }} filas</span>
+    }
+  </div>
+
+  @if (loadingDatos()) {
+    <div class="mx-4 flex items-center gap-2 text-muted-foreground">
+      <ui-icon name="loader" [size]="18" class="animate-spin" />Cargando datos...
+    </div>
+  } @else if (datosError()) {
+    <div class="mx-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {{ datosError() }}
+    </div>
+  } @else if (!datos().length) {
+    <div class="mx-4 rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground text-sm">
+      Sin datos para el período seleccionado
+    </div>
+  } @else {
+    <!-- Stats rápidas -->
+    <div class="mx-4 mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div class="rounded-lg border border-border bg-card px-4 py-3">
+        <p class="text-xs text-muted-foreground">Total filas</p>
+        <p class="text-2xl font-semibold">{{ datos().length }}</p>
+      </div>
+      <div class="rounded-lg border border-border bg-card px-4 py-3">
+        <p class="text-xs text-muted-foreground">Importe total (LINPRCMONEDA)</p>
+        <p class="text-2xl font-semibold">{{ totalImporte.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}</p>
+      </div>
+    </div>
+
+    <!-- Tabla de datos -->
+    <div class="mx-4 overflow-x-auto rounded-lg border border-border">
+      <table class="w-full min-w-max text-sm">
+        <thead class="bg-muted/50">
+          <tr>
+            @for (col of datosColumns; track col) {
+              <th class="px-3 py-2 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">{{ col }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          @for (row of datos(); track $index) {
+            <tr class="hover:bg-accent/30 transition-colors">
+              @for (col of datosColumns; track col) {
+                <td class="px-3 py-2 text-xs whitespace-nowrap">{{ cellValue(row, col) }}</td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+}
+
+<!-- ── Tab: Config ──────────────────────────────────────────────────────── -->
+@if (activeTab() === 'config') {
+  @if (loadingConfig()) {
+    <div class="mx-4 flex items-center gap-2 text-muted-foreground">
+      <ui-icon name="loader" [size]="18" class="animate-spin" />Cargando configuración...
+    </div>
+  } @else {
+    <div class="mx-4 max-w-2xl space-y-6 rounded-lg border border-border bg-card p-6">
+      <div class="space-y-2">
+        <label class="text-sm font-medium">Destinatarios (Para:)</label>
+        <input type="text" [(ngModel)]="editRecipients" placeholder="email1@ejemplo.com, email2@ejemplo.com"
+          class="w-full h-9 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+        <p class="text-xs text-muted-foreground">Separados por coma o punto y coma</p>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium">CC:</label>
+        <input type="text" [(ngModel)]="editCcRecipients" placeholder="cc1@ejemplo.com, cc2@ejemplo.com"
+          class="w-full h-9 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+        <p class="text-xs text-muted-foreground">Separados por coma o punto y coma</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button
+          (click)="editScheduled = !editScheduled"
+          [class.bg-primary]="editScheduled"
+          [class.bg-muted]="!editScheduled"
+          class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors">
+          <span [class.translate-x-6]="editScheduled" [class.translate-x-1]="!editScheduled"
+            class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow"></span>
+        </button>
+        <div>
+          <p class="text-sm font-medium">Envío automático (Lun–Vie)</p>
+          <p class="text-xs text-muted-foreground">Los lunes cubre Sábado + Domingo + Lunes desde el último envío</p>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium">SQL de consulta (Quixotic)</label>
+        <textarea [(ngModel)]="editQuerySql" rows="5"
+          placeholder="SELECT ... FROM invoice_atr_b70 WHERE fecha >= '{fechaDesde}' AND fecha <= '{fechaHasta}' ORDER BY fecha"
+          class="w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary resize-none"></textarea>
+        <p class="text-xs text-muted-foreground">Usa <code class="rounded bg-muted px-1">&#123;fechaDesde&#125;</code> y <code class="rounded bg-muted px-1">&#123;fechaHasta&#125;</code> como parámetros de fecha.</p>
+      </div>
+
+      <button (click)="saveConfig()" [disabled]="savingConfig()"
+        class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 disabled:opacity-50">
+        @if (savingConfig()) {
+          <ui-icon name="loader" [size]="14" class="animate-spin" />Guardando...
+        } @else {
+          <ui-icon name="check" [size]="14" />Guardar configuración
+        }
+      </button>
+    </div>
+  }
+}
+
+<!-- ── Tab: Historial ───────────────────────────────────────────────────── -->
+@if (activeTab() === 'historial') {
+  @if (loadingHistorial()) {
+    <div class="mx-4 flex items-center gap-2 text-muted-foreground">
+      <ui-icon name="loader" [size]="18" class="animate-spin" />Cargando historial...
+    </div>
+  } @else if (!historial()?.content?.length) {
+    <div class="mx-4 rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground text-sm">
+      Sin envíos registrados todavía
+    </div>
+  } @else {
+    <div class="mx-4 overflow-x-auto rounded-lg border border-border">
+      <table class="w-full text-sm">
+        <thead class="bg-muted/50">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Enviado</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Período</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Tipo</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Filas</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Estado</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Destinatarios</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          @for (log of historial()!.content; track log.id) {
+            <tr class="hover:bg-accent/30 transition-colors">
+              <td class="px-4 py-3 text-xs whitespace-nowrap">{{ formatDateTime(log.sentAt) }}</td>
+              <td class="px-4 py-3 text-xs whitespace-nowrap">
+                {{ formatDate(log.fechaDesde) }} → {{ formatDate(log.fechaHasta) }}
+              </td>
+              <td class="px-4 py-3 text-xs">
+                @if (log.manual) {
+                  <span class="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                    <ui-icon name="user" [size]="10" />Manual
+                  </span>
+                } @else {
+                  <span class="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                    <ui-icon name="clock" [size]="10" />Automático
+                  </span>
+                }
+              </td>
+              <td class="px-4 py-3 text-xs">{{ log.rowCount }}</td>
+              <td class="px-4 py-3 text-xs">
+                @if (log.status === 'ok') {
+                  <span class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                    <ui-icon name="check" [size]="10" />OK
+                  </span>
+                } @else {
+                  <span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                    [title]="log.errorMessage ?? ''">
+                    <ui-icon name="x" [size]="10" />Error
+                  </span>
+                }
+              </td>
+              <td class="px-4 py-3 text-xs text-muted-foreground max-w-xs truncate" [title]="log.recipients ?? ''">
+                {{ log.recipients || '—' }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginación historial -->
+    @if (historial()!.totalPages > 1) {
+      <div class="mx-4 mt-3 flex items-center gap-2">
+        <button (click)="histPrev()" [disabled]="!histHasPrev"
+          class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-accent/40 disabled:opacity-40">
+          <ui-icon name="chevron-left" [size]="14" />
+        </button>
+        <span class="text-sm text-muted-foreground">
+          Página {{ histPage() + 1 }} de {{ historial()!.totalPages }}
+        </span>
+        <button (click)="histNext()" [disabled]="!histHasNext"
+          class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-accent/40 disabled:opacity-40">
+          <ui-icon name="chevron-right" [size]="14" />
+        </button>
+      </div>
+    }
+  }
+}

@@ -60,6 +60,11 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'facturacion-gas',
+        loadComponent: () =>
+          import('./features/facturacion-gas/facturacion-gas').then((m) => m.FacturacionGas),
+      },
+      {
         path: 'pagos-liquidacion',
         loadComponent: () =>
           import('./features/pagos-liquidacion/pagos-liquidacion').then(
