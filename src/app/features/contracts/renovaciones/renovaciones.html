@@ -41,16 +41,13 @@
       class="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" />
   </div>
 
-  @if (delegaciones().length > 0) {
-    <div>
-      <label class="block text-xs font-medium text-muted-foreground mb-1">Delegación</label>
-      <select [ngModel]="filterDelegacion()" (ngModelChange)="filterDelegacion.set($event)"
-        class="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30">
-        <option value="">Todas</option>
-        @for (d of delegaciones(); track d) { <option [value]="d">{{ d }}</option> }
-      </select>
-    </div>
-  }
+  <div>
+    <label class="block text-xs font-medium text-muted-foreground mb-1">Delegación</label>
+    <input type="text"
+      [ngModel]="filterDelegacion()" (ngModelChange)="filterDelegacion.set($event); onDelegacionChange()"
+      placeholder="Filtrar por delegación..."
+      class="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" />
+  </div>
 
   @if (estados().length > 0) {
     <div>

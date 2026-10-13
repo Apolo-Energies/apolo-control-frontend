@@ -68,7 +68,7 @@ export class ContractService {
     vPage: number; vSize: number;
     pvPage: number; pvSize: number;
     rPage: number; rSize: number;
-    q?: string; fechaDesde?: string; fechaHasta?: string; candidatos?: boolean;
+    q?: string; fechaDesde?: string; fechaHasta?: string; candidatos?: boolean; delegacion?: string;
   } = { vPage: 0, vSize: 10, pvPage: 0, pvSize: 10, rPage: 0, rSize: 10 }): Observable<ContractRenovaciones> {
     const p: Record<string, string> = {
       vPage: params.vPage.toString(), vSize: params.vSize.toString(),
@@ -79,7 +79,24 @@ export class ContractService {
     if (params.fechaDesde) p['fechaDesde'] = params.fechaDesde;
     if (params.fechaHasta) p['fechaHasta'] = params.fechaHasta;
     if (params.candidatos) p['candidatos'] = 'true';
+    if (params.delegacion?.trim()) p['delegacion'] = params.delegacion.trim();
     return this.http.get<ContractRenovaciones>(`${this.baseUrl}/renovaciones`, { params: p });
+  }
+
+  exportRenovacionesCsv(params: {
+    q?: string; fechaDesde?: string; fechaHasta?: string; candidatos?: boolean; delegacion?: string;
+  } = {}): Observable<Blob> {
+    const p: Record<string, string> = {};
+    if (params.q?.trim()) p['q'] = params.q.trim();
+    if (params.fechaDesde) p['fechaDesde'] = params.fechaDesde;
+    if (params.fechaHasta) p['fechaHasta'] = params.fechaHasta;
+    if (params.candidatos) p['candidatos'] = 'true';
+    if (params.delegacion?.trim()) p['delegacion'] = params.delegacion.trim();
+    return this.http.get(`${this.baseUrl}/renovaciones/export/csv`, { params: p, responseType: 'blob' });
+  }
+
+  getDelegacionNombres(): Observable<string[]> {
+    return this.http.get<string[]>(`${environment.apiUrl}/delegaciones/nombres`);
   }
 
   renovar(id: string): Observable<Contract> {

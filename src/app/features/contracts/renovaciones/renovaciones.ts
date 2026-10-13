@@ -98,16 +98,6 @@ export class Renovaciones implements OnDestroy {
   protected readonly sortCol = signal<SortCol | null>(null);
   protected readonly sortDir = signal<SortDir>('asc');
 
-  /** Delegaciones únicas derivadas de la página actual */
-  protected readonly delegaciones = computed<string[]>(() => {
-    const d = this.data();
-    if (!d) return [];
-    const set = new Set<string>();
-    for (const row of [...d.vencidos.content, ...d.porVencer.content, ...d.renovados.content]) {
-      if (row.clienteDelegacion) set.add(row.clienteDelegacion);
-    }
-    return [...set].sort((a, b) => a.localeCompare(b, 'es'));
-  });
 
   /** Estados únicos derivados de la página actual */
   protected readonly estados = computed<ContractStatus[]>(() => {
@@ -126,13 +116,14 @@ export class Renovaciones implements OnDestroy {
       this.load();
     });
     const s = this.listState.get<{
-      q: string; fechaDesde: string; fechaHasta: string;
+      q: string; fechaDesde: string; fechaHasta: string; delegacion: string;
       vPage: number; pvPage: number; rPage: number; pageSize: number;
     }>('renovaciones');
     if (s) {
       this.q.set(s.q);
       this.fechaDesde.set(s.fechaDesde);
       this.fechaHasta.set(s.fechaHasta);
+      if (s.delegacion) this.filterDelegacion.set(s.delegacion);
       this.vPage.set(s.vPage);
       this.pvPage.set(s.pvPage);
       this.rPage.set(s.rPage);
@@ -144,6 +135,7 @@ export class Renovaciones implements OnDestroy {
   ngOnDestroy(): void {
     this.listState.save('renovaciones', {
       q: this.q(), fechaDesde: this.fechaDesde(), fechaHasta: this.fechaHasta(),
+      delegacion: this.filterDelegacion(),
       vPage: this.vPage(), pvPage: this.pvPage(), rPage: this.rPage(), pageSize: this.pageSize(),
     });
   }
@@ -159,6 +151,7 @@ export class Renovaciones implements OnDestroy {
       fechaDesde: this.fechaDesde() || undefined,
       fechaHasta: this.fechaHasta() || undefined,
       candidatos: this.filterCandidatos() || undefined,
+      delegacion: this.filterDelegacion() || undefined,
     }).subscribe({
       next: (d) => { this.data.set(d); this.loading.set(false); },
       error: (err: HttpErrorResponse) => { this.error.set(extractMessage(err)); this.loading.set(false); },
@@ -171,6 +164,8 @@ export class Renovaciones implements OnDestroy {
     this.resetPages();
     this.load();
   }
+
+  protected onDelegacionChange(): void { this.searchChange$.next(); }
 
   protected clearFilters(): void {
     this.q.set('');
@@ -289,11 +284,9 @@ export class Renovaciones implements OnDestroy {
     }
   }
 
-  /** Aplica filtros client-side (delegación, estado) + sort a una lista de contratos. */
+  /** Aplica filtros client-side (estado) + sort a una lista de contratos. */
   protected applyRows(rows: Contract[]): Contract[] {
     let result = rows;
-    const deleg = this.filterDelegacion();
-    if (deleg) result = result.filter(r => r.clienteDelegacion === deleg);
     const estado = this.filterEstado();
     if (estado) result = result.filter(r => r.estado === estado);
     const col = this.sortCol();
@@ -330,11 +323,12 @@ export class Renovaciones implements OnDestroy {
   }
 
   protected downloadCsv(): void {
-    this.service.exportCsv({
-      status: this.filterEstado() || undefined,
+    this.service.exportRenovacionesCsv({
       q: this.q() || undefined,
-      startDate: this.fechaDesde() || undefined,
-      endDate: this.fechaHasta() || undefined,
+      fechaDesde: this.fechaDesde() || undefined,
+      fechaHasta: this.fechaHasta() || undefined,
+      candidatos: this.filterCandidatos() || undefined,
+      delegacion: this.filterDelegacion() || undefined,
     }).subscribe(blob => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
