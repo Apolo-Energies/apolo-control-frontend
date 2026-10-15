@@ -17,6 +17,11 @@ export class UserService {
     });
   }
 
+  /** Usuarios activos para selectores (solo ADMIN / OPERACIONES). */
+  activos(): Observable<User[]> {
+    return this.http.get<User[]>(`${this.baseUrl}/activos`);
+  }
+
   getById(id: string): Observable<User> {
     return this.http.get<User>(`${this.baseUrl}/${id}`);
   }

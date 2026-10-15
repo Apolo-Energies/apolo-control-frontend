@@ -26,6 +26,7 @@ import {
   RECHAZO_RESULTADO_VALUES,
 } from '../../../core/models/rechazo.model';
 import { Page } from '../../../core/models';
+import { formatAntiguedad } from '../../../shared/utils/seguimiento';
 
 const STATE_KEY = 'rechazos';
 
@@ -89,6 +90,7 @@ export class Rejections implements OnDestroy {
   protected readonly estadoLabel    = RECHAZO_ESTADO_LABEL;
   protected readonly resultadoLabel = RECHAZO_RESULTADO_LABEL;
   protected readonly plataformaLabel = PLATAFORMA_LABEL;
+  protected readonly formatAntiguedad = formatAntiguedad;
 
   constructor() {
     const s = this.listState.get<{

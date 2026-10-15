@@ -1,7 +1,9 @@
 import {
   ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
+import { ActivatedRoute, ParamMap } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Observable, of } from 'rxjs';
 
@@ -18,13 +20,15 @@ import { MasterDataService } from '../../core/services/master-data.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { GlobalLoadingService } from '../../core/services/global-loading.service';
 import { ListStateService }     from '../../core/services/list-state.service';
+import { UserService } from '../../core/services/user.service';
 import {
   Rechazo, RechazoEstado, RechazoResultado,
   RECHAZO_ESTADO_LABEL, RECHAZO_RESULTADO_LABEL,
   RECHAZO_ESTADO_VALUES, RECHAZO_RESULTADO_VALUES,
 } from '../../core/models/rechazo.model';
-import { Contract, ContractStatus, CONTRACT_STATUS_LABEL, Page } from '../../core/models';
+import { Contract, ContractStatus, CONTRACT_STATUS_LABEL, Page, User } from '../../core/models';
 import { formatDate, safeText } from '../../shared/utils/format';
+import { formatAntiguedad, seguimientoTone } from '../../shared/utils/seguimiento';
 
 const ESTADO_TONE: Record<RechazoEstado, StatusTone> = {
   rechazado: 'danger',
@@ -60,6 +64,18 @@ export class Rechazos implements OnDestroy {
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly fb = inject(FormBuilder);
   private readonly listState = inject(ListStateService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly userService = inject(UserService);
+
+  // ── Responsables (vacío si el rol no puede listar usuarios) ──────────────
+  protected readonly usuarios = signal<User[]>([]);
+  /** Responsable actual del caso editado cuando no está en la lista de usuarios. */
+  protected readonly responsableFueraDeLista = computed(() => {
+    const r = this.editing();
+    return r?.responsableId && !this.usuarios().some(u => u.id === r.responsableId)
+      ? { id: r.responsableId, nombre: r.responsableNombre ?? r.responsableId }
+      : null;
+  });
 
   // ── List state ────────────────────────────────────────────────────────────
   protected readonly loading = signal(false);
@@ -92,7 +108,7 @@ export class Rechazos implements OnDestroy {
   protected readonly selectedFiles = signal<File[]>([]);
   protected readonly isReadOnly = computed(() => {
     const r = this.editing();
-    return r != null && (r.resultado === 'resuelta' || r.resultado === 'ko');
+    return r != null && r.cerrado;
   });
 
   protected readonly form = this.fb.group({
@@ -103,8 +119,7 @@ export class Rechazos implements OnDestroy {
     documentacionNecesaria: [''],
     clienteId: [''],
     delegacionId: [''],
-    diasRecordatorio: [3, [Validators.min(1)]],
-    fechaRecordatorio: [''],
+    responsableId: [''],
     contratoId: [''],
   });
 
@@ -140,6 +155,19 @@ export class Rechazos implements OnDestroy {
       this.size.set(s.size);
     }
     this.reload(s?.page ?? 0);
+
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(params => this.openFromQueryParam(params));
+    this.userService.activos().subscribe({ next: u => this.usuarios.set(u), error: () => {} });
+  }
+
+  /** Enlace directo desde avisos: /rechazos?id=… */
+  private openFromQueryParam(qp: ParamMap): void {
+    const id = qp.get('id');
+    if (!id) return;
+    this.service.getById(id).subscribe({
+      next: (r) => this.openEdit(r),
+      error: (err: HttpErrorResponse) => this.notify.error(extractMessage(err)),
+    });
   }
 
   ngOnDestroy(): void {
@@ -179,7 +207,7 @@ export class Rechazos implements OnDestroy {
     this.formError.set(null);
     this.selectedFiles.set([]);
     this.resetContractSearch();
-    this.form.reset({ estado: 'activo', diasRecordatorio: 3 });
+    this.form.reset({ estado: 'activo', responsableId: '' });
     this.form.enable();
     this.dialogOpen.set(true);
   }
@@ -197,8 +225,7 @@ export class Rechazos implements OnDestroy {
       documentacionNecesaria: r.documentacionNecesaria ?? '',
       clienteId: r.clienteId ?? '',
       delegacionId: r.delegacionId ?? '',
-      diasRecordatorio: r.diasRecordatorio,
-      fechaRecordatorio: r.fechaRecordatorio ?? '',
+      responsableId: r.responsableId ?? '',
       contratoId: r.contratoId ?? '',
     });
     if (r.contratoId) {
@@ -235,8 +262,7 @@ export class Rechazos implements OnDestroy {
       delegacionId: v.delegacionId || null,
       motivo: v.motivo || null,
       documentacionNecesaria: v.documentacionNecesaria || null,
-      diasRecordatorio: v.diasRecordatorio ?? 3,
-      fechaRecordatorio: v.fechaRecordatorio || null,
+      responsableId: v.responsableId || null,
     };
     this.submitting.set(true);
     this.formError.set(null);
@@ -383,6 +409,8 @@ export class Rechazos implements OnDestroy {
   protected resultadoTone(res: RechazoResultado | null): StatusTone { return res ? (RESULTADO_TONE[res] ?? 'neutral') : 'neutral'; }
   protected resultadoLabel(res: RechazoResultado | null): string { return res ? (RECHAZO_RESULTADO_LABEL[res] ?? res) : '—'; }
   protected date(v: string | null): string { return formatDate(v); }
+  protected antiguedad(r: Rechazo): string { return formatAntiguedad(r.antiguedadHorasLaborables); }
+  protected antiguedadTone(r: Rechazo): StatusTone { return seguimientoTone(r, r.cerrado); }
   protected text(v: string | null): string { return safeText(v); }
   protected fileSize(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;

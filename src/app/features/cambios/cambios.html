@@ -64,7 +64,7 @@
 
 <!-- Tabla -->
 @if (loading() && !result()) {
-  <app-table-skeleton [cols]="7" [rows]="8" />
+  <app-table-skeleton [cols]="9" [rows]="8" />
 } @else if (error(); as msg) {
   <div class="rounded-lg border border-danger/30 bg-danger-soft p-3 text-danger-fg text-sm">{{ msg }}</div>
 } @else {
@@ -78,6 +78,8 @@
             <th class="px-4 py-3 text-left font-semibold">Tipo</th>
             <th class="px-4 py-3 text-left font-semibold">Resultado</th>
             <th class="px-4 py-3 text-left font-semibold">Gestionado</th>
+            <th class="px-4 py-3 text-left font-semibold">Antigüedad</th>
+            <th class="px-4 py-3 text-left font-semibold">Responsable</th>
             <th class="px-4 py-3 text-left font-semibold">F. Solicitud</th>
             <th class="px-4 py-3 text-left font-semibold">F. Activo</th>
             <th class="px-4 py-3 text-right font-semibold">Acciones</th>
@@ -86,7 +88,7 @@
         <tbody class="divide-y divide-border/40">
           @if (rows().length === 0) {
             <tr>
-              <td colspan="8" class="px-4 py-10 text-center text-muted-foreground text-sm">
+              <td colspan="10" class="px-4 py-10 text-center text-muted-foreground text-sm">
                 No se encontraron registros.
               </td>
             </tr>
@@ -126,6 +128,13 @@
                   <span class="text-muted-foreground text-xs">No</span>
                 }
               </td>
+              <td class="px-4 py-3 whitespace-nowrap">
+                <app-status-badge [tone]="antiguedadTone(row)">{{ formatAntiguedad(row.antiguedadHorasLaborables) }}</app-status-badge>
+                @if (row.escaladoAt) {
+                  <span class="ml-1 text-[10px] font-semibold uppercase text-danger-fg">Escalado</span>
+                }
+              </td>
+              <td class="px-4 py-3 text-foreground/80 text-xs">{{ row.responsableNombre ?? '—' }}</td>
               <td class="px-4 py-3 text-muted-foreground text-xs">
                 {{ row.fechaSolicitud ? formatDate(row.fechaSolicitud) : '—' }}
               </td>
@@ -219,11 +228,22 @@
       </div>
     </div>
 
-    <!-- Gestionado -->
-    <div class="flex items-center gap-2">
-      <input formControlName="gestionado" type="checkbox" id="gestionado"
-        class="h-4 w-4 rounded border-border text-primary focus:ring-primary/40" />
-      <label for="gestionado" class="text-sm text-foreground cursor-pointer">Gestionado</label>
+    <!-- Responsable -->
+    <div>
+      <label class="block text-xs font-medium text-muted-foreground mb-1">Responsable</label>
+      <select formControlName="responsableId"
+        class="w-full h-9 px-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+        @if (!editing()) {
+          <option value="">Yo</option>
+        }
+        @if (responsableFueraDeLista(); as fuera) {
+          <option [value]="fuera.id">{{ fuera.nombre }}</option>
+        }
+        @for (u of usuarios(); track u.id) {
+          <option [value]="u.id">{{ u.nombre }}</option>
+        }
+      </select>
+      <p class="text-xs text-muted-foreground mt-1">Gestionado se calcula a partir del resultado.</p>
     </div>
 
     <!-- Fechas -->

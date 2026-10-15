@@ -136,7 +136,7 @@
             <th class="px-4 py-2.5 text-left font-medium">Estado</th>
             <th class="px-4 py-2.5 text-left font-medium">Resultado</th>
             <th class="px-4 py-2.5 text-left font-medium">Plataforma</th>
-            <th class="px-4 py-2.5 text-left font-medium">Recordatorio</th>
+            <th class="px-4 py-2.5 text-left font-medium">Antigüedad</th>
             <th class="px-4 py-2.5 text-left font-medium">Creado</th>
           </tr>
         </thead>
@@ -174,7 +174,7 @@
                 }
               </td>
               <td class="px-4 py-3 text-xs text-muted-foreground">
-                {{ r.fechaRecordatorio ?? '—' }}
+                {{ formatAntiguedad(r.antiguedadHorasLaborables) }}
               </td>
               <td class="px-4 py-3 text-xs text-muted-foreground">
                 {{ r.fechaCreacion ?? '—' }}

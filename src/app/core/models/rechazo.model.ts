@@ -53,11 +53,16 @@ export interface Rechazo {
   nombre: string;
   motivo: string | null;
   documentacionNecesaria: string | null;
-  diasRecordatorio: number;
-  fechaRecordatorio: string | null;
-  ultimoRecordatorio: string | null;
   fechaCreacion: string | null;
   fechaEstado: string | null;
+  responsableId: string | null;
+  responsableNombre: string | null;
+  createdAt: string | null;
+  cerrado: boolean;
+  fechaResolucion: string | null;
+  antiguedadHorasLaborables: number | null;
+  revisionAvisadaAt: string | null;
+  escaladoAt: string | null;
   comentarios: RechazoComentario[];
   anexos: RechazoAnexoInfo[];
 }
@@ -71,6 +76,5 @@ export interface RechazoPayload {
   delegacionId?: string | null;
   motivo?: string | null;
   documentacionNecesaria?: string | null;
-  diasRecordatorio?: number | null;
-  fechaRecordatorio?: string | null;
+  responsableId?: string | null;
 }

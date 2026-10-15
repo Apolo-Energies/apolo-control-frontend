@@ -20,13 +20,15 @@ import { NotificationService } from '../../core/services/notification.service';
 import { GlobalLoadingService } from '../../core/services/global-loading.service';
 import { ListStateService }     from '../../core/services/list-state.service';
 import { ConfirmService } from '../../core/services/confirm.service';
+import { UserService } from '../../core/services/user.service';
 import {
   Cambio, TipoCambio, ResultadoCambio,
   TIPO_CAMBIO_LABEL, RESULTADO_CAMBIO_LABEL,
   TIPO_CAMBIO_VALUES, RESULTADO_CAMBIO_VALUES,
 } from '../../core/models/cambio.model';
-import { Page } from '../../core/models';
+import { Page, User } from '../../core/models';
 import { formatDate } from '../../shared/utils/format';
+import { formatAntiguedad, seguimientoTone } from '../../shared/utils/seguimiento';
 
 const RESULTADO_TONE: Record<ResultadoCambio, StatusTone> = {
   activo:          'success',
@@ -68,6 +70,7 @@ export class Cambios implements OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly listState = inject(ListStateService);
   private readonly route = inject(ActivatedRoute);
+  private readonly userService = inject(UserService);
 
   // ── List state ────────────────────────────────────────────────────────────
   protected readonly loading = signal(false);
@@ -108,6 +111,17 @@ export class Cambios implements OnDestroy {
   protected readonly resultadoTone = RESULTADO_TONE;
   protected readonly tipoTone = TIPO_TONE;
   protected readonly formatDate = formatDate;
+  protected readonly formatAntiguedad = formatAntiguedad;
+
+  // ── Responsables (vacío si el rol no puede listar usuarios) ──────────────
+  protected readonly usuarios = signal<User[]>([]);
+  /** Responsable actual del caso editado cuando no está en la lista de usuarios. */
+  protected readonly responsableFueraDeLista = computed(() => {
+    const c = this.editing();
+    return c?.responsableId && !this.usuarios().some(u => u.id === c.responsableId)
+      ? { id: c.responsableId, nombre: c.responsableNombre ?? c.responsableId }
+      : null;
+  });
 
   protected readonly rows = computed(() => this.result()?.content ?? []);
   protected readonly totalElements = computed(() => this.result()?.totalElements ?? 0);
@@ -125,7 +139,7 @@ export class Cambios implements OnDestroy {
     cups:                    [''],
     tipoSolicitud:           ['', Validators.required],
     resultado:               [''],
-    gestionado:              [false],
+    responsableId:           [''],
     fechaSolicitud:          [''],
     fechaEnvioDocumentacion: [''],
     fechaDocumentoFirma:     [''],
@@ -162,9 +176,22 @@ export class Cambios implements OnDestroy {
 
     this.route.queryParamMap.pipe(skip(1), takeUntilDestroyed()).subscribe(params => {
       if (this.applyQueryParams(params)) this.reload(0);
+      this.openFromQueryParam(params);
     });
 
     this.reload(startPage);
+    this.openFromQueryParam(qp);
+    this.userService.activos().subscribe({ next: u => this.usuarios.set(u), error: () => {} });
+  }
+
+  /** Enlace directo desde avisos: /cambios?id=… */
+  private openFromQueryParam(qp: ParamMap): void {
+    const id = qp.get('id');
+    if (!id) return;
+    this.service.getById(id).subscribe({
+      next: (c) => this.openEdit(c),
+      error: (err: HttpErrorResponse) => this.notify.error(extractMessage(err)),
+    });
   }
 
   private applyQueryParams(qp: ParamMap): boolean {
@@ -225,7 +252,7 @@ export class Cambios implements OnDestroy {
     this.editing.set(null);
     this.formError.set(null);
     this.selectedClienteOption.set(null);
-    this.form.reset({ gestionado: false });
+    this.form.reset({ responsableId: '' });
     this.dialogOpen.set(true);
   }
 
@@ -243,7 +270,7 @@ export class Cambios implements OnDestroy {
       cups:                    row.cups ?? '',
       tipoSolicitud:           row.tipoSolicitud,
       resultado:               row.resultado ?? '',
-      gestionado:              row.gestionado,
+      responsableId:           row.responsableId ?? '',
       fechaSolicitud:          row.fechaSolicitud ?? '',
       fechaEnvioDocumentacion: row.fechaEnvioDocumentacion ?? '',
       fechaDocumentoFirma:     row.fechaDocumentoFirma ?? '',
@@ -264,7 +291,7 @@ export class Cambios implements OnDestroy {
       cups:                    v.cups || null,
       tipoSolicitud:           v.tipoSolicitud as TipoCambio,
       resultado:               (v.resultado as ResultadoCambio) || null,
-      gestionado:              v.gestionado ?? false,
+      responsableId:           v.responsableId || null,
       fechaSolicitud:          v.fechaSolicitud || null,
       fechaEnvioDocumentacion: v.fechaEnvioDocumentacion || null,
       fechaDocumentoFirma:     v.fechaDocumentoFirma || null,
@@ -316,6 +343,8 @@ export class Cambios implements OnDestroy {
       },
     });
   }
+
+  protected antiguedadTone(row: Cambio): StatusTone { return seguimientoTone(row, row.gestionado); }
 
   protected downloadCsv(): void {
     this.service.exportCsv({

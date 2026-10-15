@@ -56,7 +56,7 @@ export class Settings {
   protected readonly tipoSolicitudFormOpen = signal(false);
   protected readonly editingTipoSolicitud = signal<TipoSolicitud | null>(null);
   protected readonly tipoSolicitudSaving = signal(false);
-  protected tipoSolicitudDraft: TipoSolicitudRequest = { codigo: '', nombre: '', activo: true, orden: 0, diasRecordatorio: 30 };
+  protected tipoSolicitudDraft: TipoSolicitudRequest = { codigo: '', nombre: '', activo: true, orden: 0 };
 
   private emptyTarifa(): TarifaPenalizacionPayload {
     return { nombre: '', pctPenalizacion: 0, precioMega: 140, diasPrevioAviso: 15, recargoSinAviso: 0, activa: true };
@@ -260,13 +260,13 @@ export class Settings {
 
   protected openTipoCreate(): void {
     this.editingTipoSolicitud.set(null);
-    this.tipoSolicitudDraft = { codigo: '', nombre: '', activo: true, orden: this.tiposSolicitud().length + 1, diasRecordatorio: 30 };
+    this.tipoSolicitudDraft = { codigo: '', nombre: '', activo: true, orden: this.tiposSolicitud().length + 1 };
     this.tipoSolicitudFormOpen.set(true);
   }
 
   protected openTipoEdit(ts: TipoSolicitud): void {
     this.editingTipoSolicitud.set(ts);
-    this.tipoSolicitudDraft = { codigo: ts.codigo, nombre: ts.nombre, activo: ts.activo, orden: ts.orden, diasRecordatorio: ts.diasRecordatorio ?? 30 };
+    this.tipoSolicitudDraft = { codigo: ts.codigo, nombre: ts.nombre, activo: ts.activo, orden: ts.orden };
     this.tipoSolicitudFormOpen.set(true);
   }
 

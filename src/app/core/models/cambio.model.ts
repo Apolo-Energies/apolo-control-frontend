@@ -67,6 +67,12 @@ export interface Cambio {
   idExterno: string | null;
   createdAt: string;
   updatedAt: string;
+  responsableId: string | null;
+  responsableNombre: string | null;
+  fechaResolucion: string | null;
+  antiguedadHorasLaborables: number | null;
+  revisionAvisadaAt: string | null;
+  escaladoAt: string | null;
 }
 
 export interface CambioRequest {
@@ -75,7 +81,7 @@ export interface CambioRequest {
   cups?: string | null;
   tipoSolicitud: TipoCambio;
   resultado?: ResultadoCambio | null;
-  gestionado?: boolean;
+  responsableId?: string | null;
   fechaSolicitud?: string | null;
   fechaEnvioDocumentacion?: string | null;
   fechaDocumentoFirma?: string | null;

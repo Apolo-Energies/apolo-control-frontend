@@ -4,7 +4,6 @@ export interface TipoSolicitud {
   nombre: string;
   activo: boolean;
   orden: number;
-  diasRecordatorio: number;
   createdAt: string;
 }
 
@@ -13,5 +12,4 @@ export interface TipoSolicitudRequest {
   nombre: string;
   activo?: boolean;
   orden?: number;
-  diasRecordatorio?: number;
 }

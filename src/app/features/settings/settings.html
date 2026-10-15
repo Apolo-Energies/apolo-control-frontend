@@ -364,16 +364,6 @@
           />
         </div>
       </div>
-      <div class="mb-3">
-        <label class="text-xs text-muted-foreground block mb-1">
-          Días para recordatorio
-          <span class="text-muted-foreground/60 font-normal ml-1">(días desde la solicitud hasta avisar si no está gestionada; 0 = sin recordatorio)</span>
-        </label>
-        <input type="number" [(ngModel)]="tipoSolicitudDraft.diasRecordatorio"
-          min="0" max="365"
-          class="w-36 h-8 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-        />
-      </div>
       <div class="flex items-center justify-end gap-2">
         <button type="button" (click)="closeTipoForm()"
           class="h-8 px-3 text-xs text-muted-foreground border border-border rounded-lg hover:bg-accent/40 transition-colors">
@@ -409,16 +399,6 @@
             <p class="text-sm font-medium text-foreground">{{ ts.nombre }}</p>
             <p class="text-xs text-muted-foreground font-mono">{{ ts.codigo }}</p>
           </div>
-          <span class="text-xs whitespace-nowrap hidden sm:flex items-center gap-1"
-            [class.text-muted-foreground]="ts.diasRecordatorio > 0"
-            [class.text-muted-foreground-40]="ts.diasRecordatorio === 0">
-            <ui-icon name="bell" [size]="12" [class.opacity-20]="ts.diasRecordatorio === 0" />
-            @if (ts.diasRecordatorio > 0) {
-              {{ ts.diasRecordatorio }} días
-            } @else {
-              Sin recordatorio
-            }
-          </span>
           <span class="text-xs px-2 py-0.5 rounded-full"
             [class.bg-success-soft]="ts.activo"
             [class.text-success-fg]="ts.activo"
