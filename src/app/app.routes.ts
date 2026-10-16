@@ -75,6 +75,8 @@ export const routes: Routes = [
         path: 'rechazos',
         loadComponent: () => import('./features/rechazos/rechazos').then((m) => m.Rechazos),
       },
+      // Ruta antigua
+      { path: 'sales/rejections', redirectTo: 'rechazos' },
       {
         path: 'bajas',
         loadComponent: () => import('./features/bajas/bajas').then((m) => m.Bajas),
@@ -107,38 +109,10 @@ export const routes: Routes = [
         canActivate: [authGuard],
         loadComponent: () => import('./features/settings/settings').then((m) => m.Settings),
       },
-      // ── Legacy / placeholders (no backend yet) ──
+      // ── Tareas ──
       {
         path: 'tasks',
         loadComponent: () => import('./features/tasks/tasks').then((m) => m.Tasks),
-      },
-      {
-        path: 'sales/registrations',
-        loadComponent: () =>
-          import('./features/sales/registrations/registrations').then((m) => m.Registrations),
-      },
-      {
-        path: 'sales/changes',
-        loadComponent: () => import('./features/sales/changes/changes').then((m) => m.Changes),
-      },
-      {
-        path: 'sales/rejections',
-        loadComponent: () =>
-          import('./features/sales/rejections/rejections').then((m) => m.Rejections),
-      },
-      {
-        path: 'sales/scoring',
-        loadComponent: () => import('./features/sales/scoring/scoring').then((m) => m.Scoring),
-      },
-      {
-        path: 'sales/cancellations',
-        loadComponent: () =>
-          import('./features/sales/cancellations/cancellations').then((m) => m.Cancellations),
-      },
-      {
-        path: 'sales/multicups',
-        loadComponent: () =>
-          import('./features/sales/multicups/multicups').then((m) => m.Multicups),
       },
       // ── Cobros / Gestión de Impagos ──
       {
@@ -214,16 +188,6 @@ export const routes: Routes = [
         path: 'collections/clients',
         loadComponent: () =>
           import('./features/collections/clients/clients').then((m) => m.GestionClients),
-      },
-      {
-        path: 'finance/payments',
-        loadComponent: () =>
-          import('./features/finance/payments/payments').then((m) => m.Payments),
-      },
-      {
-        path: 'finance/invoices',
-        loadComponent: () =>
-          import('./features/finance/invoices/invoices').then((m) => m.Invoices),
       },
       {
         path: 'import',
