@@ -5,7 +5,8 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build --configuration production",
+    "build": "ng build --configuration production && npm run check:datos-personales",
+    "check:datos-personales": "node scripts/comprobar-datos-personales.mjs",
     "watch": "ng build --watch --configuration development"
   },
   "packageManager": "npm@11.6.2",

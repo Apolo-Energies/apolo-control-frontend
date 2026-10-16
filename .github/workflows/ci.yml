@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Incluye la comprobación de datos personales (CUPS, NIF/NIE/CIF, IBAN) sobre dist/
+      - run: npm run build
