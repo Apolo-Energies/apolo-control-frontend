@@ -436,13 +436,13 @@ export class UnpaidDetail implements OnInit {
   }
 
   protected fraccionadoFaltante(): number {
-    return (this.impago()?.importePendiente ?? 0) - this.fraccionadoTotalPlanificado();
+    return (this.impago()?.importe ?? 0) - this.fraccionadoTotalPlanificado();
   }
 
   protected fraccionadoPct(): number {
-    const pending = this.impago()?.importePendiente ?? 0;
-    if (pending <= 0) return 0;
-    return Math.min((this.fraccionadoTotalPlanificado() / pending) * 100, 100);
+    const total = this.impago()?.importe ?? 0;
+    if (total <= 0) return 0;
+    return Math.min((this.fraccionadoTotalPlanificado() / total) * 100, 100);
   }
 
   protected readonly fraccionadoToggling = signal(false);

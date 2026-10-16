@@ -276,7 +276,7 @@
           <div class="flex items-center justify-between text-xs">
             <span class="text-muted-foreground">
               Planificado: <span class="font-semibold text-foreground">{{ formatEur(fraccionadoTotalPlanificado()) }}</span>
-              <span class="text-muted-foreground"> / {{ formatEur(impago()?.importePendiente ?? 0) }} pendiente</span>
+              <span class="text-muted-foreground"> / {{ formatEur(impago()?.importe ?? 0) }} total</span>
             </span>
             @if (fraccionadoFaltante() > 0.005) {
               <span class="font-medium text-warning-fg">Faltante: {{ formatEur(fraccionadoFaltante()) }}</span>
