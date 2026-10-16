@@ -72,10 +72,19 @@ export class FacturacionGas implements OnInit {
   protected readonly loadingConfig  = signal(false);
   protected readonly config         = signal<GasConfig | null>(null);
   protected readonly savingConfig   = signal(false);
-  protected editRecipients    = '';
-  protected editCcRecipients  = '';
-  protected editScheduled     = true;
-  protected editQuerySql      = '';
+  protected editRecipients     = '';
+  protected editCcRecipients   = '';
+  protected editScheduled      = true;
+  protected editScheduledDay   = 'MON';
+  protected editScheduledHour  = 7;
+  protected editQuerySql       = '';
+
+  protected readonly scheduledDays = [
+    { v: 'MON', l: 'Lunes' }, { v: 'TUE', l: 'Martes' }, { v: 'WED', l: 'Miércoles' },
+    { v: 'THU', l: 'Jueves' }, { v: 'FRI', l: 'Viernes' },
+    { v: 'SAT', l: 'Sábado' }, { v: 'SUN', l: 'Domingo' },
+  ];
+  protected readonly scheduledHours = Array.from({ length: 24 }, (_, i) => i);
 
   // ── Historial ────────────────────────────────────────────────────────────
   protected readonly loadingHistorial = signal(false);
@@ -212,10 +221,12 @@ export class FacturacionGas implements OnInit {
     this.svc.getConfig().subscribe({
       next: (c) => {
         this.config.set(c);
-        this.editRecipients   = c.recipients ?? '';
-        this.editCcRecipients = c.ccRecipients ?? '';
-        this.editScheduled    = c.scheduledEnabled;
-        this.editQuerySql     = c.querySql ?? '';
+        this.editRecipients    = c.recipients ?? '';
+        this.editCcRecipients  = c.ccRecipients ?? '';
+        this.editScheduled     = c.scheduledEnabled;
+        this.editScheduledDay  = c.scheduledDay  ?? 'MON';
+        this.editScheduledHour = c.scheduledHour ?? 7;
+        this.editQuerySql      = c.querySql ?? '';
         this.loadingConfig.set(false);
       },
       error: () => this.loadingConfig.set(false),
@@ -228,6 +239,8 @@ export class FacturacionGas implements OnInit {
       recipients:       this.editRecipients,
       ccRecipients:     this.editCcRecipients,
       scheduledEnabled: this.editScheduled,
+      scheduledDay:     this.editScheduledDay,
+      scheduledHour:    this.editScheduledHour,
       querySql:         this.editQuerySql || null,
     }).subscribe({
       next: (c) => {

@@ -406,19 +406,43 @@
         <p class="text-xs text-muted-foreground">Separados por coma o punto y coma</p>
       </div>
 
-      <div class="flex items-center gap-3">
-        <button
-          (click)="editScheduled = !editScheduled"
-          [class.bg-primary]="editScheduled"
-          [class.bg-muted]="!editScheduled"
-          class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors">
-          <span [class.translate-x-6]="editScheduled" [class.translate-x-1]="!editScheduled"
-            class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow"></span>
-        </button>
-        <div>
-          <p class="text-sm font-medium">Envío automático (Lun–Vie)</p>
-          <p class="text-xs text-muted-foreground">Los lunes cubre Sábado + Domingo + Lunes desde el último envío</p>
+      <div class="space-y-3">
+        <div class="flex items-center gap-3">
+          <button
+            (click)="editScheduled = !editScheduled"
+            [class.bg-primary]="editScheduled"
+            [class.bg-muted]="!editScheduled"
+            class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors">
+            <span [class.translate-x-6]="editScheduled" [class.translate-x-1]="!editScheduled"
+              class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow"></span>
+          </button>
+          <div>
+            <p class="text-sm font-medium">Envío automático semanal</p>
+            <p class="text-xs text-muted-foreground">Se ejecutará una vez por semana en el día y hora indicados</p>
+          </div>
         </div>
+        @if (editScheduled) {
+          <div class="flex gap-4 pl-14">
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-muted-foreground">Día</label>
+              <select [(ngModel)]="editScheduledDay"
+                class="h-9 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary">
+                @for (d of scheduledDays; track d.v) {
+                  <option [value]="d.v">{{ d.l }}</option>
+                }
+              </select>
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-muted-foreground">Hora</label>
+              <select [(ngModel)]="editScheduledHour"
+                class="h-9 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary">
+                @for (h of scheduledHours; track h) {
+                  <option [value]="h">{{ h }}:00</option>
+                }
+              </select>
+            </div>
+          </div>
+        }
       </div>
 
       <div class="space-y-2">

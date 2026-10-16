@@ -3,6 +3,8 @@ export interface GasConfig {
   recipients: string;
   ccRecipients: string;
   scheduledEnabled: boolean;
+  scheduledDay: string;
+  scheduledHour: number;
   querySql: string | null;
 }
 
