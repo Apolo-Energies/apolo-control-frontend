@@ -189,7 +189,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/collections/clients/clients').then((m) => m.GestionClients),
       },
-      // Importadores Base44 retirados (CTO-12). Descomentar para reactivar.
+      // Importadores Base44 de Control retirados (CTO-12). Descomentar para reactivar.
       // {
       //   path: 'import',
       //   loadComponent: () => import('./features/import/import').then((m) => m.Import),
@@ -205,6 +205,12 @@ export const routes: Routes = [
         path: 'vibra',
         children: [
           { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+          {
+            path: 'importar',
+            data: { roles: ['admin'], sistema: 'vibra' },
+            canActivate: [authGuard],
+            loadComponent: () => import('./features/import/import').then((m) => m.Import),
+          },
           {
             path: 'dashboard',
             loadComponent: () =>
@@ -246,6 +252,12 @@ export const routes: Routes = [
         path: 'telkes',
         children: [
           { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+          {
+            path: 'importar',
+            data: { roles: ['admin'], sistema: 'telkes' },
+            canActivate: [authGuard],
+            loadComponent: () => import('./features/import/import').then((m) => m.Import),
+          },
           {
             path: 'dashboard',
             loadComponent: () =>

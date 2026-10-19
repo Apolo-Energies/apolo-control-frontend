@@ -72,6 +72,7 @@ export class Layout {
           { label: 'Preciario', url: '/vibra/preciario', icon: 'euro' as const },
           { label: 'Impagos', url: '/vibra/impagos', icon: 'alert-triangle' as const },
           { label: 'Liquidaciones', url: '/vibra/liquidaciones', icon: 'wallet' as const },
+          ...(isAdmin ? [{ label: 'Importar datos', url: '/vibra/importar', icon: 'upload' as const }] : []),
         ],
       },
       {
@@ -90,6 +91,7 @@ export class Layout {
           },
           { label: 'Preciario', url: '/telkes/preciario', icon: 'euro' as const },
           { label: 'Impagos', url: '/telkes/impagos', icon: 'alert-triangle' as const },
+          ...(isAdmin ? [{ label: 'Importar datos', url: '/telkes/importar', icon: 'upload' as const }] : []),
         ],
       },
       {

@@ -1,12 +1,13 @@
 <app-page-header
-  title="Importar datos"
-  subtitle="Carga archivos exportados desde Base44 para sincronizar contratos, clientes y scoring."
+  [title]="titulo"
+  subtitle="Carga archivos exportados desde Base44."
 />
 
 <div class="p-6 space-y-5 max-w-3xl">
 
   <!-- Tabs -->
   <div class="flex gap-1 rounded-xl bg-muted/40 p-1 w-fit border border-border">
+    <!-- Importadores Base44 de Control retirados (CTO-12). Descomentar para reactivar.
     <button type="button"
       (click)="activeTab.set('contratos')"
       [class.bg-background]="activeTab() === 'contratos'"
@@ -77,6 +78,8 @@
       <ui-icon name="receipt-x" [size]="14" />
       Impagos Base44
     </button>
+    -->
+    @if (sistema === 'vibra') {
     <button type="button"
       (click)="activeTab.set('vibraAltas')"
       [class.bg-background]="activeTab() === 'vibraAltas'"
@@ -107,6 +110,8 @@
       <ui-icon name="bolt" [size]="14" />
       Vibra Tarifas
     </button>
+    }
+    @if (sistema === 'telkes') {
     <button type="button"
       (click)="activeTab.set('telkesAltas')"
       [class.bg-background]="activeTab() === 'telkesAltas'"
@@ -127,9 +132,13 @@
       <ui-icon name="bolt" [size]="14" />
       Telkes Tarifas
     </button>
+    }
   </div>
 
+  <!-- Importadores Base44 de Control retirados (CTO-12). Descomentar para reactivar.
+  -->
   <!-- ══════════════ TAB: ContratosServicios ══════════════ -->
+  <!--
   @if (activeTab() === 'contratos') {
     @if (!contratoFile()) {
       <label
@@ -163,7 +172,9 @@
     </div>
   }
 
+  -->
   <!-- ══════════════ TAB: Ventas / Scoring ══════════════ -->
+  <!--
   @if (activeTab() === 'ventas') {
     @if (!ventaFile()) {
       <label
@@ -198,7 +209,9 @@
   }
 
 
+  -->
   <!-- ══════════════ TAB: Pagos / Liquidaciones ══════════════ -->
+  <!--
   @if (activeTab() === 'pagos') {
     @if (!pagoFile()) {
       <label
@@ -232,7 +245,9 @@
     </div>
   }
 
+  -->
   <!-- ══════════════ TAB: Facturas Contabilidad ══════════════ -->
+  <!--
   @if (activeTab() === 'facturas') {
     @if (!facturaFile()) {
       <label
@@ -266,7 +281,9 @@
     </div>
   }
 
+  -->
   <!-- ══════════════ TAB: Cambios ══════════════ -->
+  <!--
   @if (activeTab() === 'cambios') {
     @if (!cambioFile()) {
       <label
@@ -300,7 +317,9 @@
     </div>
   }
 
+  -->
   <!-- ══════════════ TAB: Rechazos / Incidencias ══════════════ -->
+  <!--
   @if (activeTab() === 'rechazos') {
     @if (!rechazoFile()) {
       <label
@@ -336,9 +355,13 @@
 
 </div>
 
+  -->
   <!-- ══════════════ TAB: Impagos Base44 ══════════════ -->
+  <!--
   @if (activeTab() === 'impagos') {
+  -->
     <!-- Fichero 1: Clientes -->
+  <!--
     <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">1. Client_export.csv</p>
     @if (!clientesFile()) {
       <label class="flex flex-col items-center justify-center gap-3 h-36 rounded-xl border-2 border-dashed border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
@@ -354,7 +377,9 @@
       <ng-container *ngTemplateOutlet="fileCard; context: { file: clientesFile(), clear: clientesFile.set.bind(clientesFile, null) }" />
     }
 
+  -->
     <!-- Fichero 2: Impagos -->
+  <!--
     <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">2. Unpaid_export.csv</p>
     @if (!impagoFile()) {
       <label class="flex flex-col items-center justify-center gap-3 h-36 rounded-xl border-2 border-dashed border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
@@ -370,7 +395,9 @@
       <ng-container *ngTemplateOutlet="fileCard; context: { file: impagoFile(), clear: impagoFile.set.bind(impagoFile, null) }" />
     }
 
+  -->
     <!-- Fichero 3: Acciones -->
+  <!--
     <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">3. CollectionAction_export.csv</p>
     @if (!accionesFile()) {
       <label class="flex flex-col items-center justify-center gap-3 h-36 rounded-xl border-2 border-dashed border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
@@ -386,7 +413,9 @@
       <ng-container *ngTemplateOutlet="fileCard; context: { file: accionesFile(), clear: accionesFile.set.bind(accionesFile, null) }" />
     }
 
+  -->
     <!-- Botón importar -->
+  <!--
     <button type="button" (click)="ejecutarImportImpagos()"
       [disabled]="impagosLoading() || !clientesFile() || !impagoFile() || !accionesFile()"
       class="inline-flex items-center gap-2 h-9 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
@@ -456,6 +485,7 @@
       </div>
     }
   }
+  -->
 
   <!-- ══════════════ TAB: Vibra Altas ══════════════ -->
   @if (activeTab() === 'vibraAltas') {
