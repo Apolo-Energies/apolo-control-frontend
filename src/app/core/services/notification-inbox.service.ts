@@ -3,7 +3,6 @@ import { Injectable, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../auth/auth.service';
-import { TokenStorageService } from '../auth/token-storage.service';
 import { Page } from '../models/page.model';
 import { AppNotification, NotificationAction } from '../models/notification.model';
 import { NotificationService } from './notification.service';
@@ -14,8 +13,7 @@ const PAGE_SIZE = 20;
 export class NotificationInboxService {
   private readonly http = inject(HttpClient);
   private readonly auth = inject(AuthService);
-  private readonly tokenStorage = inject(TokenStorageService);
-  private readonly router = inject(Router);
+private readonly router = inject(Router);
   private readonly toast = inject(NotificationService);
   private readonly baseUrl = `${environment.apiUrl}/notifications`;
 
@@ -142,11 +140,10 @@ export class NotificationInboxService {
 
   private connectSSE(): void {
     this.disconnect();
-    if (document.visibilityState === 'hidden') return; // no conectar si la pestaña está oculta
-    const token = this.tokenStorage.read()?.token;
-    if (!token) return;
-    const url = `${this.baseUrl}/sse?token=${encodeURIComponent(token)}`;
-    this.eventSource = new EventSource(url);
+    if (document.visibilityState === 'hidden') return;
+    if (!this.auth.isAuthenticated()) return;
+    const url = `${this.baseUrl}/sse`;
+    this.eventSource = new EventSource(url, { withCredentials: true });
     this.eventSource.addEventListener('notification', (event: MessageEvent) => {
       try {
         const incoming: AppNotification = JSON.parse(event.data);

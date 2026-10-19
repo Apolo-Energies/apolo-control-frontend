@@ -11,54 +11,39 @@ import { Observable, catchError, switchMap, throwError } from 'rxjs';
 
 import { AuthService } from './auth.service';
 
-const AUTH_FREE_PATHS = ['/auth/login', '/auth/refresh'];
+const AUTH_FREE_PATHS = ['/auth/login', '/auth/refresh', '/auth/logout'];
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const auth = inject(AuthService);
+  const auth   = inject(AuthService);
   const router = inject(Router);
 
-  const isAuthFree = AUTH_FREE_PATHS.some((path) => req.url.includes(path));
-  const token = auth.token();
+  // Todas las peticiones al API llevan credentials para que el navegador envíe las cookies
+  const credReq = req.clone({ withCredentials: true });
 
-  const authReq = !isAuthFree && token ? withBearer(req, token) : req;
+  const isAuthFree = AUTH_FREE_PATHS.some((path) => credReq.url.includes(path));
 
-  return next(authReq).pipe(
+  return next(credReq).pipe(
     catchError((error: HttpErrorResponse) => {
-      // Refrescamos el token cuando:
-      //  - 401 (no autorizado), o
-      //  - 403 con el token ya expirado localmente (el backend devuelve 403 en
-      //    vez de 401 cuando el JWT caduca).
-      // Un 403 con token aún válido es falta de permisos: se propaga tal cual.
-      const tokenExpired = auth.isTokenExpired();
+      const tokenExpired  = auth.isTokenExpired();
       const shouldRefresh =
         !isAuthFree &&
         auth.session() !== null &&
         (error.status === 401 || (error.status === 403 && tokenExpired));
 
-      if (!shouldRefresh) {
-        return throwError(() => error);
-      }
-      return refreshAndRetry(auth, router, req, next);
+      if (!shouldRefresh) return throwError(() => error);
+      return refreshAndRetry(auth, router, credReq, next);
     }),
   );
 };
 
-function withBearer<T>(req: HttpRequest<T>, token: string): HttpRequest<T> {
-  return req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
-}
-
 function refreshAndRetry(
-  auth: AuthService,
-  router: Router,
+  auth:        AuthService,
+  router:      Router,
   originalReq: HttpRequest<unknown>,
-  next: HttpHandlerFn,
+  next:        HttpHandlerFn,
 ): Observable<HttpEvent<unknown>> {
   return auth.refresh().pipe(
-    switchMap(() => {
-      const newToken = auth.token();
-      const retried = newToken ? withBearer(originalReq, newToken) : originalReq;
-      return next(retried);
-    }),
+    switchMap(() => next(originalReq)),
     catchError((refreshError) => {
       auth.logout();
       void router.navigate(['/login']);

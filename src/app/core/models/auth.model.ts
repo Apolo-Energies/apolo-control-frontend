@@ -6,23 +6,17 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string;
-  refreshToken: string;
   type: string;
   id: string;
   nombre: string;
   email: string;
   rol: UserRole;
-}
-
-export interface RefreshTokenRequest {
-  refreshToken: string;
+  expiresAt: number; // epoch ms — tokens viajan en HttpOnly cookies
 }
 
 export interface RefreshTokenResponse {
-  token: string;
-  refreshToken: string;
   type: string;
+  expiresAt: number;
 }
 
 export interface AuthenticatedUser {
@@ -33,7 +27,6 @@ export interface AuthenticatedUser {
 }
 
 export interface AuthSession {
-  token: string;
-  refreshToken: string;
   user: AuthenticatedUser;
+  tokenExpiresAt: number; // epoch ms, para detectar expiración sin leer la cookie
 }
