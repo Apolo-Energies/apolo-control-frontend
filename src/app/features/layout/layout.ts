@@ -130,7 +130,8 @@ export class Layout {
           { label: 'Usuarios', url: '/users', icon: 'user' as const },
           ...(isAdmin ? [
             { label: 'Configuración', url: '/settings', icon: 'sliders' as const },
-            { label: 'Importar datos', url: '/import', icon: 'upload' as const },
+            // Importadores Base44 retirados (CTO-12). Descomentar para reactivar.
+            // { label: 'Importar datos', url: '/import', icon: 'upload' as const },
           ] : []),
         ],
       });

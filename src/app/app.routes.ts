@@ -189,10 +189,11 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/collections/clients/clients').then((m) => m.GestionClients),
       },
-      {
-        path: 'import',
-        loadComponent: () => import('./features/import/import').then((m) => m.Import),
-      },
+      // Importadores Base44 retirados (CTO-12). Descomentar para reactivar.
+      // {
+      //   path: 'import',
+      //   loadComponent: () => import('./features/import/import').then((m) => m.Import),
+      // },
 
       {
         path: 'perfil',

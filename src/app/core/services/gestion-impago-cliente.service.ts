@@ -27,6 +27,11 @@ export class GestionImpagoClienteService {
     return this.http.get<GestionImpagoCliente>(`${this.baseUrl}/${id}`);
   }
 
+  /** Deudor con ese NIF (el backend ignora espacios, guiones y mayúsculas); 404 si no existe. */
+  findByNif(nif: string): Observable<GestionImpagoCliente> {
+    return this.http.get<GestionImpagoCliente>(`${this.baseUrl}/por-nif`, { params: { nif } });
+  }
+
   create(payload: GestionImpagoClientePayload): Observable<GestionImpagoCliente> {
     return this.http.post<GestionImpagoCliente>(this.baseUrl, payload);
   }

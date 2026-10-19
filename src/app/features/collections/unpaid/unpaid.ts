@@ -5,7 +5,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { skip } from 'rxjs';
+import { Observable, catchError, map, of, skip, tap, throwError } from 'rxjs';
 import { PageHeader } from '../../../shared/components/page-header/page-header';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { StatusBadge, StatusTone } from '../../../shared/components/status-badge/status-badge';
@@ -55,6 +55,19 @@ interface ImportRow {
   error?: string;
   ok: boolean;
 }
+
+/** Misma regla que Nif.normalizar del backend. */
+const normalizarNif = (nif?: string | null) => (nif ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+
+/** Sin acentos, en minúsculas y con espacios simples. */
+const normalizarNombre = (s: string) =>
+  s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+
+/** Un deudor por cliente: por NIF y, si no hay, por nombre. */
+const claveCliente = (c: { nombre: string; nif?: string | null }) => {
+  const nif = normalizarNif(c.nif);
+  return nif ? `nif:${nif}` : `nombre:${normalizarNombre(c.nombre)}`;
+};
 
 interface ImportMapping {
   cliente:          string;
@@ -316,16 +329,17 @@ export class Unpaid implements OnDestroy {
   protected readonly clienteDropdown  = signal(false);
   protected readonly clienteNombre    = signal<string | null>(null);
   protected readonly creandoCliente   = signal(false);
-  protected readonly savingCliente    = signal(false);
-  protected readonly clienteFormError = signal<string | null>(null);
-
-  protected readonly nuevoClienteForm = this.fb.group({
-    nombre:   ['', Validators.required],
-    empresa:  [''],
-    nif:      [''],
-    telefono: [''],
-    email:    [''],
-  });
+  // Alta de cliente desde el impago retirada (CTO-12). Descomentar para reactivar.
+  // protected readonly savingCliente    = signal(false);
+  // protected readonly clienteFormError = signal<string | null>(null);
+  //
+  // protected readonly nuevoClienteForm = this.fb.group({
+  //   nombre:   ['', Validators.required],
+  //   empresa:  [''],
+  //   nif:      [''],
+  //   telefono: [''],
+  //   email:    [''],
+  // });
 
   protected readonly form = this.fb.group({
     clienteId:        ['', Validators.required],
@@ -536,39 +550,40 @@ export class Unpaid implements OnDestroy {
     setTimeout(() => this.clienteDropdown.set(false), 150);
   }
 
-  protected toggleCrearCliente(): void {
-    this.creandoCliente.update(v => !v);
-    if (this.creandoCliente()) {
-      this.nuevoClienteForm.reset();
-      this.clienteFormError.set(null);
-      this.clienteDropdown.set(false);
-    }
-  }
-
-  protected crearYSeleccionarCliente(): void {
-    if (this.nuevoClienteForm.invalid) { this.nuevoClienteForm.markAllAsTouched(); return; }
-    const v = this.nuevoClienteForm.getRawValue();
-    this.savingCliente.set(true);
-    this.clienteFormError.set(null);
-    this.clienteService.create({
-      nombre:   v.nombre!,
-      empresa:  v.empresa   || null,
-      nif:      v.nif       || null,
-      telefono: v.telefono  || null,
-      email:    v.email     || null,
-    }).subscribe({
-      next: (c) => {
-        this.savingCliente.set(false);
-        this.selectCliente(c);
-        this.creandoCliente.set(false);
-        this.notify.success('Cliente creado y seleccionado');
-      },
-      error: (err: HttpErrorResponse) => {
-        this.savingCliente.set(false);
-        this.clienteFormError.set(extractMessage(err));
-      },
-    });
-  }
+  // Alta de cliente desde el impago retirada (CTO-12). Descomentar para reactivar.
+  // protected toggleCrearCliente(): void {
+  //   this.creandoCliente.update(v => !v);
+  //   if (this.creandoCliente()) {
+  //     this.nuevoClienteForm.reset();
+  //     this.clienteFormError.set(null);
+  //     this.clienteDropdown.set(false);
+  //   }
+  // }
+  //
+  // protected crearYSeleccionarCliente(): void {
+  //   if (this.nuevoClienteForm.invalid) { this.nuevoClienteForm.markAllAsTouched(); return; }
+  //   const v = this.nuevoClienteForm.getRawValue();
+  //   this.savingCliente.set(true);
+  //   this.clienteFormError.set(null);
+  //   this.clienteService.create({
+  //     nombre:   v.nombre!,
+  //     empresa:  v.empresa   || null,
+  //     nif:      v.nif       || null,
+  //     telefono: v.telefono  || null,
+  //     email:    v.email     || null,
+  //   }).subscribe({
+  //     next: (c) => {
+  //       this.savingCliente.set(false);
+  //       this.selectCliente(c);
+  //       this.creandoCliente.set(false);
+  //       this.notify.success('Cliente creado y seleccionado');
+  //     },
+  //     error: (err: HttpErrorResponse) => {
+  //       this.savingCliente.set(false);
+  //       this.clienteFormError.set(extractMessage(err));
+  //     },
+  //   });
+  // }
 
   protected submit(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
@@ -888,7 +903,9 @@ export class Unpaid implements OnDestroy {
   protected readonly importProgress    = signal<{ done: number; total: number } | null>(null);
   protected readonly importErrorCount    = computed(() => this.importRows().filter(r => !r.ok).length);
   protected readonly importReadyCount    = computed(() => this.importRows().filter(r => r.ok).length);
-  protected readonly importNewClientCount = computed(() => this.importRows().filter(r => r.ok && !!r.crmClientData).length);
+  protected readonly importNewClientCount = computed(() => new Set(
+    this.importRows().filter(r => r.ok && !!r.crmClientData).map(r => claveCliente(r.crmClientData!)),
+  ).size);
 
   protected openImport(): void {
     const input = document.createElement('input');
@@ -983,12 +1000,10 @@ export class Unpaid implements OnDestroy {
   protected resolveImportClient(idx: number, nombre: string): void {
     const deudores   = this.importClients();
     const crmClients = this.masterData.clientesActivos();
-    const norm = (s: string) =>
-      s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
-    const nifNorm = nombre.toUpperCase().replace(/\s/g, '');
+    const nifNorm = normalizarNif(nombre);
 
-    const foundD = deudores.find(c => norm(c.nombre) === norm(nombre))
-                ?? deudores.find(c => !!c.nif && c.nif.toUpperCase().replace(/\s/g, '') === nifNorm);
+    const foundD = deudores.find(c => normalizarNombre(c.nombre) === normalizarNombre(nombre))
+                ?? deudores.find(c => !!nifNorm && normalizarNif(c.nif) === nifNorm);
     if (foundD) {
       this.importRows.update(rows => rows.map(r => r.idx === idx
         ? { ...r, clienteNombre: foundD.nombre, clienteId: foundD.id, crmClientData: undefined, error: undefined, ok: true }
@@ -997,8 +1012,8 @@ export class Unpaid implements OnDestroy {
       return;
     }
 
-    const foundC = crmClients.find(c => norm(c.nombre) === norm(nombre))
-                ?? crmClients.find(c => !!c.nif && c.nif.toUpperCase().replace(/\s/g, '') === nifNorm);
+    const foundC = crmClients.find(c => normalizarNombre(c.nombre) === normalizarNombre(nombre))
+                ?? crmClients.find(c => !!nifNorm && normalizarNif(c.nif) === nifNorm);
     if (foundC) {
       this.importRows.update(rows => rows.map(r => r.idx === idx
         ? { ...r, clienteNombre: foundC.nombre, clienteId: undefined,
@@ -1051,9 +1066,6 @@ export class Unpaid implements OnDestroy {
     const nifRaw           = colStr('nif');
     const clienteNombreRaw = colStr('cliente');
 
-    const norm = (s: string) =>
-      s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
-
     let clienteId: string | undefined;
     let clienteNombre = clienteNombreRaw;
     let crmClientData: ImportRow['crmClientData'];
@@ -1064,19 +1076,19 @@ export class Unpaid implements OnDestroy {
       clienteId = found?.id ?? clienteIdDirect;
       clienteNombre = found?.nombre ?? clienteIdDirect;
     } else {
-      const nifNorm = nifRaw ? nifRaw.toUpperCase().replace(/\s/g, '') : '';
+      const nifNorm = normalizarNif(nifRaw);
 
       // 2. Buscar en deudores por NIF o nombre
-      const foundD = (nifRaw ? deudores.find(c => !!c.nif && c.nif.toUpperCase().replace(/\s/g, '') === nifNorm) : undefined)
-                  ?? (clienteNombreRaw ? deudores.find(c => norm(c.nombre) === norm(clienteNombreRaw)) : undefined);
+      const foundD = (nifNorm ? deudores.find(c => normalizarNif(c.nif) === nifNorm) : undefined)
+                  ?? (clienteNombreRaw ? deudores.find(c => normalizarNombre(c.nombre) === normalizarNombre(clienteNombreRaw)) : undefined);
 
       if (foundD) {
         clienteId     = foundD.id;
         clienteNombre = foundD.nombre;
       } else {
         // 3. Fallback: buscar en clientes CRM
-        const foundC = (nifRaw ? crmClients.find(c => !!c.nif && c.nif.toUpperCase().replace(/\s/g, '') === nifNorm) : undefined)
-                    ?? (clienteNombreRaw ? crmClients.find(c => norm(c.nombre) === norm(clienteNombreRaw)) : undefined);
+        const foundC = (nifNorm ? crmClients.find(c => normalizarNif(c.nif) === nifNorm) : undefined)
+                    ?? (clienteNombreRaw ? crmClients.find(c => normalizarNombre(c.nombre) === normalizarNombre(clienteNombreRaw)) : undefined);
 
         if (foundC) {
           clienteNombre  = foundC.nombre;
@@ -1122,6 +1134,7 @@ export class Unpaid implements OnDestroy {
     this.importing.set(true);
     this.importProgress.set({ done: 0, total: rows.length });
     let success = 0, failed = 0;
+    const deudorPorCliente = new Map<string, string | null>(); // claveCliente → id del deudor (null si falló)
 
     const createImpago = (clienteId: string, row: ImportRow, onDone: () => void) => {
       this.service.create({
@@ -1155,9 +1168,8 @@ export class Unpaid implements OnDestroy {
       if (row.clienteId) {
         createImpago(row.clienteId, row, () => next(i + 1));
       } else if (row.crmClientData) {
-        // Crear primero el cliente deudor desde los datos CRM y luego el impago
-        this.clienteService.create(row.crmClientData).subscribe({
-          next:  (nuevoCliente) => createImpago(nuevoCliente.id, row, () => next(i + 1)),
+        this.obtenerDeudor(row.crmClientData, deudorPorCliente).subscribe({
+          next:  (deudorId) => createImpago(deudorId, row, () => next(i + 1)),
           error: () => { failed++; this.importProgress.set({ done: success + failed, total: rows.length }); next(i + 1); },
         });
       } else {
@@ -1165,6 +1177,27 @@ export class Unpaid implements OnDestroy {
       }
     };
     next(0);
+  }
+
+  /**
+   * Un deudor por cliente en toda la importación: se crea la primera vez y se reutiliza.
+   * Si el NIF ya tiene deudor (409) se usa ese; si falla, las demás filas del cliente fallan sin reintentar.
+   */
+  private obtenerDeudor(
+    datos: NonNullable<ImportRow['crmClientData']>,
+    deudorPorCliente: Map<string, string | null>,
+  ): Observable<string> {
+    const clave = claveCliente(datos);
+    if (deudorPorCliente.has(clave)) {
+      const id = deudorPorCliente.get(clave);
+      return id ? of(id) : throwError(() => new Error('Deudor no disponible'));
+    }
+    return this.clienteService.create(datos).pipe(
+      catchError((err: HttpErrorResponse) =>
+        err.status === 409 && datos.nif ? this.clienteService.findByNif(datos.nif) : throwError(() => err)),
+      map(deudor => deudor.id),
+      tap({ next: id => deudorPorCliente.set(clave, id), error: () => deudorPorCliente.set(clave, null) }),
+    );
   }
 
   protected closeImport(): void {
