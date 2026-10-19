@@ -30,7 +30,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         auth.session() !== null &&
         (error.status === 401 || (error.status === 403 && tokenExpired));
 
-      if (!shouldRefresh) return throwError(() => error);
+      if (!shouldRefresh) {
+        if (!isAuthFree && (error.status === 401 || error.status === 403)) {
+          auth.logout();
+          void router.navigate(['/login']);
+        }
+        return throwError(() => error);
+      }
       return refreshAndRetry(auth, router, credReq, next);
     }),
   );
