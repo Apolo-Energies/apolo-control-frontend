@@ -98,9 +98,9 @@ export class UnpaidDetail implements OnInit {
     promesaImporte: [null as number | null],
   });
   private static readonly STEP_ACTIONS: Record<number, string[]> = {
-    1: ['llamada', 'whatsapp'],
-    2: ['llamada', 'whatsapp', 'email', 'otro'],
-    3: ['llamada', 'whatsapp', 'email', 'aviso_corte', 'otro'],
+    1: ['llamada', 'whatsapp', 'promesa'],
+    2: ['llamada', 'whatsapp', 'email', 'promesa', 'otro'],
+    3: ['llamada', 'whatsapp', 'email', 'aviso_corte', 'promesa', 'otro'],
     4: ['aviso_corte', 'llamada', 'promesa'],
     5: ['llamada', 'whatsapp', 'email', 'promesa'],
   };
