@@ -10,6 +10,7 @@ export interface CambioFilters {
   tipoSolicitud?: TipoCambio;
   resultado?: ResultadoCambio;
   gestionado?: boolean;
+  soloEscalados?: boolean;
   startDate?: string;
   endDate?: string;
   q?: string;
@@ -31,6 +32,7 @@ export class CambioService {
     if (filters.startDate)         params = params.set('startDate', filters.startDate);
     if (filters.endDate)           params = params.set('endDate', filters.endDate);
     if (filters.q)                 params = params.set('q', filters.q);
+    if (filters.soloEscalados)     params = params.set('soloEscalados', 'true');
     if (filters.page != null)      params = params.set('page', String(filters.page));
     if (filters.size != null)      params = params.set('size', String(filters.size));
     if (filters.sort)              params = params.set('sort', filters.sort);
@@ -61,6 +63,7 @@ export class CambioService {
     if (filters.startDate)     params = params.set('startDate', filters.startDate);
     if (filters.endDate)       params = params.set('endDate', filters.endDate);
     if (filters.q)             params = params.set('q', filters.q);
+    if (filters.soloEscalados) params = params.set('soloEscalados', 'true');
     return this.http.get(`${this.base}/export/csv`, { params, responseType: 'blob' });
   }
 }

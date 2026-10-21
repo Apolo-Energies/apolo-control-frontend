@@ -12,6 +12,7 @@ export interface RechazoFilter {
   estado?: string;
   resultado?: string;
   plataforma?: string;
+  soloEscalados?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -21,7 +22,8 @@ export class RechazoService {
 
   list(filter: RechazoFilter = {}, page = 0, size = 20): Observable<Page<Rechazo>> {
     return this.http.get<Page<Rechazo>>(this.baseUrl, {
-      params: buildParams({ q: filter.q, estado: filter.estado, resultado: filter.resultado, plataforma: filter.plataforma, page, size }),
+      params: buildParams({ q: filter.q, estado: filter.estado, resultado: filter.resultado, plataforma: filter.plataforma,
+                            soloEscalados: filter.soloEscalados || undefined, page, size }),
     });
   }
 
@@ -63,7 +65,8 @@ export class RechazoService {
 
   exportCsv(filter: RechazoFilter = {}): Observable<Blob> {
     return this.http.get(`${this.baseUrl}/export/csv`, {
-      params: buildParams({ q: filter.q, estado: filter.estado, resultado: filter.resultado, plataforma: filter.plataforma }),
+      params: buildParams({ q: filter.q, estado: filter.estado, resultado: filter.resultado, plataforma: filter.plataforma,
+                            soloEscalados: filter.soloEscalados || undefined }),
       responseType: 'blob',
     });
   }

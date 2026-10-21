@@ -1,4 +1,10 @@
+import { ParamMap } from '@angular/router';
 import { StatusTone } from '../components/status-badge/status-badge';
+
+/** Enlace de los avisos de escalado: ?seguimiento=escalados (mismo valor en SeguimientoScheduler). */
+export function pideEscalados(qp: ParamMap): boolean {
+  return qp.get('seguimiento') === 'escalados';
+}
 
 /** "5 h" · "2 d 3 h" (1 d = 24 h laborables). */
 export function formatAntiguedad(horas: number | null | undefined): string {
