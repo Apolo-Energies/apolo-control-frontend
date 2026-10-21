@@ -43,13 +43,34 @@
     </select>
   </label>
 
-  <label class="flex items-center gap-2 self-end h-8 text-sm text-foreground cursor-pointer">
-    <input type="checkbox" [(ngModel)]="soloEscalados" (ngModelChange)="applyFilters()"
-      class="h-4 w-4 rounded border-border accent-primary" />
-    Solo escalados
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">Seguimiento</span>
+    <select [(ngModel)]="seguimientoFilter" (ngModelChange)="applyFilters()"
+      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+      <option value="">Todos</option>
+      @for (o of seguimientoOpciones; track o.value) {
+        <option [value]="o.value">{{ o.label }}</option>
+      }
+    </select>
   </label>
 
-  @if (q || estadoFilter || resultadoFilter || soloEscalados) {
+  @if (usuarios().length || responsableFilter) {
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-muted-foreground">Responsable</span>
+      <select [(ngModel)]="responsableFilter" (ngModelChange)="applyFilters()"
+        class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+        <option value="">Todos</option>
+        @if (responsableFilter && !responsableEnLista()) {
+          <option [value]="responsableFilter">Responsable del aviso</option>
+        }
+        @for (u of usuarios(); track u.id) {
+          <option [value]="u.id">{{ u.nombre }}</option>
+        }
+      </select>
+    </label>
+  }
+
+  @if (q || estadoFilter || resultadoFilter || seguimientoFilter || responsableFilter) {
     <button type="button" (click)="clearFilters()"
       class="h-8 px-3 rounded-lg border border-border text-xs text-muted-foreground hover:bg-accent/40 transition-colors self-end">
       Limpiar filtros

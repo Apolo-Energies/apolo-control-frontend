@@ -6,13 +6,15 @@ import { environment } from '../../../environments/environment';
 import { Rechazo, RechazoPayload } from '../models/rechazo.model';
 import { Page } from '../models';
 import { buildParams } from '../http/http-params.util';
+import { FiltroSeguimiento } from '../../shared/utils/seguimiento';
 
 export interface RechazoFilter {
   q?: string;
   estado?: string;
   resultado?: string;
   plataforma?: string;
-  soloEscalados?: boolean;
+  seguimiento?: FiltroSeguimiento;
+  responsableId?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -23,7 +25,7 @@ export class RechazoService {
   list(filter: RechazoFilter = {}, page = 0, size = 20): Observable<Page<Rechazo>> {
     return this.http.get<Page<Rechazo>>(this.baseUrl, {
       params: buildParams({ q: filter.q, estado: filter.estado, resultado: filter.resultado, plataforma: filter.plataforma,
-                            soloEscalados: filter.soloEscalados || undefined, page, size }),
+                            seguimiento: filter.seguimiento, responsableId: filter.responsableId, page, size }),
     });
   }
 
@@ -66,7 +68,7 @@ export class RechazoService {
   exportCsv(filter: RechazoFilter = {}): Observable<Blob> {
     return this.http.get(`${this.baseUrl}/export/csv`, {
       params: buildParams({ q: filter.q, estado: filter.estado, resultado: filter.resultado, plataforma: filter.plataforma,
-                            soloEscalados: filter.soloEscalados || undefined }),
+                            seguimiento: filter.seguimiento, responsableId: filter.responsableId }),
       responseType: 'blob',
     });
   }

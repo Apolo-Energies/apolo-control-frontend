@@ -3,7 +3,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ActivatedRoute, ParamMap } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Observable, of, skip } from 'rxjs';
 
@@ -28,7 +28,10 @@ import {
 } from '../../core/models/rechazo.model';
 import { Contract, ContractStatus, CONTRACT_STATUS_LABEL, Page, User } from '../../core/models';
 import { formatDate, safeText } from '../../shared/utils/format';
-import { formatAntiguedad, pideEscalados, seguimientoTone } from '../../shared/utils/seguimiento';
+import {
+  FiltroSeguimiento, SEGUIMIENTO_OPCIONES, formatAntiguedad, quitarParamsAviso, responsableDeUrl, responsableEnLista, seguimientoDeUrl,
+  seguimientoTone,
+} from '../../shared/utils/seguimiento';
 
 const ESTADO_TONE: Record<RechazoEstado, StatusTone> = {
   rechazado: 'danger',
@@ -65,6 +68,7 @@ export class Rechazos implements OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly listState = inject(ListStateService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly userService = inject(UserService);
 
   // ── Responsables (vacío si el rol no puede listar usuarios) ──────────────
@@ -88,7 +92,12 @@ export class Rechazos implements OnDestroy {
   protected q = '';
   protected estadoFilter: RechazoEstado | '' = '';
   protected resultadoFilter: RechazoResultado | '' = '';
-  protected soloEscalados = false;
+  protected seguimientoFilter: FiltroSeguimiento | '' = '';
+  protected readonly seguimientoOpciones = SEGUIMIENTO_OPCIONES;
+  protected responsableFilter = '';
+  protected responsableEnLista(): boolean {
+    return responsableEnLista(this.usuarios(), this.responsableFilter);
+  }
 
   // ── Constants ─────────────────────────────────────────────────────────────
   protected readonly estadoValues = RECHAZO_ESTADO_VALUES;
@@ -148,20 +157,23 @@ export class Rechazos implements OnDestroy {
   protected readonly addingComment = signal(false);
 
   constructor() {
-    const s = this.listState.get<{ q: string; estadoFilter: string; resultadoFilter: string; soloEscalados?: boolean; page: number; size: number }>('rechazos');
+    const s = this.listState.get<{ q: string; estadoFilter: string; resultadoFilter: string; seguimientoFilter?: FiltroSeguimiento | ''; responsableFilter?: string; page: number; size: number }>('rechazos');
     if (s) {
       this.q = s.q;
       this.estadoFilter = s.estadoFilter as RechazoEstado | '';
       this.resultadoFilter = s.resultadoFilter as RechazoResultado | '';
-      this.soloEscalados = !!s.soloEscalados;
+      this.seguimientoFilter = s.seguimientoFilter ?? '';
+      this.responsableFilter = s.responsableFilter ?? '';
       this.size.set(s.size);
     }
     const qp = this.route.snapshot.queryParamMap;
     let startPage = s?.page ?? 0;
     if (this.applyQueryParams(qp)) startPage = 0;
+    if (seguimientoDeUrl(qp)) quitarParamsAviso(this.router, this.route);
 
     this.route.queryParamMap.pipe(skip(1), takeUntilDestroyed()).subscribe(params => {
       if (this.applyQueryParams(params)) this.reload(0);
+      if (seguimientoDeUrl(params)) quitarParamsAviso(this.router, this.route);
       this.openFromQueryParam(params);
     });
 
@@ -170,11 +182,13 @@ export class Rechazos implements OnDestroy {
     this.userService.activos().subscribe({ next: u => this.usuarios.set(u), error: () => {} });
   }
 
-  /** Aviso de escalados: solo ese filtro, sin los guardados. */
+  /** Aviso de seguimiento: solo ese filtro, sin los guardados. */
   private applyQueryParams(qp: ParamMap): boolean {
-    if (!pideEscalados(qp)) return false;
+    const seguimiento = seguimientoDeUrl(qp);
+    if (!seguimiento) return false;
     this.q = ''; this.estadoFilter = ''; this.resultadoFilter = '';
-    this.soloEscalados = true;
+    this.seguimientoFilter = seguimiento;
+    this.responsableFilter = responsableDeUrl(qp);
     return true;
   }
 
@@ -191,7 +205,7 @@ export class Rechazos implements OnDestroy {
   ngOnDestroy(): void {
     this.listState.save('rechazos', {
       q: this.q, estadoFilter: this.estadoFilter, resultadoFilter: this.resultadoFilter,
-      soloEscalados: this.soloEscalados, page: this.page(), size: this.size(),
+      seguimientoFilter: this.seguimientoFilter, responsableFilter: this.responsableFilter, page: this.page(), size: this.size(),
     });
   }
 
@@ -201,7 +215,7 @@ export class Rechazos implements OnDestroy {
     this.loading.set(true);
     this.service.list(
       { q: this.q || undefined, estado: this.estadoFilter || undefined, resultado: this.resultadoFilter || undefined,
-        soloEscalados: this.soloEscalados },
+        seguimiento: this.seguimientoFilter || undefined, responsableId: this.responsableFilter || undefined },
       p, this.size(),
     ).subscribe({
       next: (res) => { this.result.set(res); this.loading.set(false); },
@@ -216,7 +230,7 @@ export class Rechazos implements OnDestroy {
 
   protected applyFilters(): void { this.reload(0); }
   protected clearFilters(): void {
-    this.q = ''; this.estadoFilter = ''; this.resultadoFilter = ''; this.soloEscalados = false;
+    this.q = ''; this.estadoFilter = ''; this.resultadoFilter = ''; this.seguimientoFilter = ''; this.responsableFilter = '';
     this.reload(0);
   }
 
@@ -442,7 +456,8 @@ export class Rechazos implements OnDestroy {
       q: this.q || undefined,
       estado: this.estadoFilter || undefined,
       resultado: this.resultadoFilter || undefined,
-      soloEscalados: this.soloEscalados,
+      seguimiento: this.seguimientoFilter || undefined,
+      responsableId: this.responsableFilter || undefined,
     }).subscribe(blob => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

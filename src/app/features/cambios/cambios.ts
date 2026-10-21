@@ -4,7 +4,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { ActivatedRoute, ParamMap } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import { of, skip } from 'rxjs';
 
 import { PageHeader } from '../../shared/components/page-header/page-header';
@@ -28,7 +28,10 @@ import {
 } from '../../core/models/cambio.model';
 import { Page, User } from '../../core/models';
 import { formatDate } from '../../shared/utils/format';
-import { formatAntiguedad, pideEscalados, seguimientoTone } from '../../shared/utils/seguimiento';
+import {
+  FiltroSeguimiento, SEGUIMIENTO_OPCIONES, formatAntiguedad, quitarParamsAviso, responsableDeUrl, responsableEnLista, seguimientoDeUrl,
+  seguimientoTone,
+} from '../../shared/utils/seguimiento';
 
 const RESULTADO_TONE: Record<ResultadoCambio, StatusTone> = {
   activo:          'success',
@@ -70,6 +73,7 @@ export class Cambios implements OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly listState = inject(ListStateService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly userService = inject(UserService);
 
   // ── List state ────────────────────────────────────────────────────────────
@@ -84,7 +88,12 @@ export class Cambios implements OnDestroy {
   protected tipoFilter: TipoCambio | '' = '';
   protected resultadoFilter: ResultadoCambio | '' = '';
   protected gestionadoFilter: '' | 'true' | 'false' = '';
-  protected soloEscalados = false;
+  protected seguimientoFilter: FiltroSeguimiento | '' = '';
+  protected readonly seguimientoOpciones = SEGUIMIENTO_OPCIONES;
+  protected responsableFilter = '';
+  protected responsableEnLista(): boolean {
+    return responsableEnLista(this.usuarios(), this.responsableFilter);
+  }
 
   // ── Cliente search (local, sobre master-data) ─────────────────────────────
   protected readonly selectedClienteOption = signal<RemoteOption | null>(null);
@@ -162,22 +171,25 @@ export class Cambios implements OnDestroy {
         this.selectedClienteOption.set(null);
       }
     });
-    const s = this.listState.get<{ q: string; tipoFilter: string; resultadoFilter: string; gestionadoFilter: string; soloEscalados?: boolean; page: number; size: number }>('cambios');
+    const s = this.listState.get<{ q: string; tipoFilter: string; resultadoFilter: string; gestionadoFilter: string; seguimientoFilter?: FiltroSeguimiento | ''; responsableFilter?: string; page: number; size: number }>('cambios');
     if (s) {
       this.q = s.q;
       this.tipoFilter = s.tipoFilter as TipoCambio | '';
       this.resultadoFilter = s.resultadoFilter as ResultadoCambio | '';
       this.gestionadoFilter = s.gestionadoFilter as '' | 'true' | 'false';
-      this.soloEscalados = !!s.soloEscalados;
+      this.seguimientoFilter = s.seguimientoFilter ?? '';
+      this.responsableFilter = s.responsableFilter ?? '';
       this.size.set(s.size);
     }
 
     const qp = this.route.snapshot.queryParamMap;
     let startPage = s?.page ?? 0;
     if (this.applyQueryParams(qp)) startPage = 0;
+    if (seguimientoDeUrl(qp)) quitarParamsAviso(this.router, this.route);
 
     this.route.queryParamMap.pipe(skip(1), takeUntilDestroyed()).subscribe(params => {
       if (this.applyQueryParams(params)) this.reload(0);
+      if (seguimientoDeUrl(params)) quitarParamsAviso(this.router, this.route);
       this.openFromQueryParam(params);
     });
 
@@ -215,10 +227,12 @@ export class Cambios implements OnDestroy {
       this.q = qp.get('q') ?? '';
       changed = true;
     }
-    if (pideEscalados(qp)) {
-      // Aviso de escalados: solo ese filtro, sin los guardados
+    const seguimiento = seguimientoDeUrl(qp);
+    if (seguimiento) {
+      // Aviso de seguimiento: solo ese filtro, sin los guardados
       this.q = ''; this.tipoFilter = ''; this.resultadoFilter = ''; this.gestionadoFilter = '';
-      this.soloEscalados = true;
+      this.seguimientoFilter = seguimiento;
+      this.responsableFilter = responsableDeUrl(qp);
       changed = true;
     }
     return changed;
@@ -227,7 +241,7 @@ export class Cambios implements OnDestroy {
   ngOnDestroy(): void {
     this.listState.save('cambios', {
       q: this.q, tipoFilter: this.tipoFilter, resultadoFilter: this.resultadoFilter,
-      gestionadoFilter: this.gestionadoFilter, soloEscalados: this.soloEscalados, page: this.page(), size: this.size(),
+      gestionadoFilter: this.gestionadoFilter, seguimientoFilter: this.seguimientoFilter, responsableFilter: this.responsableFilter, page: this.page(), size: this.size(),
     });
   }
 
@@ -240,7 +254,8 @@ export class Cambios implements OnDestroy {
       tipoSolicitud: this.tipoFilter     || undefined,
       resultado:    this.resultadoFilter || undefined,
       gestionado:   this.gestionadoFilter ? this.gestionadoFilter === 'true' : undefined,
-      soloEscalados: this.soloEscalados,
+      seguimiento: this.seguimientoFilter || undefined,
+      responsableId: this.responsableFilter || undefined,
       page:         p,
       size:         this.size(),
     }).subscribe({
@@ -252,7 +267,7 @@ export class Cambios implements OnDestroy {
   protected onSizeChange(size: number): void { this.size.set(size); this.reload(0); }
   protected applyFilters(): void { this.reload(0); }
   protected clearFilters(): void {
-    this.q = ''; this.tipoFilter = ''; this.resultadoFilter = ''; this.gestionadoFilter = ''; this.soloEscalados = false;
+    this.q = ''; this.tipoFilter = ''; this.resultadoFilter = ''; this.gestionadoFilter = ''; this.seguimientoFilter = ''; this.responsableFilter = '';
     this.reload(0);
   }
 
@@ -361,7 +376,8 @@ export class Cambios implements OnDestroy {
       tipoSolicitud: this.tipoFilter || undefined,
       resultado: this.resultadoFilter || undefined,
       gestionado: this.gestionadoFilter ? this.gestionadoFilter === 'true' : undefined,
-      soloEscalados: this.soloEscalados,
+      seguimiento: this.seguimientoFilter || undefined,
+      responsableId: this.responsableFilter || undefined,
     }).subscribe(blob => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

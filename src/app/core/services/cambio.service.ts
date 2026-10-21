@@ -5,12 +5,14 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Page } from '../models';
 import { Cambio, CambioRequest, ResultadoCambio, TipoCambio } from '../models/cambio.model';
+import { FiltroSeguimiento } from '../../shared/utils/seguimiento';
 
 export interface CambioFilters {
   tipoSolicitud?: TipoCambio;
   resultado?: ResultadoCambio;
   gestionado?: boolean;
-  soloEscalados?: boolean;
+  seguimiento?: FiltroSeguimiento;
+  responsableId?: string;
   startDate?: string;
   endDate?: string;
   q?: string;
@@ -32,7 +34,8 @@ export class CambioService {
     if (filters.startDate)         params = params.set('startDate', filters.startDate);
     if (filters.endDate)           params = params.set('endDate', filters.endDate);
     if (filters.q)                 params = params.set('q', filters.q);
-    if (filters.soloEscalados)     params = params.set('soloEscalados', 'true');
+    if (filters.seguimiento)       params = params.set('seguimiento', filters.seguimiento);
+    if (filters.responsableId)     params = params.set('responsableId', filters.responsableId);
     if (filters.page != null)      params = params.set('page', String(filters.page));
     if (filters.size != null)      params = params.set('size', String(filters.size));
     if (filters.sort)              params = params.set('sort', filters.sort);
@@ -63,7 +66,8 @@ export class CambioService {
     if (filters.startDate)     params = params.set('startDate', filters.startDate);
     if (filters.endDate)       params = params.set('endDate', filters.endDate);
     if (filters.q)             params = params.set('q', filters.q);
-    if (filters.soloEscalados) params = params.set('soloEscalados', 'true');
+    if (filters.seguimiento)   params = params.set('seguimiento', filters.seguimiento);
+    if (filters.responsableId) params = params.set('responsableId', filters.responsableId);
     return this.http.get(`${this.base}/export/csv`, { params, responseType: 'blob' });
   }
 }
