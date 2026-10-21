@@ -111,6 +111,7 @@ export class Layout {
               { label: 'Pre-demanda / Demanda', url: '/collections/lawsuits', icon: 'scale' as const },
             ],
           },
+          { label: 'Calendario de acuerdos', url: '/collections/agreements-calendar', icon: 'calendar' as const },
           { label: 'Promesas de pago', url: '/collections/promises', icon: 'calendar-check' as const },
           { label: 'Pagos fraccionados', url: '/collections/fraccionados', icon: 'layers' as const },
           { label: 'Clientes deudores', url: '/collections/clients', icon: 'users' as const },

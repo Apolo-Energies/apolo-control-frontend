@@ -189,6 +189,8 @@ export interface GestionImpago {
   demandaEnviada: boolean;
   demandaM1: boolean;
   procesoJudicialGestionado: boolean;
+  acuerdoVerbalFecha: string | null;
+  acuerdoOvcFecha: string | null;
   promesaFecha: string | null;
   promesaImporte: number | null;
   promesaCumplida: boolean;
@@ -246,6 +248,8 @@ export interface GestionImpagoPayload {
   demandaPreparada?: boolean;
   demandaEnviada?: boolean;
   procesoJudicialGestionado?: boolean;
+  acuerdoVerbalFecha?: string | null;
+  acuerdoOvcFecha?: string | null;
   promesaFecha?: string | null;
   promesaImporte?: number | null;
   promesaCumplida?: boolean;
@@ -290,6 +294,20 @@ export interface GestionImpagoRegistrarContactoPayload {
   promesaFecha?: string | null;
   promesaImporte?: number | null;
   targetStep?: number;
+}
+
+// ── Calendario ───────────────────────────────────────────────────────────────
+
+export interface CalendarioEvento {
+  impagoId: string;
+  fecha: string;         // 'YYYY-MM-DD'
+  tipo: 'verbal' | 'ovc' | 'promesa';
+  clienteNombre: string | null;
+  numeroFactura: string | null;
+  importePendiente: number | null;
+  estado: string;
+  promesaImporte: number | null;
+  promesaCumplida: boolean | null;
 }
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
