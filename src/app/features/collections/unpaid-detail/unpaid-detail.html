@@ -672,22 +672,72 @@
       </ul>
     </div>
 
-    <!-- Promesa de pago -->
-    @if (imp.promesaFecha) {
+    <!-- Acuerdos de pago -->
+    @if (imp.acuerdoVerbalFecha || imp.acuerdoOvcFecha || imp.promesaFecha) {
       <div class="bg-success-soft border border-success/20 rounded-xl p-5">
-        <h3 class="text-sm font-semibold text-success-fg mb-3 flex items-center gap-2">
-          <ui-icon name="calendar-check" [size]="14" />
-          Promesa de pago
-        </h3>
-        <p class="text-sm"><span class="text-muted-foreground">Fecha:</span> {{ fmt(imp.promesaFecha) }}</p>
-        @if (imp.promesaImporte) {
-          <p class="text-sm"><span class="text-muted-foreground">Importe:</span> {{ formatEur(imp.promesaImporte) }}</p>
-        }
-        <p class="text-sm">
-          <span class="text-muted-foreground">Cumplida:</span>
-          <ui-icon [name]="imp.promesaCumplida ? 'check' : 'x'" [size]="12" class="inline ml-1" />
-        </p>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold text-success-fg flex items-center gap-2">
+            <ui-icon name="calendar-check" [size]="14" />
+            Acuerdos de pago
+          </h3>
+          <button type="button" (click)="openAcuerdosDialog()"
+            class="text-xs text-success-fg/70 hover:text-success-fg flex items-center gap-1 transition-colors">
+            <ui-icon name="edit" [size]="11" /> Editar
+          </button>
+        </div>
+        <ul class="space-y-2 text-sm">
+          @if (imp.acuerdoVerbalFecha) {
+            <li class="flex items-start justify-between gap-2">
+              <div>
+                <span class="text-muted-foreground text-xs uppercase tracking-wide">Acuerdo verbal</span>
+                <p class="font-medium">{{ fmt(imp.acuerdoVerbalFecha) }}</p>
+              </div>
+              <button type="button" (click)="clearAcuerdo('verbal')"
+                class="mt-0.5 text-muted-foreground/50 hover:text-danger-fg transition-colors flex-shrink-0">
+                <ui-icon name="x" [size]="12" />
+              </button>
+            </li>
+          }
+          @if (imp.acuerdoOvcFecha) {
+            <li class="flex items-start justify-between gap-2">
+              <div>
+                <span class="text-muted-foreground text-xs uppercase tracking-wide">Acuerdo formal OVC</span>
+                <p class="font-medium">{{ fmt(imp.acuerdoOvcFecha) }}</p>
+              </div>
+              <button type="button" (click)="clearAcuerdo('ovc')"
+                class="mt-0.5 text-muted-foreground/50 hover:text-danger-fg transition-colors flex-shrink-0">
+                <ui-icon name="x" [size]="12" />
+              </button>
+            </li>
+          }
+          @if (imp.promesaFecha) {
+            <li class="flex items-start justify-between gap-2">
+              <div>
+                <span class="text-muted-foreground text-xs uppercase tracking-wide">Promesa de pago</span>
+                <p class="font-medium">{{ fmt(imp.promesaFecha) }}</p>
+                @if (imp.promesaImporte) {
+                  <p class="text-xs text-muted-foreground">{{ formatEur(imp.promesaImporte) }}</p>
+                }
+                <p class="text-xs flex items-center gap-1">
+                  <ui-icon [name]="imp.promesaCumplida ? 'check-circle' : 'circle'" [size]="11"
+                    [class]="imp.promesaCumplida ? 'text-success-fg' : 'text-muted-foreground'" />
+                  {{ imp.promesaCumplida ? 'Cumplida' : 'Pendiente' }}
+                </p>
+              </div>
+              <button type="button" (click)="clearAcuerdo('promesa')"
+                class="mt-0.5 text-muted-foreground/50 hover:text-danger-fg transition-colors flex-shrink-0">
+                <ui-icon name="x" [size]="12" />
+              </button>
+            </li>
+          }
+        </ul>
       </div>
+    } @else {
+      <button type="button" (click)="openAcuerdosDialog()"
+        class="w-full flex items-center gap-2 px-4 py-3 rounded-xl border border-dashed border-border/60 text-sm text-muted-foreground hover:border-primary/40 hover:text-primary/80 transition-colors">
+        <ui-icon name="calendar" [size]="14" />
+        Registrar acuerdo de pago
+      </button>
     }
 
     <!-- Corte alert -->
@@ -996,4 +1046,55 @@
       </textarea>
     </div>
   </form>
+</app-form-dialog>
+
+<!-- Acuerdos de pago dialog -->
+<app-form-dialog
+  [open]="acuerdosDialogOpen()"
+  title="Acuerdos de pago"
+  icon="calendar-check"
+  [saving]="acuerdosSubmitting()"
+  [canSave]="true"
+  [errorMessage]="acuerdosError()"
+  saveLabel="Guardar"
+  (cancel)="acuerdosDialogOpen.set(false)"
+  (save)="submitAcuerdos()"
+>
+  <div class="space-y-5">
+    <p class="text-xs text-muted-foreground">
+      Las fechas registradas generarán un recordatorio automático el día anterior al vencimiento.
+    </p>
+    <div>
+      <label class="block text-sm font-medium text-foreground mb-1 flex items-center gap-2">
+        <ui-icon name="phone" [size]="13" class="text-muted-foreground" />
+        Acuerdo verbal — fecha de pago
+      </label>
+      <input type="date" [(ngModel)]="acuerdosForm.acuerdoVerbalFecha"
+        class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary" />
+      <p class="text-xs text-muted-foreground mt-1">Compromiso verbal del cliente de pagar en esta fecha.</p>
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-foreground mb-1 flex items-center gap-2">
+        <ui-icon name="file-text" [size]="13" class="text-muted-foreground" />
+        Acuerdo formal OVC — fecha de pago
+      </label>
+      <input type="date" [(ngModel)]="acuerdosForm.acuerdoOvcFecha"
+        class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary" />
+      <p class="text-xs text-muted-foreground mt-1">Fecha acordada en el proceso formal OVC.</p>
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-foreground mb-1 flex items-center gap-2">
+        <ui-icon name="calendar-check" [size]="13" class="text-muted-foreground" />
+        Promesa de pago — fecha e importe
+      </label>
+      <div class="grid grid-cols-2 gap-3">
+        <input type="date" [(ngModel)]="acuerdosForm.promesaFecha"
+          class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary" />
+        <input type="number" [(ngModel)]="acuerdosForm.promesaImporte" min="0" step="0.01"
+          placeholder="Importe (€)"
+          class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary" />
+      </div>
+      <p class="text-xs text-muted-foreground mt-1">Compromiso escrito / formal de pago.</p>
+    </div>
+  </div>
 </app-form-dialog>

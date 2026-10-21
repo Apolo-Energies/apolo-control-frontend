@@ -151,6 +151,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'collections/agreements-calendar',
+        loadComponent: () =>
+          import('./features/collections/agreements-calendar/agreements-calendar').then(
+            (m) => m.AgreementsCalendar,
+          ),
+      },
+      {
         path: 'collections/disconnection',
         loadComponent: () =>
           import('./features/collections/disconnection/disconnection').then(

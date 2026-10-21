@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import {
+  CalendarioEvento,
   GestionEstadisticas,
   GestionImpago,
   GestionImpagoActualizarEstadoPayload,
@@ -103,6 +104,12 @@ export class GestionImpagoService {
 
   promesas(): Observable<GestionImpago[]> {
     return this.http.get<GestionImpago[]>(`${this.baseUrl}/promesas`);
+  }
+
+  calendario(desde: string, hasta: string): Observable<CalendarioEvento[]> {
+    return this.http.get<CalendarioEvento[]>(`${this.baseUrl}/calendario`, {
+      params: { desde, hasta },
+    });
   }
 
   promesasList(q: string | undefined, page: PageRequest = {}): Observable<Page<GestionImpago>> {

@@ -16,7 +16,7 @@ import { NotificationService }          from '../../../core/services/notificatio
 import { GlobalLoadingService }         from '../../../core/services/global-loading.service';
 import { MasterDataService }            from '../../../core/services/master-data.service';
 import {
-  GestionImpago, GestionAccionCobranza, HistorialEstadoImpago,
+  GestionImpago, GestionAccionCobranza, GestionImpagoPayload, HistorialEstadoImpago,
   EstadoGestionImpago, ESTADO_GESTION_IMPAGO_VALUES, ESTADO_GESTION_IMPAGO_LABEL,
   TipoAccionCobranza, ResultadoAccionCobranza,
   TIPO_ACCION_LABEL, RESULTADO_ACCION_LABEL, DemandaDocumento,
@@ -584,6 +584,72 @@ export class UnpaidDetail implements OnInit {
     const factura = imp.numeroFactura ?? '—';
     const importe = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(imp.importePendiente ?? 0);
     return `Hola ${nombre}, buen día.\n\nLe escribimos desde Apolo Energies, su compañía de suministro eléctrico, para informarle de que tenemos constancia de un impago en su cuenta:\nNº de factura: ${factura}\nImporte pendiente: ${importe}\nTransferencia a: ES96 0049 5332 1822 1000 5857\nLe agradeceríamos que regularizara este importe a la mayor brevedad posible, con el fin de evitar cualquier interrupción en su suministro.\n\nUna vez realizado el pago, le rogamos nos facilite el comprobante del mismo.\n\nGracias por su atención. Quedamos a su disposición para cualquier consulta.\n\nEquipo de Apolo Energies`;
+  }
+
+  // ── Acuerdos de pago ─────────────────────────────────────────────────────
+  protected readonly acuerdosDialogOpen  = signal(false);
+  protected readonly acuerdosSubmitting  = signal(false);
+  protected readonly acuerdosError       = signal<string | null>(null);
+  protected acuerdosForm = {
+    acuerdoVerbalFecha: '',
+    acuerdoOvcFecha: '',
+    promesaFecha: '',
+    promesaImporte: '' as string | number,
+  };
+
+  protected openAcuerdosDialog(): void {
+    const imp = this.impago();
+    if (!imp) return;
+    this.acuerdosForm = {
+      acuerdoVerbalFecha: imp.acuerdoVerbalFecha ?? '',
+      acuerdoOvcFecha:    imp.acuerdoOvcFecha    ?? '',
+      promesaFecha:       imp.promesaFecha        ?? '',
+      promesaImporte:     imp.promesaImporte      != null ? imp.promesaImporte : '',
+    };
+    this.acuerdosError.set(null);
+    this.acuerdosDialogOpen.set(true);
+  }
+
+  protected submitAcuerdos(): void {
+    const imp = this.impago();
+    if (!imp) return;
+    this.acuerdosSubmitting.set(true);
+    this.acuerdosError.set(null);
+    this.service.update(imp.id, {
+      clienteId: imp.clienteId,
+      acuerdoVerbalFecha: this.acuerdosForm.acuerdoVerbalFecha || null,
+      acuerdoOvcFecha:    this.acuerdosForm.acuerdoOvcFecha    || null,
+      promesaFecha:       this.acuerdosForm.promesaFecha       || null,
+      promesaImporte:     this.acuerdosForm.promesaImporte !== ''
+        ? Number(this.acuerdosForm.promesaImporte) : null,
+    }).subscribe({
+      next: (updated) => {
+        this.impago.set(updated);
+        this.acuerdosSubmitting.set(false);
+        this.acuerdosDialogOpen.set(false);
+        this.notify.success('Acuerdos actualizados');
+      },
+      error: (err: HttpErrorResponse) => {
+        this.acuerdosSubmitting.set(false);
+        this.acuerdosError.set(extractMessage(err));
+      },
+    });
+  }
+
+  protected clearAcuerdo(tipo: 'verbal' | 'ovc' | 'promesa'): void {
+    const imp = this.impago();
+    if (!imp) return;
+    const patch: GestionImpagoPayload = { clienteId: imp.clienteId };
+    if (tipo === 'verbal')  patch.acuerdoVerbalFecha = null;
+    if (tipo === 'ovc')     patch.acuerdoOvcFecha    = null;
+    if (tipo === 'promesa') { patch.promesaFecha = null; patch.promesaImporte = null; }
+    this.service.update(imp.id, patch).subscribe({
+      next: (updated) => {
+        this.impago.set(updated);
+        this.notify.success('Acuerdo eliminado');
+      },
+      error: (err: HttpErrorResponse) => this.notify.error(extractMessage(err)),
+    });
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

@@ -1,0 +1,144 @@
+<app-page-header title="Calendario de acuerdos" icon="calendar" />
+
+<!-- Nav controls -->
+<div class="flex items-center gap-3 mb-4">
+  <button type="button" (click)="prevMonth()"
+    class="w-8 h-8 flex items-center justify-center rounded-lg border border-border hover:bg-muted transition-colors">
+    <ui-icon name="chevron-left" [size]="16" />
+  </button>
+  <span class="text-base font-semibold text-foreground capitalize min-w-[180px] text-center">
+    {{ monthLabel() }}
+  </span>
+  <button type="button" (click)="nextMonth()"
+    class="w-8 h-8 flex items-center justify-center rounded-lg border border-border hover:bg-muted transition-colors">
+    <ui-icon name="chevron-right" [size]="16" />
+  </button>
+  <button type="button" (click)="goToday()"
+    class="ml-2 px-3 h-8 text-xs rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+    Hoy
+  </button>
+
+  <!-- Leyenda -->
+  <div class="ml-auto flex items-center gap-4 text-xs">
+    <span class="flex items-center gap-1.5">
+      <span class="w-3 h-3 rounded-sm bg-blue-500 opacity-80"></span> Acuerdo verbal
+    </span>
+    <span class="flex items-center gap-1.5">
+      <span class="w-3 h-3 rounded-sm bg-purple-500 opacity-80"></span> OVC formal
+    </span>
+    <span class="flex items-center gap-1.5">
+      <span class="w-3 h-3 rounded-sm bg-emerald-500 opacity-80"></span> Promesa de pago
+    </span>
+  </div>
+</div>
+
+<!-- Loading / error -->
+@if (loading()) {
+  <div class="flex items-center justify-center h-64 text-muted-foreground gap-2">
+    <ui-icon name="loader" [size]="18" class="animate-spin" />
+    Cargando calendario…
+  </div>
+} @else if (error()) {
+  <div class="flex items-center justify-center h-64 text-danger-fg gap-2">
+    <ui-icon name="alert-circle" [size]="16" />
+    {{ error() }}
+  </div>
+} @else {
+
+  <!-- Calendar grid -->
+  <div class="bg-card border border-border rounded-xl overflow-hidden">
+
+    <!-- Day headers -->
+    <div class="grid grid-cols-7 border-b border-border bg-muted/30">
+      @for (d of ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']; track d) {
+        <div class="py-2 text-center text-xs font-medium text-muted-foreground">{{ d }}</div>
+      }
+    </div>
+
+    <!-- Weeks -->
+    @for (week of weeks(); track $index) {
+      <div class="grid grid-cols-7 divide-x divide-border/50"
+        [class.border-b]="!$last" [class.border-border]="!$last">
+        @for (cell of week; track $index) {
+          <div class="min-h-[110px] p-1.5 flex flex-col"
+            [class.bg-muted/20]="cell.isPast && cell.date"
+            [class.bg-primary/5]="cell.isToday">
+
+            <!-- Day number -->
+            @if (cell.date) {
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold leading-none px-1 py-0.5 rounded"
+                  [class.bg-primary]="cell.isToday"
+                  [class.text-primary-foreground]="cell.isToday"
+                  [class.text-foreground]="!cell.isToday && !cell.isPast"
+                  [class.text-muted-foreground]="cell.isPast && !cell.isToday">
+                  {{ cell.label }}
+                </span>
+                @if (cell.eventos.length > 0) {
+                  <span class="text-[10px] text-muted-foreground">{{ cell.eventos.length }}</span>
+                }
+              </div>
+
+              <!-- Events -->
+              <div class="flex flex-col gap-0.5 flex-1 overflow-hidden">
+                @for (ev of cell.eventos.slice(0, 4); track ev.impagoId + ev.tipo) {
+                  <button type="button"
+                    (click)="openImpago(ev)"
+                    [class]="'w-full text-left rounded px-1.5 py-1 text-[11px] leading-tight hover:opacity-80 transition-opacity truncate ' + tipoBadgeClass(ev.tipo)"
+                    [title]="(ev.clienteNombre ?? '—') + ' · ' + tipoLabel(ev.tipo) + (ev.promesaImporte ? ' · ' + formatEur(ev.promesaImporte) : '')">
+                    <span class="font-medium truncate block">{{ ev.clienteNombre ?? '—' }}</span>
+                    <span class="opacity-75">{{ tipoLabel(ev.tipo) }}{{ ev.promesaImporte ? ' · ' + formatEur(ev.promesaImporte) : '' }}</span>
+                  </button>
+                }
+                @if (cell.eventos.length > 4) {
+                  <span class="text-[10px] text-muted-foreground px-1">+{{ cell.eventos.length - 4 }} más</span>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Resumen del mes -->
+  @if (eventos().length > 0) {
+    <div class="mt-4 bg-card border border-border rounded-xl p-4">
+      <h3 class="text-sm font-semibold text-foreground mb-3">Resumen del mes</h3>
+      <div class="grid grid-cols-3 gap-4 text-sm">
+        <div class="flex flex-col gap-1">
+          <span class="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-medium">
+            <span class="w-2.5 h-2.5 rounded-sm bg-blue-500"></span>
+            Acuerdos verbales
+          </span>
+          <span class="text-2xl font-bold text-foreground pl-4">
+            {{ countByTipo('verbal') }}
+          </span>
+        </div>
+        <div class="flex flex-col gap-1">
+          <span class="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-medium">
+            <span class="w-2.5 h-2.5 rounded-sm bg-purple-500"></span>
+            Acuerdos OVC
+          </span>
+          <span class="text-2xl font-bold text-foreground pl-4">
+            {{ countByTipo('ovc') }}
+          </span>
+        </div>
+        <div class="flex flex-col gap-1">
+          <span class="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-medium">
+            <span class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>
+            Promesas de pago
+          </span>
+          <span class="text-2xl font-bold text-foreground pl-4">
+            {{ countByTipo('promesa') }}
+          </span>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <div class="mt-4 flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
+      <ui-icon name="calendar" [size]="32" class="opacity-30" />
+      <p class="text-sm">Sin acuerdos registrados en {{ monthLabel() }}</p>
+    </div>
+  }
+}
