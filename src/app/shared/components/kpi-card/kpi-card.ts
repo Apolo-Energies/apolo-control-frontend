@@ -19,6 +19,8 @@ export class KpiCard {
   readonly delta = input<string | null>(null);
   readonly deltaTrend = input<'up' | 'down' | 'flat'>('flat');
   readonly deltaLabel = input<string | null>(null);
+  /** Tooltip de la tarjeta (p. ej. la fórmula del KPI). */
+  readonly hint = input<string | null>(null);
 
   protected readonly iconBgClass = computed(() => {
     switch (this.tone()) {

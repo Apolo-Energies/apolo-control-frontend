@@ -11,6 +11,7 @@ import { DonutChart, DonutChartItem } from '../../shared/components/donut-chart/
 import { Pagination } from '../../shared/components/pagination/pagination';
 import { TableSkeleton } from '../../shared/components/table-skeleton/table-skeleton';
 import { LoadingOverlay } from '../../shared/components/loading-overlay/loading-overlay';
+import { KpiCard } from '../../shared/components/kpi-card/kpi-card';
 import {
   ApoloDecimalPipe,
   ApoloEnergyPipe,
@@ -28,13 +29,21 @@ import {
   ApiErrorResponse,
   ContractStatus,
   CONTRACT_STATUS_LABEL,
+  CONTRACT_STATUS_VALUES,
   DashboardFilter,
   DashboardSummary,
   GestionImpagoStats,
   Page,
 } from '../../core/models';
 import { Tarea, TareaStats, TareaRequest } from '../../core/models/tarea.model';
-import { formatEnergy, formatMonthShort, formatMwh } from '../../shared/utils/format';
+import {
+  formatDecimal2,
+  formatEnergy,
+  formatEuro,
+  formatInteger,
+  formatMonthShort,
+  formatMwh,
+} from '../../shared/utils/format';
 
 type RangeId = 'today' | 'week' | 'month' | 'year' | 'all';
 
@@ -72,24 +81,6 @@ interface StatusStripItem {
   colorSoft: string;
   icon: IconName;
 }
-
-const STATUS_DISPLAY_ORDER: ContractStatus[] = [
-  'previo',
-  'para_estudio',
-  'para_tramitar',
-  'para_firma',
-  'valido',
-  'confirmado',
-  'activo',
-  'renovado',
-  'finalizado',
-  'baja',
-  'ko',
-  'rechazado',
-  'incidencia',
-  'desestimado',
-  'sin_estado',
-];
 
 /**
  * Estados que NO se incluyen en "Total Venta Bruta":
@@ -129,6 +120,7 @@ const STATUS_COLORS: Record<ContractStatus, { color: string; colorSoft: string; 
     Pagination,
     TableSkeleton,
     LoadingOverlay,
+    KpiCard,
     ApoloIntegerPipe,
     ApoloDecimalPipe,
     ApoloMwhPipe,
@@ -228,7 +220,7 @@ export class Dashboard {
     const d = this.data();
     if (!d) return [];
     const totalContratos = d.contratos.total || 1;
-    return STATUS_DISPLAY_ORDER
+    return CONTRACT_STATUS_VALUES
       .filter((status) => (d.contratos.porEstado[status] ?? 0) > 0)
       .map((status) => {
         const total = d.contratos.porEstado[status] ?? 0;
@@ -315,6 +307,45 @@ export class Dashboard {
       tooltip: `Cobrado ${row.mes}: ${this.fmtEur(row.cobrado)}`,
     })),
   );
+
+  /** Un KPI por proceso; fórmulas propuestas pendientes de validar por el COO. */
+  protected readonly processKpiCards = computed(() => {
+    const k = this.data()?.kpisProceso;
+    if (!k) return [];
+    const impagos = this.impagoStats();
+    return [
+      {
+        label: 'Liquidaciones',
+        value: formatEuro(k.liquidacionesNetoPendiente),
+        sublabel: `neto pendiente · ${formatInteger(k.liquidacionesPendientes)} pagos`,
+        hint: 'Suma de (importe - penalización) de los pagos pendientes, por fecha de liquidación',
+      },
+      {
+        label: 'Bajas',
+        value: `${formatDecimal2(k.bajasTasaPct)} %`,
+        sublabel: `tasa de bajas · ${formatInteger(k.bajas)} bajas`,
+        hint: 'Contratos que pasan a baja en el periodo / contratos activos actuales',
+      },
+      {
+        label: 'Rechazos e incidencias',
+        value: formatInteger(k.rechazosEscalados),
+        sublabel: `escalados · de ${formatInteger(k.rechazosAbiertos)} abiertos`,
+        hint: 'Rechazos e incidencias abiertos ya escalados por falta de acción (estado actual)',
+      },
+      {
+        label: 'Cambios',
+        value: k.cambiosDiasMedioResolucion !== null ? `${formatDecimal2(k.cambiosDiasMedioResolucion)} días` : '—',
+        sublabel: 'tiempo medio de resolución',
+        hint: 'Días medios entre solicitud y resolución de los cambios resueltos en el periodo',
+      },
+      {
+        label: 'Impagos',
+        value: impagos ? `${formatDecimal2(impagos.tasaRecuperacion)} %` : '—',
+        sublabel: 'tasa de recuperación · histórico',
+        hint: 'Cobrado / (deuda pendiente + cobrado), histórico completo como la sección de impagos',
+      },
+    ];
+  });
 
   constructor() {
     this.reload();

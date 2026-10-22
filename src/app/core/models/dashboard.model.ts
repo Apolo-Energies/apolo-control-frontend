@@ -39,6 +39,17 @@ export interface MonthlyConsumption {
   totalContratos: number;
 }
 
+/** Un KPI por proceso; fórmulas propuestas pendientes de validar por el COO. */
+export interface ProcessKpis {
+  liquidacionesPendientes: number;
+  liquidacionesNetoPendiente: number;
+  bajas: number;
+  bajasTasaPct: number;
+  rechazosAbiertos: number;
+  rechazosEscalados: number;
+  cambiosDiasMedioResolucion: number | null;
+}
+
 export interface DashboardSummary {
   contratos: ContractsSummary;
   clientes: CustomersSummary;
@@ -48,6 +59,7 @@ export interface DashboardSummary {
   kosPorMotivo: Record<string, number>;
   consumoMensualBruto: MonthlyConsumption[];
   consumoMensualActivo: MonthlyConsumption[];
+  kpisProceso: ProcessKpis;
 }
 
 export interface DashboardFilter {

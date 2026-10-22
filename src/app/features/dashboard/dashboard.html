@@ -268,6 +268,21 @@
     }
   </div>
 
+  <!-- Un KPI por proceso -->
+  @if (processKpiCards().length > 0) {
+    <section class="mb-6">
+      <header class="mb-3">
+        <h2 class="text-base font-semibold text-foreground">KPIs por proceso</h2>
+        <p class="text-xs text-muted-foreground">Fórmulas propuestas, pendientes de validar por el COO</p>
+      </header>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        @for (c of processKpiCards(); track c.label) {
+          <app-kpi-card [label]="c.label" [value]="c.value" [sublabel]="c.sublabel" [hint]="c.hint" />
+        }
+      </div>
+    </section>
+  }
+
   <!-- Resumen + Top delegaciones -->
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
     <section class="lg:col-span-1 bg-card border border-border rounded-xl p-5">
@@ -444,7 +459,8 @@
         <p class="text-xs text-muted-foreground uppercase tracking-wide mb-1">Cobrado</p>
         <p class="text-xl font-bold text-success-fg">{{ s.cobrado | apoloEuro }}</p>
       </div>
-      <div class="rounded-xl border border-border/60 bg-background/40 p-4 text-center">
+      <div class="rounded-xl border border-border/60 bg-background/40 p-4 text-center"
+           title="Cobrado / (deuda pendiente + cobrado)">
         <p class="text-xs text-muted-foreground uppercase tracking-wide mb-1">Tasa recuperación</p>
         <p class="text-xl font-bold text-foreground">{{ s.tasaRecuperacion | apoloDecimal }}%</p>
       </div>
