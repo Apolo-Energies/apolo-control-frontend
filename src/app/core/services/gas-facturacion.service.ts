@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { GasConfig, GasDato, GasEmailLog, GasFactura, GasMovimiento, PageResponse } from '../models/gas-facturacion.model';
+import { GasConfig, GasDato, GasEmailLog, GasFactura, GasMovimiento, GasRemittance, GasRemittanceXml, PageResponse } from '../models/gas-facturacion.model';
 
 @Injectable({ providedIn: 'root' })
 export class GasFacturacionService {
@@ -40,6 +40,15 @@ export class GasFacturacionService {
   getMovimientos(desde: string, hasta: string): Observable<GasMovimiento[]> {
     const params = new HttpParams().set('desde', desde).set('hasta', hasta);
     return this.http.get<GasMovimiento[]>(`${this.base}/movimientos`, { params });
+  }
+
+  getRemesas(limit = 200): Observable<GasRemittance[]> {
+    const params = new HttpParams().set('limit', limit);
+    return this.http.get<GasRemittance[]>(`${this.base}/remesas`, { params });
+  }
+
+  getRemesaXml(id: string): Observable<GasRemittanceXml> {
+    return this.http.get<GasRemittanceXml>(`${this.base}/remesas/${id}/xml`);
   }
 
   enviar(desde: string, hasta: string): Observable<GasEmailLog> {

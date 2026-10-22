@@ -5,10 +5,10 @@ import { GasFacturacionService } from '../../core/services/gas-facturacion.servi
 import { NotificationService } from '../../core/services/notification.service';
 import { PageHeader } from '../../shared/components/page-header/page-header';
 import { Icon } from '../../shared/icons/icon';
-import { GasConfig, GasDato, GasEmailLog, GasFactura, GasMovimiento, PageResponse } from '../../core/models/gas-facturacion.model';
+import { GasConfig, GasDato, GasEmailLog, GasFactura, GasMovimiento, GasRemittance, PageResponse } from '../../core/models/gas-facturacion.model';
 import { IconName } from '../../shared/icons/icon';
 
-type Tab = 'facturas' | 'movimientos' | 'resumen' | 'config' | 'historial';
+type Tab = 'facturas' | 'movimientos' | 'resumen' | 'config' | 'historial' | 'remesas';
 
 function extractMsg(err: HttpErrorResponse): string {
   return (err.error as { message?: string })?.message ?? err.message ?? 'Error inesperado';
@@ -29,6 +29,7 @@ export class FacturacionGas implements OnInit {
   protected readonly tabs: Array<{ id: Tab; label: string; icon: IconName }> = [
     { id: 'facturas',    label: 'Facturas',       icon: 'file-text' },
     { id: 'movimientos', label: 'Movimientos',    icon: 'arrow-left-right' },
+    { id: 'remesas',     label: 'Remesas Banco',  icon: 'wallet' },
     { id: 'resumen',     label: 'Exportar A3',    icon: 'list-todo' },
     { id: 'config',      label: 'Config. Envíos', icon: 'sliders' },
     { id: 'historial',   label: 'Historial',      icon: 'clock' },
@@ -86,6 +87,13 @@ export class FacturacionGas implements OnInit {
   ];
   protected readonly scheduledHours = Array.from({ length: 24 }, (_, i) => i);
 
+  // ── Remesas ──────────────────────────────────────────────────────────────
+  protected readonly loadingRemesas  = signal(false);
+  protected readonly remesas         = signal<GasRemittance[]>([]);
+  protected readonly remesasError    = signal<string | null>(null);
+  protected readonly downloadingId   = signal<string | null>(null);
+  private remesasLoaded = false;
+
   // ── Historial ────────────────────────────────────────────────────────────
   protected readonly loadingHistorial = signal(false);
   protected readonly historial        = signal<PageResponse<GasEmailLog> | null>(null);
@@ -105,7 +113,10 @@ export class FacturacionGas implements OnInit {
 
   // ── Tabs ─────────────────────────────────────────────────────────────────
 
-  protected setTab(t: string): void { this.activeTab.set(t as Tab); }
+  protected setTab(t: string): void {
+    this.activeTab.set(t as Tab);
+    if (t === 'remesas' && !this.remesasLoaded) this.loadRemesas();
+  }
 
   // ── Facturas ──────────────────────────────────────────────────────────────
 
@@ -253,6 +264,41 @@ export class FacturacionGas implements OnInit {
         this.notify.error(extractMsg(e));
       },
     });
+  }
+
+  // ── Remesas ───────────────────────────────────────────────────────────────
+
+  protected loadRemesas(): void {
+    this.remesasLoaded = true;
+    this.loadingRemesas.set(true);
+    this.remesasError.set(null);
+    this.svc.getRemesas().subscribe({
+      next: (d) => { this.remesas.set(d); this.loadingRemesas.set(false); },
+      error: (e: HttpErrorResponse) => { this.remesasError.set(extractMsg(e)); this.loadingRemesas.set(false); },
+    });
+  }
+
+  protected onDownloadXml(id: string): void {
+    this.downloadingId.set(id);
+    this.svc.getRemesaXml(id).subscribe({
+      next: (data) => {
+        this.downloadingId.set(null);
+        if (!data.url) { this.notify.error('No se encontró el XML de esta remesa'); return; }
+        const a = document.createElement('a');
+        a.href = data.url;
+        a.download = data.fileName ?? 'remesa.xml';
+        a.target = '_blank';
+        a.click();
+      },
+      error: (e: HttpErrorResponse) => {
+        this.downloadingId.set(null);
+        this.notify.error(extractMsg(e));
+      },
+    });
+  }
+
+  protected get remesasTotalImporte(): number {
+    return this.remesas().reduce((s, r) => s + (r.total_amount ?? 0), 0);
   }
 
   // ── Historial ─────────────────────────────────────────────────────────────
