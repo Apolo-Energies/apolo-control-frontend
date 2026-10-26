@@ -1,22 +1,28 @@
 // ── Enums ────────────────────────────────────────────────────────
 
-export type EstadoVibraAlta = 'FIRMADO' | 'BAJA' | 'CANCELADO' | 'Pendiente';
+/** Mismos estados que Kilowy (CRM de Vibra), que es quien manda. */
+export type EstadoVibraAlta = 'ACTIVO' | 'FIRMADO' | 'TRAMITADO' | 'PENDIENTE_FIRMA' | 'BAJA' | 'CANCELADO';
 
 export const ESTADO_VIBRA_ALTA_VALUES: EstadoVibraAlta[] = [
-  'FIRMADO', 'BAJA', 'CANCELADO', 'Pendiente',
+  'ACTIVO', 'FIRMADO', 'TRAMITADO', 'PENDIENTE_FIRMA', 'BAJA', 'CANCELADO',
 ];
 
 export const ESTADO_VIBRA_ALTA_LABEL: Record<EstadoVibraAlta, string> = {
+  ACTIVO: 'Activo',
   FIRMADO: 'Firmado',
+  TRAMITADO: 'Tramitado',
+  PENDIENTE_FIRMA: 'Pendiente de firma',
   BAJA: 'Baja',
   CANCELADO: 'Cancelado',
-  Pendiente: 'Pendiente',
 };
 
-export type ComercializadoraVibra = 'ENDESA' | 'APOLO' | 'REPSOL' | 'IBERDROLA';
+export type ComercializadoraVibra = 'ENDESA' | 'APOLO' | 'REPSOL' | 'IBERDROLA' | 'PTE TRAMITAR';
+
+/** Altas aún sin compañía: no entran en la rotación semestral. */
+export const COMERCIALIZADORA_PTE_TRAMITAR: ComercializadoraVibra = 'PTE TRAMITAR';
 
 export const COMERCIALIZADORA_VIBRA_VALUES: ComercializadoraVibra[] = [
-  'ENDESA', 'APOLO', 'REPSOL', 'IBERDROLA',
+  'ENDESA', 'APOLO', 'REPSOL', 'IBERDROLA', 'PTE TRAMITAR',
 ];
 
 // ── Entity ───────────────────────────────────────────────────────
@@ -109,6 +115,17 @@ export interface VibraAltaPayload {
   comisionComercializadora?: number | null;
   historialLiquidaciones?: string | null;
   comentarios?: string | null;
+}
+
+export interface KilowySyncResult {
+  total: number;
+  creadas: number;
+  actualizadas: number;
+  sinCambios: number;
+  omitidas: number;
+  errores: number;
+  cambiosEstado: string[];
+  errorDetails: string[];
 }
 
 export interface CambiarEstadoVibraAltaPayload {

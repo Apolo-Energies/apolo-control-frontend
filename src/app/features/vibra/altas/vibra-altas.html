@@ -1,12 +1,20 @@
 <app-page-header title="Altas" [subtitle]="total() + ' de ' + total() + ' registros'">
   <a routerLink="/vibra/dashboard" class="text-sm text-muted-foreground hover:text-foreground">← Volver al Dashboard</a>
   <div class="ml-auto flex flex-wrap items-center gap-2">
+    @if (puedeAdministrar()) {
+      <button (click)="syncKilowy()" [disabled]="kilowySyncing()" title="Trae altas nuevas y estados desde Kilowy (también se hace solo cada día)"
+        class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">
+        <ui-icon name="refresh-cw" [size]="16" [class]="kilowySyncing() ? 'animate-spin' : ''" /> {{ kilowySyncing() ? 'Sincronizando…' : 'Sincronizar Kilowy' }}
+      </button>
+    }
     <button (click)="exportExcel()" class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-accent">
       <ui-icon name="download" [size]="16" /> Exportar
     </button>
-    <button (click)="openRotacion()" class="inline-flex items-center gap-2 rounded-lg bg-purple text-white px-3 py-2 text-sm font-medium hover:opacity-90">
-      <ui-icon name="refresh-cw" [size]="16" /> Rotación Semestral
-    </button>
+    @if (puedeAdministrar()) {
+      <button (click)="openRotacion()" class="inline-flex items-center gap-2 rounded-lg bg-purple text-white px-3 py-2 text-sm font-medium hover:opacity-90">
+        <ui-icon name="refresh-cw" [size]="16" /> Rotación Semestral
+      </button>
+    }
     <button (click)="triggerImportExcel()" class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-accent">
       <ui-icon name="upload" [size]="16" /> Importar Excel
     </button>
@@ -26,7 +34,7 @@
   </div>
   <select [(ngModel)]="estadoFilter" (change)="applyFilters()" class="border border-border rounded-lg px-3 py-2 text-sm bg-input">
     <option value="">Todos los estados</option>
-    @for (e of estadoValues; track e) {<option [value]="e">{{ e }}</option>}
+    @for (e of estadoValues; track e) {<option [value]="e">{{ estadoLabel(e) }}</option>}
   </select>
   <select [(ngModel)]="comercializadoraFilter" (change)="applyFilters()" class="border border-border rounded-lg px-3 py-2 text-sm bg-input">
     <option value="">Todas las comercializadoras</option>
@@ -184,7 +192,7 @@
                   class="border border-border rounded-md px-2 py-1 text-xs bg-input">
                   <option value="" [selected]="!r.estado">-- Estado --</option>
                   @for (e of estadoValues; track e) {
-                    <option [value]="e" [selected]="r.estado === e">{{ e }}</option>
+                    <option [value]="e" [selected]="r.estado === e">{{ estadoLabel(e) }}</option>
                   }
                   @if (r.estado && !estadoValues.includes($any(r.estado))) {
                     <option [value]="r.estado" selected>{{ r.estado }}</option>
@@ -307,7 +315,7 @@
         <h4 class="text-xs font-semibold uppercase text-muted-foreground mb-2">Comercial</h4>
         <div class="grid grid-cols-2 gap-3">
           <div><dt class="text-xs text-muted-foreground">Comercializadora</dt><dd>{{ d.comercializadora ?? '—' }}</dd></div>
-          <div><dt class="text-xs text-muted-foreground">Estado</dt><dd>{{ d.estado ?? '—' }}</dd></div>
+          <div><dt class="text-xs text-muted-foreground">Estado</dt><dd>{{ estadoLabel(d.estado) }}</dd></div>
           <div><dt class="text-xs text-muted-foreground">Consumo (kWh)</dt><dd class="tabular-nums">{{ fmtNumber(d.consumo) }}</dd></div>
           <div><dt class="text-xs text-muted-foreground">Colaborador</dt><dd>{{ d.colaborador ?? '—' }}</dd></div>
         </div>
@@ -364,6 +372,7 @@
     <p class="text-sm">
       Esta acción actualizará los contratos con más de 6 meses de antigüedad:
       cambiará su comercializadora y pondrá su liquidación en <strong>"No"</strong>.
+      Los que están en PTE TRAMITAR no se tocan.
     </p>
     <div class="rounded-lg bg-purple-soft text-purple-fg border border-purple/25 px-4 py-3 text-sm">
       Contratos elegibles (> 6 meses): <span class="font-bold text-lg">{{ rotacionElegibles() }}</span>
@@ -373,7 +382,7 @@
       <label class="text-sm font-medium">Nueva Comercializadora</label>
       <select [(ngModel)]="nuevaComercializadora" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
         <option value="">-- Seleccionar --</option>
-        @for (c of comercializadoraValues; track c) {<option [value]="c">{{ c }}</option>}
+        @for (c of comercializadorasRotacion; track c) {<option [value]="c">{{ c }}</option>}
       </select>
     </div>
   </div>
@@ -478,7 +487,7 @@
       <div>
         <label class="text-sm font-medium">Estado</label>
         <select formControlName="estado" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
-          @for (e of estadoValues; track e) {<option [value]="e">{{ e }}</option>}
+          @for (e of estadoValues; track e) {<option [value]="e">{{ estadoLabel(e) }}</option>}
         </select>
       </div>
 
