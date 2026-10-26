@@ -47,6 +47,7 @@ export interface VibraAlta {
   fechaFirma: string | null;
   fechaCambioComercializadora: string | null;
   fechaActivacionContrato: string | null;
+  fechaBaja: string | null;
 
   colaborador: string | null;
   mesLiquidacion: string | null;
@@ -63,6 +64,7 @@ export interface VibraAlta {
   gestionado: boolean;
   liquidado: string | null;
   liquidacionColaborador: number | null;
+  comisionComercializadora: number | null;
   historialLiquidaciones: string | null;
   comentarios: string | null;
 
@@ -91,6 +93,7 @@ export interface VibraAltaPayload {
   fechaFirma?: string | null;
   fechaCambioComercializadora?: string | null;
   fechaActivacionContrato?: string | null;
+  fechaBaja?: string | null;
   colaborador?: string | null;
   mesLiquidacion?: string | null;
   potenciaOriginal?: string | null;
@@ -103,6 +106,7 @@ export interface VibraAltaPayload {
   tramitado?: boolean | null;
   liquidado?: string | null;
   liquidacionColaborador?: number | null;
+  comisionComercializadora?: number | null;
   historialLiquidaciones?: string | null;
   comentarios?: string | null;
 }

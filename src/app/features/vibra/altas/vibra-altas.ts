@@ -111,11 +111,13 @@ export class VibraAltas {
     fechaCambioComercializadora: [null as string | null],
     fechaRenovacion: [null as string | null],
     fechaActivacionContrato: [null as string | null],
+    fechaBaja: [null as string | null],
     colaborador: [''],
     mesLiquidacion: [''],
     potenciaOriginal: [''],
     tramitado: [false],
     liquidado: [''],
+    comisionComercializadora: [null as number | null],
     historialLiquidaciones: [''],
     comentarios: [''],
   });
@@ -171,12 +173,14 @@ export class VibraAltas {
       comercializadora: a.comercializadora, estado: a.estado, consumo: a.consumo,
       fecha: a.fecha, fechaTramitacion: a.fechaTramitacion, fechaRenovacion: a.fechaRenovacion,
       fechaFirma: a.fechaFirma, fechaCambioComercializadora: a.fechaCambioComercializadora,
-      fechaActivacionContrato: a.fechaActivacionContrato, colaborador: a.colaborador,
+      fechaActivacionContrato: a.fechaActivacionContrato,
+      fechaBaja: a.fechaBaja, colaborador: a.colaborador,
       mesLiquidacion: a.mesLiquidacion, potenciaOriginal: a.potenciaOriginal,
       potenciaP1: a.potenciaP1, potenciaP2: a.potenciaP2, potenciaP3: a.potenciaP3,
       potenciaP4: a.potenciaP4, potenciaP5: a.potenciaP5, potenciaP6: a.potenciaP6,
       tramitado: a.tramitado, liquidado: a.liquidado,
       liquidacionColaborador: a.liquidacionColaborador,
+      comisionComercializadora: a.comisionComercializadora,
       historialLiquidaciones: a.historialLiquidaciones, comentarios: a.comentarios,
     };
   }
@@ -197,9 +201,11 @@ export class VibraAltas {
       estado: r.estado ?? 'Pendiente', consumo: r.consumo, fecha: r.fecha,
       fechaFirma: r.fechaFirma, fechaCambioComercializadora: r.fechaCambioComercializadora,
       fechaRenovacion: r.fechaRenovacion, fechaActivacionContrato: r.fechaActivacionContrato,
+      fechaBaja: r.fechaBaja,
       colaborador: r.colaborador ?? '', mesLiquidacion: r.mesLiquidacion ?? '',
       potenciaOriginal: r.potenciaOriginal ?? '',
       tramitado: r.tramitado ?? false, liquidado: r.liquidado ?? '',
+      comisionComercializadora: r.comisionComercializadora,
       historialLiquidaciones: r.historialLiquidaciones ?? '',
       comentarios: r.comentarios ?? '',
     });
@@ -211,8 +217,9 @@ export class VibraAltas {
   protected submit(): void {
     if (this.form.invalid) return;
     this.submitting.set(true);
-    const payload = this.form.getRawValue() as VibraAltaPayload;
     const r = this.editing();
+    // Base de la fila: conserva los campos que no están en el formulario
+    const payload = { ...(r ? this.altaToPayload(r) : {}), ...this.form.getRawValue() } as VibraAltaPayload;
     const obs = r ? this.service.update(r.id, payload) : this.service.create(payload);
     obs.subscribe({
       next: () => {
