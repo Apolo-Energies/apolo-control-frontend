@@ -6,6 +6,7 @@ import { environment } from '../../../environments/environment';
 import {
   CambiarEstadoVibraAltaPayload,
   GestionadoPayload,
+  KilowySyncResult,
   LiquidadoPayload,
   Page,
   PageRequest,
@@ -60,6 +61,10 @@ export class VibraAltaService {
 
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
+  syncKilowy(): Observable<KilowySyncResult> {
+    return this.http.post<KilowySyncResult>(`${this.baseUrl}/sync-kilowy`, {});
   }
 
   exportExcel(filter: VibraAltaFilter = {}): Observable<Blob> {

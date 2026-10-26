@@ -209,7 +209,7 @@ export class VibraContratoServicio {
       email: v.email ?? null,
       telefono: v.telefono ?? null,
       cuentaBancaria: v.iban ?? null,
-      estado: 'Pendiente',
+      estado: 'PENDIENTE_FIRMA',
       fecha: v.fechaInicio || new Date().toISOString().substring(0, 10),
       potenciaOriginal: potenciaResumen || null,
       consumo: v.consumoAnual ? Number(v.consumoAnual) : null,

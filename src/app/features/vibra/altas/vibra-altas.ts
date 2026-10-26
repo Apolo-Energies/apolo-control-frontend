@@ -13,9 +13,13 @@ import { Icon } from '../../../shared/icons/icon';
 
 import { VibraAltaService } from '../../../core/services/vibra-alta.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { AuthService } from '../../../core/auth/auth.service';
 import {
+  COMERCIALIZADORA_PTE_TRAMITAR,
   COMERCIALIZADORA_VIBRA_VALUES,
+  ESTADO_VIBRA_ALTA_LABEL,
   ESTADO_VIBRA_ALTA_VALUES,
+  EstadoVibraAlta,
   Page,
   VibraAlta,
   VibraAltaPayload,
@@ -33,6 +37,7 @@ import {
 export class VibraAltas {
   private readonly service = inject(VibraAltaService);
   private readonly notify = inject(NotificationService);
+  private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
 
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
@@ -66,6 +71,7 @@ export class VibraAltas {
 
   protected readonly estadoValues = ESTADO_VIBRA_ALTA_VALUES;
   protected readonly comercializadoraValues = COMERCIALIZADORA_VIBRA_VALUES;
+  protected readonly comercializadorasRotacion = COMERCIALIZADORA_VIBRA_VALUES.filter((c) => c !== COMERCIALIZADORA_PTE_TRAMITAR);
 
   protected readonly rows = computed(() => this.result()?.content ?? []);
   protected readonly total = computed(() => this.result()?.totalElements ?? 0);
@@ -91,6 +97,8 @@ export class VibraAltas {
   protected readonly rotacionElegibles = signal(0);
   protected readonly rotacionCutoff = signal('');
   protected readonly rotacionRunning = signal(false);
+  protected readonly kilowySyncing = signal(false);
+  protected readonly puedeAdministrar = computed(() => this.auth.hasRole('admin', 'operaciones'));
   protected nuevaComercializadora = '';
 
   protected readonly form = this.fb.group({
@@ -104,18 +112,20 @@ export class VibraAltas {
     email: [''],
     cuentaBancaria: [''],
     comercializadora: [''],
-    estado: ['Pendiente'],
+    estado: ['PENDIENTE_FIRMA'],
     consumo: [null as number | null],
     fecha: [null as string | null],
     fechaFirma: [null as string | null],
     fechaCambioComercializadora: [null as string | null],
     fechaRenovacion: [null as string | null],
     fechaActivacionContrato: [null as string | null],
+    fechaBaja: [null as string | null],
     colaborador: [''],
     mesLiquidacion: [''],
     potenciaOriginal: [''],
     tramitado: [false],
     liquidado: [''],
+    comisionComercializadora: [null as number | null],
     historialLiquidaciones: [''],
     comentarios: [''],
   });
@@ -171,19 +181,21 @@ export class VibraAltas {
       comercializadora: a.comercializadora, estado: a.estado, consumo: a.consumo,
       fecha: a.fecha, fechaTramitacion: a.fechaTramitacion, fechaRenovacion: a.fechaRenovacion,
       fechaFirma: a.fechaFirma, fechaCambioComercializadora: a.fechaCambioComercializadora,
-      fechaActivacionContrato: a.fechaActivacionContrato, colaborador: a.colaborador,
+      fechaActivacionContrato: a.fechaActivacionContrato,
+      fechaBaja: a.fechaBaja, colaborador: a.colaborador,
       mesLiquidacion: a.mesLiquidacion, potenciaOriginal: a.potenciaOriginal,
       potenciaP1: a.potenciaP1, potenciaP2: a.potenciaP2, potenciaP3: a.potenciaP3,
       potenciaP4: a.potenciaP4, potenciaP5: a.potenciaP5, potenciaP6: a.potenciaP6,
       tramitado: a.tramitado, liquidado: a.liquidado,
       liquidacionColaborador: a.liquidacionColaborador,
+      comisionComercializadora: a.comisionComercializadora,
       historialLiquidaciones: a.historialLiquidaciones, comentarios: a.comentarios,
     };
   }
 
   protected openCreate(): void {
     this.editing.set(null);
-    this.form.reset({ estado: 'Pendiente' });
+    this.form.reset({ estado: 'PENDIENTE_FIRMA' });
     this.dialogOpen.set(true);
   }
 
@@ -194,12 +206,14 @@ export class VibraAltas {
       direccionSuministro: r.direccionSuministro ?? '', poblacion: r.poblacion ?? '',
       provincia: r.provincia ?? '', telefono: r.telefono ?? '', email: r.email ?? '',
       cuentaBancaria: r.cuentaBancaria ?? '', comercializadora: r.comercializadora ?? '',
-      estado: r.estado ?? 'Pendiente', consumo: r.consumo, fecha: r.fecha,
+      estado: r.estado ?? 'PENDIENTE_FIRMA', consumo: r.consumo, fecha: r.fecha,
       fechaFirma: r.fechaFirma, fechaCambioComercializadora: r.fechaCambioComercializadora,
       fechaRenovacion: r.fechaRenovacion, fechaActivacionContrato: r.fechaActivacionContrato,
+      fechaBaja: r.fechaBaja,
       colaborador: r.colaborador ?? '', mesLiquidacion: r.mesLiquidacion ?? '',
       potenciaOriginal: r.potenciaOriginal ?? '',
       tramitado: r.tramitado ?? false, liquidado: r.liquidado ?? '',
+      comisionComercializadora: r.comisionComercializadora,
       historialLiquidaciones: r.historialLiquidaciones ?? '',
       comentarios: r.comentarios ?? '',
     });
@@ -211,8 +225,9 @@ export class VibraAltas {
   protected submit(): void {
     if (this.form.invalid) return;
     this.submitting.set(true);
-    const payload = this.form.getRawValue() as VibraAltaPayload;
     const r = this.editing();
+    // Base de la fila: conserva los campos que no están en el formulario
+    const payload = { ...(r ? this.altaToPayload(r) : {}), ...this.form.getRawValue() } as VibraAltaPayload;
     const obs = r ? this.service.update(r.id, payload) : this.service.create(payload);
     obs.subscribe({
       next: () => {
@@ -344,6 +359,28 @@ export class VibraAltas {
   protected closeDetail(): void {
     this.detailOpen.set(false);
     this.detailData.set(null);
+  }
+
+  protected syncKilowy(): void {
+    this.kilowySyncing.set(true);
+    this.service.syncKilowy().subscribe({
+      next: (r) => {
+        this.kilowySyncing.set(false);
+        const msg = `Kilowy: ${r.creadas} nuevas, ${r.actualizadas} actualizadas`;
+        if (r.errores > 0) this.notify.error(`${msg}, ${r.errores} errores`);
+        else this.notify.success(msg);
+        this.load();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.kilowySyncing.set(false);
+        this.notify.error(err.error?.message ?? 'Error al sincronizar con Kilowy');
+      },
+    });
+  }
+
+  protected estadoLabel(e: string | null): string {
+    if (!e) return '—';
+    return ESTADO_VIBRA_ALTA_LABEL[e as EstadoVibraAlta] ?? e;
   }
 
   protected fmtNumber(n: number | null | undefined): string {

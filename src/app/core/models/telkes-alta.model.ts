@@ -36,6 +36,7 @@ export interface TelkesAlta {
   fechaFirma: string | null;
   fechaCambioComercializadora: string | null;
   fechaActivacionContrato: string | null;
+  fechaBaja: string | null;
 
   colaborador: string | null;
   mesLiquidacion: string | null;
@@ -52,6 +53,7 @@ export interface TelkesAlta {
   gestionado: boolean;
   liquidado: string | null;
   liquidacionColaborador: number | null;
+  comisionComercializadora: number | null;
   historialLiquidaciones: string | null;
   comentarios: string | null;
 
@@ -78,6 +80,7 @@ export interface TelkesAltaPayload {
   fechaFirma?: string | null;
   fechaCambioComercializadora?: string | null;
   fechaActivacionContrato?: string | null;
+  fechaBaja?: string | null;
   colaborador?: string | null;
   mesLiquidacion?: string | null;
   potenciaOriginal?: string | null;
@@ -90,6 +93,7 @@ export interface TelkesAltaPayload {
   tramitado?: boolean | null;
   liquidado?: string | null;
   liquidacionColaborador?: number | null;
+  comisionComercializadora?: number | null;
   historialLiquidaciones?: string | null;
   comentarios?: string | null;
 }
