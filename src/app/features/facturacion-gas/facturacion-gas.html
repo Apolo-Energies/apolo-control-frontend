@@ -305,6 +305,110 @@
   }
 }
 
+<!-- ── Tab: Remesas ─────────────────────────────────────────────────────── -->
+@if (activeTab() === 'remesas') {
+  <div class="mx-4 mb-4 flex flex-wrap items-center gap-3">
+    <button (click)="loadRemesas()"
+      class="inline-flex items-center gap-1 h-8 px-3 rounded-md border border-border text-sm hover:bg-accent/40 transition-colors">
+      <ui-icon name="refresh-cw" [size]="14" />Actualizar
+    </button>
+    @if (!loadingRemesas() && remesas().length) {
+      <span class="text-sm text-muted-foreground">{{ remesas().length }} remesas</span>
+    }
+  </div>
+
+  @if (loadingRemesas()) {
+    <div class="mx-4 flex items-center gap-2 text-muted-foreground">
+      <ui-icon name="loader" [size]="18" class="animate-spin" />Cargando remesas...
+    </div>
+  } @else if (remesasError()) {
+    <div class="mx-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {{ remesasError() }}
+    </div>
+  } @else if (!remesas().length) {
+    <div class="mx-4 rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground text-sm">
+      Sin remesas disponibles
+    </div>
+  } @else {
+    <!-- KPIs -->
+    <div class="mx-4 mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div class="rounded-lg border border-border bg-card px-4 py-3">
+        <p class="text-xs text-muted-foreground">Remesas</p>
+        <p class="text-2xl font-semibold">{{ remesas().length }}</p>
+      </div>
+      <div class="rounded-lg border border-border bg-card px-4 py-3">
+        <p class="text-xs text-muted-foreground">Importe total</p>
+        <p class="text-2xl font-semibold">{{ fmt(remesasTotalImporte) }} €</p>
+      </div>
+    </div>
+
+    <!-- Tabla remesas -->
+    <div class="mx-4 overflow-x-auto rounded-lg border border-border">
+      <table class="w-full min-w-max text-sm">
+        <thead class="bg-muted/50">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Nombre</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Estado</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Sociedad</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Banco</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Tipo</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-muted-foreground whitespace-nowrap">Importe total</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-muted-foreground whitespace-nowrap">Transacciones</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Fecha de cobro</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Fecha de generación</th>
+            <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground whitespace-nowrap">XML</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          @for (r of remesas(); track r.id) {
+            <tr class="hover:bg-accent/30 transition-colors">
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap font-medium">{{ r.name || '—' }}</td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap">
+                @if (r.has_errors) {
+                  <span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                    [title]="r.error_description || ''">
+                    <ui-icon name="alert-triangle" [size]="10" />Error
+                  </span>
+                } @else {
+                  <span class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                    <ui-icon name="check-circle" [size]="10" />OK
+                  </span>
+                }
+              </td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap text-muted-foreground">{{ r.remittance_configuration_company_name || '—' }}</td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap text-muted-foreground">{{ r.remittance_configuration_bank_name || '—' }}</td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap">{{ r.record_type || '—' }}</td>
+              <td class="px-4 py-2.5 text-xs text-right whitespace-nowrap font-semibold">{{ fmt(r.total_amount) }} €</td>
+              <td class="px-4 py-2.5 text-xs text-right whitespace-nowrap">{{ r.items_count ?? '—' }}</td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap">{{ formatDate(r.bank_payment_date) }}</td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap">{{ formatDate(r.generation_date) }}</td>
+              <td class="px-4 py-2.5 text-center">
+                <button (click)="onDownloadXml(r.id)" [disabled]="downloadingId() === r.id"
+                  class="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-accent/40 transition-colors disabled:opacity-50"
+                  title="Descargar XML">
+                  @if (downloadingId() === r.id) {
+                    <ui-icon name="loader" [size]="12" class="animate-spin" />
+                  } @else {
+                    <ui-icon name="download" [size]="12" />
+                  }
+                  XML
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+        <tfoot class="border-t-2 border-border bg-muted/30">
+          <tr>
+            <td colspan="5" class="px-4 py-2 text-xs font-medium text-muted-foreground">Totales</td>
+            <td class="px-4 py-2 text-xs text-right font-bold">{{ fmt(remesasTotalImporte) }} €</td>
+            <td colspan="4"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  }
+}
+
 <!-- ── Tab: Resumen ─────────────────────────────────────────────────────── -->
 @if (activeTab() === 'resumen') {
   <!-- Selector de mes -->

@@ -72,6 +72,25 @@ export interface GasMovimiento {
   cost_center: string | null;
 }
 
+export interface GasRemittance {
+  id: string;
+  name: string | null;
+  has_errors: boolean | null;
+  error_description: string | null;
+  remittance_configuration_company_name: string | null;
+  remittance_configuration_bank_name: string | null;
+  record_type: string | null;
+  total_amount: number | null;
+  items_count: number | null;
+  bank_payment_date: string | null;
+  generation_date: string | null;
+}
+
+export interface GasRemittanceXml {
+  url: string | null;
+  fileName: string | null;
+}
+
 export interface PageResponse<T> {
   content: T[];
   totalElements: number;
