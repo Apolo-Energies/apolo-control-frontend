@@ -25,6 +25,8 @@ import {
   FORMA_PAGO_VALUES,
   Page,
   PagoLiquidacion,
+  PagoLiquidacionFilter,
+  PagoLiquidacionTotales,
   TipoPago,
   TIPO_PAGO_LABEL,
   TIPO_PAGO_VALUES,
@@ -90,6 +92,7 @@ export class PagosLiquidacion implements OnDestroy {
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly result = signal<Page<PagoLiquidacion> | null>(null);
+  protected readonly totales = signal<PagoLiquidacionTotales | null>(null);
   protected readonly page = signal(0);
   protected readonly size = signal(20);
 
@@ -103,22 +106,11 @@ export class PagosLiquidacion implements OnDestroy {
   protected readonly totalElements = computed(() => this.result()?.totalElements ?? 0);
   protected readonly totalPages = computed(() => this.result()?.totalPages ?? 0);
 
-  // KPIs calculados desde la respuesta paginada completa (suma acumulada)
-  protected readonly totalImporte = computed(() =>
-    this.rows().reduce((s, r) => s + r.importe, 0),
-  );
-  protected readonly totalNeto = computed(() =>
-    this.rows().reduce((s, r) => s + r.importeNeto, 0),
-  );
-  protected readonly totalPendiente = computed(() =>
-    this.rows().filter(r => r.estado === 'pendiente').reduce((s, r) => s + r.importeNeto, 0),
-  );
-
   protected readonly form = this.fb.group({
     colaboradorNombre: this.fb.nonNullable.control('', [Validators.required]),
     concepto: this.fb.nonNullable.control('', [Validators.required]),
-    importe: this.fb.control<number | null>(null, [Validators.required]),
-    importePenalizacion: this.fb.control<number | null>(null),
+    importe: this.fb.control<number | null>(null, [Validators.required, Validators.min(0)]),
+    importePenalizacion: this.fb.control<number | null>(null, [Validators.min(0)]),
     conceptoPenalizacion: this.fb.nonNullable.control(''),
     tipo: this.fb.nonNullable.control<TipoPago>('liquidacion', [Validators.required]),
     formaPago: this.fb.nonNullable.control<FormaPago | ''>(''),
@@ -127,7 +119,7 @@ export class PagosLiquidacion implements OnDestroy {
     numeroCuenta: this.fb.nonNullable.control(''),
     emailColaborador: this.fb.nonNullable.control(''),
     mesLiquidacion: this.fb.control<number | null>(null),
-    anioLiquidacion: this.fb.control<number | null>(null),
+    anioLiquidacion: this.fb.control<number | null>(null, [Validators.min(2000), Validators.max(2100)]),
     fechaLiquidacion: this.fb.nonNullable.control(''),
     fechaPago: this.fb.nonNullable.control(''),
     referencia: this.fb.nonNullable.control(''),
@@ -157,22 +149,23 @@ export class PagosLiquidacion implements OnDestroy {
     });
   }
 
+  /** Página y totales; para cambios de filtro o de datos. */
   protected reload(page: number): void {
+    this.goToPage(page);
+    this.totales.set(null);
+    this.service.totales(this.filter()).subscribe({
+      next: (t) => this.totales.set(t),
+      error: (err: HttpErrorResponse) => this.notify.error(extractMessage(err)),
+    });
+  }
+
+  /** Solo la página: los totales no cambian. */
+  protected goToPage(page: number): void {
     this.page.set(page);
     this.loading.set(true);
     this.errorMessage.set(null);
     this.service
-      .list(
-        {
-          q: this.q.trim() || undefined,
-          estado: this.estado || undefined,
-          tipo: this.tipo || undefined,
-          delegacionId: this.delegacionId || undefined,
-          startDate: this.startDate || undefined,
-          endDate: this.endDate || undefined,
-        },
-        { page, size: this.size(), sort: 'createdAt,desc' },
-      )
+      .list(this.filter(), { page, size: this.size(), sort: 'createdAt,desc' })
       .subscribe({
         next: (res) => {
           this.result.set(res);
@@ -185,6 +178,17 @@ export class PagosLiquidacion implements OnDestroy {
       });
   }
 
+  private filter(): PagoLiquidacionFilter {
+    return {
+      q: this.q.trim() || undefined,
+      estado: this.estado || undefined,
+      tipo: this.tipo || undefined,
+      delegacionId: this.delegacionId || undefined,
+      startDate: this.startDate || undefined,
+      endDate: this.endDate || undefined,
+    };
+  }
+
   protected onSearchChange(): void {
     if (this.debounce) clearTimeout(this.debounce);
     this.debounce = setTimeout(() => this.reload(0), 300);
@@ -192,7 +196,7 @@ export class PagosLiquidacion implements OnDestroy {
 
   protected onSizeChange(size: number): void {
     this.size.set(size);
-    this.reload(0);
+    this.goToPage(0);
   }
 
   protected clearFilters(): void {
@@ -326,7 +330,7 @@ export class PagosLiquidacion implements OnDestroy {
   protected async confirmDelete(row: PagoLiquidacion): Promise<void> {
     const ok = await this.confirm.ask({
       header: 'Eliminar pago',
-      message: `¿Eliminar el pago de <b>${row.colaboradorNombre}</b> por ${formatEuro(row.importe)}?`,
+      message: `¿Eliminar el pago <b>${row.numero}</b> de <b>${row.colaboradorNombre}</b> por ${formatEuro(row.importe)}?`,
       acceptLabel: 'Sí, eliminar',
       rejectLabel: 'Cancelar',
       variant: 'danger',
@@ -357,14 +361,7 @@ export class PagosLiquidacion implements OnDestroy {
   protected euro(v: number | null | undefined): string { return formatEuro(v ?? null); }
 
   protected downloadCsv(): void {
-    this.service.exportCsv({
-      q: this.q || undefined,
-      estado: this.estado || undefined,
-      tipo: this.tipo || undefined,
-      delegacionId: this.delegacionId || undefined,
-      startDate: this.startDate || undefined,
-      endDate: this.endDate || undefined,
-    }).subscribe(blob => {
+    this.service.exportCsv(this.filter()).subscribe(blob => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = 'pagos.csv'; a.click();

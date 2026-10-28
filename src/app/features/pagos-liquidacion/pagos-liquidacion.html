@@ -23,7 +23,7 @@
       type="text"
       [(ngModel)]="q"
       (ngModelChange)="onSearchChange()"
-      placeholder="Colaborador, concepto, referencia…"
+      placeholder="Nº, colaborador, concepto, referencia…"
       class="rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground w-64 focus:outline-none focus:ring-2 focus:ring-primary/40"
     />
   </label>
@@ -101,19 +101,19 @@
   }
 </section>
 
-<!-- KPIs de la página actual -->
+<!-- KPIs de todo el filtro (servidor) -->
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
   <div class="bg-card border border-border rounded-xl p-4 flex flex-col gap-1">
-    <p class="text-xs text-muted-foreground uppercase tracking-wide">Importe bruto (página)</p>
-    <p class="text-2xl font-semibold text-foreground">{{ euro(totalImporte()) }}</p>
+    <p class="text-xs text-muted-foreground uppercase tracking-wide">Importe bruto</p>
+    <p class="text-2xl font-semibold text-foreground">{{ euro(totales()?.importe) }}</p>
   </div>
   <div class="bg-card border border-border rounded-xl p-4 flex flex-col gap-1">
-    <p class="text-xs text-muted-foreground uppercase tracking-wide">Importe neto (página)</p>
-    <p class="text-2xl font-semibold text-success-fg">{{ euro(totalNeto()) }}</p>
+    <p class="text-xs text-muted-foreground uppercase tracking-wide">Importe neto</p>
+    <p class="text-2xl font-semibold text-success-fg">{{ euro(totales()?.neto) }}</p>
   </div>
   <div class="bg-card border border-border rounded-xl p-4 flex flex-col gap-1">
-    <p class="text-xs text-muted-foreground uppercase tracking-wide">Pendiente (página)</p>
-    <p class="text-2xl font-semibold text-warning-fg">{{ euro(totalPendiente()) }}</p>
+    <p class="text-xs text-muted-foreground uppercase tracking-wide">Pendiente</p>
+    <p class="text-2xl font-semibold text-warning-fg">{{ euro(totales()?.pendiente) }}</p>
   </div>
 </div>
 
@@ -147,6 +147,7 @@
           @for (row of rows(); track row.id) {
             <tr class="hover:bg-accent/20 transition-colors cursor-pointer" (click)="openEdit(row)">
               <td class="px-4 py-3">
+                <p class="text-xs font-mono text-muted-foreground">{{ row.numero }}</p>
                 <p class="font-medium text-foreground">{{ row.colaboradorNombre }}</p>
                 @if (row.numeroCuenta) {
                   <p class="text-xs font-mono text-muted-foreground">{{ row.numeroCuenta }}</p>
@@ -232,7 +233,7 @@
     [pageSize]="size()"
     [totalElements]="totalElements()"
     [totalPages]="totalPages()"
-    (pageChange)="reload($event)"
+    (pageChange)="goToPage($event)"
     (pageSizeChange)="onSizeChange($event)"
   />
 </div>
@@ -284,13 +285,13 @@
 
     <label class="flex flex-col gap-1.5">
       <span class="text-xs font-medium text-foreground/80">Importe bruto (€) <span class="text-danger-fg">*</span></span>
-      <input type="number" step="0.01" formControlName="importe" placeholder="0.00"
+      <input type="number" step="0.01" min="0" formControlName="importe" placeholder="0.00"
         class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
     </label>
 
     <label class="flex flex-col gap-1.5">
-      <span class="text-xs font-medium text-foreground/80">Penalización (€)</span>
-      <input type="number" step="0.01" formControlName="importePenalizacion" placeholder="0.00"
+      <span class="text-xs font-medium text-foreground/80">Penalización (€, se resta)</span>
+      <input type="number" step="0.01" min="0" formControlName="importePenalizacion" placeholder="0.00"
         class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
     </label>
 
@@ -337,7 +338,7 @@
 
     <label class="flex flex-col gap-1.5">
       <span class="text-xs font-medium text-foreground/80">Año liquidación</span>
-      <input type="number" formControlName="anioLiquidacion" placeholder="2026"
+      <input type="number" min="2000" max="2100" formControlName="anioLiquidacion" placeholder="2026"
         class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
     </label>
 
@@ -348,13 +349,13 @@
     </label>
 
     <label class="flex flex-col gap-1.5">
-      <span class="text-xs font-medium text-foreground/80">Fecha pago</span>
+      <span class="text-xs font-medium text-foreground/80">Fecha pago <span class="text-muted-foreground">(obligatoria si pagado)</span></span>
       <input type="date" formControlName="fechaPago"
         class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
     </label>
 
     <label class="flex flex-col gap-1.5 sm:col-span-2">
-      <span class="text-xs font-medium text-foreground/80">Referencia transferencia</span>
+      <span class="text-xs font-medium text-foreground/80">Referencia transferencia <span class="text-muted-foreground">(obligatoria si pagado)</span></span>
       <input type="text" formControlName="referencia" placeholder="REF-2026-001"
         class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" />
     </label>
@@ -420,13 +421,13 @@
 
     <label class="flex flex-col gap-1.5">
       <span class="text-xs font-medium text-foreground/80">Importe bruto (€) <span class="text-danger-fg">*</span></span>
-      <input type="number" step="0.01" formControlName="importe" placeholder="0.00"
+      <input type="number" step="0.01" min="0" formControlName="importe" placeholder="0.00"
         class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
     </label>
 
     <label class="flex flex-col gap-1.5">
-      <span class="text-xs font-medium text-foreground/80">Penalización (€)</span>
-      <input type="number" step="0.01" formControlName="importePenalizacion" placeholder="0.00"
+      <span class="text-xs font-medium text-foreground/80">Penalización (€, se resta)</span>
+      <input type="number" step="0.01" min="0" formControlName="importePenalizacion" placeholder="0.00"
         class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
     </label>
 
@@ -473,7 +474,7 @@
 
     <label class="flex flex-col gap-1.5">
       <span class="text-xs font-medium text-foreground/80">Año liquidación</span>
-      <input type="number" formControlName="anioLiquidacion" placeholder="2026"
+      <input type="number" min="2000" max="2100" formControlName="anioLiquidacion" placeholder="2026"
         class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
     </label>
 
@@ -484,13 +485,13 @@
     </label>
 
     <label class="flex flex-col gap-1.5">
-      <span class="text-xs font-medium text-foreground/80">Fecha pago</span>
+      <span class="text-xs font-medium text-foreground/80">Fecha pago <span class="text-muted-foreground">(obligatoria si pagado)</span></span>
       <input type="date" formControlName="fechaPago"
         class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
     </label>
 
     <label class="flex flex-col gap-1.5 sm:col-span-2">
-      <span class="text-xs font-medium text-foreground/80">Referencia transferencia</span>
+      <span class="text-xs font-medium text-foreground/80">Referencia transferencia <span class="text-muted-foreground">(obligatoria si pagado)</span></span>
       <input type="text" formControlName="referencia" placeholder="REF-2026-001"
         class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" />
     </label>

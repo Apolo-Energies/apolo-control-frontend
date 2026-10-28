@@ -31,6 +31,7 @@ export const FORMA_PAGO_VALUES: FormaPago[] = ['factura', 'pago_unico'];
 
 export interface PagoLiquidacion {
   id: string;
+  numero: string;
   delegacionId: string | null;
   delegacionNombre: string | null;
   colaboradorNombre: string;
@@ -52,6 +53,15 @@ export interface PagoLiquidacion {
   comentarios: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Totales de todo el filtro (servidor), no de la página. */
+export interface PagoLiquidacionTotales {
+  registros: number;
+  importe: number;
+  penalizacion: number;
+  neto: number;
+  pendiente: number;
 }
 
 export interface PagoLiquidacionFilter {

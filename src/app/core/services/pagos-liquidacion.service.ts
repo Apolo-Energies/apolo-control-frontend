@@ -7,6 +7,7 @@ import {
   PagoLiquidacion,
   PagoLiquidacionFilter,
   PagoLiquidacionPayload,
+  PagoLiquidacionTotales,
   Page,
   PageRequest,
 } from '../models';
@@ -19,15 +20,13 @@ export class PagosLiquidacionService {
 
   list(filter: PagoLiquidacionFilter = {}, page: PageRequest = {}): Observable<Page<PagoLiquidacion>> {
     return this.http.get<Page<PagoLiquidacion>>(this.baseUrl, {
-      params: buildParams({
-        delegacionId: filter.delegacionId,
-        estado: filter.estado,
-        tipo: filter.tipo,
-        startDate: filter.startDate,
-        endDate: filter.endDate,
-        q: filter.q,
-        ...page,
-      }),
+      params: buildParams({ ...filterParams(filter), ...page }),
+    });
+  }
+
+  totales(filter: PagoLiquidacionFilter = {}): Observable<PagoLiquidacionTotales> {
+    return this.http.get<PagoLiquidacionTotales>(`${this.baseUrl}/totales`, {
+      params: buildParams(filterParams(filter)),
     });
   }
 
@@ -49,15 +48,19 @@ export class PagosLiquidacionService {
 
   exportCsv(filter: PagoLiquidacionFilter = {}): Observable<Blob> {
     return this.http.get(`${this.baseUrl}/export/csv`, {
-      params: buildParams({
-        delegacionId: filter.delegacionId,
-        estado: filter.estado,
-        tipo: filter.tipo,
-        startDate: filter.startDate,
-        endDate: filter.endDate,
-        q: filter.q,
-      }),
+      params: buildParams(filterParams(filter)),
       responseType: 'blob',
     });
   }
+}
+
+function filterParams(filter: PagoLiquidacionFilter) {
+  return {
+    delegacionId: filter.delegacionId,
+    estado: filter.estado,
+    tipo: filter.tipo,
+    startDate: filter.startDate,
+    endDate: filter.endDate,
+    q: filter.q,
+  };
 }
