@@ -197,7 +197,7 @@
               <td class="py-2 px-3 whitespace-nowrap tabular-nums">
                 @if (r.fechaCambioComercializadora) {
                   <span class="inline-flex items-center gap-1">
-                    <span class="w-2 h-2 rounded-full bg-danger"></span>
+                    <span class="w-2 h-2 rounded-full" [class]="cambioDot(r.fechaCambioComercializadora)"></span>
                     {{ fmtDate(r.fechaCambioComercializadora) }}
                   </span>
                 } @else {
