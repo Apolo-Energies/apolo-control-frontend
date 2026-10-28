@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 
 import { PageHeader }    from '../../../shared/components/page-header/page-header';
@@ -301,8 +302,10 @@ export class Incidencias implements OnInit {
     this.saving.set(true);
     this.formError.set(null);
     this.customerService.patch(contrato.clienteId, { [item.field]: this.editValue.value }).subscribe({
-      next: () => {
-        const newValue = this.editValue.value;
+      next: (updated) => {
+        // Valor tal como quedó guardado (el backend normaliza NIF, IBAN...)
+        const guardado = (updated as unknown as Record<string, unknown>)[item.field!];
+        const newValue = typeof guardado === 'string' ? guardado : this.editValue.value;
         const hasValue = newValue.trim().length > 0;
         this.rows.update(rows => rows.map(r => {
           if (r.id !== contrato.id) return r;
@@ -327,9 +330,9 @@ export class Incidencias implements OnInit {
         this.saving.set(false);
         this.closeEdit();
       },
-      error: () => {
+      error: (err: HttpErrorResponse) => {
         this.saving.set(false);
-        this.formError.set('Error al guardar. Inténtalo de nuevo.');
+        this.formError.set(err.error?.message ?? 'Error al guardar. Inténtalo de nuevo.');
       },
     });
   }

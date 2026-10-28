@@ -10,6 +10,7 @@ import { SettingService } from '../../core/services/setting.service';
 import { TarifaPenalizacionService } from '../../core/services/tarifa-penalizacion.service';
 import { EeSyncService } from '../../core/services/ee-sync.service';
 import { TipoSolicitudService } from '../../core/services/tipo-solicitud.service';
+import { CalidadDatosService } from '../../core/services/calidad-datos.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { AppSetting, ApiErrorResponse, JobEjecucion, TarifaPenalizacion, TarifaPenalizacionPayload } from '../../core/models';
 import { TipoSolicitud, TipoSolicitudRequest } from '../../core/models/tipo-solicitud.model';
@@ -25,6 +26,7 @@ export class Settings {
   private readonly tarifaService = inject(TarifaPenalizacionService);
   private readonly eeSyncSvc = inject(EeSyncService);
   private readonly tipoSolicitudSvc = inject(TipoSolicitudService);
+  private readonly calidadDatosSvc = inject(CalidadDatosService);
   private readonly notify = inject(NotificationService);
 
   protected readonly loading = signal(false);
@@ -138,6 +140,26 @@ export class Settings {
     this.eeSyncSvc.historial().subscribe({
       next: (data) => { this.eeSyncHistorial.set(data); this.eeSyncCargando.set(false); },
       error: () => this.eeSyncCargando.set(false),
+    });
+  }
+
+  // ── Calidad de datos ──────────────────────────────────────────────────────
+  protected readonly calidadDescargando = signal(false);
+
+  protected descargarCalidadDatos(): void {
+    this.calidadDescargando.set(true);
+    this.calidadDatosSvc.exportCsv().subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'calidad_datos.csv'; a.click();
+        URL.revokeObjectURL(url);
+        this.calidadDescargando.set(false);
+      },
+      error: () => {
+        this.calidadDescargando.set(false);
+        this.notify.error('No se pudo descargar el informe de calidad de datos');
+      },
     });
   }
 
