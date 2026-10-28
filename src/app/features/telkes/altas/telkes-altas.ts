@@ -20,6 +20,7 @@ import {
   TelkesAlta,
   TelkesAltaPayload,
 } from '../../../core/models';
+import { fechaProximaDotClass } from '../../../shared/utils/format';
 
 @Component({
   selector: 'app-telkes-altas',
@@ -278,8 +279,12 @@ export class TelkesAltas {
     return new Intl.NumberFormat('es-ES').format(n);
   }
 
+  protected readonly cambioDot = fechaProximaDotClass;
+
+  /** YYYY-MM-DD → dd/mm/aaaa sin pasar por UTC (evita un día menos fuera de España). */
   protected fmtDate(d: string | null): string {
     if (!d) return '—';
-    return new Date(d).toLocaleDateString('es-ES');
+    const [y, m, dd] = d.slice(0, 10).split('-');
+    return `${dd}/${m}/${y}`;
   }
 }

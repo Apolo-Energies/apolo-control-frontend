@@ -167,3 +167,18 @@ export function tarifaBadgeClass(tarifa: string | null | undefined): string {
   if (t.startsWith('6.'))  return base + 'bg-warning-soft text-warning-fg';
   return base + 'bg-neutral-soft text-neutral-fg';
 }
+
+/** Días tras hoy en los que una fecha próxima sale en amarillo. */
+const DIAS_AVISO_FECHA = 7;
+
+/** Color según cercanía a hoy: pasada → rojo, próximos 7 días → amarillo, después → verde. */
+export function fechaProximaDotClass(iso: string | null | undefined): string {
+  if (!iso) return 'bg-muted-foreground/30';
+  const hoy = new Date();
+  const enDias = (n: number) =>
+    new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + n).toLocaleDateString('sv-SE');
+  const fecha = iso.slice(0, 10);
+  if (fecha < enDias(0)) return 'bg-danger';
+  if (fecha <= enDias(DIAS_AVISO_FECHA)) return 'bg-warning';
+  return 'bg-success';
+}
