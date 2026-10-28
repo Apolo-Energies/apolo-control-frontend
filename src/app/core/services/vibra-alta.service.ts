@@ -8,6 +8,7 @@ import {
   GestionadoPayload,
   KilowySyncResult,
   LiquidadoPayload,
+  TramitadoPayload,
   Page,
   PageRequest,
   RotacionElegiblesResponse,
@@ -53,6 +54,10 @@ export class VibraAltaService {
 
   marcarGestionado(id: string, payload: GestionadoPayload): Observable<VibraAlta> {
     return this.http.patch<VibraAlta>(`${this.baseUrl}/${id}/gestionado`, payload);
+  }
+
+  marcarTramitado(id: string, payload: TramitadoPayload): Observable<VibraAlta> {
+    return this.http.patch<VibraAlta>(`${this.baseUrl}/${id}/tramitado`, payload);
   }
 
   marcarLiquidado(id: string, payload: LiquidadoPayload): Observable<VibraAlta> {

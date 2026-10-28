@@ -136,6 +136,10 @@ export interface GestionadoPayload {
   gestionado: boolean;
 }
 
+export interface TramitadoPayload {
+  tramitado: boolean;
+}
+
 export interface LiquidadoPayload {
   liquidado: string;
 }
@@ -148,6 +152,7 @@ export interface VibraAltaFilter {
   colaborador?: string;
   comercializadora?: string;
   gestionado?: boolean;
+  tramitado?: boolean;
   fechaDesde?: string;
   fechaHasta?: string;
 }

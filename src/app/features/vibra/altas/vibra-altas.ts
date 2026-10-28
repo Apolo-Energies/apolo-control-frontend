@@ -22,6 +22,7 @@ import {
   EstadoVibraAlta,
   Page,
   VibraAlta,
+  VibraAltaFilter,
   VibraAltaPayload,
 } from '../../../core/models';
 import { fechaProximaDotClass } from '../../../shared/utils/format';
@@ -53,6 +54,7 @@ export class VibraAltas {
   protected estadoFilter = '';
   protected colaboradorFilter = '';
   protected comercializadoraFilter = '';
+  protected tramitadoFilter: '' | 'si' | 'no' = '';
   protected fechaDesdeFilter = '';
   protected fechaHastaFilter = '';
 
@@ -137,14 +139,7 @@ export class VibraAltas {
     this.loading.set(true);
     this.error.set(null);
     this.service.list(
-      {
-        q: this.q,
-        estado: this.estadoFilter || undefined,
-        colaborador: this.colaboradorFilter || undefined,
-        comercializadora: this.comercializadoraFilter || undefined,
-        fechaDesde: this.fechaDesdeFilter || undefined,
-        fechaHasta: this.fechaHastaFilter || undefined,
-      },
+      this.currentFilter(),
       { page: this.page(), size: this.size(), sort: `${this.sortField()},${this.sortDir()}` },
     ).subscribe({
       next: (r) => { this.result.set(r); this.loading.set(false); },
@@ -170,8 +165,29 @@ export class VibraAltas {
     const payload: VibraAltaPayload = { ...this.altaToPayload(r), comercializadora };
     this.service.update(r.id, payload).subscribe({
       next: () => { this.notify.success('Comercializadora actualizada'); this.load(); },
-      error: (err: HttpErrorResponse) => this.notify.error(err.error?.message ?? 'Error'),
+      // Recargar para que el desplegable vuelva al valor guardado
+      error: (err: HttpErrorResponse) => { this.notify.error(err.error?.message ?? 'Error'); this.load(); },
     });
+  }
+
+  protected changeTramitado(r: VibraAlta, tramitado: boolean): void {
+    this.service.marcarTramitado(r.id, { tramitado }).subscribe({
+      next: () => { this.notify.success('Tramitado actualizado'); this.load(); },
+      error: (err: HttpErrorResponse) => { this.notify.error(err.error?.message ?? 'Error'); this.load(); },
+    });
+  }
+
+  /** Filtros activos; los usan el listado y el export Excel. */
+  private currentFilter(): VibraAltaFilter {
+    return {
+      q: this.q,
+      estado: this.estadoFilter || undefined,
+      colaborador: this.colaboradorFilter || undefined,
+      comercializadora: this.comercializadoraFilter || undefined,
+      tramitado: this.tramitadoFilter === '' ? undefined : this.tramitadoFilter === 'si',
+      fechaDesde: this.fechaDesdeFilter || undefined,
+      fechaHasta: this.fechaHastaFilter || undefined,
+    };
   }
 
   private altaToPayload(a: VibraAlta): VibraAltaPayload {
@@ -306,11 +322,7 @@ export class VibraAltas {
 
   // ── Excel Export / Import ──────────────────────────────
   protected exportExcel(): void {
-    this.service.exportExcel({
-      q: this.q, estado: this.estadoFilter || undefined,
-      colaborador: this.colaboradorFilter || undefined,
-      comercializadora: this.comercializadoraFilter || undefined,
-    }).subscribe({
+    this.service.exportExcel(this.currentFilter()).subscribe({
       next: (blob) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');

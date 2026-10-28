@@ -40,6 +40,11 @@
     <option value="">Todas las comercializadoras</option>
     @for (c of comercializadoraValues; track c) {<option [value]="c">{{ c }}</option>}
   </select>
+  <select [(ngModel)]="tramitadoFilter" (change)="applyFilters()" class="border border-border rounded-lg px-3 py-2 text-sm bg-input">
+    <option value="">Tramitado: todos</option>
+    <option value="si">Tramitado: Sí</option>
+    <option value="no">Tramitado: No</option>
+  </select>
   <input [(ngModel)]="colaboradorFilter" (keyup.enter)="applyFilters()" placeholder="Colaborador"
     class="border border-border rounded-lg px-3 py-2 text-sm bg-input w-40" />
   <div class="flex flex-col">
@@ -233,7 +238,13 @@
               <td class="py-2 px-3">{{ r.liquidado ?? '—' }}</td>
               <td class="py-2 px-3 text-xs max-w-48 truncate" [title]="r.historialLiquidaciones ?? ''">{{ r.historialLiquidaciones ?? '—' }}</td>
               <td class="py-2 px-3 text-xs max-w-48 truncate" [title]="r.comentarios ?? ''">{{ r.comentarios ?? '—' }}</td>
-              <td class="py-2 px-3">{{ r.tramitado ? 'Sí' : 'No' }}</td>
+              <td class="py-2 px-3">
+                <select (change)="changeTramitado(r, $any($event.target).value === 'si')"
+                  class="border border-border rounded-md px-2 py-1 text-xs bg-input">
+                  <option value="si" [selected]="r.tramitado">Sí</option>
+                  <option value="no" [selected]="!r.tramitado">No</option>
+                </select>
+              </td>
               <td class="py-2 px-3 text-right whitespace-nowrap">
                 <button (click)="verDetalle(r.id)" class="p-1 hover:bg-info-soft rounded" title="Ver detalle">
                   <ui-icon name="eye" [size]="16" />
