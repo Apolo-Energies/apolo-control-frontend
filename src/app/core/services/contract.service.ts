@@ -30,6 +30,7 @@ export class ContractService {
         startDate: filter.startDate,
         endDate: filter.endDate,
         motivoRechazo: filter.motivoRechazo,
+        sinFacturaDias: filter.sinFacturaDias,
         ...page,
       }),
     });
@@ -115,6 +116,7 @@ export class ContractService {
         startDate: filter.startDate,
         endDate: filter.endDate,
         motivoRechazo: filter.motivoRechazo,
+        sinFacturaDias: filter.sinFacturaDias,
         ...page,
       }),
     });
@@ -151,6 +153,7 @@ export class ContractService {
         startDate: filter.startDate,
         endDate: filter.endDate,
         motivoRechazo: filter.motivoRechazo,
+        sinFacturaDias: filter.sinFacturaDias,
       }),
     });
   }
@@ -183,6 +186,7 @@ export class ContractService {
         startDate: filter.startDate,
         endDate: filter.endDate,
         motivoRechazo: filter.motivoRechazo,
+        sinFacturaDias: filter.sinFacturaDias,
       }),
       responseType: 'blob',
     });

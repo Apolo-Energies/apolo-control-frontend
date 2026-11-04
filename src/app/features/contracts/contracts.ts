@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Params, Router } from '@angular/router';
 import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { PageHeader } from '../../shared/components/page-header/page-header';
@@ -197,6 +197,11 @@ export class Contracts implements OnDestroy {
   protected startDate = '';
   protected endDate = '';
   protected motivoRechazo = '';
+  /** Días sin factura ESE ('' = sin filtro). */
+  protected sinFacturaDias = '';
+  private static readonly SIN_FACTURA_OPCIONES = [40, 60, 90];
+  private static readonly DIAS_ALERTA_FACTURA = 40;
+  private static readonly ORDEN_DEFECTO = { field: 'fechaCreacion', dir: 'desc' as const };
 
   protected readonly statuses = CONTRACT_STATUS_VALUES;
   protected readonly assignableStatuses = ASSIGNABLE_STATUSES;
@@ -366,8 +371,8 @@ export class Contracts implements OnDestroy {
   protected readonly totalElements = computed(() => this.result()?.totalElements ?? 0);
   protected readonly totalPages = computed(() => this.result()?.totalPages ?? 0);
 
-  protected readonly sortField = signal('fechaCreacion');
-  protected readonly sortDir   = signal<'asc' | 'desc'>('desc');
+  protected readonly sortField = signal(Contracts.ORDEN_DEFECTO.field);
+  protected readonly sortDir   = signal<'asc' | 'desc'>(Contracts.ORDEN_DEFECTO.dir);
 
   protected setSort(field: string): void {
     if (this.sortField() === field) {
@@ -387,32 +392,31 @@ export class Contracts implements OnDestroy {
   }
 
   constructor() {
-    const s = this.listState.get<{ q: string; statusFilter: string; startDate: string; endDate: string; motivoRechazo: string; page: number; size: number; sortField: string; sortDir: 'asc' | 'desc' }>('contracts');
+    const s = this.listState.get<{ q: string; statusFilter: string; startDate: string; endDate: string; motivoRechazo: string; sinFacturaDias?: string; page: number; size: number; sortField: string; sortDir: 'asc' | 'desc' }>('contracts');
     if (s) {
       this.q = s.q;
       this.statusFilter = s.statusFilter as ContractStatus | '';
       this.startDate = s.startDate;
       this.endDate = s.endDate;
       this.motivoRechazo = s.motivoRechazo;
+      this.sinFacturaDias = s.sinFacturaDias ?? '';
       this.size.set(s.size);
       if (s.sortField) this.sortField.set(s.sortField);
       if (s.sortDir)   this.sortDir.set(s.sortDir);
     }
 
-    // Pre-populate filters from query params (e.g. when coming from the dashboard chart)
-    const snap = this.route.snapshot.queryParams;
-    const snapStatus = snap['status'] as ContractStatus | undefined;
-    const snapMotivo = snap['motivoRechazo'] as string | undefined;
-    if (snapStatus) this.statusFilter = snapStatus;
-    if (snapMotivo) this.motivoRechazo = snapMotivo;
-    if (snapStatus || snapMotivo) {
-      void this.router.navigate([], { replaceUrl: true, queryParams: {} });
-    }
-
-    this.reload(snapStatus || snapMotivo ? 0 : (s?.page ?? 0));
-
-    // Reactive handler for id/renovar deep-links (can arrive after init)
+    // Deep-links (dashboard, notificaciones). Reactivo: también llegan estando ya en /contracts.
+    // La primera emisión es síncrona y hace la carga inicial.
+    let cargaInicial = true;
     this.route.queryParams.subscribe(params => {
+      if (this.aplicarFiltrosDeEnlace(params)) {
+        void this.router.navigate([], { replaceUrl: true, queryParams: {} });
+        this.reload(0);
+      } else if (cargaInicial) {
+        this.reload(s?.page ?? 0);
+      }
+      cargaInicial = false;
+
       const id = params['id'] as string | undefined;
       const renovar = params['renovar'] as string | undefined;
       if (id || renovar) {
@@ -430,10 +434,32 @@ export class Contracts implements OnDestroy {
     });
   }
 
+  /**
+   * Filtros que llegan por enlace (status, motivoRechazo, sinFacturaDias del aviso diario
+   * SinFacturaEseNotificacionJob). Sustituyen a los guardados para que el listado
+   * coincida con lo que anuncia el enlace. Devuelve false si el enlace no trae ninguno.
+   */
+  private aplicarFiltrosDeEnlace(params: Params): boolean {
+    const status = params['status'] as ContractStatus | undefined;
+    const motivo = params['motivoRechazo'] as string | undefined;
+    const sinFactura = diasValidos(params['sinFacturaDias']);
+    if (!status && !motivo && sinFactura === undefined) return false;
+    this.q = '';
+    this.startDate = '';
+    this.endDate = '';
+    this.statusFilter = status ?? '';
+    this.motivoRechazo = motivo ?? '';
+    this.sinFacturaDias = sinFactura !== undefined ? String(sinFactura) : '';
+    // Ordenar por una fecha excluye en backend los que no la tienen: vuelta al orden por defecto
+    this.sortField.set(Contracts.ORDEN_DEFECTO.field);
+    this.sortDir.set(Contracts.ORDEN_DEFECTO.dir);
+    return true;
+  }
+
   ngOnDestroy(): void {
     this.listState.save('contracts', {
       q: this.q, statusFilter: this.statusFilter, startDate: this.startDate,
-      endDate: this.endDate, motivoRechazo: this.motivoRechazo,
+      endDate: this.endDate, motivoRechazo: this.motivoRechazo, sinFacturaDias: this.sinFacturaDias,
       page: this.page(), size: this.size(),
       sortField: this.sortField(), sortDir: this.sortDir(),
     });
@@ -451,6 +477,7 @@ export class Contracts implements OnDestroy {
           startDate: this.startDate || undefined,
           endDate: this.endDate || undefined,
           motivoRechazo: this.motivoRechazo || undefined,
+          sinFacturaDias: this.sinFacturaFiltro(),
         },
         { page, size: this.size(), sort: `${this.sortField()},${this.sortDir()}` },
       )
@@ -482,6 +509,7 @@ export class Contracts implements OnDestroy {
         startDate:     this.startDate || undefined,
         endDate:       this.endDate || undefined,
         motivoRechazo: this.motivoRechazo || undefined,
+        sinFacturaDias: this.sinFacturaFiltro(),
       })
       .subscribe({
         next: (res) => {
@@ -500,6 +528,7 @@ export class Contracts implements OnDestroy {
     this.q = '';
     this.statusFilter = '';
     this.motivoRechazo = '';
+    this.sinFacturaDias = '';
     this.startDate = '';
     this.endDate = '';
     this.reload(0);
@@ -1046,6 +1075,30 @@ export class Contracts implements OnDestroy {
     return safeText(value);
   }
 
+  private sinFacturaFiltro(): number | undefined {
+    return diasValidos(this.sinFacturaDias);
+  }
+
+  /** Opciones del filtro; incluye el valor actual si llega uno distinto por enlace (umbral configurable). */
+  protected get sinFacturaOpciones(): number[] {
+    const actual = this.sinFacturaFiltro();
+    const base = Contracts.SIN_FACTURA_OPCIONES;
+    return actual === undefined || base.includes(actual) ? base : [...base, actual].sort((a, b) => a - b);
+  }
+
+  /** Días a partir de los que la última factura ESE se marca en rojo: el del filtro o 40. */
+  protected get diasAlertaFactura(): number {
+    return this.sinFacturaFiltro() ?? Contracts.DIAS_ALERTA_FACTURA;
+  }
+
+  /** Días transcurridos desde una fecha ISO (yyyy-MM-dd); null si no hay fecha. */
+  protected diasDesde(value: string | null | undefined): number | null {
+    if (!value) return null;
+    const [y, m, d] = value.split('-').map(Number);
+    const hoy = new Date();
+    return Math.floor((Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()) - Date.UTC(y, m - 1, d)) / 86_400_000);
+  }
+
   protected readonly tarifaBadge = tarifaBadgeClass;
 
   protected consumo(value: number | null): string {
@@ -1157,6 +1210,7 @@ export class Contracts implements OnDestroy {
       startDate: this.startDate || undefined,
       endDate: this.endDate || undefined,
       motivoRechazo: this.motivoRechazo || undefined,
+      sinFacturaDias: this.sinFacturaFiltro(),
     }).subscribe(blob => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1164,6 +1218,12 @@ export class Contracts implements OnDestroy {
       URL.revokeObjectURL(url);
     });
   }
+}
+
+/** Entero positivo de días o undefined (valores vacíos, no numéricos o negativos de la URL). */
+function diasValidos(value: unknown): number | undefined {
+  const n = Number(value);
+  return value !== '' && value != null && Number.isInteger(n) && n > 0 ? n : undefined;
 }
 
 function extractMessage(error: HttpErrorResponse): string {

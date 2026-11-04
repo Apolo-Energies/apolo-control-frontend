@@ -58,6 +58,21 @@
     </select>
   </label>
 
+  <!-- Última factura ESE (Excel EE, sync diaria) -->
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">Sin factura ESE</span>
+    <select
+      [(ngModel)]="sinFacturaDias"
+      (ngModelChange)="reload(0)"
+      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+    >
+      <option value="">Todos</option>
+      @for (dias of sinFacturaOpciones; track dias) {
+        <option [value]="dias">Más de {{ dias }} días</option>
+      }
+    </select>
+  </label>
+
   <!-- Rango de fechas -->
   <label class="flex flex-col gap-1">
     <span class="text-xs text-muted-foreground">Fecha creación desde</span>
@@ -80,7 +95,7 @@
   </label>
 
   <!-- Limpiar filtros -->
-  @if (q || statusFilter || motivoRechazo || startDate || endDate) {
+  @if (q || statusFilter || motivoRechazo || sinFacturaDias || startDate || endDate) {
     <button
       type="button"
       (click)="clearFilters()"
@@ -115,7 +130,7 @@
 }
 
 @if (loading() && rows().length === 0) {
-  <app-table-skeleton [cols]="10" [rows]="8" />
+  <app-table-skeleton [cols]="11" [rows]="8" />
 } @else {
   <div class="relative bg-card border border-border rounded-xl overflow-hidden">
     <app-loading-overlay [loading]="loading() && rows().length > 0" message="Actualizando…" />
@@ -174,6 +189,15 @@
               <span class="inline-flex items-center gap-1">
                 F. fin
                 @if (sortField() === 'fechaFinPrevista') {
+                  <ui-icon [name]="sortDir() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="12" class="text-primary" />
+                } @else { <ui-icon name="chevron-down" [size]="12" class="opacity-30" /> }
+              </span>
+            </th>
+            <th class="px-4 py-3 text-left font-semibold cursor-pointer select-none hover:text-foreground"
+                (click)="setSort('fechaFinUltFacturaEse')" title="Fin del periodo de la última factura ESE (EE)">
+              <span class="inline-flex items-center gap-1">
+                Últ. factura ESE
+                @if (sortField() === 'fechaFinUltFacturaEse') {
                   <ui-icon [name]="sortDir() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="12" class="text-primary" />
                 } @else { <ui-icon name="chevron-down" [size]="12" class="opacity-30" /> }
               </span>
@@ -255,6 +279,22 @@
               </td>
               <td class="px-4 py-3 text-foreground/80">{{ date(row.fechaInicio) }}</td>
               <td class="px-4 py-3 text-foreground/80">{{ date(row.fechaFinPrevista) }}</td>
+              <td class="px-4 py-3">
+                @if (row.fechaFinUltFacturaEse) {
+                  @let dias = diasDesde(row.fechaFinUltFacturaEse)!;
+                  <p class="text-foreground/80">
+                    {{ date(row.fechaFinUltFacturaEse) }}
+                    @if (row.estadoUltFacturaEse) {
+                      <span class="text-xs text-muted-foreground" title="Estado última factura ESE">· {{ row.estadoUltFacturaEse }}</span>
+                    }
+                  </p>
+                  <p class="text-xs" [class]="dias > diasAlertaFactura ? 'text-danger-fg font-medium' : 'text-muted-foreground'">
+                    hace {{ dias }} días
+                  </p>
+                } @else {
+                  <span class="text-muted-foreground">—</span>
+                }
+              </td>
               <td class="px-4 py-3 text-right text-sm text-foreground">
                 {{ consumo(row.consumoTotal) }}
               </td>
@@ -310,7 +350,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="10" class="px-4 py-10 text-center text-sm text-muted-foreground">
+              <td colspan="11" class="px-4 py-10 text-center text-sm text-muted-foreground">
                 Sin contratos para los filtros seleccionados.
               </td>
             </tr>
