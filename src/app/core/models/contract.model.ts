@@ -44,6 +44,9 @@ export interface Contract {
   fechaInicio: string | null;
   fechaFinPrevista: string | null;
   fechaFinReal: string | null;
+  /** Fin del periodo de la última factura ESE (Excel de EE, sync diaria). */
+  fechaFinUltFacturaEse?: string | null;
+  estadoUltFacturaEse?: string | null;
   campana: string | null;
   servicio: string | null;
   idOferta: string | null;
@@ -83,6 +86,8 @@ export interface ContractFilter {
   startDate?: string;
   endDate?: string;
   motivoRechazo?: string;
+  /** Solo contratos activos cuya última factura ESE terminó hace más de N días (sin fecha no entran). */
+  sinFacturaDias?: number;
 }
 
 export interface SuministroPayload {
