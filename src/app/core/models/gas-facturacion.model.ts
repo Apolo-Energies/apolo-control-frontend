@@ -84,6 +84,7 @@ export interface GasRemittance {
   items_count: number | null;
   bank_payment_date: string | null;
   generation_date: string | null;
+  notified_at: string | null;
 }
 
 export interface GasRemittanceXml {

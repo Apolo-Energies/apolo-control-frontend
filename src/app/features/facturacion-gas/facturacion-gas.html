@@ -356,6 +356,7 @@
             <th class="px-4 py-3 text-right text-xs font-medium text-muted-foreground whitespace-nowrap">Transacciones</th>
             <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Fecha de cobro</th>
             <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Fecha de generación</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Enviada</th>
             <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground whitespace-nowrap">XML</th>
           </tr>
         </thead>
@@ -382,6 +383,16 @@
               <td class="px-4 py-2.5 text-xs text-right whitespace-nowrap">{{ r.items_count ?? '—' }}</td>
               <td class="px-4 py-2.5 text-xs whitespace-nowrap">{{ formatDate(r.bank_payment_date) }}</td>
               <td class="px-4 py-2.5 text-xs whitespace-nowrap">{{ formatDate(r.generation_date) }}</td>
+              <td class="px-4 py-2.5 text-xs whitespace-nowrap">
+                @if (r.notified_at) {
+                  <span class="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-[11px] font-medium text-green-600 dark:text-green-400"
+                    [title]="formatDateTime(r.notified_at)">
+                    <ui-icon name="check" [size]="11" /> {{ formatDate(r.notified_at) }}
+                  </span>
+                } @else {
+                  <span class="text-[11px] text-muted-foreground">No enviada</span>
+                }
+              </td>
               <td class="px-4 py-2.5 text-center">
                 <button (click)="onDownloadXml(r.id)" [disabled]="downloadingId() === r.id"
                   class="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-accent/40 transition-colors disabled:opacity-50"
@@ -401,7 +412,7 @@
           <tr>
             <td colspan="5" class="px-4 py-2 text-xs font-medium text-muted-foreground">Totales</td>
             <td class="px-4 py-2 text-xs text-right font-bold">{{ fmt(remesasTotalImporte) }} €</td>
-            <td colspan="4"></td>
+            <td colspan="5"></td>
           </tr>
         </tfoot>
       </table>
@@ -547,14 +558,6 @@
             </div>
           </div>
         }
-      </div>
-
-      <div class="space-y-2">
-        <label class="text-sm font-medium">SQL de consulta (Quixotic)</label>
-        <textarea [(ngModel)]="editQuerySql" rows="5"
-          placeholder="SELECT ... FROM invoice_atr_b70 WHERE fecha >= '{fechaDesde}' AND fecha <= '{fechaHasta}' ORDER BY fecha"
-          class="w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary resize-none"></textarea>
-        <p class="text-xs text-muted-foreground">Usa <code class="rounded bg-muted px-1">&#123;fechaDesde&#125;</code> y <code class="rounded bg-muted px-1">&#123;fechaHasta&#125;</code> como parámetros de fecha.</p>
       </div>
 
       <button (click)="saveConfig()" [disabled]="savingConfig()"
