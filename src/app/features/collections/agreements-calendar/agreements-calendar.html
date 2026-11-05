@@ -45,8 +45,9 @@
   </div>
 } @else {
 
-  <!-- Calendar grid -->
-  <div class="bg-card border border-border rounded-xl overflow-hidden">
+  <!-- Calendar grid (scroll horizontal en pantallas estrechas) -->
+  <div class="bg-card border border-border rounded-xl overflow-x-auto">
+  <div class="min-w-[720px]">
 
     <!-- Day headers -->
     <div class="grid grid-cols-7 border-b border-border bg-muted/30">
@@ -75,7 +76,10 @@
                   {{ cell.label }}
                 </span>
                 @if (cell.eventos.length > 0) {
-                  <span class="text-[10px] text-muted-foreground">{{ cell.eventos.length }}</span>
+                  <button type="button" (click)="abrirDia(cell)" title="Ver todos los acuerdos del día"
+                    class="text-[10px] text-muted-foreground hover:text-foreground px-1 rounded hover:bg-muted transition-colors">
+                    {{ cell.eventos.length }}
+                  </button>
                 }
               </div>
 
@@ -91,7 +95,10 @@
                   </button>
                 }
                 @if (cell.eventos.length > 4) {
-                  <span class="text-[10px] text-muted-foreground px-1">+{{ cell.eventos.length - 4 }} más</span>
+                  <button type="button" (click)="abrirDia(cell)"
+                    class="text-left text-[10px] font-medium text-primary hover:underline px-1">
+                    +{{ cell.eventos.length - 4 }} más
+                  </button>
                 }
               </div>
             }
@@ -99,6 +106,7 @@
         }
       </div>
     }
+  </div>
   </div>
 
   <!-- Resumen del mes -->
@@ -142,3 +150,27 @@
     </div>
   }
 }
+
+<!-- Todos los acuerdos de un día (scroll si no caben en pantalla) -->
+<app-form-dialog
+  [open]="diaAbierto() !== null"
+  [title]="diaAbiertoLabel()"
+  [subtitle]="(diaAbierto()?.eventos?.length ?? 0) + ' acuerdo(s)'"
+  icon="calendar"
+  width="520px"
+  [readOnly]="true"
+  (cancel)="cerrarDia()"
+>
+  @if (diaAbierto(); as dia) {
+    <div class="flex flex-col gap-1.5 max-h-[60vh] overflow-y-auto pr-1">
+      @for (ev of dia.eventos; track ev.impagoId + ev.tipo) {
+        <button type="button"
+          (click)="openImpago(ev)"
+          [class]="'w-full text-left rounded-lg px-3 py-2 text-sm hover:opacity-80 transition-opacity ' + tipoBadgeClass(ev.tipo)">
+          <span class="font-medium block truncate">{{ ev.clienteNombre ?? '—' }}</span>
+          <span class="text-xs opacity-75">{{ tipoLabel(ev.tipo) }}{{ ev.promesaImporte ? ' · ' + formatEur(ev.promesaImporte) : '' }}</span>
+        </button>
+      }
+    </div>
+  }
+</app-form-dialog>
