@@ -8,12 +8,12 @@ export interface VibraLiquidacion {
   colaborador: string | null;
   producto: string | null;
   consumo: number | null;
-  liquidado: string | null;
-  liquidacionColaborador: number | null;
+  liquidado: string | null;               // Energaze
+  liquidacionColaborador: string | null;  // Pagado / No pagado
 }
 
 export interface VibraLiquidacionFilter {
   q?: string;
   colaborador?: string;
-  liquidado?: string;
+  liquidacionColaborador?: string;
 }

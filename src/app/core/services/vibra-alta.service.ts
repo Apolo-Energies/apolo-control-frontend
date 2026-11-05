@@ -7,6 +7,7 @@ import {
   CambiarEstadoVibraAltaPayload,
   GestionadoPayload,
   KilowySyncResult,
+  LiquidacionColaboradorPayload,
   LiquidadoPayload,
   TramitadoPayload,
   Page,
@@ -62,6 +63,10 @@ export class VibraAltaService {
 
   marcarLiquidado(id: string, payload: LiquidadoPayload): Observable<VibraAlta> {
     return this.http.patch<VibraAlta>(`${this.baseUrl}/${id}/liquidado`, payload);
+  }
+
+  marcarLiquidacionColaborador(id: string, payload: LiquidacionColaboradorPayload): Observable<VibraAlta> {
+    return this.http.patch<VibraAlta>(`${this.baseUrl}/${id}/liquidacion-colaborador`, payload);
   }
 
   delete(id: string): Observable<void> {

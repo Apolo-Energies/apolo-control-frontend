@@ -18,15 +18,11 @@
     <option value="">Filtrar por colaborador</option>
     @for (c of colaboradores(); track c) {<option [value]="c">{{ c }}</option>}
   </select>
-  <select [(ngModel)]="liquidadoFilter" (change)="applyFilters()"
+  <select [(ngModel)]="liquidacionColaboradorFilter" (change)="applyFilters()"
     class="border border-border rounded-lg px-3 py-2 text-sm bg-input">
     <option value="">Liq. colaborador: todos</option>
     <option value="Pagado">Pagado</option>
     <option value="No pagado">No pagado</option>
-    <option value="Sí">Sí</option>
-    <option value="No">No</option>
-    <option value="Liquidado">Liquidado</option>
-    <option value="No Liquidado">No Liquidado</option>
   </select>
 </div>
 
@@ -80,9 +76,9 @@
                 @if (sortField()==='consumo') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
               </span>
             </th>
-            <th (click)="setSort('liquidado')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
+            <th (click)="setSort('liquidacionColaborador')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
               <span class="inline-flex items-center gap-1">Liq. Colaborador
-                @if (sortField()==='liquidado') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
+                @if (sortField()==='liquidacionColaborador') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
               </span>
             </th>
           </tr>
@@ -99,13 +95,14 @@
               <td class="py-2 px-4 text-muted-foreground">{{ r.producto ?? '—' }}</td>
               <td class="py-2 px-4 text-right tabular-nums">{{ fmtNumber(r.consumo) }}</td>
               <td class="py-2 px-4">
-                <select (change)="changeLiquidado(r, $any($event.target).value)"
+                <select (change)="changeLiquidacionColaborador(r, $any($event.target).value)"
                   class="border border-border rounded-md px-2 py-1 text-xs bg-input">
-                  @for (opt of liquidadoOpts; track opt) {
-                    <option [value]="opt" [selected]="(r.liquidado ?? '') === opt">{{ opt }}</option>
+                  @if (!r.liquidacionColaborador) { <option value="" selected disabled>—</option> }
+                  @for (opt of liquidacionColaboradorOpts; track opt) {
+                    <option [value]="opt" [selected]="r.liquidacionColaborador === opt">{{ opt }}</option>
                   }
-                  @if (r.liquidado && !liquidadoOpts.includes(r.liquidado)) {
-                    <option [value]="r.liquidado" selected>{{ r.liquidado }}</option>
+                  @if (r.liquidacionColaborador && !liquidacionColaboradorOpts.includes(r.liquidacionColaborador)) {
+                    <option [value]="r.liquidacionColaborador" selected>{{ r.liquidacionColaborador }}</option>
                   }
                 </select>
               </td>

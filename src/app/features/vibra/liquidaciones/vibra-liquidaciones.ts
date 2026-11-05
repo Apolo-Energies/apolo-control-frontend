@@ -33,13 +33,13 @@ export class VibraLiquidaciones {
   protected readonly size = signal(20);
   protected q = '';
   protected colaboradorFilter = '';
-  protected liquidadoFilter = '';
+  protected liquidacionColaboradorFilter = '';
 
   protected readonly colaboradores = signal<string[]>([]);
   protected readonly sortField = signal<string>('fecha');
   protected readonly sortDir = signal<'asc' | 'desc'>('desc');
 
-  protected readonly liquidadoOpts = ['No pagado', 'Pagado', 'Sí', 'No', 'Liquidado', 'No Liquidado'];
+  protected readonly liquidacionColaboradorOpts = ['Pagado', 'No pagado'];
 
   protected setSort(field: string): void {
     if (this.sortField() === field) {
@@ -72,7 +72,7 @@ export class VibraLiquidaciones {
     this.loading.set(true);
     this.error.set(null);
     this.service.list(
-      { q: this.q, colaborador: this.colaboradorFilter || undefined, liquidado: this.liquidadoFilter || undefined },
+      { q: this.q, colaborador: this.colaboradorFilter || undefined, liquidacionColaborador: this.liquidacionColaboradorFilter || undefined },
       { page: this.page(), size: this.size(), sort: `${this.sortField()},${this.sortDir()}` },
     ).subscribe({
       next: (r) => { this.result.set(r); this.loading.set(false); },
@@ -87,8 +87,8 @@ export class VibraLiquidaciones {
   protected onPageSize(s: number): void { this.size.set(s); this.page.set(0); this.load(); }
   protected applyFilters(): void { this.page.set(0); this.load(); }
 
-  protected changeLiquidado(r: VibraLiquidacion, liquidado: string): void {
-    this.altaService.marcarLiquidado(r.id, { liquidado }).subscribe({
+  protected changeLiquidacionColaborador(r: VibraLiquidacion, liquidacionColaborador: string): void {
+    this.altaService.marcarLiquidacionColaborador(r.id, { liquidacionColaborador }).subscribe({
       next: () => { this.notify.success('Estado actualizado'); this.load(); },
       error: (err: HttpErrorResponse) => this.notify.error(err.error?.message ?? 'Error'),
     });
@@ -97,7 +97,7 @@ export class VibraLiquidaciones {
   protected exportExcel(): void {
     this.service.exportExcel({
       q: this.q, colaborador: this.colaboradorFilter || undefined,
-      liquidado: this.liquidadoFilter || undefined,
+      liquidacionColaborador: this.liquidacionColaboradorFilter || undefined,
     }).subscribe({
       next: (blob) => {
         const url = URL.createObjectURL(blob);

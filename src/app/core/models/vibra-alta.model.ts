@@ -69,7 +69,7 @@ export interface VibraAlta {
   tramitado: boolean | null;
   gestionado: boolean;
   liquidado: string | null;
-  liquidacionColaborador: number | null;
+  liquidacionColaborador: string | null;
   comisionComercializadora: number | null;
   historialLiquidaciones: string | null;
   comentarios: string | null;
@@ -111,7 +111,7 @@ export interface VibraAltaPayload {
   potenciaP6?: number | null;
   tramitado?: boolean | null;
   liquidado?: string | null;
-  liquidacionColaborador?: number | null;
+  liquidacionColaborador?: string | null;
   comisionComercializadora?: number | null;
   historialLiquidaciones?: string | null;
   comentarios?: string | null;
@@ -142,6 +142,10 @@ export interface TramitadoPayload {
 
 export interface LiquidadoPayload {
   liquidado: string;
+}
+
+export interface LiquidacionColaboradorPayload {
+  liquidacionColaborador: string;
 }
 
 // ── Filter ───────────────────────────────────────────────────────
