@@ -4,6 +4,7 @@ import {
 import { Router } from '@angular/router';
 
 import { PageHeader }   from '../../../shared/components/page-header/page-header';
+import { FormDialog }   from '../../../shared/components/form-dialog/form-dialog';
 import { Icon }         from '../../../shared/icons/icon';
 
 import { GestionImpagoService } from '../../../core/services/gestion-impago.service';
@@ -26,7 +27,7 @@ const TIPO_LABEL: Record<string, string> = {
 @Component({
   selector: 'app-agreements-calendar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PageHeader, Icon],
+  imports: [PageHeader, FormDialog, Icon],
   templateUrl: './agreements-calendar.html',
 })
 export class AgreementsCalendar implements OnInit {
@@ -36,6 +37,12 @@ export class AgreementsCalendar implements OnInit {
   protected readonly loading = signal(true);
   protected readonly error   = signal<string | null>(null);
   protected readonly eventos = signal<CalendarioEvento[]>([]);
+
+  /** Día abierto en el modal con todos sus acuerdos (los que no caben en la celda). */
+  protected readonly diaAbierto = signal<DiaCell | null>(null);
+
+  protected readonly diaAbiertoLabel = computed(() =>
+    this.diaAbierto()?.date?.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) ?? '');
 
   // Current month anchor — first day of displayed month
   protected readonly anchor  = signal<Date>(this.firstOfMonth(new Date()));
@@ -109,8 +116,13 @@ export class AgreementsCalendar implements OnInit {
   }
 
   protected openImpago(ev: CalendarioEvento): void {
+    this.diaAbierto.set(null);
     void this.router.navigate(['/collections/unpaid', ev.impagoId]);
   }
+
+  protected abrirDia(cell: DiaCell): void { this.diaAbierto.set(cell); }
+
+  protected cerrarDia(): void { this.diaAbierto.set(null); }
 
   protected tipoLabel(tipo: string): string { return TIPO_LABEL[tipo] ?? tipo; }
 
