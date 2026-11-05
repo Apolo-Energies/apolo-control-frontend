@@ -52,7 +52,7 @@ export interface TelkesAlta {
   tramitado: boolean | null;
   gestionado: boolean;
   liquidado: string | null;
-  liquidacionColaborador: number | null;
+  liquidacionColaborador: string | null;
   comisionComercializadora: number | null;
   historialLiquidaciones: string | null;
   comentarios: string | null;
@@ -92,7 +92,7 @@ export interface TelkesAltaPayload {
   potenciaP6?: number | null;
   tramitado?: boolean | null;
   liquidado?: string | null;
-  liquidacionColaborador?: number | null;
+  liquidacionColaborador?: string | null;
   comisionComercializadora?: number | null;
   historialLiquidaciones?: string | null;
   comentarios?: string | null;
