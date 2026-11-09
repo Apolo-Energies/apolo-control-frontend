@@ -67,6 +67,7 @@ export class Layout {
               { label: 'Contrato Servicio', url: '/vibra/contrato-servicio', icon: 'file-plus' as const },
               { label: 'Altas', url: '/vibra/altas', icon: 'users' as const },
               { label: 'Tramitación', url: '/vibra/tramitacion', icon: 'check-square' as const },
+              { label: 'Renovaciones', url: '/vibra/renovaciones', icon: 'repeat' as const },
             ],
           },
           { label: 'Preciario', url: '/vibra/preciario', icon: 'euro' as const },
