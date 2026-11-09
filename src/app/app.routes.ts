@@ -244,6 +244,11 @@ export const routes: Routes = [
               import('./features/vibra/preciario/vibra-preciario').then((m) => m.VibraPreciario),
           },
           {
+            path: 'renovaciones',
+            loadComponent: () =>
+              import('./features/vibra/renovaciones/vibra-renovaciones').then((m) => m.VibraRenovaciones),
+          },
+          {
             path: 'liquidaciones',
             loadComponent: () =>
               import('./features/vibra/liquidaciones/vibra-liquidaciones').then((m) => m.VibraLiquidaciones),

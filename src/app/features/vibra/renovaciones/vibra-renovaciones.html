@@ -1,0 +1,199 @@
+<app-page-header title="Renovaciones" subtitle="Altas activas con la renovación vencida o próxima">
+  <button type="button" (click)="exportExcel()" [disabled]="exporting()"
+    class="h-9 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-background text-sm font-semibold hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+    <ui-icon name="download" [size]="15" />
+    {{ exporting() ? 'Exportando…' : 'Exportar' }}
+  </button>
+  <button type="button" (click)="applyFilters()" [disabled]="loading()"
+    class="h-9 px-3 inline-flex items-center gap-2 rounded-lg border border-border text-sm text-muted-foreground hover:bg-accent/40 transition-colors disabled:opacity-40">
+    @if (loading()) { <ui-icon name="loader" [size]="14" class="animate-spin" /> }
+    @else { <ui-icon name="refresh-cw" [size]="14" /> }
+    Actualizar
+  </button>
+</app-page-header>
+
+<!-- ── Filtros ── -->
+<div class="flex flex-wrap items-end gap-3 mb-4 p-4 rounded-xl border border-border bg-card">
+  <div class="flex-1 min-w-48">
+    <label class="block text-xs font-medium text-muted-foreground mb-1">Titular, CUPS o NIF</label>
+    <div class="relative">
+      <ui-icon name="search" [size]="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+      <input type="text" [ngModel]="q()" (ngModelChange)="q.set($event); onQChange()" placeholder="Buscar…"
+        class="w-full h-9 pl-8 pr-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" />
+    </div>
+  </div>
+
+  <div>
+    <label class="block text-xs font-medium text-muted-foreground mb-1">Colaborador</label>
+    <select [ngModel]="colaborador()" (ngModelChange)="colaborador.set($event); applyFilters()"
+      class="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30">
+      <option value="">Todos</option>
+      @for (c of colaboradores(); track c) { <option [value]="c">{{ c }}</option> }
+    </select>
+  </div>
+
+  <div>
+    <label class="block text-xs font-medium text-muted-foreground mb-1">Comercializadora</label>
+    <select [ngModel]="comercializadora()" (ngModelChange)="comercializadora.set($event); applyFilters()"
+      class="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30">
+      <option value="">Todas</option>
+      @for (c of comercializadoras; track c) { <option [value]="c">{{ c }}</option> }
+    </select>
+  </div>
+
+  <div>
+    <label class="block text-xs font-medium text-muted-foreground mb-1">Renovación desde</label>
+    <input type="date" [ngModel]="fechaDesde()" (ngModelChange)="fechaDesde.set($event); applyFilters()"
+      class="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" />
+  </div>
+
+  <div>
+    <label class="block text-xs font-medium text-muted-foreground mb-1">Renovación hasta</label>
+    <input type="date" [ngModel]="fechaHasta()" (ngModelChange)="fechaHasta.set($event); applyFilters()"
+      class="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" />
+  </div>
+
+  @if (hasFilters) {
+    <button type="button" (click)="clearFilters()"
+      class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors">
+      <ui-icon name="x" [size]="14" />
+      Limpiar
+    </button>
+  }
+</div>
+
+@if (error()) {
+  <div class="mb-4 rounded-xl border border-danger/30 bg-danger/8 px-4 py-3 text-sm text-danger-fg">{{ error() }}</div>
+}
+
+@if (loading() && !data()) {
+  <app-table-skeleton [cols]="9" [rows]="5" />
+} @else if (data(); as d) {
+
+  <!-- ── Vencidas ── -->
+  <section class="mb-4">
+    <button type="button" (click)="vOpen.set(!vOpen())"
+      class="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border bg-danger/8 border-danger/20 hover:bg-danger/12 transition-colors mb-1">
+      <div class="flex items-center gap-2">
+        <ui-icon name="alert-triangle" [size]="15" class="text-danger-fg" />
+        <span class="text-sm font-semibold text-foreground">Ya vencidas</span>
+        <span class="text-xs text-muted-foreground">({{ d.vencidos.totalElements }})</span>
+      </div>
+      <ui-icon name="chevron-down" [size]="15" [class]="vOpen() ? 'text-muted-foreground rotate-180 transition-transform' : 'text-muted-foreground transition-transform'" />
+    </button>
+
+    @if (vOpen()) {
+      @if (d.vencidos.content.length === 0) {
+        <p class="text-sm text-muted-foreground py-6 text-center">No hay altas activas con la renovación vencida.</p>
+      } @else {
+        <ng-container *ngTemplateOutlet="tabla; context: { rows: d.vencidos.content, fechaClass: 'text-danger-fg' }" />
+        @if (d.vencidos.totalPages > 1) {
+          <app-pagination [page]="vPage()" [pageSize]="pageSize()" [totalElements]="d.vencidos.totalElements" [totalPages]="d.vencidos.totalPages" [pageSizes]="[10, 25, 50]" (pageChange)="onVPage($event)" (pageSizeChange)="onSizeChange($event)" />
+        }
+      }
+    }
+  </section>
+
+  <!-- ── Por vencer ── -->
+  <section class="mb-4">
+    <button type="button" (click)="pvOpen.set(!pvOpen())"
+      class="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-warning/8 border border-warning/20 hover:bg-warning/12 transition-colors mb-1">
+      <div class="flex items-center gap-2">
+        <ui-icon name="clock" [size]="15" class="text-warning-fg" />
+        <span class="text-sm font-semibold text-foreground">Por vencer</span>
+        <span class="text-xs text-muted-foreground">({{ d.porVencer.totalElements }}) · próximos {{ d.diasAnticipacion }} días</span>
+      </div>
+      <ui-icon name="chevron-down" [size]="15" [class]="pvOpen() ? 'text-muted-foreground rotate-180 transition-transform' : 'text-muted-foreground transition-transform'" />
+    </button>
+
+    @if (pvOpen()) {
+      @if (d.porVencer.content.length === 0) {
+        <p class="text-sm text-muted-foreground py-6 text-center">No hay altas que renueven en los próximos {{ d.diasAnticipacion }} días.</p>
+      } @else {
+        <ng-container *ngTemplateOutlet="tabla; context: { rows: d.porVencer.content, fechaClass: 'text-warning-fg' }" />
+        @if (d.porVencer.totalPages > 1) {
+          <app-pagination [page]="pvPage()" [pageSize]="pageSize()" [totalElements]="d.porVencer.totalElements" [totalPages]="d.porVencer.totalPages" [pageSizes]="[10, 25, 50]" (pageChange)="onPvPage($event)" (pageSizeChange)="onSizeChange($event)" />
+        }
+      }
+    }
+  </section>
+
+  <p class="text-xs text-muted-foreground">Para renovar un alta, cambia su fecha de renovación en Altas.</p>
+}
+
+<ng-template #tabla let-rows="rows" let-fechaClass="fechaClass">
+  <div class="bg-card border border-border rounded-xl overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('titular')">Titular <ui-icon [name]="sortIcon('titular')" [size]="11" [class]="sortIconClass('titular')" /></button></th>
+            <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('cups')">CUPS <ui-icon [name]="sortIcon('cups')" [size]="11" [class]="sortIconClass('cups')" /></button></th>
+            <th class="px-4 py-3 text-left font-semibold">Contacto</th>
+            <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('colaborador')">Colaborador <ui-icon [name]="sortIcon('colaborador')" [size]="11" [class]="sortIconClass('colaborador')" /></button></th>
+            <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('comercializadora')">Comercializadora <ui-icon [name]="sortIcon('comercializadora')" [size]="11" [class]="sortIconClass('comercializadora')" /></button></th>
+            <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('fechaActivacionContrato')">F. activación <ui-icon [name]="sortIcon('fechaActivacionContrato')" [size]="11" [class]="sortIconClass('fechaActivacionContrato')" /></button></th>
+            <th class="px-4 py-3 text-left"><button class="flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('fechaRenovacion')">F. renovación <ui-icon [name]="sortIcon('fechaRenovacion')" [size]="11" [class]="sortIconClass('fechaRenovacion')" /></button></th>
+            <th class="px-4 py-3 text-right"><button class="ml-auto flex items-center gap-1 font-semibold hover:text-foreground" (click)="setSort('consumo')">Consumo <ui-icon [name]="sortIcon('consumo')" [size]="11" [class]="sortIconClass('consumo')" /></button></th>
+            <th class="px-4 py-3 text-left font-semibold">Comentarios</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          @for (row of rows; track row.id) {
+            <tr class="hover:bg-accent/20 transition-colors cursor-pointer" (click)="openEdit(row)" title="Editar comentario">
+              <td class="px-4 py-3"><p class="font-medium text-foreground">{{ text(row.titular) }}</p>@if (row.nifCif) { <p class="text-xs text-muted-foreground font-mono">{{ row.nifCif }}</p> }</td>
+              <td class="px-4 py-3" (click)="$event.stopPropagation()">
+                <button type="button" (click)="copyCups(row.cups)"
+                  class="font-mono text-xs text-foreground/80 hover:text-primary transition-colors text-left"
+                  title="Copiar CUPS">{{ text(row.cups) }}</button>
+              </td>
+              <td class="px-4 py-3 text-xs text-foreground/80">
+                @if (row.telefono) { <p class="tabular-nums">{{ row.telefono }}</p> }
+                @if (row.email) { <p class="text-muted-foreground">{{ row.email }}</p> }
+                @if (!row.telefono && !row.email) { <span class="text-muted-foreground/50">—</span> }
+              </td>
+              <td class="px-4 py-3 text-xs text-foreground/80">{{ text(row.colaborador) }}</td>
+              <td class="px-4 py-3 text-xs text-foreground/80">{{ text(row.comercializadora) }}</td>
+              <td class="px-4 py-3 text-foreground/80 text-xs whitespace-nowrap">{{ date(row.fechaActivacionContrato) }}</td>
+              <td class="px-4 py-3 font-semibold text-xs whitespace-nowrap" [class]="fechaClass">{{ date(row.fechaRenovacion) }}</td>
+              <td class="px-4 py-3 text-xs text-foreground/80 text-right tabular-nums">{{ fmtNumber(row.consumo) }}</td>
+              <td class="px-4 py-3 text-xs text-foreground/80 max-w-48">
+                @if (row.comentarios) { <span class="line-clamp-2" [title]="row.comentarios">{{ row.comentarios }}</span> }
+                @else { <span class="text-muted-foreground/50">—</span> }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Comentario -->
+<app-form-dialog
+  [open]="editing() !== null"
+  title="Comentario de renovación"
+  [subtitle]="editing()?.titular ?? ''"
+  icon="edit"
+  [saving]="editSaving()"
+  saveLabel="Guardar"
+  [errorMessage]="editError()"
+  (cancel)="closeEdit()"
+  (save)="submitEdit()"
+>
+  @if (editing(); as a) {
+    <div class="space-y-4">
+      <div class="rounded-lg bg-accent/20 px-3 py-2 text-xs text-muted-foreground space-y-1">
+        <p><span class="font-medium text-foreground">CUPS:</span> <span class="font-mono">{{ text(a.cups) }}</span></p>
+        <p><span class="font-medium text-foreground">Renovación:</span> {{ date(a.fechaRenovacion) }}</p>
+        <p><span class="font-medium text-foreground">Colaborador:</span> {{ text(a.colaborador) }}</p>
+      </div>
+      <label class="flex flex-col gap-1.5">
+        <span class="text-sm font-medium text-foreground">Comentarios</span>
+        <textarea [(ngModel)]="editComentarios" rows="5"
+          placeholder="Notas sobre esta renovación…"
+          class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"></textarea>
+      </label>
+    </div>
+  }
+</app-form-dialog>
