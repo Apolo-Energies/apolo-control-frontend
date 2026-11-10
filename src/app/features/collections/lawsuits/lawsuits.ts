@@ -30,6 +30,15 @@ interface DemandaForm {
   abogadoResponsable: string;
 }
 
+interface ClienteDemandaGroup {
+  clienteId: string;
+  clienteNombre: string | null;
+  clienteNif: string | null;
+  facturas: GestionImpago[];
+  deudaTotal: number;
+  estados: EstadoGestionImpago[];
+}
+
 @Component({
   selector: 'app-lawsuits',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -50,7 +59,8 @@ export class Lawsuits implements OnDestroy {
   protected readonly uploadingId = signal<string | null>(null);
 
   // ── Expand / edit state ───────────────────────────────────────────────────
-  protected readonly expandedId = signal<string | null>(null);
+  protected readonly expandedClienteId = signal<string | null>(null); // cliente abierto (el "ojo")
+  protected readonly expandedId        = signal<string | null>(null); // factura con form de demanda abierto
   protected demandaForms: Record<string, DemandaForm> = {};
 
   // ── Search & filter ───────────────────────────────────────────────────────
@@ -66,6 +76,30 @@ export class Lawsuits implements OnDestroy {
       return (r.clienteNombre ?? '').toLowerCase().includes(q) ||
              (r.numeroFactura ?? '').toLowerCase().includes(q);
     });
+  });
+
+  // Agrupa los expedientes (una fila por factura) por cliente: cada cliente con sus facturas
+  // pendientes y la deuda total. El detalle de facturas se ve al expandir ("el ojo").
+  protected readonly grupos = computed<ClienteDemandaGroup[]>(() => {
+    const map = new Map<string, ClienteDemandaGroup>();
+    for (const r of this.filtered()) {
+      let g = map.get(r.clienteId);
+      if (!g) {
+        g = {
+          clienteId: r.clienteId,
+          clienteNombre: r.clienteNombre,
+          clienteNif: r.clienteNif,
+          facturas: [],
+          deudaTotal: 0,
+          estados: [],
+        };
+        map.set(r.clienteId, g);
+      }
+      g.facturas.push(r);
+      g.deudaTotal += r.importePendiente;
+      if (!g.estados.includes(r.estado)) g.estados.push(r.estado);
+    }
+    return Array.from(map.values()).sort((a, b) => b.deudaTotal - a.deudaTotal);
   });
 
   // ── Demanda dialog ────────────────────────────────────────────────────────
@@ -107,6 +141,12 @@ export class Lawsuits implements OnDestroy {
   }
 
   // ── Expand ────────────────────────────────────────────────────────────────
+  protected toggleCliente(clienteId: string): void {
+    const opening = this.expandedClienteId() !== clienteId;
+    this.expandedClienteId.set(opening ? clienteId : null);
+    if (!opening) this.expandedId.set(null); // al cerrar el cliente, cierra el form de factura
+  }
+
   protected toggleExpand(r: GestionImpago): void {
     if (this.expandedId() === r.id) {
       this.expandedId.set(null);
