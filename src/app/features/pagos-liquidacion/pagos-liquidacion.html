@@ -57,6 +57,20 @@
   </label>
 
   <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">Empresa</span>
+    <select
+      [(ngModel)]="empresa"
+      (ngModelChange)="reload(0)"
+      class="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+    >
+      <option value="">Todas</option>
+      @for (e of empresaValues; track e) {
+        <option [value]="e">{{ empresaLabel(e) }}</option>
+      }
+    </select>
+  </label>
+
+  <label class="flex flex-col gap-1">
     <span class="text-xs text-muted-foreground">Delegación</span>
     <select
       [(ngModel)]="delegacionId"
@@ -90,7 +104,7 @@
     />
   </label>
 
-  @if (q || estado || tipo || delegacionId || startDate || endDate) {
+  @if (q || estado || tipo || empresa || delegacionId || startDate || endDate) {
     <button
       type="button"
       (click)="clearFilters()"
@@ -124,7 +138,7 @@
 }
 
 @if (loading() && rows().length === 0) {
-  <app-table-skeleton [cols]="8" [rows]="8" />
+  <app-table-skeleton [cols]="9" [rows]="8" />
 } @else {
   <div class="relative bg-card border border-border rounded-xl overflow-hidden">
     <app-loading-overlay [loading]="loading() && rows().length > 0" message="Actualizando…" />
@@ -133,6 +147,7 @@
         <thead class="bg-accent/30 text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
             <th class="px-4 py-3 text-left font-semibold">Colaborador</th>
+            <th class="px-4 py-3 text-left font-semibold">Empresa</th>
             <th class="px-4 py-3 text-left font-semibold">Concepto</th>
             <th class="px-4 py-3 text-left font-semibold">Tipo</th>
             <th class="px-4 py-3 text-right font-semibold">Bruto</th>
@@ -154,6 +169,15 @@
                 }
                 @if (row.emailColaborador) {
                   <p class="text-xs text-muted-foreground">{{ row.emailColaborador }}</p>
+                }
+              </td>
+              <td class="px-4 py-3">
+                @if (row.empresa) {
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border border-border bg-background text-foreground">
+                    {{ empresaLabel(row.empresa) }}
+                  </span>
+                } @else {
+                  <span class="text-muted-foreground">—</span>
                 }
               </td>
               <td class="px-4 py-3 max-w-[200px]">
@@ -216,7 +240,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="9" class="px-4 py-10 text-center text-sm text-muted-foreground">
+              <td colspan="10" class="px-4 py-10 text-center text-sm text-muted-foreground">
                 Sin registros para los filtros seleccionados.
               </td>
             </tr>
@@ -264,6 +288,15 @@
       <span class="text-xs font-medium text-foreground/80">Concepto <span class="text-danger-fg">*</span></span>
       <input type="text" formControlName="concepto" placeholder="Descripción del pago"
         class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Empresa <span class="text-danger-fg">*</span></span>
+      <select formControlName="empresa"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+        <option value="">Selecciona…</option>
+        @for (e of empresaValues; track e) { <option [value]="e">{{ empresaLabel(e) }}</option> }
+      </select>
     </label>
 
     <label class="flex flex-col gap-1.5">
@@ -400,6 +433,15 @@
       <span class="text-xs font-medium text-foreground/80">Concepto <span class="text-danger-fg">*</span></span>
       <input type="text" formControlName="concepto" placeholder="Descripción del pago"
         class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+    </label>
+
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground/80">Empresa <span class="text-danger-fg">*</span></span>
+      <select formControlName="empresa"
+        class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+        <option value="">Selecciona…</option>
+        @for (e of empresaValues; track e) { <option [value]="e">{{ empresaLabel(e) }}</option> }
+      </select>
     </label>
 
     <label class="flex flex-col gap-1.5">

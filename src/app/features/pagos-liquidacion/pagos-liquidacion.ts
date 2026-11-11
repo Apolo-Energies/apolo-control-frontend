@@ -17,6 +17,9 @@ import { ConfirmService } from '../../core/services/confirm.service';
 import { ListStateService } from '../../core/services/list-state.service';
 import {
   ApiErrorResponse,
+  Empresa,
+  EMPRESA_LABEL,
+  EMPRESA_VALUES,
   EstadoPago,
   ESTADO_PAGO_LABEL,
   ESTADO_PAGO_VALUES,
@@ -79,12 +82,14 @@ export class PagosLiquidacion implements OnDestroy {
   protected readonly estadoValues = ESTADO_PAGO_VALUES;
   protected readonly tipoValues = TIPO_PAGO_VALUES;
   protected readonly formaValues = FORMA_PAGO_VALUES;
+  protected readonly empresaValues = EMPRESA_VALUES;
   protected readonly delegaciones = this.masterData.delegacionesActivas;
 
   // Filtros
   protected q = '';
   protected estado: EstadoPago | '' = '';
   protected tipo: TipoPago | '' = '';
+  protected empresa: Empresa | '' = '';
   protected delegacionId = '';
   protected startDate = '';
   protected endDate = '';
@@ -112,6 +117,7 @@ export class PagosLiquidacion implements OnDestroy {
     importe: this.fb.control<number | null>(null, [Validators.required, Validators.min(0)]),
     importePenalizacion: this.fb.control<number | null>(null, [Validators.min(0)]),
     conceptoPenalizacion: this.fb.nonNullable.control(''),
+    empresa: this.fb.nonNullable.control<Empresa | ''>(''),
     tipo: this.fb.nonNullable.control<TipoPago>('liquidacion', [Validators.required]),
     formaPago: this.fb.nonNullable.control<FormaPago | ''>(''),
     estado: this.fb.nonNullable.control<EstadoPago>('pendiente'),
@@ -129,11 +135,12 @@ export class PagosLiquidacion implements OnDestroy {
   private debounce: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
-    const s = this.listState.get<{ q: string; estado: string; tipo: string; delegacionId: string; startDate: string; endDate: string; page: number; size: number }>('pagos-liquidacion');
+    const s = this.listState.get<{ q: string; estado: string; tipo: string; empresa: string; delegacionId: string; startDate: string; endDate: string; page: number; size: number }>('pagos-liquidacion');
     if (s) {
       this.q = s.q;
       this.estado = s.estado as EstadoPago | '';
       this.tipo = s.tipo as TipoPago | '';
+      this.empresa = (s.empresa ?? '') as Empresa | '';
       this.delegacionId = s.delegacionId;
       this.startDate = s.startDate;
       this.endDate = s.endDate;
@@ -144,7 +151,7 @@ export class PagosLiquidacion implements OnDestroy {
 
   ngOnDestroy(): void {
     this.listState.save('pagos-liquidacion', {
-      q: this.q, estado: this.estado, tipo: this.tipo, delegacionId: this.delegacionId,
+      q: this.q, estado: this.estado, tipo: this.tipo, empresa: this.empresa, delegacionId: this.delegacionId,
       startDate: this.startDate, endDate: this.endDate, page: this.page(), size: this.size(),
     });
   }
@@ -183,6 +190,7 @@ export class PagosLiquidacion implements OnDestroy {
       q: this.q.trim() || undefined,
       estado: this.estado || undefined,
       tipo: this.tipo || undefined,
+      empresa: this.empresa || undefined,
       delegacionId: this.delegacionId || undefined,
       startDate: this.startDate || undefined,
       endDate: this.endDate || undefined,
@@ -203,6 +211,7 @@ export class PagosLiquidacion implements OnDestroy {
     this.q = '';
     this.estado = '';
     this.tipo = '';
+    this.empresa = '';
     this.delegacionId = '';
     this.startDate = '';
     this.endDate = '';
@@ -218,6 +227,7 @@ export class PagosLiquidacion implements OnDestroy {
       importe: null,
       importePenalizacion: null,
       conceptoPenalizacion: '',
+      empresa: '',
       tipo: 'liquidacion',
       formaPago: '',
       estado: 'pendiente',
@@ -231,6 +241,9 @@ export class PagosLiquidacion implements OnDestroy {
       referencia: '',
       comentarios: '',
     });
+    // En altas la empresa es obligatoria.
+    this.form.controls.empresa.setValidators([Validators.required]);
+    this.form.controls.empresa.updateValueAndValidity();
     this.createOpen.set(true);
   }
 
@@ -276,6 +289,7 @@ export class PagosLiquidacion implements OnDestroy {
       importe: row.importe,
       importePenalizacion: row.importePenalizacion || null,
       conceptoPenalizacion: row.conceptoPenalizacion ?? '',
+      empresa: row.empresa ?? '',
       tipo: row.tipo,
       formaPago: row.formaPago ?? '',
       estado: row.estado,
@@ -289,6 +303,13 @@ export class PagosLiquidacion implements OnDestroy {
       referencia: row.referencia ?? '',
       comentarios: row.comentarios ?? '',
     });
+    // Al editar un histórico sin empresa no se fuerza; solo no se puede borrar si ya tenía una.
+    if (row.empresa) {
+      this.form.controls.empresa.setValidators([Validators.required]);
+    } else {
+      this.form.controls.empresa.clearValidators();
+    }
+    this.form.controls.empresa.updateValueAndValidity();
     this.editOpen.set(true);
   }
 
@@ -357,6 +378,7 @@ export class PagosLiquidacion implements OnDestroy {
   protected tipoTone(t: TipoPago): StatusTone { return TIPO_TONE[t]; }
   protected tipoLabel(t: TipoPago): string { return TIPO_PAGO_LABEL[t]; }
   protected formaLabel(f: FormaPago | null): string { return f ? FORMA_PAGO_LABEL[f] : '—'; }
+  protected empresaLabel(e: Empresa | null): string { return e ? EMPRESA_LABEL[e] : '—'; }
   protected date(v: string | null): string { return formatDate(v); }
   protected euro(v: number | null | undefined): string { return formatEuro(v ?? null); }
 
@@ -376,6 +398,7 @@ type FormValue = {
   importe: number | null;
   importePenalizacion: number | null;
   conceptoPenalizacion: string;
+  empresa: Empresa | '';
   tipo: TipoPago;
   formaPago: FormaPago | '';
   estado: EstadoPago;
@@ -397,6 +420,7 @@ function buildPayload(v: FormValue) {
     importe: v.importe!,
     importePenalizacion: v.importePenalizacion ?? null,
     conceptoPenalizacion: v.conceptoPenalizacion || null,
+    empresa: (v.empresa || null) as Empresa | null,
     tipo: v.tipo,
     formaPago: (v.formaPago || null) as FormaPago | null,
     estado: v.estado,

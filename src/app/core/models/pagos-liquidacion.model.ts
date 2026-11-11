@@ -1,6 +1,15 @@
 export type EstadoPago = 'pendiente' | 'pagado' | 'cancelado';
 export type TipoPago = 'comision' | 'liquidacion' | 'bonus' | 'multa' | 'penalizacion' | 'adelanto' | 'diferencia' | 'embargo' | 'otro';
 export type FormaPago = 'factura' | 'pago_unico';
+export type Empresa = 'APOLO_GAS' | 'VIBRA' | 'APOLO';
+
+export const EMPRESA_LABEL: Record<Empresa, string> = {
+  APOLO_GAS: 'Apolo Gas',
+  VIBRA: 'Vibra',
+  APOLO: 'Apolo',
+};
+
+export const EMPRESA_VALUES: Empresa[] = ['APOLO_GAS', 'VIBRA', 'APOLO'];
 
 export const ESTADO_PAGO_LABEL: Record<EstadoPago, string> = {
   pendiente: 'Pendiente',
@@ -42,6 +51,7 @@ export interface PagoLiquidacion {
   importePenalizacion: number;
   importeNeto: number;
   conceptoPenalizacion: string | null;
+  empresa: Empresa | null;
   tipo: TipoPago;
   formaPago: FormaPago | null;
   estado: EstadoPago;
@@ -68,6 +78,7 @@ export interface PagoLiquidacionFilter {
   delegacionId?: string;
   estado?: EstadoPago | '';
   tipo?: TipoPago | '';
+  empresa?: Empresa | '';
   startDate?: string;
   endDate?: string;
   q?: string;
@@ -82,6 +93,7 @@ export interface PagoLiquidacionPayload {
   importe: number;
   importePenalizacion?: number | null;
   conceptoPenalizacion?: string | null;
+  empresa?: Empresa | null;
   tipo: TipoPago;
   formaPago?: FormaPago | null;
   estado?: EstadoPago | null;

@@ -59,6 +59,7 @@ function filterParams(filter: PagoLiquidacionFilter) {
     delegacionId: filter.delegacionId,
     estado: filter.estado,
     tipo: filter.tipo,
+    empresa: filter.empresa,
     startDate: filter.startDate,
     endDate: filter.endDate,
     q: filter.q,
