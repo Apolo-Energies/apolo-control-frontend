@@ -468,10 +468,9 @@
                 <button type="button" (mousedown)="selectCliente(c)"
                   class="w-full px-3 py-2.5 text-left hover:bg-accent/40 transition-colors flex flex-col">
                   <span class="text-sm font-medium text-foreground">{{ c.nombre }}</span>
-                  <span class="text-xs text-muted-foreground">
-                    @if (c.empresa) { {{ c.empresa }}{{ c.nif ? ' · ' + c.nif : '' }} }
-                    @else if (c.nif) { {{ c.nif }} }
-                  </span>
+                  @if (c.nif) {
+                    <span class="text-xs text-muted-foreground">{{ c.nif }}</span>
+                  }
                 </button>
               }
               @if (!clienteLoading() && clienteResults().length === 0) {

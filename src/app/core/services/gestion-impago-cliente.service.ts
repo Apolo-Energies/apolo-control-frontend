@@ -36,6 +36,14 @@ export class GestionImpagoClienteService {
     return this.http.post<GestionImpagoCliente>(this.baseUrl, payload);
   }
 
+  /**
+   * Materializa (crea si hace falta) el deudor a partir de un cliente de control por su id.
+   * Se llama al seleccionar en el buscador un cliente que vino de la caché de datos maestros.
+   */
+  materializarControl(controlClienteId: string): Observable<GestionImpagoCliente> {
+    return this.http.post<GestionImpagoCliente>(`${this.baseUrl}/materializar-control/${controlClienteId}`, {});
+  }
+
   update(id: string, payload: GestionImpagoClientePayload): Observable<GestionImpagoCliente> {
     return this.http.put<GestionImpagoCliente>(`${this.baseUrl}/${id}`, payload);
   }

@@ -324,7 +324,7 @@ export class Unpaid implements OnDestroy {
 
   // ── Cliente autocomplete ──────────────────────────────────────────────────
   protected clienteQuery              = '';
-  protected readonly clienteResults   = signal<GestionImpagoCliente[]>([]);
+  protected readonly clienteResults   = signal<Customer[]>([]);
   protected readonly clienteLoading   = signal(false);
   protected readonly clienteDropdown  = signal(false);
   protected readonly clienteNombre    = signal<string | null>(null);
@@ -522,20 +522,39 @@ export class Unpaid implements OnDestroy {
   protected closeDialog(): void { this.dialogOpen.set(false); this.editing.set(null); }
 
   // ── Cliente autocomplete methods ──────────────────────────────────────────
+  // Busca en la caché de clientes en memoria (MasterDataService, respaldada en IndexedDB):
+  // cero peticiones al back por tecla. La petición solo ocurre al SELECCIONAR (materializar).
   protected buscarClientes(): void {
-    this.clienteLoading.set(true);
     this.clienteDropdown.set(true);
-    this.clienteService.list({ q: this.clienteQuery || undefined }, { size: 8, sort: 'nombre' }).subscribe({
-      next:  (page) => { this.clienteResults.set(page.content); this.clienteLoading.set(false); },
-      error: ()     => { this.clienteLoading.set(false); },
-    });
+    const q = this.clienteQuery.trim().toLowerCase();
+    const all = this.masterData.clientes();
+    const matches = (q
+      ? all.filter(c =>
+          c.nombre.toLowerCase().includes(q) ||
+          (c.nif ?? '').toLowerCase().includes(q))
+      : all
+    ).slice(0, 8);
+    this.clienteResults.set(matches);
   }
 
-  protected selectCliente(c: GestionImpagoCliente): void {
-    this.form.patchValue({ clienteId: c.id });
-    this.clienteNombre.set(c.nombre + (c.empresa ? ` (${c.empresa})` : ''));
-    this.clienteDropdown.set(false);
-    this.creandoCliente.set(false);
+  // Al seleccionar un cliente (de la caché de control), se materializa como deudor en el back
+  // para obtener su id usable en el impago. Idempotente: si ya es deudor, devuelve el existente.
+  protected selectCliente(c: Customer): void {
+    this.clienteDropdown.set(true);
+    this.clienteLoading.set(true);
+    this.clienteService.materializarControl(c.id).subscribe({
+      next: (deudor) => {
+        this.form.patchValue({ clienteId: deudor.id });
+        this.clienteNombre.set(deudor.nombre + (deudor.empresa ? ` (${deudor.empresa})` : ''));
+        this.clienteLoading.set(false);
+        this.clienteDropdown.set(false);
+        this.creandoCliente.set(false);
+      },
+      error: () => {
+        this.clienteLoading.set(false);
+        this.notify.error('No se pudo seleccionar el cliente');
+      },
+    });
   }
 
   protected clearCliente(): void {
