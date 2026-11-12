@@ -41,6 +41,10 @@ export class FacturaContabilidadService {
     return this.http.put<FacturaContabilidad>(`${this.baseUrl}/${id}`, payload);
   }
 
+  delete(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
   exportCsv(filter: FacturaContabilidadFilter = {}): Observable<Blob> {
     return this.http.get(`${this.baseUrl}/export/csv`, {
       params: buildParams({

@@ -13,6 +13,7 @@ import { FacturaContabilidadService } from '../../core/services/factura-contabil
 import { MasterDataService } from '../../core/services/master-data.service';
 import { GlobalLoadingService } from '../../core/services/global-loading.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { ConfirmService } from '../../core/services/confirm.service';
 import { ListStateService }    from '../../core/services/list-state.service';
 import {
   ApiErrorResponse,
@@ -51,6 +52,7 @@ export class FacturasContabilidad implements OnDestroy {
   private readonly masterData = inject(MasterDataService);
   private readonly globalLoading = inject(GlobalLoadingService);
   private readonly notify = inject(NotificationService);
+  private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
   private readonly listState = inject(ListStateService);
 
@@ -265,6 +267,31 @@ export class FacturasContabilidad implements OnDestroy {
         this.submitting.set(false);
         this.globalLoading.stop();
         this.formError.set(extractMessage(err));
+      },
+    });
+  }
+
+  protected async confirmDelete(row: FacturaContabilidad): Promise<void> {
+    const ref = row.numeroFactura ? `nº <b>${row.numeroFactura}</b> de ` : '';
+    const ok = await this.confirm.ask({
+      header: 'Eliminar factura',
+      message: `Vas a eliminar <b>de forma permanente</b> la factura ${ref}<b>${row.proveedor}</b> por ${this.euro(row.total)}.<br><br>Esta acción <b>no se puede deshacer</b>. ¿Seguro que quieres continuar?`,
+      acceptLabel: 'Sí, eliminar permanentemente',
+      rejectLabel: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!ok) return;
+
+    this.globalLoading.start('Eliminando', 'Eliminando la factura.');
+    this.service.delete(row.id).subscribe({
+      next: () => {
+        this.globalLoading.stop();
+        this.notify.success('Factura eliminada');
+        this.reload(this.page());
+      },
+      error: (err: HttpErrorResponse) => {
+        this.globalLoading.stop();
+        this.notify.error(extractMessage(err));
       },
     });
   }

@@ -114,6 +114,7 @@
             <th class="px-4 py-3 text-right font-semibold">Total</th>
             <th class="px-4 py-3 text-left font-semibold">Estado</th>
             <th class="px-4 py-3 text-left font-semibold">Vencimiento / Pago</th>
+            <th class="px-4 py-3 text-right font-semibold">Acciones</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-border/40">
@@ -158,6 +159,16 @@
                 @if (row.transferencia) {
                   <p class="text-xs text-muted-foreground">Transferencia</p>
                 }
+              </td>
+              <td class="px-4 py-3 text-right" (click)="$event.stopPropagation()">
+                <button
+                  type="button"
+                  (click)="confirmDelete(row)"
+                  class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-border text-danger-fg hover:bg-danger/10 transition-colors"
+                  title="Eliminar factura"
+                >
+                  <ui-icon name="trash" [size]="13" />
+                </button>
               </td>
             </tr>
           } @empty {
