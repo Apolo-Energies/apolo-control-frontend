@@ -182,3 +182,29 @@ export function fechaProximaDotClass(iso: string | null | undefined): string {
   if (fecha <= enDias(DIAS_AVISO_FECHA)) return 'bg-warning';
   return 'bg-success';
 }
+
+// Convierte texto introducido por el usuario a número. Acepta "0,149", "0.149" y "1.234,5".
+// Vacío → null. Texto no numérico → NaN.
+export function parseDecimal(value: unknown): number | null {
+  if (value == null) return null;
+  if (typeof value === 'number') return value;
+  const s = String(value).trim();
+  if (s === '') return null;
+  const normalized = s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s;
+  return /^-?\d+(\.\d+)?$/.test(normalized) ? Number(normalized) : NaN;
+}
+
+// Campos de precio de una tarifa (Telkes/Vibra).
+export const PRECIO_FIELDS = [
+  'p1Energia', 'p2Energia', 'p3Energia', 'p4Energia', 'p5Energia', 'p6Energia',
+  'p1Potencia', 'p2Potencia', 'p3Potencia', 'p4Potencia', 'p5Potencia', 'p6Potencia',
+] as const;
+
+// Columna NUMERIC(10,6): positivo, máx. 4 enteros y 6 decimales.
+const PRECIO_VALIDO = /^\d{1,4}(\.\d{1,6})?$/;
+
+// Precios del formulario convertidos a número. null si alguno no es válido.
+export function parsePrecios(raw: Partial<Record<(typeof PRECIO_FIELDS)[number], unknown>>): Record<string, number | null> | null {
+  const precios = Object.fromEntries(PRECIO_FIELDS.map(k => [k, parseDecimal(raw[k])]));
+  return Object.values(precios).every(v => v == null || PRECIO_VALIDO.test(String(v))) ? precios : null;
+}
