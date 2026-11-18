@@ -13,6 +13,7 @@ import { Icon } from '../../../shared/icons/icon';
 import { VibraTarifaService } from '../../../core/services/vibra-tarifa.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { VibraTarifa, VibraTarifaPayload } from '../../../core/models';
+import { parsePrecios } from '../../../shared/utils/format';
 
 @Component({
   selector: 'app-vibra-preciario',
@@ -100,8 +101,14 @@ export class VibraPreciario {
 
   protected submit(): void {
     if (this.form.invalid) return;
+    const raw = this.form.getRawValue();
+    const precios = parsePrecios(raw);
+    if (!precios) {
+      this.notify.error('Hay precios con formato no válido');
+      return;
+    }
+    const payload = { ...raw, ...precios } as VibraTarifaPayload;
     this.submitting.set(true);
-    const payload = this.form.getRawValue() as VibraTarifaPayload;
     const t = this.editing();
     const obs = t ? this.service.update(t.id, payload) : this.service.create(payload);
     obs.subscribe({

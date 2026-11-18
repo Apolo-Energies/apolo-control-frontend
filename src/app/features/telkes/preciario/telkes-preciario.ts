@@ -13,6 +13,7 @@ import { Icon } from '../../../shared/icons/icon';
 import { TelkesTarifaService } from '../../../core/services/telkes-tarifa.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { TelkesTarifa, TelkesTarifaPayload } from '../../../core/models';
+import { parsePrecios } from '../../../shared/utils/format';
 
 @Component({
   selector: 'app-telkes-preciario',
@@ -100,8 +101,14 @@ export class TelkesPreciario {
 
   protected submit(): void {
     if (this.form.invalid) return;
+    const raw = this.form.getRawValue();
+    const precios = parsePrecios(raw);
+    if (!precios) {
+      this.notify.error('Hay precios con formato no válido');
+      return;
+    }
+    const payload = { ...raw, ...precios } as TelkesTarifaPayload;
     this.submitting.set(true);
-    const payload = this.form.getRawValue() as TelkesTarifaPayload;
     const t = this.editing();
     const obs = t ? this.service.update(t.id, payload) : this.service.create(payload);
     obs.subscribe({
