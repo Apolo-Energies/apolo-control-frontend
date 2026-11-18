@@ -104,7 +104,7 @@ export class VibraPreciario {
     const raw = this.form.getRawValue();
     const precios = parsePrecios(raw);
     if (!precios) {
-      this.notify.error('Hay precios con formato no válido');
+      this.notify.error('Precio no válido: usa un número positivo con hasta 6 decimales');
       return;
     }
     const payload = { ...raw, ...precios } as VibraTarifaPayload;
