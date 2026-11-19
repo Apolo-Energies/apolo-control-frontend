@@ -39,6 +39,34 @@ export class AgreementsCalendar implements OnInit {
   protected readonly error   = signal<string | null>(null);
   protected readonly eventos = signal<CalendarioEvento[]>([]);
 
+  /** Tipos de evento visibles (filtros on/off). Todos activos por defecto. */
+  protected readonly tiposFiltro = ['verbal', 'ovc', 'promesa', 'fraccionado'] as const;
+  protected readonly tiposActivos = signal<ReadonlySet<string>>(new Set(this.tiposFiltro));
+
+  protected isTipoActivo(tipo: string): boolean { return this.tiposActivos().has(tipo); }
+
+  protected toggleTipo(tipo: string): void {
+    this.tiposActivos.update(prev => {
+      const next = new Set(prev);
+      if (!next.delete(tipo)) next.add(tipo);
+      return next;
+    });
+  }
+
+  /** Eventos tras aplicar los filtros de tipo — es lo que pinta el calendario. */
+  protected readonly visibleEventos = computed(() =>
+    this.eventos().filter(e => this.tiposActivos().has(e.tipo)));
+
+  protected tipoDotClass(tipo: string): string {
+    switch (tipo) {
+      case 'verbal':      return 'bg-blue-500';
+      case 'ovc':         return 'bg-purple-500';
+      case 'promesa':     return 'bg-emerald-500';
+      case 'fraccionado': return 'bg-amber-500';
+      default:            return 'bg-muted-foreground';
+    }
+  }
+
   /** Día abierto en el modal con todos sus acuerdos (los que no caben en la celda). */
   protected readonly diaAbierto = signal<DiaCell | null>(null);
 
@@ -59,9 +87,9 @@ export class AgreementsCalendar implements OnInit {
     const month  = anchor.getMonth();
     const today  = new Date(); today.setHours(0, 0, 0, 0);
 
-    // Build event index: key = 'YYYY-MM-DD'
+    // Build event index: key = 'YYYY-MM-DD' (solo tipos activos)
     const idx = new Map<string, CalendarioEvento[]>();
-    for (const ev of this.eventos()) {
+    for (const ev of this.visibleEventos()) {
       const k = ev.fecha;
       if (!idx.has(k)) idx.set(k, []);
       idx.get(k)!.push(ev);
