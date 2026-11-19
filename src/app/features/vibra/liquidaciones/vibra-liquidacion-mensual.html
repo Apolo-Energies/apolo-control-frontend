@@ -1,0 +1,148 @@
+<div class="flex flex-wrap items-end gap-3 mb-4">
+  <label class="flex flex-col gap-1 text-sm">
+    <span class="text-muted-foreground">Colaborador</span>
+    <select [(ngModel)]="clave" (change)="load()" class="min-w-64 border border-border rounded-lg px-3 py-2 bg-input">
+      <option value="">Elegir…</option>
+      @for (c of colaboradores(); track c.clave) {
+        <option [value]="c.clave">{{ c.nombre }}{{ c.sinComision ? ' · sin comisión' : '' }}</option>
+      }
+    </select>
+  </label>
+  <label class="flex flex-col gap-1 text-sm">
+    <span class="text-muted-foreground">Mes</span>
+    <input type="month" [(ngModel)]="mes" (change)="load()" required
+      class="border border-border rounded-lg px-3 py-2 bg-input" />
+  </label>
+  @if (liq(); as l) {
+    <div class="ml-auto flex flex-wrap gap-2">
+      <button type="button" (click)="exportar()"
+        class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
+        <ui-icon name="download" [size]="16" /> Exportar
+      </button>
+      @if (isAdmin) {
+        @if (l.estado === 'BORRADOR') {
+          <button type="button" (click)="guardar()" [disabled]="!puedeGuardar() || busy()"
+            class="rounded-lg bg-primary-button text-primary-foreground px-4 py-2 text-sm font-medium disabled:opacity-50">
+            Guardar liquidación
+          </button>
+        } @else if (l.estado === 'GUARDADA') {
+          <button type="button" (click)="borrarOpen.set(true)" [disabled]="busy()"
+            class="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-danger-soft text-danger-fg">
+            Borrar
+          </button>
+          <button type="button" (click)="pagarOpen.set(true)" [disabled]="busy()"
+            class="rounded-lg bg-primary-button text-primary-foreground px-4 py-2 text-sm font-medium disabled:opacity-50">
+            Marcar pagada
+          </button>
+        }
+      }
+    </div>
+  }
+</div>
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">{{ msg }}</div>
+}
+
+@if (!clave) {
+  <p class="py-16 text-center text-muted-foreground">Elige un colaborador y un mes para ver su liquidación.</p>
+} @else if (loading() && !liq()) {
+  <app-table-skeleton [cols]="8" [rows]="6" />
+} @else if (liq(); as l) {
+  <div class="flex flex-wrap items-center gap-2 mb-3 text-sm" aria-live="polite">
+    <app-status-badge [tone]="estadoTone(l.estado)">{{ estadoLabel(l.estado) }}</app-status-badge>
+    <span>{{ l.estado === 'BORRADOR' ? 'Comisión por alta' : 'Comisión actual' }}:
+      <strong class="tabular-nums">{{ eur(l.comisionAlta) }}</strong></span>
+    <span class="text-muted-foreground">· Renovación: {{ eur(l.importeRenovacion) }}</span>
+    @if (l.fechaPago) { <span class="text-muted-foreground">· Pagada el {{ l.fechaPago }}</span> }
+  </div>
+
+  @if (l.comisionAlta == null) {
+    <div class="rounded-xl border border-warning/40 bg-warning-soft px-4 py-3 mb-3 text-sm" role="status">
+      {{ l.colaborador }} no tiene comisión: ponla en Vibra → Equipo para poder guardar.
+    </div>
+  }
+  @if (l.lineasARevisar > 0) {
+    <div class="rounded-xl border border-warning/40 bg-warning-soft px-4 py-3 mb-3 text-sm" role="status">
+      {{ l.lineasARevisar }} línea(s) a revisar: faltan o no cuadran las fechas de activación/baja. Corrígelas en Altas para poder guardar.
+    </div>
+  }
+  @if (l.hayCambios) {
+    <div class="rounded-xl border border-info/40 bg-info-soft px-4 py-3 mb-3 text-sm" role="status">
+      Los datos de las altas o la comisión han cambiado desde que se guardó. Los importes guardados no cambian.
+    </div>
+  }
+
+  <div class="rounded-2xl border border-border bg-card overflow-hidden">
+    <div class="overflow-auto max-h-[65vh]" tabindex="0" role="region" aria-labelledby="liq-mensual-caption">
+      <table class="w-full text-sm">
+        <caption id="liq-mensual-caption" class="sr-only">Liquidación de {{ l.colaborador }} en {{ l.mes }}</caption>
+        <thead class="sticky top-0 z-10 bg-card">
+          <tr class="border-b border-border text-left text-muted-foreground">
+            <th scope="col" class="py-3 px-4 font-medium">Concepto</th>
+            <th scope="col" class="py-3 px-4 font-medium">Titular</th>
+            <th scope="col" class="py-3 px-4 font-medium">CUPS</th>
+            <th scope="col" class="py-3 px-4 font-medium">Activación</th>
+            <th scope="col" class="py-3 px-4 font-medium">Baja</th>
+            <th scope="col" class="py-3 px-4 font-medium text-right">Días activo</th>
+            <th scope="col" class="py-3 px-4 font-medium text-right">Comisión</th>
+            <th scope="col" class="py-3 px-4 font-medium text-right">Importe</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of l.lineas; track r.altaId + r.tipo + r.aniversario) {
+            <tr class="border-b border-border/50" [class.bg-warning-soft]="r.revisar">
+              <td class="py-2 px-4">
+                {{ tipo(r) }}
+                @if (r.revisar) { <app-status-badge tone="warning" class="ml-1">A revisar</app-status-badge> }
+              </td>
+              <td class="py-2 px-4">{{ r.titular ?? '—' }}</td>
+              <td class="py-2 px-4 text-muted-foreground tabular-nums">{{ r.cups ?? '—' }}</td>
+              <td class="py-2 px-4 tabular-nums">{{ r.fechaActivacion ?? '—' }}</td>
+              <td class="py-2 px-4 tabular-nums">{{ r.fechaBaja ?? '—' }}</td>
+              <td class="py-2 px-4 text-right tabular-nums">{{ r.diasActivo ?? '' }}</td>
+              <td class="py-2 px-4 text-right tabular-nums">{{ eur(r.comisionAplicada) }}</td>
+              <td class="py-2 px-4 text-right tabular-nums" [class.text-danger-fg]="r.importe < 0">{{ eur(r.importe) }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="8" class="py-12 text-center text-muted-foreground">Nada que liquidar en {{ l.mes }}</td></tr>
+          }
+        </tbody>
+        <tfoot class="text-sm">
+          <tr class="border-t border-border"><th scope="row" colspan="7" class="py-2 px-4 text-right font-normal">Altas</th><td class="py-2 px-4 text-right tabular-nums">{{ eur(l.totalAltas) }}</td></tr>
+          <tr><th scope="row" colspan="7" class="py-2 px-4 text-right font-normal">Bajas</th><td class="py-2 px-4 text-right tabular-nums">{{ eur(l.totalBajas) }}</td></tr>
+          <tr><th scope="row" colspan="7" class="py-2 px-4 text-right font-normal">Renovaciones</th><td class="py-2 px-4 text-right tabular-nums">{{ eur(l.totalAniversarios) }}</td></tr>
+          <tr class="border-t border-border font-semibold"><th scope="row" colspan="7" class="py-2 px-4 text-right">Neto</th><td class="py-2 px-4 text-right tabular-nums" [class.text-danger-fg]="l.totalNeto < 0">{{ eur(l.totalNeto) }}</td></tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+}
+
+<app-form-dialog
+  [open]="pagarOpen()"
+  title="Marcar liquidación pagada"
+  [subtitle]="(liq()?.colaborador ?? '') + ' · ' + (liq()?.mes ?? '') + ' · ' + eur(liq()?.totalNeto ?? null)"
+  icon="wallet"
+  saveLabel="Marcar pagada"
+  [saving]="busy()"
+  [canSave]="!!fechaPago && fechaPago <= hoy"
+  (cancel)="pagarOpen.set(false)"
+  (save)="pagar()">
+  <label class="flex flex-col gap-1 text-sm py-2">
+    <span>Fecha de pago</span>
+    <input type="date" [(ngModel)]="fechaPago" [max]="hoy" required
+      class="border border-border rounded-lg px-3 py-2 bg-input" />
+  </label>
+  <p class="text-xs text-muted-foreground">Las altas de esta liquidación pasarán a «Pagado».</p>
+</app-form-dialog>
+
+<app-confirm-dialog
+  [open]="borrarOpen()"
+  title="Borrar liquidación"
+  [message]="'¿Borrar la liquidación guardada de ' + (liq()?.colaborador ?? '') + ' en ' + (liq()?.mes ?? '') + '? Sus líneas volverán a salir en el borrador.'"
+  confirmLabel="Borrar"
+  [loading]="busy()"
+  tone="danger"
+  (confirm)="borrar()"
+  (cancel)="borrarOpen.set(false)" />

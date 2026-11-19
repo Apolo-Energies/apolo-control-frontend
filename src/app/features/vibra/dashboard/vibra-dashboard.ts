@@ -11,6 +11,7 @@ import { KpiCard } from '../../../shared/components/kpi-card/kpi-card';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon, IconName } from '../../../shared/icons/icon';
 
+import { AuthService } from '../../../core/auth';
 import { VibraDashboardService } from '../../../core/services/vibra-dashboard.service';
 import { VibraDashboard as VibraDashboardData, VibraRankingItem } from '../../../core/models';
 
@@ -32,6 +33,7 @@ interface SectionCard {
 })
 export class VibraDashboard implements AfterViewInit, OnDestroy {
   private readonly service = inject(VibraDashboardService);
+  private readonly auth = inject(AuthService);
 
   @ViewChild('chartCanvas') chartCanvas?: ElementRef<HTMLCanvasElement>;
   private chart: Chart | null = null;
@@ -51,8 +53,13 @@ export class VibraDashboard implements AfterViewInit, OnDestroy {
       url: '/vibra/tramitacion', icon: 'check-square', tone: 'warning' },
     { label: 'Impagos', description: 'Seguimiento y gestión de facturas pendientes de pago',
       url: '/vibra/impagos', icon: 'alert-triangle', tone: 'danger' },
-    { label: 'Liquidaciones', description: 'Gestión de liquidaciones a colaboradores',
-      url: '/vibra/liquidaciones', icon: 'wallet', tone: 'success' },
+    // Equipo y Liquidaciones: solo admin y contabilidad (comisiones de la red)
+    ...(this.auth.hasRole('admin', 'contabilidad') ? [
+      { label: 'Equipo', description: 'Colaboradores y su comisión por alta',
+        url: '/vibra/equipo', icon: 'users' as IconName, tone: 'info' as const },
+      { label: 'Liquidaciones', description: 'Liquidación mensual a colaboradores',
+        url: '/vibra/liquidaciones', icon: 'wallet' as IconName, tone: 'success' as const },
+    ] : []),
   ];
 
   protected readonly topRanking = computed<VibraRankingItem[]>(() =>

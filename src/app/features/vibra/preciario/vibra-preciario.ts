@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
 import { PageHeader } from '../../../shared/components/page-header/page-header';
@@ -12,19 +13,25 @@ import { Icon } from '../../../shared/icons/icon';
 
 import { VibraTarifaService } from '../../../core/services/vibra-tarifa.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { AuthService } from '../../../core/auth';
 import { VibraTarifa, VibraTarifaPayload } from '../../../core/models';
 import { parsePrecios } from '../../../shared/utils/format';
 
 @Component({
   selector: 'app-vibra-preciario',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, PageHeader, FormDialog, ConfirmDialog, StatusBadge, TableSkeleton, Icon],
+  imports: [ReactiveFormsModule, RouterLink, NgTemplateOutlet, PageHeader, FormDialog, ConfirmDialog, StatusBadge, TableSkeleton, Icon],
   templateUrl: './vibra-preciario.html',
 })
 export class VibraPreciario {
   private readonly service = inject(VibraTarifaService);
   private readonly notify = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
+  private readonly auth = inject(AuthService);
+
+  /** Solo admin cambia el estado desde la lista (el resto ve el badge). */
+  protected readonly isAdmin = this.auth.hasRole('admin');
+  protected readonly toggling = signal<string | null>(null);
 
   protected readonly all = signal<VibraTarifa[]>([]);
   protected readonly loading = signal(true);
@@ -149,6 +156,22 @@ export class VibraPreciario {
       error: (err: HttpErrorResponse) => {
         this.deleting.set(false);
         this.notify.error(err.error?.message ?? 'Error al eliminar');
+      },
+    });
+  }
+
+  protected toggleActiva(t: VibraTarifa, activa: boolean): void {
+    this.toggling.set(t.id);
+    this.all.update(list => list.map(x => (x.id === t.id ? { ...x, activa } : x)));
+    this.service.cambiarActiva(t.id, activa).subscribe({
+      next: () => {
+        this.toggling.set(null);
+        this.notify.success(`${t.nombre}: ${activa ? 'activa' : 'inactiva'}`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.toggling.set(null);
+        this.all.update(list => list.map(x => (x.id === t.id ? { ...x, activa: !activa } : x)));
+        this.notify.error(err.error?.message ?? 'No se pudo cambiar el estado');
       },
     });
   }

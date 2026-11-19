@@ -13,11 +13,13 @@ import { VibraAltaService } from '../../../core/services/vibra-alta.service';
 import { VibraDashboardService } from '../../../core/services/vibra-dashboard.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { Page, VibraLiquidacion } from '../../../core/models';
+import { AuthService } from '../../../core/auth';
+import { VibraLiquidacionMensualView } from './vibra-liquidacion-mensual';
 
 @Component({
   selector: 'app-vibra-liquidaciones',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, PageHeader, Pagination, TableSkeleton, Icon],
+  imports: [FormsModule, RouterLink, PageHeader, Pagination, TableSkeleton, Icon, VibraLiquidacionMensualView],
   templateUrl: './vibra-liquidaciones.html',
 })
 export class VibraLiquidaciones {
@@ -25,6 +27,11 @@ export class VibraLiquidaciones {
   private readonly altaService = inject(VibraAltaService);
   private readonly dashboardService = inject(VibraDashboardService);
   private readonly notify = inject(NotificationService);
+  private readonly auth = inject(AuthService);
+
+  protected readonly isAdmin = this.auth.hasRole('admin');
+  /** Pestaña visible: liquidación mensual (nueva) o la vista por alta. */
+  protected readonly tab = signal<'mensual' | 'alta'>('mensual');
 
   protected readonly result = signal<Page<VibraLiquidacion> | null>(null);
   protected readonly loading = signal(true);
@@ -56,9 +63,16 @@ export class VibraLiquidaciones {
   protected readonly total = computed(() => this.result()?.totalElements ?? 0);
   protected readonly totalPages = computed(() => this.result()?.totalPages ?? 0);
 
-  constructor() {
-    this.load();
-    this.loadColaboradores();
+  private porAltaCargada = false;
+
+  /** La vista por alta se carga la primera vez que se abre su pestaña. */
+  protected abrirTab(tab: 'mensual' | 'alta'): void {
+    this.tab.set(tab);
+    if (tab === 'alta' && !this.porAltaCargada) {
+      this.porAltaCargada = true;
+      this.load();
+      this.loadColaboradores();
+    }
   }
 
   private loadColaboradores(): void {

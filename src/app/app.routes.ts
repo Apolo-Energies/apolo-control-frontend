@@ -250,8 +250,17 @@ export const routes: Routes = [
           },
           {
             path: 'liquidaciones',
+            data: { roles: ['admin', 'contabilidad'] },
+            canActivate: [authGuard],
             loadComponent: () =>
               import('./features/vibra/liquidaciones/vibra-liquidaciones').then((m) => m.VibraLiquidaciones),
+          },
+          {
+            path: 'equipo',
+            data: { roles: ['admin', 'contabilidad'] },
+            canActivate: [authGuard],
+            loadComponent: () =>
+              import('./features/vibra/equipo/vibra-equipo').then((m) => m.VibraEquipo),
           },
           {
             path: 'contrato-servicio',

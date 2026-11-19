@@ -211,6 +211,45 @@
    En modo oscuro no aplican (las cards se diferencian por color).
    ============================================================ */
 @layer components {
+  /* Interruptor nativo <input type="checkbox" switch> */
+  input[type="checkbox"][switch] {
+    accent-color: var(--color-primary);
+    margin: 0;
+    cursor: pointer;
+  }
+  input[type="checkbox"][switch]:focus-visible {
+    outline: 3px solid var(--color-foreground);
+    outline-offset: 3px;
+  }
+
+  /* Pestañas (focusgroup="tablist"): la seleccionada se marca con subrayado, no solo con color */
+  .tablist {
+    display: flex;
+    overflow-x: auto;
+    border-block-end: 1px solid var(--color-border);
+  }
+  .tablist > [role="tab"],
+  .tablist > button {
+    position: relative;
+    flex: none;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    color: var(--color-muted-foreground);
+  }
+  .tablist > [aria-selected="true"] {
+    color: var(--color-foreground);
+  }
+  .tablist > [aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 -1px;
+    border-block-end: 3px solid var(--color-primary);
+  }
+  .tablist > :focus-visible {
+    outline: 3px solid var(--color-foreground);
+    outline-offset: -3px;
+  }
+
   :root:not(.dark) .bg-card {
     box-shadow: var(--shadow-card);
   }

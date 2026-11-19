@@ -1,0 +1,107 @@
+<app-page-header title="Equipo" [subtitle]="rows().length + ' colaboradores · comisión por alta'" />
+
+<div class="flex flex-wrap items-center gap-2 mb-4">
+  <div class="relative flex-1 max-w-md">
+    <ui-icon name="search" [size]="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+    <input type="search" [(ngModel)]="q" (keyup.enter)="load()" aria-label="Buscar colaborador"
+      placeholder="Buscar colaborador…"
+      class="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-sm bg-input" />
+  </div>
+</div>
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">
+    {{ msg }} <button type="button" (click)="load()" class="ml-2 underline">Reintentar</button>
+  </div>
+}
+
+@if (loading() && rows().length === 0) {
+  <app-table-skeleton [cols]="4" [rows]="8" />
+} @else {
+  <div class="rounded-2xl border border-border bg-card overflow-hidden">
+    <div class="overflow-auto max-h-[70vh]" tabindex="0" role="region" aria-labelledby="equipo-caption">
+      <table class="w-full text-sm">
+        <caption id="equipo-caption" class="sr-only">Colaboradores Vibra y su comisión por alta</caption>
+        <thead class="sticky top-0 z-10 bg-card">
+          <tr class="border-b border-border text-left text-muted-foreground">
+            <th scope="col" class="py-3 px-4 font-medium">Colaborador</th>
+            <th scope="col" class="py-3 px-4 font-medium text-right">Contratos activos</th>
+            <th scope="col" class="py-3 px-4 font-medium text-right">Comisión por alta</th>
+            <th scope="col" class="py-3 px-4 font-medium text-right">Histórico</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of rows(); track c.clave) {
+            <tr class="border-b border-border/50 hover:bg-accent/40">
+              <th scope="row" class="py-2 px-4 font-normal text-left">
+                {{ c.nombre }}
+                @if (c.sinComision) { <app-status-badge tone="warning" class="ml-2">Sin comisión</app-status-badge> }
+              </th>
+              <td class="py-2 px-4 text-right tabular-nums">{{ c.contratosActivos }}</td>
+              <td class="py-2 px-4 text-right">
+                @if (isAdmin) {
+                  <label class="inline-flex items-center gap-1">
+                    <span class="sr-only">Comisión por alta de {{ c.nombre }} en euros</span>
+                    <input #com type="number" inputmode="decimal" min="0" step="0.01"
+                      [value]="c.comisionAlta ?? ''" [disabled]="saving() === c.clave"
+                      (blur)="guardarComision(c, com)" (keyup.enter)="com.blur()"
+                      placeholder="—"
+                      class="w-28 border border-border rounded-md px-2 py-1 text-right tabular-nums bg-input" />
+                    <span aria-hidden="true">€</span>
+                  </label>
+                } @else {
+                  <span class="tabular-nums">{{ eur(c.comisionAlta) }}</span>
+                }
+              </td>
+              <td class="py-2 px-4 text-right">
+                <button type="button" (click)="verHistorial(c)" class="p-1 hover:bg-info-soft rounded"
+                  [attr.aria-label]="'Histórico de comisión de ' + c.nombre">
+                  <ui-icon name="clock" [size]="16" />
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="4" class="py-16 text-center text-muted-foreground">Sin colaboradores</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+<app-form-dialog
+  [open]="historialDe() !== null"
+  [title]="'Histórico de comisión'"
+  [subtitle]="historialDe()?.nombre ?? null"
+  icon="clock"
+  [readOnly]="true"
+  width="520px"
+  (cancel)="cerrarHistorial()">
+  @if (historialLoading()) {
+    <div class="py-8 text-center text-muted-foreground">Cargando…</div>
+  } @else if (historial().length === 0) {
+    <div class="py-8 text-center text-muted-foreground">Sin cambios registrados</div>
+  } @else {
+    <table class="w-full text-sm">
+      <caption class="sr-only">Cambios de comisión</caption>
+      <thead>
+        <tr class="border-b border-border text-left text-muted-foreground">
+          <th scope="col" class="py-2 font-medium">Fecha</th>
+          <th scope="col" class="py-2 font-medium text-right">Antes</th>
+          <th scope="col" class="py-2 font-medium text-right">Ahora</th>
+          <th scope="col" class="py-2 font-medium">Usuario</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (h of historial(); track $index) {
+          <tr class="border-b border-border/50">
+            <td class="py-2">{{ fecha(h.fecha) }}</td>
+            <td class="py-2 text-right tabular-nums">{{ eur(h.anterior) }}</td>
+            <td class="py-2 text-right tabular-nums">{{ eur(h.nuevo) }}</td>
+            <td class="py-2">{{ h.usuario ?? '—' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</app-form-dialog>

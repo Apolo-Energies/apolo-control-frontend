@@ -34,12 +34,14 @@
             <th class="py-2 font-medium">P1 Potencia</th>
             <th class="py-2 font-medium">P2 Potencia</th>
             <th class="py-2 font-medium">P3 Potencia</th>
+            <th class="py-2 font-medium">Activa</th>
             <th class="py-2 text-right font-medium">Acciones</th>
           </tr>
           <tr class="text-xs text-muted-foreground">
             <td></td>
             <td class="text-center">€/kWh</td><td class="text-center">€/kWh</td><td class="text-center">€/kWh</td>
             <td class="text-center">€/kW·año</td><td class="text-center">€/kW·año</td><td class="text-center">€/kW·año</td>
+            <td></td>
             <td></td>
           </tr>
         </thead>
@@ -53,6 +55,7 @@
               <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p1Potencia) }}</td>
               <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p2Potencia) }}</td>
               <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p3Potencia) }}</td>
+              <td class="py-2 text-center"><ng-container [ngTemplateOutlet]="activaCell" [ngTemplateOutletContext]="{ $implicit: t }" /></td>
               <td class="py-2 text-right">
                 <button (click)="verDetalle(t.id)" class="p-1 hover:bg-info-soft rounded" title="Ver detalle">
                   <ui-icon name="eye" [size]="16" />
@@ -87,6 +90,7 @@
               <th class="py-2 text-left font-medium">Nombre</th>
               @for (p of [1,2,3,4,5,6]; track p) {<th class="py-2 font-medium">P{{p}} Energía</th>}
               @for (p of [1,2,3,4,5,6]; track p) {<th class="py-2 font-medium">P{{p}} Potencia</th>}
+              <th class="py-2 font-medium">Activa</th>
               <th class="py-2 text-right font-medium">Acciones</th>
             </tr>
           </thead>
@@ -106,6 +110,7 @@
                 <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p4Potencia) }}</td>
                 <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p5Potencia) }}</td>
                 <td class="py-2 text-center tabular-nums text-purple-fg">{{ fmt(t.p6Potencia) }}</td>
+                <td class="py-2 text-center"><ng-container [ngTemplateOutlet]="activaCell" [ngTemplateOutletContext]="{ $implicit: t }" /></td>
                 <td class="py-2 text-right">
                   <button (click)="openEdit(t)" class="p-1 hover:bg-info-soft rounded" title="Editar">
                     <ui-icon name="edit" [size]="16" />
@@ -229,3 +234,15 @@
     </fieldset>
   </form>
 </app-form-dialog>
+
+<!-- Activa/Inactiva: interruptor para admin, badge para el resto -->
+<ng-template #activaCell let-t>
+  @if (isAdmin) {
+    <input type="checkbox" switch role="switch"
+      [checked]="t.activa" [disabled]="toggling() === t.id"
+      [attr.aria-label]="'Tarifa ' + t.nombre + ' activa'"
+      (change)="toggleActiva(t, $any($event.target).checked)" />
+  } @else {
+    <app-status-badge [tone]="t.activa ? 'success' : 'neutral'">{{ t.activa ? 'Activa' : 'Inactiva' }}</app-status-badge>
+  }
+</ng-template>

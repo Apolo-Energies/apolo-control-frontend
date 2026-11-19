@@ -29,6 +29,11 @@ export class VibraTarifaService {
     return this.http.put<VibraTarifa>(`${this.baseUrl}/${id}`, payload);
   }
 
+  /** Interruptor Activa/Inactiva de la lista (solo admin). */
+  cambiarActiva(id: string, activa: boolean): Observable<VibraTarifa> {
+    return this.http.patch<VibraTarifa>(`${this.baseUrl}/${id}/activa`, { activa });
+  }
+
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }

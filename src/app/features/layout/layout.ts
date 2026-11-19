@@ -27,6 +27,7 @@ export class Layout {
   protected readonly sections = computed<SidebarSection[]>(() => {
     const isAdmin = this.auth.hasRole('admin');
     const showUsers = this.auth.hasRole('admin', 'operaciones');
+    const verLiquidacionesVibra = this.auth.hasRole('admin', 'contabilidad');
 
     const base: SidebarSection[] = [
       {
@@ -72,7 +73,10 @@ export class Layout {
           },
           { label: 'Preciario', url: '/vibra/preciario', icon: 'euro' as const },
           { label: 'Impagos', url: '/vibra/impagos', icon: 'alert-triangle' as const },
-          { label: 'Liquidaciones', url: '/vibra/liquidaciones', icon: 'wallet' as const },
+          ...(verLiquidacionesVibra ? [
+            { label: 'Equipo', url: '/vibra/equipo', icon: 'users' as const },
+            { label: 'Liquidaciones', url: '/vibra/liquidaciones', icon: 'wallet' as const },
+          ] : []),
           ...(isAdmin ? [{ label: 'Importar datos', url: '/vibra/importar', icon: 'upload' as const }] : []),
         ],
       },

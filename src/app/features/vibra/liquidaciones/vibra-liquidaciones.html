@@ -1,10 +1,22 @@
-<app-page-header title="Liquidaciones" [subtitle]="total() + ' de ' + total() + ' registros'">
+<app-page-header title="Liquidaciones" [subtitle]="tab() === 'alta' ? total() + ' registros' : 'Por colaborador y mes: altas, bajas y renovaciones'">
   <a routerLink="/vibra/dashboard" class="text-sm text-muted-foreground hover:text-foreground">← Volver al Dashboard</a>
-  <button (click)="exportExcel()" class="ml-auto inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
+  <button type="button" (click)="exportExcel()" [hidden]="tab() !== 'alta'" class="ml-auto inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
     <ui-icon name="download" [size]="16" /> Exportar
   </button>
 </app-page-header>
 
+<div class="tablist mb-4" focusgroup="tablist nomemory" role="tablist" aria-label="Vistas de liquidaciones">
+  <button type="button" role="tab" id="tab-mensual" [attr.aria-selected]="tab() === 'mensual'"
+    [attr.focusgroupstart]="tab() === 'mensual' ? '' : null" (click)="abrirTab('mensual')">Por colaborador y mes</button>
+  <button type="button" role="tab" id="tab-alta" [attr.aria-selected]="tab() === 'alta'"
+    [attr.focusgroupstart]="tab() === 'alta' ? '' : null" (click)="abrirTab('alta')">Por alta</button>
+</div>
+
+<div role="tabpanel" aria-labelledby="tab-mensual" [hidden]="tab() !== 'mensual'">
+  <app-vibra-liquidacion-mensual />
+</div>
+
+<div role="tabpanel" aria-labelledby="tab-alta" [hidden]="tab() !== 'alta'">
 <div class="flex flex-wrap items-center gap-2 mb-4">
   <div class="relative flex-1 max-w-md">
     <ui-icon name="search" [size]="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -96,6 +108,7 @@
               <td class="py-2 px-4 text-right tabular-nums">{{ fmtNumber(r.consumo) }}</td>
               <td class="py-2 px-4">
                 <select (change)="changeLiquidacionColaborador(r, $any($event.target).value)"
+                  [disabled]="!isAdmin" [attr.aria-label]="'Liquidación del colaborador de ' + (r.titular ?? 'alta')"
                   class="border border-border rounded-md px-2 py-1 text-xs bg-input">
                   @if (!r.liquidacionColaborador) { <option value="" selected disabled>—</option> }
                   @for (opt of liquidacionColaboradorOpts; track opt) {
@@ -130,3 +143,5 @@
     }
   </div>
 }
+
+</div>
