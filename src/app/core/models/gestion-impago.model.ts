@@ -75,6 +75,7 @@ export interface ContactoHistorialEntry {
   actionKey: string;
   date: string;
   notes: string | null;
+  resultadoLlamada: string | null;
   statusDate: string | null;
   promesaFecha: string | null;
   promesaImporte: number | null;
@@ -157,6 +158,8 @@ export interface GestionImpago {
   clienteNombre: string | null;
   clienteNif: string | null;
   clienteEmpresa: string | null;
+  clienteEmail: string | null;
+  clienteTelefono: string | null;
   nombreCliente: string | null;
   numeroFactura: string | null;
   importe: number;
@@ -291,10 +294,25 @@ export interface GestionImpagoActualizarEstadoPayload {
 export interface GestionImpagoRegistrarContactoPayload {
   actionKey: string;
   notes?: string | null;
+  resultadoLlamada?: string | null;
   promesaFecha?: string | null;
   promesaImporte?: number | null;
   targetStep?: number;
 }
+
+/** Resultados de una llamada, para cuantificar las gestiones. */
+export const RESULTADO_LLAMADA_OPTIONS = [
+  { value: 'contesto',       label: 'Contestó' },
+  { value: 'no_contesta',    label: 'No contestó' },
+  { value: 'buzon',          label: 'Buzón de voz' },
+  { value: 'numero_erroneo', label: 'Número erróneo' },
+  { value: 'apagado',        label: 'Apagado / sin cobertura' },
+  { value: 'colgo',          label: 'Colgó' },
+  { value: 'rechazado',      label: 'Rechazó el pago' },
+] as const;
+
+export const RESULTADO_LLAMADA_LABELS: Record<string, string> =
+  Object.fromEntries(RESULTADO_LLAMADA_OPTIONS.map(o => [o.value, o.label]));
 
 // ── Calendario ───────────────────────────────────────────────────────────────
 

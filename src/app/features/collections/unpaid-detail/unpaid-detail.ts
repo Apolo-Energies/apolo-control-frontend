@@ -21,6 +21,7 @@ import {
   TipoAccionCobranza, ResultadoAccionCobranza,
   TIPO_ACCION_LABEL, RESULTADO_ACCION_LABEL, DemandaDocumento,
   RegistrarPagoPayload,
+  RESULTADO_LLAMADA_OPTIONS, RESULTADO_LLAMADA_LABELS,
 } from '../../../core/models';
 
 function extractMessage(err: HttpErrorResponse): string {
@@ -94,9 +95,15 @@ export class UnpaidDetail implements OnInit {
   protected readonly contactoForm = this.fb.group({
     actionKey: ['llamada', Validators.required],
     notes: [''],
+    resultadoLlamada: [''],
     promesaFecha: [''],
     promesaImporte: [null as number | null],
   });
+  protected readonly resultadoLlamadaOptions = RESULTADO_LLAMADA_OPTIONS;
+
+  protected resultadoLlamadaLabel(v: string | null | undefined): string {
+    return v ? (RESULTADO_LLAMADA_LABELS[v] ?? v) : '';
+  }
   private static readonly STEP_ACTIONS: Record<number, string[]> = {
     1: ['llamada', 'whatsapp', 'promesa'],
     2: ['llamada', 'whatsapp', 'email', 'promesa', 'otro'],
@@ -257,11 +264,12 @@ export class UnpaidDetail implements OnInit {
     this.contactoSubmitting.set(true);
     this.contactoError.set(null);
     this.service.registrarContacto(imp.id, {
-      actionKey:     v.actionKey!,
-      notes:         v.notes || null,
-      promesaFecha:  v.promesaFecha || null,
-      promesaImporte: v.promesaImporte ?? null,
-      targetStep:    this.contactoTargetStep(),
+      actionKey:        v.actionKey!,
+      notes:            v.notes || null,
+      resultadoLlamada: v.actionKey === 'llamada' ? (v.resultadoLlamada || null) : null,
+      promesaFecha:     v.promesaFecha || null,
+      promesaImporte:   v.promesaImporte ?? null,
+      targetStep:       this.contactoTargetStep(),
     }).subscribe({
       next: (updated) => {
         this.impago.set(updated);
@@ -563,6 +571,29 @@ export class UnpaidDetail implements OnInit {
         URL.revokeObjectURL(url);
       },
       error: () => this.notify.error('Error al descargar el documento'),
+    });
+  }
+
+  protected readonly descargandoFactura = signal(false);
+
+  protected downloadFactura(): void {
+    const imp = this.impago();
+    if (!imp || this.descargandoFactura()) return;
+    this.descargandoFactura.set(true);
+    this.service.downloadFactura(imp.id).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href     = url;
+        a.download = `Factura_${imp.numeroFactura ?? imp.id}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.descargandoFactura.set(false);
+      },
+      error: () => {
+        this.descargandoFactura.set(false);
+        this.notify.error('No se pudo descargar la factura (no encontrada en Energy Expert)');
+      },
     });
   }
 

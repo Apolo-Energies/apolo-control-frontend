@@ -98,6 +98,11 @@ export class GestionImpagoService {
     return this.http.get(`${this.baseUrl}/${id}/documentos/${filename}`, { responseType: 'blob' });
   }
 
+  /** PDF de la factura del impago (se baja de Energy Expert por su número). */
+  downloadFactura(id: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/${id}/factura/archivo`, { responseType: 'blob' });
+  }
+
   agregarNota(id: string, contenido: string): Observable<GestionImpago> {
     return this.http.post<GestionImpago>(`${this.baseUrl}/${id}/notas`, { contenido });
   }

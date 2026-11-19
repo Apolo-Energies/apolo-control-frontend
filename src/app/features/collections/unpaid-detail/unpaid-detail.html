@@ -79,8 +79,33 @@
           <p class="font-medium">{{ imp.clienteNif ?? '—' }}</p>
         </div>
         <div>
+          <p class="text-xs text-muted-foreground">Teléfono</p>
+          @if (imp.clienteTelefono) {
+            <a [href]="'tel:' + imp.clienteTelefono" class="font-medium text-primary hover:underline">{{ imp.clienteTelefono }}</a>
+          } @else {
+            <p class="font-medium">—</p>
+          }
+        </div>
+        <div>
+          <p class="text-xs text-muted-foreground">Email</p>
+          @if (imp.clienteEmail) {
+            <a [href]="'mailto:' + imp.clienteEmail" class="font-medium text-primary hover:underline break-all">{{ imp.clienteEmail }}</a>
+          } @else {
+            <p class="font-medium">—</p>
+          }
+        </div>
+        <div>
           <p class="text-xs text-muted-foreground">Factura</p>
-          <p class="font-mono">{{ imp.numeroFactura ?? '—' }}</p>
+          <div class="flex items-center gap-1.5">
+            <p class="font-mono">{{ imp.numeroFactura ?? '—' }}</p>
+            @if (imp.numeroFactura) {
+              <button type="button" (click)="downloadFactura()" [disabled]="descargandoFactura()"
+                title="Descargar factura (PDF)"
+                class="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors shrink-0 disabled:opacity-50">
+                <ui-icon name="download" [size]="12" />
+              </button>
+            }
+          </div>
         </div>
         <div>
           <p class="text-xs text-muted-foreground">Moneda</p>
@@ -191,6 +216,12 @@
                       <span class="text-[10px] text-muted-foreground">· por {{ h.emailUsuario }}</span>
                     }
                   </div>
+                }
+                @if (h.actionKey === 'llamada' && h.resultadoLlamada) {
+                  <span class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary">
+                    <ui-icon name="phone" [size]="10" />
+                    {{ resultadoLlamadaLabel(h.resultadoLlamada) }}
+                  </span>
                 }
                 @if (h.notes) {
                   <p class="text-xs text-foreground/80 mt-1 whitespace-pre-wrap">{{ h.notes }}</p>
@@ -982,6 +1013,20 @@
           <input type="number" formControlName="promesaImporte" min="0" step="0.01"
             class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary" />
         </div>
+      </div>
+    }
+
+    <!-- Llamada: resultado de la gestión (para cuantificar) -->
+    @if (contactoActionKey() === 'llamada') {
+      <div>
+        <label class="block text-sm font-medium text-foreground mb-1">Resultado de la llamada</label>
+        <select formControlName="resultadoLlamada"
+          class="w-full h-10 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:border-primary">
+          <option value="">Sin especificar</option>
+          @for (opt of resultadoLlamadaOptions; track opt.value) {
+            <option [value]="opt.value">{{ opt.label }}</option>
+          }
+        </select>
       </div>
     }
 

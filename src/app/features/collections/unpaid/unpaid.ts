@@ -27,6 +27,7 @@ import {
   ESTADO_GESTION_IMPAGO_VALUES, ESTADO_GESTION_IMPAGO_LABEL,
   PRIORIDAD_GESTION_IMPAGO_LABEL, Page,
   Customer,
+  RESULTADO_LLAMADA_OPTIONS,
 } from '../../../core/models';
 import { GestionImpagoClienteService } from '../../../core/services/gestion-impago-cliente.service';
 import { ListStateService } from '../../../core/services/list-state.service';
@@ -646,8 +647,9 @@ export class Unpaid implements OnDestroy {
   protected readonly expandedContactoId  = signal<string | null>(null);
   protected readonly updatingContactoId  = signal<string | null>(null);
   protected contactoForms: Record<string, {
-    actionKey: string; notes: string; promesaFecha: string; promesaImporte: string; targetStep: number;
+    actionKey: string; notes: string; resultadoLlamada: string; promesaFecha: string; promesaImporte: string; targetStep: number;
   }> = {};
+  protected readonly resultadoLlamadaOptions = RESULTADO_LLAMADA_OPTIONS;
   protected readonly contactoActions = [
     { key: 'llamada',     label: 'Llamada',     icon: 'phone'           as const },
     { key: 'email',       label: 'Email',       icon: 'mail'            as const },
@@ -675,7 +677,7 @@ export class Unpaid implements OnDestroy {
     } else {
       const keys = STEP_ACTIONS[step] ?? ['llamada'];
       this.expandedContactoId.set(r.id);
-      this.contactoForms[r.id] = { actionKey: keys[0], notes: '', promesaFecha: '', promesaImporte: '', targetStep: step };
+      this.contactoForms[r.id] = { actionKey: keys[0], notes: '', resultadoLlamada: '', promesaFecha: '', promesaImporte: '', targetStep: step };
     }
   }
 
@@ -685,10 +687,11 @@ export class Unpaid implements OnDestroy {
     if (form.actionKey === 'whatsapp') this.abrirWhatsApp(r);
     this.updatingContactoId.set(r.id);
     this.service.registrarContacto(r.id, {
-      actionKey:      form.actionKey,
-      notes:          form.notes          || null,
-      promesaFecha:   form.promesaFecha   || null,
-      promesaImporte: form.promesaImporte ? this.parseAmount(form.promesaImporte) : null,
+      actionKey:        form.actionKey,
+      notes:            form.notes          || null,
+      resultadoLlamada: form.actionKey === 'llamada' ? (form.resultadoLlamada || null) : null,
+      promesaFecha:     form.promesaFecha   || null,
+      promesaImporte:   form.promesaImporte ? this.parseAmount(form.promesaImporte) : null,
       targetStep:     form.targetStep,
     }).subscribe({
       next: (updated) => {
