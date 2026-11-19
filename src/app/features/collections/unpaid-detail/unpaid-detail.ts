@@ -21,8 +21,11 @@ import {
   TipoAccionCobranza, ResultadoAccionCobranza,
   TIPO_ACCION_LABEL, RESULTADO_ACCION_LABEL, DemandaDocumento,
   RegistrarPagoPayload,
-  RESULTADO_LLAMADA_OPTIONS, RESULTADO_LLAMADA_LABELS,
+  RESULTADO_LLAMADA_LABELS,
 } from '../../../core/models';
+import {
+  ContactoFormComponent, ContactoFormValue, emptyContactoForm, parseContactoImporte,
+} from '../contacto-form/contacto-form';
 
 function extractMessage(err: HttpErrorResponse): string {
   return (err.error as { message?: string })?.message ?? err.message ?? 'Error inesperado';
@@ -50,6 +53,7 @@ function estadoToneFn(estado: EstadoGestionImpago): StatusTone {
   imports: [
     PageHeader, StatusBadge, FormDialog, Icon,
     FormsModule, ReactiveFormsModule, RouterLink,
+    ContactoFormComponent,
   ],
   templateUrl: './unpaid-detail.html',
 })
@@ -90,43 +94,13 @@ export class UnpaidDetail implements OnInit {
   protected readonly contactoDialogOpen  = signal(false);
   protected readonly contactoSubmitting  = signal(false);
   protected readonly contactoError       = signal<string | null>(null);
-  protected readonly contactoActionKey   = signal<string>('llamada');
   protected readonly contactoTargetStep  = signal<number>(1);
-  protected readonly contactoForm = this.fb.group({
-    actionKey: ['llamada', Validators.required],
-    notes: [''],
-    resultadoLlamada: [''],
-    promesaFecha: [''],
-    promesaImporte: [null as number | null],
-  });
-  protected readonly resultadoLlamadaOptions = RESULTADO_LLAMADA_OPTIONS;
+  // Formulario de contacto compartido con el listado inline (ver app-contacto-form).
+  protected contactoFormValue: ContactoFormValue = emptyContactoForm(1);
 
   protected resultadoLlamadaLabel(v: string | null | undefined): string {
     return v ? (RESULTADO_LLAMADA_LABELS[v] ?? v) : '';
   }
-  private static readonly STEP_ACTIONS: Record<number, string[]> = {
-    1: ['llamada', 'whatsapp', 'promesa'],
-    2: ['llamada', 'whatsapp', 'email', 'promesa', 'otro'],
-    3: ['llamada', 'whatsapp', 'email', 'aviso_corte', 'promesa', 'otro'],
-    4: ['aviso_corte', 'llamada', 'promesa'],
-    5: ['llamada', 'whatsapp', 'email', 'promesa'],
-  };
-  protected readonly contactoActions = [
-    { key: 'llamada',     label: 'Llamada',     icon: 'phone'           as const },
-    { key: 'email',       label: 'Email',       icon: 'mail'            as const },
-    { key: 'whatsapp',    label: 'WhatsApp',    icon: 'message-square'  as const },
-    { key: 'aviso_corte', label: 'Aviso corte', icon: 'scissors'        as const },
-    { key: 'promesa',     label: 'Promesa',     icon: 'calendar-check'  as const },
-    { key: 'otro',        label: 'Otro',        icon: 'more-horizontal' as const },
-  ];
-  protected readonly contactoDialogActions = computed(() => {
-    const keys = UnpaidDetail.STEP_ACTIONS[this.contactoTargetStep()] ?? ['llamada'];
-    return this.contactoActions.filter(a => keys.includes(a.key));
-  });
-  protected readonly contactoDialogTitle = computed(() => {
-    const act = this.contactoActions.find(a => a.key === this.contactoActionKey());
-    return act ? `Registrar ${act.label.toLowerCase()}` : 'Registrar contacto';
-  });
 
   // ── Acción cobranza dialog ─────────────────────────────────────────────────
   protected readonly accionDialogOpen  = signal(false);
@@ -242,33 +216,25 @@ export class UnpaidDetail implements OnInit {
     const imp = this.impago();
     const targetStep = Math.min(step ?? (imp ? imp.contactoStep + 1 : 1), 5);
     this.contactoTargetStep.set(targetStep);
-    const keys = UnpaidDetail.STEP_ACTIONS[targetStep] ?? ['llamada'];
-    const firstAction = keys[0] ?? 'llamada';
-    this.contactoActionKey.set(firstAction);
-    this.contactoForm.reset({ actionKey: firstAction });
+    this.contactoFormValue = emptyContactoForm(targetStep);
     this.contactoError.set(null);
     this.contactoDialogOpen.set(true);
   }
 
-  protected selectContactoAction(key: string): void {
-    this.contactoActionKey.set(key);
-    this.contactoForm.patchValue({ actionKey: key });
-  }
-
   protected submitContacto(): void {
-    if (this.contactoForm.invalid) { this.contactoForm.markAllAsTouched(); return; }
     const imp = this.impago();
     if (!imp) return;
-    const v = this.contactoForm.getRawValue();
+    const v = this.contactoFormValue;
+    if (!v.actionKey) return;
     if (v.actionKey === 'whatsapp') this.abrirWhatsApp(imp);
     this.contactoSubmitting.set(true);
     this.contactoError.set(null);
     this.service.registrarContacto(imp.id, {
-      actionKey:        v.actionKey!,
+      actionKey:        v.actionKey,
       notes:            v.notes || null,
       resultadoLlamada: v.actionKey === 'llamada' ? (v.resultadoLlamada || null) : null,
       promesaFecha:     v.promesaFecha || null,
-      promesaImporte:   v.promesaImporte ?? null,
+      promesaImporte:   parseContactoImporte(v.promesaImporte),
       targetStep:       this.contactoTargetStep(),
     }).subscribe({
       next: (updated) => {

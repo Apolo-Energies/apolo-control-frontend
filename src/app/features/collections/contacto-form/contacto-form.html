@@ -1,0 +1,69 @@
+<!-- Selector de tipo (pills filtradas por paso) -->
+<div class="flex flex-wrap gap-1.5 mb-3">
+  @for (act of visibleActions; track act.key) {
+    <button type="button" (click)="setAction(act.key)"
+      [class]="value().actionKey === act.key
+        ? 'flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold bg-primary text-primary-foreground border border-primary transition-colors ' + pillTextCls
+        : 'flex items-center gap-1 px-2.5 py-1 rounded-full font-medium border border-border hover:bg-accent transition-colors ' + pillTextCls">
+      <ui-icon [name]="act.icon" [size]="11" />
+      {{ act.label }}
+    </button>
+  }
+</div>
+
+<!-- Email: aviso informativo -->
+@if (value().actionKey === 'email') {
+  <div class="flex items-start gap-2 p-2.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-xs mb-3">
+    <ui-icon name="info" [size]="12" class="mt-0.5 shrink-0" />
+    <span>Se enviará un email automáticamente al cliente con la dirección registrada en EE.</span>
+  </div>
+}
+
+<!-- Aviso corte: cambio de estado -->
+@if (value().actionKey === 'aviso_corte') {
+  <div class="flex items-start gap-2 p-2.5 rounded-lg bg-warning-soft border border-warning-fg/20 text-warning-fg text-xs mb-3">
+    <ui-icon name="info" [size]="12" class="mt-0.5 shrink-0" />
+    <span>El estado del impago cambiará automáticamente a <strong>Aviso de corte</strong>.</span>
+  </div>
+}
+
+<!-- Promesa: fecha + importe -->
+@if (value().actionKey === 'promesa') {
+  <div class="grid grid-cols-2 gap-3 mb-3">
+    <div>
+      <label class="block mb-1" [class]="labelCls">Fecha compromiso</label>
+      <input type="date" [(ngModel)]="value().promesaFecha"
+        class="w-full rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
+        [class]="inputCls" />
+    </div>
+    <div>
+      <label class="block mb-1" [class]="labelCls">Importe (€)</label>
+      <input type="text" inputmode="decimal" [(ngModel)]="value().promesaImporte" placeholder="0,00"
+        class="w-full rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
+        [class]="inputCls" />
+    </div>
+  </div>
+}
+
+<!-- Llamada: resultado de la gestión (para cuantificar) -->
+@if (value().actionKey === 'llamada') {
+  <div class="mb-3">
+    <label class="block mb-1" [class]="labelCls">Resultado de la llamada</label>
+    <select [(ngModel)]="value().resultadoLlamada"
+      class="w-full rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
+      [class]="inputCls">
+      <option value="">Sin especificar</option>
+      @for (opt of resultadoLlamadaOptions; track opt.value) {
+        <option [value]="opt.value">{{ opt.label }}</option>
+      }
+    </select>
+  </div>
+}
+
+<!-- Notas: siempre visible -->
+<div>
+  <label class="block mb-1" [class]="labelCls">Notas</label>
+  <input type="text" [(ngModel)]="value().notes" placeholder="Breve descripción…"
+    class="w-full rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
+    [class]="inputCls" />
+</div>

@@ -27,8 +27,8 @@ import {
   ESTADO_GESTION_IMPAGO_VALUES, ESTADO_GESTION_IMPAGO_LABEL,
   PRIORIDAD_GESTION_IMPAGO_LABEL, Page,
   Customer,
-  RESULTADO_LLAMADA_OPTIONS,
 } from '../../../core/models';
+import { ContactoFormComponent, ContactoFormValue, emptyContactoForm } from '../contacto-form/contacto-form';
 import { GestionImpagoClienteService } from '../../../core/services/gestion-impago-cliente.service';
 import { ListStateService } from '../../../core/services/list-state.service';
 import * as XLSX from 'xlsx';
@@ -89,14 +89,6 @@ interface ImportMapping {
 function extractMessage(err: HttpErrorResponse): string {
   return (err.error as { message?: string })?.message ?? err.message ?? 'Error inesperado';
 }
-
-const STEP_ACTIONS: Record<number, string[]> = {
-  1: ['llamada', 'whatsapp', 'promesa'],
-  2: ['llamada', 'whatsapp', 'email', 'promesa', 'otro'],
-  3: ['llamada', 'whatsapp', 'email', 'aviso_corte', 'promesa', 'otro'],
-  4: ['aviso_corte', 'llamada', 'promesa'],
-  5: ['llamada', 'whatsapp', 'email', 'promesa'],
-};
 
 type RangeId = 'today' | 'week' | 'month' | 'year' | 'all' | 'custom';
 interface RangeOption { id: RangeId; label: string; }
@@ -166,6 +158,7 @@ function prioridadToneFn(prioridad: PrioridadGestionImpago): StatusTone {
   imports: [
     PageHeader, TableSkeleton, StatusBadge, Pagination, FormDialog,
     KpiCard, Icon, FormsModule, ReactiveFormsModule, RouterLink,
+    ContactoFormComponent,
   ],
   templateUrl: './unpaid.html',
 })
@@ -646,38 +639,14 @@ export class Unpaid implements OnDestroy {
   // ── Contacto form (inline expand) ─────────────────────────────────────────
   protected readonly expandedContactoId  = signal<string | null>(null);
   protected readonly updatingContactoId  = signal<string | null>(null);
-  protected contactoForms: Record<string, {
-    actionKey: string; notes: string; resultadoLlamada: string; promesaFecha: string; promesaImporte: string; targetStep: number;
-  }> = {};
-  protected readonly resultadoLlamadaOptions = RESULTADO_LLAMADA_OPTIONS;
-  protected readonly contactoActions = [
-    { key: 'llamada',     label: 'Llamada',     icon: 'phone'           as const },
-    { key: 'email',       label: 'Email',       icon: 'mail'            as const },
-    { key: 'whatsapp',    label: 'WhatsApp',    icon: 'message-square'  as const },
-    { key: 'aviso_corte', label: 'Aviso corte', icon: 'scissors'        as const },
-    { key: 'promesa',     label: 'Promesa',     icon: 'calendar-check'  as const },
-    { key: 'otro',        label: 'Otro',        icon: 'more-horizontal' as const },
-  ];
-
-  protected stepContactoActions(rowId: string): typeof this.contactoActions {
-    const step = this.contactoForms[rowId]?.targetStep ?? 1;
-    const keys = STEP_ACTIONS[step] ?? ['llamada'];
-    return this.contactoActions.filter(a => keys.includes(a.key));
-  }
-
-  protected setContactoAction(rowId: string, key: string): void {
-    if (this.contactoForms[rowId]) {
-      this.contactoForms[rowId].actionKey = key;
-    }
-  }
+  protected contactoForms: Record<string, ContactoFormValue> = {};
 
   protected toggleContactoForm(r: GestionImpago, step: number): void {
     if (this.expandedContactoId() === r.id && this.contactoForms[r.id]?.targetStep === step) {
       this.expandedContactoId.set(null);
     } else {
-      const keys = STEP_ACTIONS[step] ?? ['llamada'];
       this.expandedContactoId.set(r.id);
-      this.contactoForms[r.id] = { actionKey: keys[0], notes: '', resultadoLlamada: '', promesaFecha: '', promesaImporte: '', targetStep: step };
+      this.contactoForms[r.id] = emptyContactoForm(step);
     }
   }
 

@@ -19,9 +19,10 @@ interface DiaCell {
 }
 
 const TIPO_LABEL: Record<string, string> = {
-  verbal:  'Verbal',
-  ovc:     'OVC',
-  promesa: 'Promesa',
+  verbal:      'Verbal',
+  ovc:         'OVC',
+  promesa:     'Promesa',
+  fraccionado: 'Cuota',
 };
 
 @Component({
@@ -131,6 +132,7 @@ export class AgreementsCalendar implements OnInit {
       case 'verbal':  return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300';
       case 'ovc':     return 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300';
       case 'promesa': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
+      case 'fraccionado': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
       default:        return 'bg-muted text-muted-foreground';
     }
   }

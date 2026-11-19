@@ -319,7 +319,7 @@ export const RESULTADO_LLAMADA_LABELS: Record<string, string> =
 export interface CalendarioEvento {
   impagoId: string;
   fecha: string;         // 'YYYY-MM-DD'
-  tipo: 'verbal' | 'ovc' | 'promesa';
+  tipo: 'verbal' | 'ovc' | 'promesa' | 'fraccionado';
   clienteNombre: string | null;
   numeroFactura: string | null;
   importePendiente: number | null;

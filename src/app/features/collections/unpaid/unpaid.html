@@ -344,63 +344,8 @@
                   <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                     Contacto {{ contactoForms[r.id]?.targetStep }}º — {{ r.clienteNombre ?? r.clienteId }}
                   </p>
-                  <div class="flex flex-wrap gap-1.5 mb-3">
-                    @for (act of stepContactoActions(r.id); track act.key) {
-                      <button type="button" (click)="setContactoAction(r.id, act.key)"
-                        [class]="contactoForms[r.id]?.actionKey === act.key
-                          ? 'flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-primary text-primary-foreground border border-primary transition-colors'
-                          : 'flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border border-border hover:bg-accent transition-colors'">
-                        <ui-icon [name]="act.icon" [size]="11" />
-                        {{ act.label }}
-                      </button>
-                    }
-                  </div>
-                  @if (contactoForms[r.id]?.actionKey === 'email') {
-                    <div class="flex items-start gap-2 p-2.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-xs mb-3">
-                      <ui-icon name="info" [size]="12" class="mt-0.5 shrink-0" />
-                      <span>Se enviará un email automáticamente al cliente con la dirección registrada en EE.</span>
-                    </div>
-                  }
-                  @if (contactoForms[r.id]?.actionKey === 'aviso_corte') {
-                    <div class="flex items-start gap-2 p-2.5 rounded-lg bg-warning-soft border border-warning-fg/20 text-warning-fg text-xs mb-3">
-                      <ui-icon name="info" [size]="12" class="mt-0.5 shrink-0" />
-                      <span>El estado cambiará automáticamente a <strong>Aviso de corte</strong>.</span>
-                    </div>
-                  }
-                  @if (contactoForms[r.id]?.actionKey === 'promesa') {
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-                      <div>
-                        <label class="block text-xs text-muted-foreground mb-1">Fecha compromiso</label>
-                        <input type="date" [(ngModel)]="contactoForms[r.id].promesaFecha"
-                          class="h-8 w-full px-2 rounded-md border border-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/40" />
-                      </div>
-                      <div>
-                        <label class="block text-xs text-muted-foreground mb-1">Importe (€)</label>
-                        <input type="text" inputmode="decimal" [(ngModel)]="contactoForms[r.id].promesaImporte"
-                          placeholder="0,00"
-                          class="h-8 w-full px-2 rounded-md border border-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/40" />
-                      </div>
-                    </div>
-                  }
-                  @if (contactoForms[r.id]?.actionKey === 'llamada') {
-                    <div class="mb-3">
-                      <label class="block text-xs text-muted-foreground mb-1">Resultado de la llamada</label>
-                      <select [(ngModel)]="contactoForms[r.id].resultadoLlamada"
-                        class="h-8 w-full px-2 rounded-md border border-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/40">
-                        <option value="">Sin especificar</option>
-                        @for (opt of resultadoLlamadaOptions; track opt.value) {
-                          <option [value]="opt.value">{{ opt.label }}</option>
-                        }
-                      </select>
-                    </div>
-                  }
-                  <div class="mb-3">
-                    <label class="block text-xs text-muted-foreground mb-1">Notas</label>
-                    <input type="text" [(ngModel)]="contactoForms[r.id].notes"
-                      placeholder="Breve descripción…"
-                      class="h-8 w-full px-2 rounded-md border border-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/40" />
-                  </div>
-                  <div class="flex justify-end gap-2">
+                  <app-contacto-form [value]="contactoForms[r.id]" [compact]="true" />
+                  <div class="flex justify-end gap-2 mt-3">
                     <button type="button" (click)="expandedContactoId.set(null)"
                       class="h-8 px-3 text-xs rounded-lg border border-border text-muted-foreground hover:bg-accent/40 transition-colors">
                       Cancelar
