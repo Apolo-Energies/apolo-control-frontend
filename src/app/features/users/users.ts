@@ -30,6 +30,7 @@ const ROLE_TONE: Record<UserRole, StatusTone> = {
   operaciones: 'warning',
   comercial: 'info',
   contabilidad: 'purple',
+  colaborador: 'neutral',
 };
 
 @Component({
