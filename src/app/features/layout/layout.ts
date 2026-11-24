@@ -28,6 +28,7 @@ export class Layout {
     const isAdmin = this.auth.hasRole('admin');
     const showUsers = this.auth.hasRole('admin', 'operaciones');
     const verLiquidacionesVibra = this.auth.hasRole('admin', 'contabilidad');
+    const verFacturasVibra = this.auth.hasRole('admin', 'contabilidad', 'operaciones');
 
     const base: SidebarSection[] = [
       {
@@ -73,6 +74,10 @@ export class Layout {
             ],
           },
           { label: 'Preciario', url: '/vibra/preciario', icon: 'euro' as const },
+          ...(verFacturasVibra ? [
+            { label: 'Facturas', url: '/vibra/facturas', icon: 'file-text' as const },
+            { label: 'Generar facturas', url: '/vibra/facturas/generar', icon: 'upload' as const },
+          ] : []),
           { label: 'Impagos', url: '/vibra/impagos', icon: 'alert-triangle' as const },
           ...(verLiquidacionesVibra ? [
             { label: 'Equipo', url: '/vibra/equipo', icon: 'users' as const },

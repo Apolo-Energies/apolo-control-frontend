@@ -1,0 +1,125 @@
+<app-page-header title="Facturas" [subtitle]="total() + ' facturas de venta Vibra'">
+  <div class="ml-auto flex flex-wrap gap-2">
+    <button type="button" (click)="exportExcel()"
+      class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
+      <ui-icon name="download" [size]="16" /> Excel
+    </button>
+    <a routerLink="/vibra/facturas/generar"
+      class="inline-flex items-center gap-2 rounded-lg bg-primary-button text-primary-foreground px-4 py-2 text-sm font-medium">
+      <ui-icon name="upload" [size]="16" /> Generar facturas
+    </a>
+  </div>
+</app-page-header>
+
+<div class="tablist mb-4" focusgroup="tablist nomemory" role="tablist" aria-label="Estado de la factura">
+  @for (p of pestanas; track p.id) {
+    <button type="button" role="tab" [id]="'tab-fac-' + p.id" aria-controls="facturas-panel"
+      [attr.aria-selected]="tab() === p.id" [attr.focusgroupstart]="tab() === p.id ? '' : null"
+      (click)="elegir(p.id)">
+      {{ p.label }}
+      @if (conteos()[p.id] !== undefined) {
+        <span class="ml-1 tabular-nums text-xs text-muted-foreground">{{ conteos()[p.id] }}</span>
+      }
+    </button>
+  }
+</div>
+
+<search class="mb-4 block">
+  <form class="flex flex-wrap items-end gap-3 text-sm" (ngSubmit)="buscar()">
+    <div class="flex flex-col gap-1 flex-1 min-w-56 max-w-md">
+      <label for="fac-q">Buscar</label>
+      <input id="fac-q" type="search" name="q" [(ngModel)]="q" placeholder="Nº de factura, cliente, DNI/CIF o CUPS"
+        autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
+        class="border border-border rounded-lg px-3 py-2 bg-input" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="fac-desde">Emitida desde</label>
+      <input id="fac-desde" type="date" name="desde" [(ngModel)]="desde" class="border border-border rounded-lg px-3 py-2 bg-input" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="fac-hasta">Emitida hasta</label>
+      <input id="fac-hasta" type="date" name="hasta" [(ngModel)]="hasta" class="border border-border rounded-lg px-3 py-2 bg-input" />
+    </div>
+    <div class="flex flex-col gap-1 w-32">
+      <label for="fac-importe">Importe (€)</label>
+      <input id="fac-importe" type="text" inputmode="decimal" name="importe" [(ngModel)]="importe"
+        pattern="-?[0-9]+([.,][0-9]{1,2})?" class="border border-border rounded-lg px-3 py-2 bg-input tabular-nums" />
+    </div>
+    <button type="submit" class="rounded-lg border border-border bg-card px-4 py-2 hover:bg-accent">Buscar</button>
+    <button type="button" (click)="limpiar()" class="rounded-lg px-3 py-2 text-muted-foreground hover:text-foreground">Limpiar</button>
+  </form>
+</search>
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">
+    {{ msg }} <button type="button" (click)="load()" class="ml-2 underline">Reintentar</button>
+  </div>
+}
+
+<div id="facturas-panel" role="tabpanel" [attr.aria-labelledby]="'tab-fac-' + tab()">
+  @if (loading() && !result()) {
+    <app-table-skeleton [cols]="8" [rows]="8" />
+  } @else {
+    <div class="rounded-2xl border border-border bg-card overflow-hidden">
+      <div class="overflow-auto max-h-[70vh]" tabindex="0" role="region" aria-labelledby="facturas-caption">
+        <table class="w-full text-sm">
+          <caption id="facturas-caption" class="sr-only">Facturas de venta Vibra</caption>
+          <thead class="sticky top-0 z-10 bg-card">
+            <tr class="border-b border-border text-left text-muted-foreground">
+              <th scope="col" class="py-3 px-4 font-medium">Nº</th>
+              <th scope="col" class="py-3 px-4 font-medium">Cliente</th>
+              <th scope="col" class="py-3 px-4 font-medium">Contrato / CUPS</th>
+              <th scope="col" class="py-3 px-4 font-medium">Periodo</th>
+              <th scope="col" class="py-3 px-4 font-medium text-right">Total</th>
+              <th scope="col" class="py-3 px-4 font-medium text-right">Margen</th>
+              <th scope="col" class="py-3 px-4 font-medium">Estado</th>
+              <th scope="col" class="py-3 px-4 font-medium">Enviada</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (f of rows(); track f.id) {
+              <tr class="border-b border-border/50 hover:bg-accent/40">
+                <th scope="row" class="py-2 px-4 font-normal text-left whitespace-nowrap">
+                  <a [routerLink]="['/vibra/facturas', f.id]" class="hover:underline tabular-nums">
+                    {{ f.numero ?? 'borrador' }}
+                  </a>
+                  <div class="text-xs text-muted-foreground">{{ fecha(f.fechaEmision ?? f.createdAt) }}</div>
+                  @if (f.avisos > 0) {
+                    <app-status-badge tone="warning">{{ f.avisos }} {{ f.avisos === 1 ? 'aviso' : 'avisos' }}</app-status-badge>
+                  }
+                </th>
+                <td class="py-2 px-4">
+                  {{ f.titular ?? '—' }}
+                  <div class="text-xs text-muted-foreground tabular-nums">{{ f.nif }}</div>
+                </td>
+                <td class="py-2 px-4">
+                  {{ f.contrato ? '#' + f.contrato : 'Sin contrato' }}
+                  <div class="text-xs text-muted-foreground tabular-nums">{{ f.cups }}{{ f.tarifaAcceso ? ' · ' + f.tarifaAcceso : '' }}</div>
+                </td>
+                <td class="py-2 px-4 whitespace-nowrap tabular-nums">{{ fecha(f.periodoDesde) }} → {{ fecha(f.periodoHasta) }}</td>
+                <td class="py-2 px-4 text-right tabular-nums whitespace-nowrap">{{ euro(f.total) }}</td>
+                <td class="py-2 px-4 text-right tabular-nums whitespace-nowrap"
+                  [class.text-danger-fg]="f.margen !== null && f.margen <= 0">
+                  {{ euro(f.margen) }}
+                  @if (f.margenPct !== null) { <div class="text-xs">{{ f.margenPct }} %</div> }
+                </td>
+                <td class="py-2 px-4"><app-status-badge [tone]="tone(f.estado)">{{ estadoLabel[f.estado] }}</app-status-badge></td>
+                <td class="py-2 px-4 whitespace-nowrap">{{ f.estado === 'BORRADOR' ? '—' : f.enviadaAt ? fechaHora(f.enviadaAt) : 'Sin enviar' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="8" class="py-16 text-center text-muted-foreground">
+                Sin facturas con estos filtros. Sube las compras en «Generar facturas».
+              </td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (totalPages() > 1) {
+        <div class="border-t border-border">
+          <app-pagination [page]="page()" [pageSize]="size()" [totalElements]="total()" [totalPages]="totalPages()"
+            (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+        </div>
+      }
+    </div>
+  }
+</div>

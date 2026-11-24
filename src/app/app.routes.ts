@@ -302,6 +302,26 @@ export const routes: Routes = [
               import('./features/vibra/equipo/vibra-equipo').then((m) => m.VibraEquipo),
           },
           {
+            path: 'facturas',
+            data: { roles: ['admin', 'contabilidad', 'operaciones'] },
+            canActivate: [authGuard],
+            loadComponent: () => import('./features/vibra/facturas/vibra-facturas').then((m) => m.VibraFacturas),
+          },
+          {
+            path: 'facturas/generar',
+            data: { roles: ['admin', 'contabilidad', 'operaciones'] },
+            canActivate: [authGuard],
+            loadComponent: () =>
+              import('./features/vibra/generar-facturas/vibra-generar-facturas').then((m) => m.VibraGenerarFacturas),
+          },
+          {
+            path: 'facturas/:id',
+            data: { roles: ['admin', 'contabilidad', 'operaciones'] },
+            canActivate: [authGuard],
+            loadComponent: () =>
+              import('./features/vibra/factura-detalle/vibra-factura-detalle').then((m) => m.VibraFacturaDetalle),
+          },
+          {
             path: 'contrato-servicio',
             loadComponent: () =>
               import('./features/vibra/contrato-servicio/vibra-contrato-servicio').then((m) => m.VibraContratoServicio),

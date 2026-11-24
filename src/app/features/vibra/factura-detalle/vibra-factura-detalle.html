@@ -1,0 +1,278 @@
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">{{ msg }}</div>
+}
+
+@if (factura(); as f) {
+  <app-page-header [title]="f.numero ? 'Factura ' + f.numero : 'Borrador de factura'"
+    [subtitle]="(f.titular ?? '—') + (f.contrato ? ' · contrato #' + f.contrato : ' · sin contrato') + ' · ' + fecha(f.periodoDesde) + ' → ' + fecha(f.periodoHasta) + ' (' + f.dias + ' días)'">
+    <a routerLink="/vibra/facturas" class="text-sm text-muted-foreground hover:text-foreground">← Facturas</a>
+    <app-status-badge [tone]="tone(f.estado)">{{ estadoLabel[f.estado] }}</app-status-badge>
+    @if (!esBorrador()) {
+      <app-status-badge [tone]="f.enviadaAt ? 'success' : 'neutral'">
+        {{ f.enviadaAt ? 'Enviada el ' + fechaHora(f.enviadaAt) : 'Sin enviar' }}
+      </app-status-badge>
+    }
+  </app-page-header>
+
+  <div class="flex flex-wrap gap-2 mb-4" role="toolbar" aria-label="Acciones de la factura">
+    <button type="button" (click)="verPdf()"
+      class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
+      <ui-icon name="eye" [size]="16" /> Ver PDF
+    </button>
+    @if (f.compraPdfNombre) {
+      <button type="button" (click)="verCompra()"
+        class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
+        <ui-icon name="file-text" [size]="16" /> Ver compra
+      </button>
+    }
+    @if (puedeEditar() && esBorrador()) {
+      <label class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent cursor-pointer has-[:focus-visible]:outline has-[:focus-visible]:outline-3">
+        <ui-icon name="upload" [size]="16" /> {{ ocupado() === 'compra' ? 'Leyendo…' : 'Subir compra' }}
+        <input #compraInput type="file" accept="application/pdf,.pdf" class="sr-only" [disabled]="!!ocupado()"
+          (change)="subirCompra(compraInput)" />
+      </label>
+      @if (f.compraPdfNombre) {
+        <button type="button" (click)="releer()" [disabled]="!!ocupado()"
+          class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">
+          <ui-icon name="refresh-cw" [size]="16" /> Re-leer compra
+        </button>
+      }
+      <button type="button" (click)="emitir()" [disabled]="!!ocupado()"
+        class="inline-flex items-center gap-2 rounded-lg bg-primary-button text-primary-foreground px-4 py-2 text-sm font-medium disabled:opacity-50">
+        <ui-icon name="check" [size]="16" /> Emitir factura
+      </button>
+    }
+    @if (puedeEditar() && !esBorrador()) {
+      <button type="button" (click)="enviar()" [disabled]="!!ocupado() || !f.email" [attr.title]="f.email ? null : 'La factura no tiene email del cliente'"
+        class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">
+        <ui-icon name="mail" [size]="16" /> Enviar por correo
+      </button>
+      @for (s of siguientes(); track s.estado) {
+        <button type="button" (click)="cambiarEstado(s.estado)" [disabled]="!!ocupado()"
+          class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">
+          {{ s.label }}
+        </button>
+      }
+    }
+    @if (puedeBorrar() && esBorrador()) {
+      <button type="button" (click)="borrar()" [disabled]="!!ocupado()"
+        class="ml-auto inline-flex items-center gap-2 rounded-lg border border-danger/40 px-4 py-2 text-sm font-medium text-danger-fg hover:bg-danger-soft disabled:opacity-50">
+        <ui-icon name="trash" [size]="16" /> Borrar borrador
+      </button>
+    }
+  </div>
+
+  @if (esBorrador() && f.avisos.length) {
+    <section class="rounded-xl border border-warning/40 bg-warning-soft px-4 py-3 mb-4 text-sm" aria-labelledby="avisos-titulo">
+      <h2 id="avisos-titulo" class="font-semibold mb-1">
+        Revisa antes de emitir · {{ f.avisos.length }} {{ f.avisos.length === 1 ? 'punto' : 'puntos' }}
+      </h2>
+      <p class="text-muted-foreground mb-2">Son avisos: puedes emitirla igualmente.</p>
+      <ul class="list-disc pl-5 space-y-1">
+        @for (a of f.avisos; track a) { <li>{{ a }}</li> }
+      </ul>
+    </section>
+  }
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+    <section class="rounded-2xl border border-border bg-card p-5 lg:col-span-2" aria-labelledby="datos-titulo">
+      <h2 id="datos-titulo" class="font-semibold mb-3">Datos de la factura</h2>
+      <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+        <div><dt class="text-muted-foreground">Cliente</dt><dd>{{ f.titular ?? '—' }} <span class="tabular-nums">{{ f.nif }}</span></dd></div>
+        <div><dt class="text-muted-foreground">Email</dt><dd>{{ f.email ?? '—' }}</dd></div>
+        <div class="sm:col-span-2"><dt class="text-muted-foreground">Dirección del cliente</dt><dd>{{ f.direccion ?? '—' }}</dd></div>
+        <div><dt class="text-muted-foreground">CUPS</dt><dd class="tabular-nums">{{ f.cups }}</dd></div>
+        <div><dt class="text-muted-foreground">Contrato</dt><dd>{{ f.contrato ? '#' + f.contrato : (f.altaId ? 'Sin nº de Kilowy' : 'Sin contrato') }}</dd></div>
+        <div class="sm:col-span-2"><dt class="text-muted-foreground">Dirección del suministro</dt><dd>{{ f.direccionSuministro ?? '—' }}</dd></div>
+        <div><dt class="text-muted-foreground">Tarifa de acceso</dt><dd>{{ f.tarifaAcceso ?? '—' }}</dd></div>
+        <div><dt class="text-muted-foreground">Producto</dt><dd>{{ f.producto ?? 'Sin producto' }}</dd></div>
+        <div><dt class="text-muted-foreground">Potencias</dt><dd class="tabular-nums">{{ potencias() }}</dd></div>
+        <div><dt class="text-muted-foreground">Consumos</dt><dd class="tabular-nums">{{ consumos() }}</dd></div>
+        <div><dt class="text-muted-foreground">Forma de pago</dt><dd>Domiciliación bancaria {{ f.ibanEnmascarado ?? '(sin IBAN)' }}</dd></div>
+        <div><dt class="text-muted-foreground">Emisión / cobro</dt>
+          <dd>{{ f.fechaEmision ? fecha(f.fechaEmision) + ' / ' + fecha(f.fechaCobro) : 'Al emitir' }}</dd></div>
+        @if (f.fechaPago) { <div><dt class="text-muted-foreground">Pagada</dt><dd>{{ fecha(f.fechaPago) }}</dd></div> }
+        @if (f.fechaDevolucion) {
+          <div><dt class="text-muted-foreground">Devuelta</dt><dd>{{ fecha(f.fechaDevolucion) }} {{ f.motivoDevolucion ?? '' }}</dd></div>
+        }
+      </dl>
+    </section>
+
+    <section class="rounded-2xl border border-border bg-card p-5" aria-labelledby="rent-titulo">
+      <h2 id="rent-titulo" class="font-semibold mb-3">Rentabilidad</h2>
+      <dl class="text-sm space-y-2">
+        <div class="flex justify-between gap-4"><dt class="text-muted-foreground">Compra{{ f.compraComercializadora ? ' · ' + f.compraComercializadora : '' }}</dt>
+          <dd class="tabular-nums">{{ euro(f.compraTotal) }}</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-muted-foreground">Le facturamos</dt><dd class="tabular-nums">{{ euro(f.total) }}</dd></div>
+        <div class="flex justify-between gap-4 font-semibold" [class.text-danger-fg]="f.margen !== null && f.margen <= 0">
+          <dt>Margen</dt><dd class="tabular-nums">{{ euro(f.margen) }}</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-muted-foreground">Sobre la compra</dt>
+          <dd class="tabular-nums">{{ f.margenPct === null ? '—' : f.margenPct + ' %' }}</dd></div>
+        @if (f.compraFechaEmision) {
+          <div class="flex justify-between gap-4"><dt class="text-muted-foreground">Emisión de la compra</dt><dd>{{ fecha(f.compraFechaEmision) }}</dd></div>
+        }
+      </dl>
+      <h3 class="font-semibold mt-5 mb-2 text-sm">Resumen</h3>
+      <dl class="text-sm space-y-1">
+        <div class="flex justify-between"><dt>Potencia</dt><dd class="tabular-nums">{{ euro(f.totalPotencia) }}</dd></div>
+        <div class="flex justify-between"><dt>Energía</dt><dd class="tabular-nums">{{ euro(f.totalEnergia) }}</dd></div>
+        <div class="flex justify-between"><dt>Impuesto eléctrico</dt><dd class="tabular-nums">{{ euro(f.impuestoElectrico) }}</dd></div>
+        <div class="flex justify-between"><dt>Otros</dt><dd class="tabular-nums">{{ euro(f.totalOtros) }}</dd></div>
+        <div class="flex justify-between"><dt>Subtotal</dt><dd class="tabular-nums">{{ euro(f.subtotal) }}</dd></div>
+        <div class="flex justify-between"><dt>IVA</dt><dd class="tabular-nums">{{ euro(f.iva) }}</dd></div>
+        <div class="flex justify-between font-semibold border-t border-border pt-1"><dt>Total</dt><dd class="tabular-nums">{{ euro(f.total) }}</dd></div>
+      </dl>
+    </section>
+  </div>
+
+  <section class="rounded-2xl border border-border bg-card overflow-hidden mb-4" aria-labelledby="calc-caption">
+    <div class="overflow-x-auto" tabindex="0" role="region" aria-labelledby="calc-caption">
+      <table class="w-full text-sm">
+        <caption id="calc-caption" class="text-left px-4 pt-4 pb-2 font-semibold">Cálculo de la factura</caption>
+        <thead>
+          <tr class="border-b border-border text-left text-muted-foreground">
+            <th scope="col" class="py-2 px-4 font-medium">Concepto</th>
+            <th scope="col" class="py-2 px-4 font-medium">Cálculo</th>
+            <th scope="col" class="py-2 px-4 font-medium text-right">Importe</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of lineasCalculo(); track l.id) {
+            <tr class="border-b border-border/50">
+              <th scope="row" class="py-2 px-4 font-normal text-left">{{ l.concepto }}</th>
+              <td class="py-2 px-4 text-muted-foreground tabular-nums">{{ l.detalle }}</td>
+              <td class="py-2 px-4 text-right tabular-nums">{{ euro(l.importe) }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="3" class="py-6 text-center text-muted-foreground">Sin potencia ni energía: revisa la compra.</td></tr>
+          }
+          <tr class="border-b border-border/50">
+            <th scope="row" class="py-2 px-4 font-normal text-left">Impuesto eléctrico</th>
+            <td class="py-2 px-4 text-muted-foreground tabular-nums">{{ f.iePct }} % s/ {{ euro(f.baseIe) }}</td>
+            <td class="py-2 px-4 text-right tabular-nums">{{ euro(f.impuestoElectrico) }}</td>
+          </tr>
+          @for (t of f.tramosIva; track $index) {
+            <tr class="border-b border-border/50">
+              <th scope="row" class="py-2 px-4 font-normal text-left">{{ t.pct === null ? 'No sujeto a IVA' : 'IVA ' + t.pct + ' %' }}</th>
+              <td class="py-2 px-4 text-muted-foreground tabular-nums">s/ {{ euro(t.base) }}</td>
+              <td class="py-2 px-4 text-right tabular-nums">{{ t.pct === null ? '—' : euro(t.cuota) }}</td>
+            </tr>
+          }
+          <tr>
+            <th scope="row" class="py-2 px-4 text-left font-semibold">Total factura</th>
+            <td></td>
+            <td class="py-2 px-4 text-right tabular-nums font-semibold">{{ euro(f.total) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="rounded-2xl border border-border bg-card p-5 mb-4" aria-labelledby="conceptos-titulo">
+    <div class="flex flex-wrap items-center gap-2 mb-2">
+      <h2 id="conceptos-titulo" class="font-semibold">Otros conceptos</h2>
+      @if (puedeEditar() && esBorrador()) {
+        <button type="button" (click)="abrirLinea(null)"
+          class="ml-auto inline-flex items-center gap-2 rounded-lg bg-primary-button text-primary-foreground px-4 py-2 text-sm font-medium">
+          <ui-icon name="plus" [size]="16" /> Añadir concepto
+        </button>
+      }
+    </div>
+    @if (esBorrador()) {
+      <p class="text-sm text-muted-foreground mb-3">
+        Los sacados de la compra se regeneran al re-leerla; los añadidos a mano se conservan y solo se cambian en el borrador.
+        Importe sin IVA, en negativo para un descuento. «Sin IVA (no sujeto)» solo después del impuesto eléctrico.
+      </p>
+    }
+    @for (grupo of gruposConceptos(); track grupo.id) {
+      <div class="overflow-x-auto mb-3" tabindex="0" role="region" [attr.aria-labelledby]="'conc-' + grupo.id">
+        <table class="w-full text-sm">
+          <caption [id]="'conc-' + grupo.id" class="text-left py-1 text-muted-foreground">{{ grupo.titulo }}</caption>
+          <thead class="sr-only">
+            <tr><th scope="col">Concepto</th><th scope="col">IVA</th><th scope="col">Origen</th><th scope="col">Importe</th><th scope="col">Acciones</th></tr>
+          </thead>
+          <tbody>
+            @for (l of grupo.lineas; track l.id) {
+              <tr class="border-b border-border/50">
+                <th scope="row" class="py-2 font-normal text-left">{{ l.concepto }}</th>
+                <td class="py-2 px-2 text-muted-foreground">{{ ivaTexto(l) }}</td>
+                <td class="py-2 px-2 text-muted-foreground">{{ l.origen === 'AUTO' ? 'De la compra' : 'A mano' }}</td>
+                <td class="py-2 px-2 text-right tabular-nums">{{ euro(l.importe) }}</td>
+                <td class="py-2 text-right whitespace-nowrap">
+                  @if (puedeEditar() && esBorrador() && l.origen === 'MANUAL') {
+                    <button type="button" (click)="abrirLinea(l)" class="p-1 rounded hover:bg-accent" [attr.aria-label]="'Editar ' + l.concepto">
+                      <ui-icon name="edit" [size]="16" />
+                    </button>
+                    <button type="button" (click)="quitarLinea(l)" [disabled]="!!ocupado()" class="p-1 rounded hover:bg-danger-soft"
+                      [attr.aria-label]="'Quitar ' + l.concepto">
+                      <ui-icon name="trash" [size]="16" />
+                    </button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" class="py-2 text-muted-foreground">Sin conceptos en esta zona.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  <app-form-dialog
+    [open]="lineaEdit() !== null"
+    [title]="lineaEdit()?.id ? 'Editar concepto' : 'Añadir concepto'"
+    [icon]="lineaEdit()?.id ? 'edit' : 'plus'"
+    [saving]="lineaSaving()"
+    [canSave]="!!lf.valid && importeValido()"
+    [saveLabel]="lineaEdit()?.id ? 'Guardar concepto' : 'Añadir a la factura'"
+    [errorMessage]="lineaError()"
+    width="520px"
+    (cancel)="lineaEdit.set(null)"
+    (save)="guardarLinea()">
+    <form #lf="ngForm" class="flex flex-col gap-3 py-2 text-sm" (ngSubmit)="guardarLinea()">
+      <div class="campo flex flex-col gap-1">
+        <label for="lin-concepto">Concepto (lo que ve el cliente)</label>
+        <input id="lin-concepto" name="concepto" [(ngModel)]="linea.concepto" #con="ngModel" required maxlength="255"
+          [attr.aria-describedby]="con.invalid && (con.dirty || con.touched) ? 'lin-concepto-error' : null"
+          class="border border-border rounded-lg px-3 py-2 bg-input" />
+        <p id="lin-concepto-error" class="error-msg">Error: escribe el concepto.</p>
+      </div>
+      <div class="campo flex flex-col gap-1">
+        <label for="lin-importe">Importe (€, sin IVA; negativo = descuento)</label>
+        <input id="lin-importe" name="importe" [(ngModel)]="linea.importe" #imp="ngModel" required inputmode="decimal"
+          pattern="-?[0-9]{1,9}([.,][0-9]{1,2})?" autocomplete="off"
+          [attr.aria-describedby]="imp.invalid && (imp.dirty || imp.touched) ? 'lin-importe-error' : null"
+          class="border border-border rounded-lg px-3 py-2 bg-input tabular-nums" />
+        <p id="lin-importe-error" class="error-msg">Error: escribe un importe como 12,50 o -5 (máximo 2 decimales).</p>
+      </div>
+      <fieldset class="flex flex-col gap-1">
+        <legend class="mb-1">Dónde va</legend>
+        <label class="inline-flex items-center gap-2"><input type="radio" name="zona" value="DESPUES" [(ngModel)]="linea.zona" /> Después del impuesto eléctrico (con su IVA)</label>
+        <label class="inline-flex items-center gap-2"><input type="radio" name="zona" value="ANTES" [(ngModel)]="linea.zona" /> Dentro de la base del impuesto eléctrico (IVA general)</label>
+      </fieldset>
+      @if (linea.zona === 'DESPUES') {
+        <div class="campo flex flex-col gap-1">
+          <label for="lin-iva">IVA</label>
+          <select id="lin-iva" name="iva" [(ngModel)]="linea.iva" class="border border-border rounded-lg px-3 py-2 bg-input">
+            @for (i of ivas; track $index) {
+              <option [value]="i === null ? '' : '' + i">{{ i === null ? 'Sin IVA (no sujeto)' : i + ' %' }}</option>
+            }
+          </select>
+        </div>
+      }
+    </form>
+  </app-form-dialog>
+
+  <app-confirm-dialog
+    [open]="confirmacion() !== null"
+    [title]="confirmacion()?.titulo ?? ''"
+    [message]="confirmacion()?.mensaje ?? ''"
+    [confirmLabel]="confirmacion()?.label ?? 'Aceptar'"
+    [tone]="confirmacion()?.tone ?? 'warning'"
+    [loading]="!!ocupado()"
+    (confirm)="confirmacion()?.accion()"
+    (cancel)="confirmacion.set(null)" />
+} @else if (!error()) {
+  <p class="text-sm text-muted-foreground" role="status">Cargando factura…</p>
+}
