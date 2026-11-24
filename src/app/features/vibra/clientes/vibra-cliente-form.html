@@ -1,0 +1,103 @@
+<app-form-dialog
+  [open]="open()"
+  [title]="cliente() ? 'Editar cliente' : 'Nuevo cliente'"
+  [subtitle]="cliente()?.nombre ?? null"
+  [icon]="cliente() ? 'edit' : 'plus'"
+  [saving]="saving()"
+  [canSave]="!!f.valid"
+  [saveLabel]="cliente() ? 'Guardar cambios' : 'Crear cliente'"
+  [errorMessage]="error()"
+  width="640px"
+  (cancel)="cancel.emit()"
+  (save)="guardar()">
+  <form #f="ngForm" class="grid grid-cols-1 sm:grid-cols-6 gap-3 py-2 text-sm" (ngSubmit)="f.valid && guardar()">
+    <fieldset class="sm:col-span-6 flex gap-4">
+      <legend class="sr-only">Tipo de persona</legend>
+      <label class="inline-flex items-center gap-2"><input type="radio" name="tipo" value="FISICA" [(ngModel)]="m.tipo" /> Física</label>
+      <label class="inline-flex items-center gap-2"><input type="radio" name="tipo" value="JURIDICA" [(ngModel)]="m.tipo" /> Jurídica</label>
+    </fieldset>
+
+    <div class="campo sm:col-span-2 flex flex-col gap-1">
+      <label for="cli-nif">DNI/NIE/CIF</label>
+      <input id="cli-nif" name="nif" [(ngModel)]="m.nif" #nif="ngModel" required maxlength="20"
+        pattern="[A-Za-z0-9 .\-]{8,20}" autocomplete="off"
+        [attr.aria-describedby]="nif.invalid && (nif.dirty || nif.touched) ? 'cli-nif-error' : null"
+        class="border border-border rounded-lg px-3 py-2 bg-input uppercase" />
+      <p id="cli-nif-error" class="error-msg">Error: escribe un DNI, NIE o CIF (p. ej. 12345678Z).</p>
+    </div>
+    <div class="campo sm:col-span-4 flex flex-col gap-1">
+      <label for="cli-nombre">{{ m.tipo === 'JURIDICA' ? 'Razón social' : 'Nombre y apellidos' }}</label>
+      <input id="cli-nombre" name="nombre" [(ngModel)]="m.nombre" #nombre="ngModel" required maxlength="255"
+        [attr.autocomplete]="m.tipo === 'JURIDICA' ? 'organization' : 'name'"
+        [attr.aria-describedby]="nombre.invalid && (nombre.dirty || nombre.touched) ? 'cli-nombre-error' : null"
+        class="border border-border rounded-lg px-3 py-2 bg-input" />
+      <p id="cli-nombre-error" class="error-msg">Error: el nombre es obligatorio.</p>
+    </div>
+
+    <div class="campo sm:col-span-2 flex flex-col gap-1">
+      <label for="cli-tel1">Teléfono 1</label>
+      <input id="cli-tel1" name="telefono1" type="tel" [(ngModel)]="m.telefono1" maxlength="50" autocomplete="tel"
+        class="border border-border rounded-lg px-3 py-2 bg-input" />
+    </div>
+    <div class="campo sm:col-span-2 flex flex-col gap-1">
+      <label for="cli-tel2">Teléfono 2 (opcional)</label>
+      <input id="cli-tel2" name="telefono2" type="tel" [(ngModel)]="m.telefono2" maxlength="50"
+        class="border border-border rounded-lg px-3 py-2 bg-input" />
+    </div>
+    <div class="campo sm:col-span-2 flex flex-col gap-1">
+      <label for="cli-email">Email</label>
+      <input id="cli-email" name="email" type="email" [(ngModel)]="m.email" #email="ngModel" maxlength="255" email
+        autocomplete="email"
+        [attr.aria-describedby]="email.invalid && (email.dirty || email.touched) ? 'cli-email-error' : null"
+        class="border border-border rounded-lg px-3 py-2 bg-input" />
+      <p id="cli-email-error" class="error-msg">Error: escribe un email con el formato nombre&#64;dominio.es.</p>
+    </div>
+
+    <fieldset class="sm:col-span-6 grid grid-cols-2 sm:grid-cols-6 gap-3">
+      <legend class="font-medium mb-1">Dirección del cliente</legend>
+      <div class="campo col-span-2 sm:col-span-2 flex flex-col gap-1">
+        <label for="cli-tvia">Tipo de vía</label>
+        <select id="cli-tvia" name="tipoVia" [(ngModel)]="m.tipoVia" class="border border-border rounded-lg px-3 py-2 bg-input">
+          <option [ngValue]="null">—</option>
+          @for (t of tiposVia; track t) { <option [ngValue]="t">{{ t }}</option> }
+        </select>
+      </div>
+      <div class="campo col-span-2 sm:col-span-4 flex flex-col gap-1">
+        <label for="cli-via">Nombre de la vía</label>
+        <input id="cli-via" name="via" [(ngModel)]="m.via" maxlength="255" autocomplete="address-line1"
+          class="border border-border rounded-lg px-3 py-2 bg-input" />
+      </div>
+      @for (c of [['numero', 'Número'], ['escalera', 'Escalera'], ['piso', 'Piso'], ['puerta', 'Puerta']]; track c[0]) {
+        <div class="campo flex flex-col gap-1 sm:col-span-1">
+          <label [for]="'cli-' + c[0]">{{ c[1] }}</label>
+          <input [id]="'cli-' + c[0]" [name]="c[0]" [(ngModel)]="$any(m)[c[0]]" maxlength="20"
+            class="border border-border rounded-lg px-3 py-2 bg-input" />
+        </div>
+      }
+      <div class="campo flex flex-col gap-1 sm:col-span-2">
+        <label for="cli-cp">Código postal</label>
+        <input id="cli-cp" name="cp" [(ngModel)]="m.cp" #cp="ngModel" pattern="\d{5}" inputmode="numeric" maxlength="5"
+          autocomplete="postal-code"
+          [attr.aria-describedby]="cp.invalid && (cp.dirty || cp.touched) ? 'cli-cp-error' : null"
+          class="border border-border rounded-lg px-3 py-2 bg-input" />
+        <p id="cli-cp-error" class="error-msg">Error: el código postal tiene 5 cifras.</p>
+      </div>
+      <div class="campo flex flex-col gap-1 sm:col-span-2">
+        <label for="cli-pob">Población</label>
+        <input id="cli-pob" name="poblacion" [(ngModel)]="m.poblacion" maxlength="120" autocomplete="address-level2"
+          class="border border-border rounded-lg px-3 py-2 bg-input" />
+      </div>
+      <div class="campo flex flex-col gap-1 sm:col-span-2">
+        <label for="cli-prov">Provincia</label>
+        <input id="cli-prov" name="provincia" [(ngModel)]="m.provincia" maxlength="80" autocomplete="address-level1"
+          class="border border-border rounded-lg px-3 py-2 bg-input" />
+      </div>
+    </fieldset>
+
+    <div class="campo sm:col-span-6 flex flex-col gap-1">
+      <label for="cli-obs">Observaciones</label>
+      <textarea id="cli-obs" name="observaciones" [(ngModel)]="m.observaciones" rows="3"
+        class="border border-border rounded-lg px-3 py-2 bg-input"></textarea>
+    </div>
+  </form>
+</app-form-dialog>

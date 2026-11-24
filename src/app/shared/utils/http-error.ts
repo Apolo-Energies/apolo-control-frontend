@@ -1,0 +1,8 @@
+import { HttpErrorResponse } from '@angular/common/http';
+
+/** Mensaje para el usuario: errores de validación por campo, el mensaje del backend o el de reserva. */
+export function mensajeError(err: HttpErrorResponse, reserva: string): string {
+  const campos = err.error?.validationErrors as Record<string, string> | undefined;
+  if (campos && Object.keys(campos).length) return Object.values(campos).join('. ');
+  return err.error?.message ?? reserva;
+}

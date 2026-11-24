@@ -1,0 +1,141 @@
+<app-page-header title="Clientes" [subtitle]="total() + ' clientes Vibra'">
+  <div class="ml-auto flex flex-wrap gap-2">
+    @if (puedeEditar()) {
+      <button type="button" (click)="exportExcel()"
+        class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
+        <ui-icon name="download" [size]="16" /> Excel
+      </button>
+    }
+    @if (esAdmin()) {
+      <button type="button" (click)="importOpen.set(true)"
+        class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
+        <ui-icon name="upload" [size]="16" /> Importar desde Kilowy
+      </button>
+    }
+    @if (puedeEditar()) {
+      <button type="button" (click)="formOpen.set(true)"
+        class="inline-flex items-center gap-2 rounded-lg bg-primary-button text-primary-foreground px-4 py-2 text-sm font-medium">
+        <ui-icon name="plus" [size]="16" /> Nuevo cliente
+      </button>
+    }
+  </div>
+</app-page-header>
+
+<form class="flex flex-wrap items-center gap-2 mb-4" role="search" (ngSubmit)="buscar()">
+  <div class="relative flex-1 max-w-md">
+    <ui-icon name="search" [size]="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+    <input type="search" name="q" [(ngModel)]="q" aria-label="Buscar cliente"
+      placeholder="Nombre, DNI/CIF, teléfono, email, población o CUPS…"
+      class="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-sm bg-input" />
+  </div>
+  <select name="tipo" [(ngModel)]="tipo" (change)="buscar()" aria-label="Tipo de persona"
+    class="border border-border rounded-lg px-3 py-2 text-sm bg-input">
+    <option value="">Físicas y jurídicas</option>
+    <option value="FISICA">Solo físicas</option>
+    <option value="JURIDICA">Solo jurídicas</option>
+  </select>
+  <button type="submit" class="rounded-lg border border-border bg-card px-4 py-2 text-sm hover:bg-accent">Buscar</button>
+</form>
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">
+    {{ msg }} <button type="button" (click)="load()" class="ml-2 underline">Reintentar</button>
+  </div>
+}
+
+@if (loading() && !result()) {
+  <app-table-skeleton [cols]="6" [rows]="8" />
+} @else {
+  <div class="rounded-2xl border border-border bg-card overflow-hidden">
+    <div class="overflow-auto max-h-[70vh]" tabindex="0" role="region" aria-labelledby="clientes-caption">
+      <table class="w-full text-sm">
+        <caption id="clientes-caption" class="sr-only">Clientes Vibra</caption>
+        <thead class="sticky top-0 z-10 bg-card">
+          <tr class="border-b border-border text-left text-muted-foreground">
+            <th scope="col" class="py-3 px-4 font-medium">Cliente</th>
+            <th scope="col" class="py-3 px-4 font-medium">DNI/CIF</th>
+            <th scope="col" class="py-3 px-4 font-medium">Población</th>
+            <th scope="col" class="py-3 px-4 font-medium">Teléfono</th>
+            <th scope="col" class="py-3 px-4 font-medium">Tipo</th>
+            <th scope="col" class="py-3 px-4 font-medium text-right">Suministros</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of rows(); track c.id) {
+            <tr class="border-b border-border/50 hover:bg-accent/40">
+              <th scope="row" class="py-2 px-4 font-normal text-left">
+                <a [routerLink]="['/vibra/clientes', c.id]" class="hover:underline">{{ c.nombre }}</a>
+              </th>
+              <td class="py-2 px-4 tabular-nums">
+                {{ c.nif }}
+                @if (c.dniRevisar) { <app-status-badge tone="warning" class="ml-1">A revisar</app-status-badge> }
+              </td>
+              <td class="py-2 px-4">{{ c.poblacion ?? '—' }}</td>
+              <td class="py-2 px-4 tabular-nums">{{ c.telefono1 ?? '—' }}</td>
+              <td class="py-2 px-4">{{ tipoCliente[c.tipo] }}</td>
+              <td class="py-2 px-4 text-right tabular-nums">{{ c.suministros }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="py-16 text-center text-muted-foreground">
+              Sin clientes{{ esAdmin() ? ' — usa «Importar desde Kilowy» para traerlos' : '' }}
+            </td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (totalPages() > 1) {
+      <div class="border-t border-border">
+        <app-pagination [page]="page()" [pageSize]="size()" [totalElements]="total()" [totalPages]="totalPages()"
+          (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+      </div>
+    }
+  </div>
+}
+
+<app-vibra-cliente-form [open]="formOpen()" (saved)="creado($event)" (cancel)="formOpen.set(false)" />
+
+<app-confirm-dialog
+  [open]="importOpen()"
+  title="Importar desde Kilowy"
+  message="Se traen los clientes y puntos de suministro de Kilowy. Solo se crea lo que falta y se completan datos vacíos; lo editado en Control no se toca."
+  confirmLabel="Importar"
+  icon="upload"
+  tone="info"
+  [loading]="importando()"
+  (confirm)="importar()"
+  (cancel)="importOpen.set(false)" />
+
+<app-form-dialog
+  [open]="importResult() !== null"
+  title="Importación terminada"
+  icon="check"
+  [readOnly]="true"
+  width="480px"
+  (cancel)="importResult.set(null)">
+  @if (importResult(); as r) {
+    <table class="w-full text-sm my-2">
+      <caption class="sr-only">Resultado de la importación</caption>
+      <thead>
+        <tr class="border-b border-border text-left text-muted-foreground">
+          <th scope="col" class="py-2"></th>
+          <th scope="col" class="py-2 text-right">Creados</th>
+          <th scope="col" class="py-2 text-right">Completados</th>
+          <th scope="col" class="py-2 text-right">Sin cambios</th>
+          <th scope="col" class="py-2 text-right">A revisar</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (fila of filasImport(); track fila.label) {
+          <tr class="border-b border-border/50">
+            <th scope="row" class="py-2 text-left font-medium">{{ fila.label }}</th>
+            <td class="py-2 text-right tabular-nums">{{ fila.c.creados }}</td>
+            <td class="py-2 text-right tabular-nums">{{ fila.c.completados }}</td>
+            <td class="py-2 text-right tabular-nums">{{ fila.c.sinCambios }}</td>
+            <td class="py-2 text-right tabular-nums">{{ fila.c.aRevisar }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+    @for (a of r.avisos; track a) { <p class="text-sm text-warning-fg">{{ a }}</p> }
+  }
+</app-form-dialog>

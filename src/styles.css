@@ -250,6 +250,23 @@
     outline-offset: -3px;
   }
 
+  /* Formularios: el error solo se ve tras interactuar (:user-invalid), con texto y no solo color */
+  .campo input:user-invalid,
+  .campo select:user-invalid,
+  .campo textarea:user-invalid {
+    border-color: var(--color-danger);
+    background-color: var(--color-danger-soft);
+  }
+  .campo .error-msg {
+    display: none;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--color-danger-fg);
+  }
+  .campo :user-invalid ~ .error-msg {
+    display: block;
+  }
+
   :root:not(.dark) .bg-card {
     box-shadow: var(--shadow-card);
   }

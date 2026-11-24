@@ -224,6 +224,15 @@ export const routes: Routes = [
               import('./features/vibra/dashboard/vibra-dashboard').then((m) => m.VibraDashboard),
           },
           {
+            path: 'clientes',
+            loadComponent: () => import('./features/vibra/clientes/vibra-clientes').then((m) => m.VibraClientes),
+          },
+          {
+            path: 'clientes/:id',
+            loadComponent: () =>
+              import('./features/vibra/cliente-ficha/vibra-cliente-ficha').then((m) => m.VibraClienteFichaView),
+          },
+          {
             path: 'altas',
             loadComponent: () =>
               import('./features/vibra/altas/vibra-altas').then((m) => m.VibraAltas),
