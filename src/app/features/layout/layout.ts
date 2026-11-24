@@ -77,6 +77,7 @@ export class Layout {
           ...(verFacturasVibra ? [
             { label: 'Facturas', url: '/vibra/facturas', icon: 'file-text' as const },
             { label: 'Generar facturas', url: '/vibra/facturas/generar', icon: 'upload' as const },
+            { label: 'Remesas', url: '/vibra/remesas', icon: 'euro' as const },
           ] : []),
           { label: 'Impagos', url: '/vibra/impagos', icon: 'alert-triangle' as const },
           ...(verLiquidacionesVibra ? [

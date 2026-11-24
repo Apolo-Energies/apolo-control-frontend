@@ -1,0 +1,102 @@
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">
+    {{ msg }} <button type="button" (click)="load()" class="ml-2 underline">Reintentar</button>
+  </div>
+}
+
+@if (remesa(); as r) {
+  <app-page-header [title]="'Remesa nº ' + r.numero"
+    [subtitle]="tipoLabel[r.tipo] + ' · ' + r.cuenta + ' · cobro el ' + fecha(r.fechaCobro) + ' · ' + r.recibos + ' recibos · ' + euro(r.importe) + ' · generada el ' + fecha(r.createdAt) + (r.creadaPorNombre ? ' por ' + r.creadaPorNombre : '')">
+    <a routerLink="/vibra/remesas" class="text-sm text-muted-foreground hover:text-foreground">← Remesas</a>
+    <app-status-badge [tone]="estadoTone(r.estado)">{{ estadoLabel[r.estado] }}</app-status-badge>
+    @if (r.cobradaAt) { <app-status-badge tone="success">Cobrada el {{ fechaHora(r.cobradaAt) }}</app-status-badge> }
+    @if (r.anuladaAt) { <app-status-badge tone="neutral">Anulada el {{ fechaHora(r.anuladaAt) }}</app-status-badge> }
+  </app-page-header>
+
+  @if (puedeGestionar) {
+    <div class="flex flex-wrap gap-2 mb-4" role="toolbar" aria-label="Acciones de la remesa">
+      <button type="button" (click)="descargar(r)"
+        class="inline-flex items-center gap-2 rounded-lg bg-primary-button text-primary-foreground px-4 py-2 text-sm font-medium">
+        <ui-icon name="download" [size]="16" /> Descargar XML
+      </button>
+      @if (r.estado === 'GENERADA') {
+        <button type="button" (click)="confirmar.set('cobrada')" [disabled]="r.fechaCobro > hoy"
+          [title]="r.fechaCobro > hoy ? 'Se puede marcar cobrada a partir del ' + fecha(r.fechaCobro) : ''"
+          class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">
+          <ui-icon name="check-circle" [size]="16" /> Marcar cobrada
+        </button>
+        <button type="button" (click)="confirmar.set('anular')"
+          class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-danger-fg hover:bg-accent">
+          <ui-icon name="circle-x" [size]="16" /> Anular
+        </button>
+      }
+    </div>
+    @if (r.estado === 'GENERADA' && r.fechaCobro > hoy) {
+      <p class="text-sm text-muted-foreground mb-4">Se podrá marcar cobrada a partir del {{ fecha(r.fechaCobro) }}.</p>
+    }
+  }
+
+  <dl class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+    <div class="rounded-xl border border-border bg-card px-4 py-3">
+      <dt class="text-xs text-muted-foreground">En el banco</dt><dd class="text-xl font-semibold tabular-nums">{{ r.enBanco }}</dd>
+    </div>
+    <div class="rounded-xl border border-border bg-card px-4 py-3">
+      <dt class="text-xs text-muted-foreground">Cobrados</dt><dd class="text-xl font-semibold tabular-nums">{{ r.cobrados }}</dd>
+    </div>
+    <div class="rounded-xl border border-border bg-card px-4 py-3">
+      <dt class="text-xs text-muted-foreground">Devueltos</dt><dd class="text-xl font-semibold tabular-nums">{{ r.devueltos }}</dd>
+    </div>
+    <div class="rounded-xl border border-border bg-card px-4 py-3">
+      <dt class="text-xs text-muted-foreground">Importe</dt><dd class="text-xl font-semibold tabular-nums">{{ euro(r.importe) }}</dd>
+    </div>
+  </dl>
+
+  <div class="rounded-2xl border border-border bg-card overflow-hidden">
+    <div class="overflow-auto max-h-[70vh]" tabindex="0" role="region" aria-labelledby="recibos-caption">
+      <table class="w-full text-sm">
+        <caption id="recibos-caption" class="text-left font-semibold px-4 py-3">Facturas de la remesa</caption>
+        <thead class="sticky top-0 z-10 bg-card">
+          <tr class="border-b border-border text-left text-muted-foreground">
+            <th scope="col" class="py-3 px-4 font-medium">Cliente</th>
+            <th scope="col" class="py-3 px-4 font-medium">Factura</th>
+            <th scope="col" class="py-3 px-4 font-medium">Contrato</th>
+            <th scope="col" class="py-3 px-4 font-medium">Cuenta</th>
+            <th scope="col" class="py-3 px-4 font-medium text-right">Importe</th>
+            <th scope="col" class="py-3 px-4 font-medium">Intento</th>
+            <th scope="col" class="py-3 px-4 font-medium">Resultado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of r.lineas; track l.facturaId) {
+            <tr class="border-b border-border/50 hover:bg-accent/40">
+              <th scope="row" class="py-2 px-4 font-normal text-left">
+                {{ l.titular ?? '—' }}<div class="text-xs text-muted-foreground tabular-nums">{{ l.nif }}</div>
+              </th>
+              <td class="py-2 px-4 whitespace-nowrap">
+                <a [routerLink]="['/vibra/facturas', l.facturaId]" class="hover:underline tabular-nums">{{ l.factura }}</a>
+              </td>
+              <td class="py-2 px-4 tabular-nums">{{ l.contrato ? '#' + l.contrato : '—' }}</td>
+              <td class="py-2 px-4 tabular-nums whitespace-nowrap">{{ l.cuenta }}</td>
+              <td class="py-2 px-4 text-right tabular-nums whitespace-nowrap">{{ euro(l.importe) }}</td>
+              <td class="py-2 px-4 tabular-nums">{{ l.intento }}º cobro</td>
+              <td class="py-2 px-4"><app-status-badge [tone]="resultadoTone(l.resultado)">{{ resultadoLabel[l.resultado] }}</app-status-badge></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <app-confirm-dialog
+    [open]="confirmar() !== null"
+    [title]="confirmar() === 'anular' ? 'Anular remesa' : 'Marcar cobrada'"
+    [message]="confirmar() ? mensaje(confirmar()!, r) : ''"
+    [confirmLabel]="confirmar() === 'anular' ? 'Anular' : 'Marcar cobrada'"
+    [tone]="confirmar() === 'anular' ? 'danger' : 'info'"
+    [loading]="ocupado()"
+    (confirm)="ejecutar()"
+    (cancel)="confirmar.set(null)"
+  />
+} @else if (!error()) {
+  <app-table-skeleton [cols]="7" [rows]="6" />
+}

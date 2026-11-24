@@ -322,6 +322,19 @@ export const routes: Routes = [
               import('./features/vibra/factura-detalle/vibra-factura-detalle').then((m) => m.VibraFacturaDetalle),
           },
           {
+            path: 'remesas',
+            data: { roles: ['admin', 'contabilidad', 'operaciones'] },
+            canActivate: [authGuard],
+            loadComponent: () => import('./features/vibra/remesas/vibra-remesas').then((m) => m.VibraRemesas),
+          },
+          {
+            path: 'remesas/:id',
+            data: { roles: ['admin', 'contabilidad', 'operaciones'] },
+            canActivate: [authGuard],
+            loadComponent: () =>
+              import('./features/vibra/remesa-detalle/vibra-remesa-detalle').then((m) => m.VibraRemesaDetalle),
+          },
+          {
             path: 'contrato-servicio',
             loadComponent: () =>
               import('./features/vibra/contrato-servicio/vibra-contrato-servicio').then((m) => m.VibraContratoServicio),

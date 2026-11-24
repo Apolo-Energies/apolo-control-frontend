@@ -33,6 +33,7 @@ export * from './vibra-renovaciones.model';
 export * from './vibra-rotacion.model';
 export * from './vibra-ocr.model';
 export * from './vibra-factura.model';
+export * from './vibra-remesa.model';
 export * from './telkes-alta.model';
 export * from './telkes-tarifa.model';
 export * from './telkes-dashboard.model';
