@@ -1,3 +1,5 @@
+import type { Empresa } from './pagos-liquidacion.model';
+
 // ── Enums / union types ──────────────────────────────────────────────────────
 
 export type EstadoGestionImpago =
@@ -175,6 +177,7 @@ export interface GestionImpago {
   observaciones: string | null;
   colaborador: string | null;
   motivoDevolucion: string | null;
+  empresa: Empresa | null;
   hubspotDealId: string | null;
   contactoStep: number;
   contactoHistory: ContactoHistorialEntry[];
@@ -240,6 +243,7 @@ export interface GestionImpagoPayload {
   observaciones?: string | null;
   colaborador?: string | null;
   motivoDevolucion?: string | null;
+  empresa?: Empresa | null;
   hubspotDealId?: string | null;
   nextActionDate?: string | null;
   skipCorteAlert?: boolean;
@@ -274,6 +278,7 @@ export interface GestionImpagoFilter {
   delegacionId?: string;
   pagoFraccionado?: boolean;
   soloVencidos?: boolean;
+  empresa?: Empresa;
 }
 
 export interface RegistrarPagoPayload {

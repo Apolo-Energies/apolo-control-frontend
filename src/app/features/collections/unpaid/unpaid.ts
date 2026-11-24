@@ -27,6 +27,7 @@ import {
   ESTADO_GESTION_IMPAGO_VALUES, ESTADO_GESTION_IMPAGO_LABEL,
   PRIORIDAD_GESTION_IMPAGO_LABEL, Page,
   Customer,
+  Empresa, EMPRESA_VALUES, EMPRESA_LABEL,
 } from '../../../core/models';
 import { ContactoFormComponent, ContactoFormValue, emptyContactoForm } from '../contacto-form/contacto-form';
 import { GestionImpagoClienteService } from '../../../core/services/gestion-impago-cliente.service';
@@ -185,6 +186,7 @@ export class Unpaid implements OnDestroy {
   protected estadoFilter:        EstadoGestionImpago | '' = '';
   protected clienteActivoFilter: 'activo' | 'baja' | 'cortado' | '' = '';
   protected pagadoFilter:        'pagado' | 'no_pagado' | '' = '';
+  protected empresaFilter:       Empresa | '' = '';
   protected delegacionFilter                               = '';
   protected delegacionQuery                                = '';
   protected readonly delegacionDropdownOpen                = signal(false);
@@ -323,17 +325,20 @@ export class Unpaid implements OnDestroy {
   protected readonly clienteDropdown  = signal(false);
   protected readonly clienteNombre    = signal<string | null>(null);
   protected readonly creandoCliente   = signal(false);
-  // Alta de cliente desde el impago retirada (CTO-12). Descomentar para reactivar.
-  // protected readonly savingCliente    = signal(false);
-  // protected readonly clienteFormError = signal<string | null>(null);
-  //
-  // protected readonly nuevoClienteForm = this.fb.group({
-  //   nombre:   ['', Validators.required],
-  //   empresa:  [''],
-  //   nif:      [''],
-  //   telefono: [''],
-  //   email:    [''],
-  // });
+  // Alta de cliente desde el impago (reactivada).
+  protected readonly savingCliente    = signal(false);
+  protected readonly clienteFormError = signal<string | null>(null);
+
+  protected readonly nuevoClienteForm = this.fb.group({
+    nombre:   ['', Validators.required],
+    empresa:  [''],
+    nif:      [''],
+    telefono: [''],
+    email:    [''],
+  });
+
+  protected readonly empresaValues = EMPRESA_VALUES;
+  protected readonly empresaLabel  = EMPRESA_LABEL;
 
   protected readonly form = this.fb.group({
     clienteId:        ['', Validators.required],
@@ -344,6 +349,7 @@ export class Unpaid implements OnDestroy {
     fechaDevolucion:  [''],
     estado:           ['nuevo'],
     prioridad:        ['media'],
+    empresa:          ['' as Empresa | ''],
     colaborador:      [''],
     motivoDevolucion: [''],
     observaciones:    [''],
@@ -424,6 +430,7 @@ export class Unpaid implements OnDestroy {
       estado:          this.estadoFilter        || undefined,
       clienteActivo:   this.clienteActivoFilter || undefined,
       pagadoFilter:    this.pagadoFilter        || undefined,
+      empresa:         this.empresaFilter       || undefined,
       delegacionId:    this.delegacionFilter    || undefined,
       pagoFraccionado: this.pagoFraccionadoFilter ?? undefined,
       soloVencidos:    this.soloVencidosFilter    ?? undefined,
@@ -443,6 +450,7 @@ export class Unpaid implements OnDestroy {
   protected applyFilters(): void { this.reload(0); }
   protected clearFilters(): void {
     this.q = ''; this.estadoFilter = ''; this.clienteActivoFilter = ''; this.pagadoFilter = '';
+    this.empresaFilter = '';
     this.delegacionFilter = ''; this.delegacionQuery = '';
     this.pagoFraccionadoFilter = null; this.soloVencidosFilter = null;
     this.range.set('all');
@@ -505,6 +513,7 @@ export class Unpaid implements OnDestroy {
       colaborador:      r.colaborador ?? '',
       motivoDevolucion: r.motivoDevolucion ?? '',
       observaciones:    r.observaciones ?? '',
+      empresa:          r.empresa ?? '',
     });
     this.clienteNombre.set(r.clienteNombre ?? r.clienteId);
     this.clienteQuery = '';
@@ -563,40 +572,42 @@ export class Unpaid implements OnDestroy {
     setTimeout(() => this.clienteDropdown.set(false), 150);
   }
 
-  // Alta de cliente desde el impago retirada (CTO-12). Descomentar para reactivar.
-  // protected toggleCrearCliente(): void {
-  //   this.creandoCliente.update(v => !v);
-  //   if (this.creandoCliente()) {
-  //     this.nuevoClienteForm.reset();
-  //     this.clienteFormError.set(null);
-  //     this.clienteDropdown.set(false);
-  //   }
-  // }
-  //
-  // protected crearYSeleccionarCliente(): void {
-  //   if (this.nuevoClienteForm.invalid) { this.nuevoClienteForm.markAllAsTouched(); return; }
-  //   const v = this.nuevoClienteForm.getRawValue();
-  //   this.savingCliente.set(true);
-  //   this.clienteFormError.set(null);
-  //   this.clienteService.create({
-  //     nombre:   v.nombre!,
-  //     empresa:  v.empresa   || null,
-  //     nif:      v.nif       || null,
-  //     telefono: v.telefono  || null,
-  //     email:    v.email     || null,
-  //   }).subscribe({
-  //     next: (c) => {
-  //       this.savingCliente.set(false);
-  //       this.selectCliente(c);
-  //       this.creandoCliente.set(false);
-  //       this.notify.success('Cliente creado y seleccionado');
-  //     },
-  //     error: (err: HttpErrorResponse) => {
-  //       this.savingCliente.set(false);
-  //       this.clienteFormError.set(extractMessage(err));
-  //     },
-  //   });
-  // }
+  // Alta de cliente desde el impago (reactivada).
+  protected toggleCrearCliente(): void {
+    this.creandoCliente.update(v => !v);
+    if (this.creandoCliente()) {
+      this.nuevoClienteForm.reset();
+      this.clienteFormError.set(null);
+      this.clienteDropdown.set(false);
+    }
+  }
+
+  protected crearYSeleccionarCliente(): void {
+    if (this.nuevoClienteForm.invalid) { this.nuevoClienteForm.markAllAsTouched(); return; }
+    const v = this.nuevoClienteForm.getRawValue();
+    this.savingCliente.set(true);
+    this.clienteFormError.set(null);
+    this.clienteService.create({
+      nombre:   v.nombre!,
+      empresa:  v.empresa   || null,
+      nif:      v.nif       || null,
+      telefono: v.telefono  || null,
+      email:    v.email     || null,
+    }).subscribe({
+      next: (c) => {
+        this.savingCliente.set(false);
+        // c ya es un deudor (GestionImpagoCliente): su id va directo al form, sin materializar.
+        this.form.patchValue({ clienteId: c.id });
+        this.clienteNombre.set(c.nombre + (c.empresa ? ` (${c.empresa})` : ''));
+        this.creandoCliente.set(false);
+        this.notify.success('Cliente creado y seleccionado');
+      },
+      error: (err: HttpErrorResponse) => {
+        this.savingCliente.set(false);
+        this.clienteFormError.set(extractMessage(err));
+      },
+    });
+  }
 
   protected submit(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
@@ -613,6 +624,7 @@ export class Unpaid implements OnDestroy {
       colaborador:      v.colaborador      || null,
       motivoDevolucion: v.motivoDevolucion || null,
       observaciones:    v.observaciones    || null,
+      empresa:          (v.empresa as Empresa) || null,
     };
     this.submitting.set(true);
     this.formError.set(null);
