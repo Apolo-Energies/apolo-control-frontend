@@ -7,6 +7,9 @@ import {
   CambiarEstadoVibraImpagoPayload,
   Page,
   PageRequest,
+  VibraDevolucionAplicarPayload,
+  VibraDevolucionLeida,
+  VibraDevolucionLote,
   VibraImpago,
   VibraImpagoFilter,
   VibraImpagoPayload,
@@ -53,5 +56,26 @@ export class VibraImpagoService {
       params: buildParams(filter),
       responseType: 'blob',
     });
+  }
+
+  // ── Devoluciones del banco ─────────────────────────────────────────────────
+
+  /** Vista previa del PDF del banco (no marca nada). */
+  leerDevoluciones(pdf: File): Observable<VibraDevolucionLeida> {
+    const fd = new FormData();
+    fd.append('pdf', pdf);
+    return this.http.post<VibraDevolucionLeida>(`${this.baseUrl}/devoluciones/leer`, fd);
+  }
+
+  aplicarDevoluciones(payload: VibraDevolucionAplicarPayload): Observable<VibraDevolucionLote> {
+    return this.http.post<VibraDevolucionLote>(`${this.baseUrl}/devoluciones/aplicar`, payload);
+  }
+
+  devoluciones(): Observable<VibraDevolucionLote[]> {
+    return this.http.get<VibraDevolucionLote[]>(`${this.baseUrl}/devoluciones`);
+  }
+
+  devolucion(id: string): Observable<VibraDevolucionLote> {
+    return this.http.get<VibraDevolucionLote>(`${this.baseUrl}/devoluciones/${id}`);
   }
 }

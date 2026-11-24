@@ -1,0 +1,236 @@
+<p class="text-sm text-muted-foreground mb-4">
+  PDF «Relación de impagados» del banco ya procesados. Al subir uno, las facturas devueltas se marcan con el motivo del
+  banco y se crea su impago. Lo que no case queda «sin casar» para hacerlo a mano; el mismo PDF no se procesa dos veces.
+</p>
+
+@if (error(); as msg) {
+  <div role="alert" class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4">
+    {{ msg }} <button type="button" (click)="cargar()" class="ml-2 underline">Reintentar</button>
+  </div>
+}
+
+<div class="rounded-2xl border border-border bg-card overflow-hidden">
+  <div class="overflow-auto max-h-[70vh]" tabindex="0" role="region" aria-labelledby="dev-caption">
+    <table class="w-full text-sm">
+      <caption id="dev-caption" class="text-left px-4 py-3 font-medium">Archivos de devoluciones bancarias</caption>
+      <thead class="sticky top-0 z-10 bg-card">
+        <tr class="border-b border-border text-left text-muted-foreground">
+          <th scope="col" class="py-3 px-4 font-medium">Procesado</th>
+          <th scope="col" class="py-3 px-4 font-medium">Archivo</th>
+          <th scope="col" class="py-3 px-4 font-medium">Liquidación</th>
+          <th scope="col" class="py-3 px-4 font-medium text-right">Adeudos</th>
+          <th scope="col" class="py-3 px-4 font-medium text-right">Importe</th>
+          <th scope="col" class="py-3 px-4 font-medium text-right">Marcadas</th>
+          <th scope="col" class="py-3 px-4 font-medium">Estado</th>
+          <th scope="col" class="py-3 px-4"><span class="sr-only">Detalle</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (cargando()) {
+          <tr><td colspan="8" class="py-8 text-center text-muted-foreground">Cargando…</td></tr>
+        } @else {
+          @for (l of lotes(); track l.id) {
+            <tr class="border-b border-border/50 hover:bg-accent/40">
+              <td class="py-2 px-4 tabular-nums whitespace-nowrap">{{ fmtFecha(l.createdAt) }}</td>
+              <th scope="row" class="py-2 px-4 font-normal text-left break-all">{{ l.archivo }}</th>
+              <td class="py-2 px-4 tabular-nums whitespace-nowrap">{{ fmtFecha(l.fechaLiquidacion) }}</td>
+              <td class="py-2 px-4 text-right tabular-nums">{{ l.adeudos ?? '—' }}</td>
+              <td class="py-2 px-4 text-right tabular-nums">{{ fmtEur(l.importeTotal ?? l.sumaLeida) }}</td>
+              <td class="py-2 px-4 text-right tabular-nums">{{ l.marcadas }}@if (l.sinCasar) { <span class="text-muted-foreground"> · {{ l.sinCasar }} sin casar</span> }</td>
+              <td class="py-2 px-4">
+                <app-status-badge [tone]="l.cuadra ? 'success' : 'warning'">{{ l.cuadra ? 'Cuadra' : 'No cuadra' }}</app-status-badge>
+              </td>
+              <td class="py-2 px-4 text-right">
+                <button type="button" (click)="verDetalle(l.id)" class="p-1 hover:bg-info-soft rounded"
+                  [attr.aria-label]="'Ver detalle de ' + l.archivo">
+                  <ui-icon name="eye" [size]="16" />
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="8" class="py-12 text-center text-muted-foreground">Todavía no se ha procesado ningún PDF del banco</td></tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Subida y vista previa -->
+<app-form-dialog
+  [open]="subirAbierto()"
+  title="Devoluciones del banco"
+  subtitle="Sube el PDF «Relación de impagados»: revisa las filas y aplica"
+  icon="upload"
+  width="1200px"
+  saveLabel="Aplicar"
+  [saving]="aplicando()"
+  [canSave]="puedeAplicarAhora()"
+  [errorMessage]="errorSubida()"
+  (cancel)="cerrarSubida()"
+  (save)="aplicar()">
+  <form class="flex flex-wrap items-end gap-3 text-sm mb-4" (submit)="$event.preventDefault(); leer()">
+    <div class="campo flex flex-col gap-1 flex-1 min-w-64">
+      <label for="dev-pdf" class="font-medium">PDF del banco (10 MB como mucho)</label>
+      <input #pdfInput id="dev-pdf" name="pdf" type="file" accept="application/pdf,.pdf" required
+        aria-describedby="dev-pdf-ayuda" [disabled]="leyendo() || aplicando()" (change)="elegir(pdfInput)"
+        class="border border-border rounded-lg px-3 py-2 bg-input file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1" />
+      <p id="dev-pdf-ayuda" class="text-xs text-muted-foreground">
+        Se leen titular, IBAN, importe, vencimiento, nº de factura y motivo de cada adeudo. Nada se marca hasta «Aplicar».
+      </p>
+    </div>
+    <button type="submit" [disabled]="!archivo() || leyendo() || aplicando()"
+      class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 font-medium hover:bg-accent disabled:opacity-50">
+      <ui-icon name="search" [size]="16" /> {{ leyendo() ? 'Leyendo…' : 'Leer PDF' }}
+    </button>
+  </form>
+
+  @if (leida(); as l) {
+    <dl class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm mb-3">
+      <div><dt class="text-xs text-muted-foreground">Liquidación</dt><dd class="tabular-nums">{{ fmtFecha(l.fechaLiquidacion) }}</dd></div>
+      <div><dt class="text-xs text-muted-foreground">Adeudos (declarados / leídos)</dt><dd class="tabular-nums">{{ l.adeudosDeclarados ?? '—' }} / {{ l.filas.length }}</dd></div>
+      <div><dt class="text-xs text-muted-foreground">Total declarado</dt><dd class="tabular-nums">{{ fmtEur(l.totalDeclarado) }}</dd></div>
+      <div><dt class="text-xs text-muted-foreground">Suma leída</dt><dd class="tabular-nums">{{ fmtEur(l.sumaLeida) }}</dd></div>
+      <div><dt class="text-xs text-muted-foreground">Estado</dt>
+        <dd><app-status-badge [tone]="l.cuadra ? 'success' : 'warning'">{{ l.cuadra ? 'Cuadra' : 'No cuadra' }}</app-status-badge></dd></div>
+    </dl>
+
+    @if (!l.cuadra || l.avisos.length) {
+      <div role="alert" class="rounded-lg border border-warning/40 bg-warning-soft px-3 py-2 text-sm mb-3">
+        <ul class="list-disc pl-5">
+          @for (a of l.avisos; track a) { <li>{{ a }}</li> }
+        </ul>
+        @if (!l.cuadra) {
+          <label class="mt-2 flex items-center gap-2 font-medium">
+            <input type="checkbox" [checked]="confirmar()" (change)="confirmar.set($any($event.target).checked)" />
+            He revisado las filas: aplicar aunque no cuadre
+          </label>
+        }
+      </div>
+    }
+
+    <datalist id="dev-motivos">
+      @for (m of motivos; track m) { <option [value]="m"></option> }
+    </datalist>
+
+    <div class="rounded-xl border border-border overflow-auto max-h-[50vh]" tabindex="0" role="region" aria-labelledby="dev-prev-caption">
+      <table class="w-full text-sm">
+        <caption id="dev-prev-caption" class="text-left px-3 py-2 font-medium">
+          Filas leídas: {{ conFactura() }} con factura · {{ sinCasar() }} sin casar
+        </caption>
+        <thead class="sticky top-0 z-10 bg-card">
+          <tr class="border-b border-border text-left text-muted-foreground">
+            <th scope="col" class="py-2 px-3 font-medium">Aplicar</th>
+            <th scope="col" class="py-2 px-3 font-medium">Titular</th>
+            <th scope="col" class="py-2 px-3 font-medium">IBAN</th>
+            <th scope="col" class="py-2 px-3 font-medium text-right">Importe</th>
+            <th scope="col" class="py-2 px-3 font-medium">Vencimiento</th>
+            <th scope="col" class="py-2 px-3 font-medium">Nº factura</th>
+            <th scope="col" class="py-2 px-3 font-medium">Motivo</th>
+            <th scope="col" class="py-2 px-3 font-medium">Factura en Control</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (f of filas(); track f.leida.indice; let i = $index) {
+            <tr class="border-b border-border/50 align-top" [class.opacity-50]="!f.aplicar">
+              <td class="py-2 px-3">
+                <input type="checkbox" [checked]="f.aplicar" (change)="cambiar(i, { aplicar: $any($event.target).checked })"
+                  [attr.aria-label]="'Aplicar la fila de ' + (f.leida.titular ?? 'titular desconocido')" />
+              </td>
+              <th scope="row" class="py-2 px-3 font-normal text-left min-w-40">{{ f.leida.titular ?? '—' }}</th>
+              <td class="py-2 px-3 tabular-nums whitespace-nowrap">{{ f.leida.ibanEnmascarado ?? '—' }}</td>
+              <td class="py-2 px-3 text-right tabular-nums whitespace-nowrap">{{ fmtEur(f.leida.importe) }}</td>
+              <td class="py-2 px-3 tabular-nums whitespace-nowrap">{{ fmtFecha(f.leida.vencimiento) }}</td>
+              <td class="py-2 px-3">
+                <input type="text" [value]="f.facturaNumero" (change)="cambiar(i, { facturaNumero: $any($event.target).value })"
+                  [attr.aria-label]="'Nº de factura de ' + (f.leida.titular ?? 'la fila ' + (i + 1))"
+                  placeholder="F-…" pattern="F-\d+" autocomplete="off" spellcheck="false"
+                  class="w-48 border border-border rounded-md px-2 py-1 bg-input tabular-nums" />
+              </td>
+              <td class="py-2 px-3">
+                <input type="text" list="dev-motivos" maxlength="100" [value]="f.motivo"
+                  (change)="cambiar(i, { motivo: $any($event.target).value })"
+                  [attr.aria-label]="'Motivo de ' + (f.leida.titular ?? 'la fila ' + (i + 1))"
+                  class="w-48 border border-border rounded-md px-2 py-1 bg-input" />
+                @if (f.leida.motivoCodigo) { <span class="block text-xs text-muted-foreground">Código {{ f.leida.motivoCodigo }}</span> }
+              </td>
+              <td class="py-2 px-3 min-w-56">
+                @if (editada(f)) {
+                  <span class="text-muted-foreground">{{ f.facturaNumero.trim() ? 'Se comprobará al aplicar' : 'Sin casar' }}</span>
+                } @else if (f.leida.factura; as fac) {
+                  <a [routerLink]="['/vibra/facturas', fac.id]" target="_blank" class="underline">{{ fac.numero }}</a>
+                  <app-status-badge class="ml-1" [tone]="fac.estado === 'DEVUELTA' ? 'info' : 'neutral'">{{ estadoFactura[fac.estado] }}</app-status-badge>
+                  <span class="block text-xs text-muted-foreground">{{ fac.titular ?? '—' }} · {{ fmtEur(fac.total) }}</span>
+                } @else {
+                  <app-status-badge tone="warning">Sin casar</app-status-badge>
+                }
+                @for (a of f.leida.advertencias; track a) {
+                  <span class="block text-xs text-warning-fg">{{ a }}</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</app-form-dialog>
+
+<!-- Detalle de un PDF procesado -->
+<app-form-dialog
+  [open]="detalleAbierto()"
+  [title]="detalle()?.archivo ?? 'Devolución del banco'"
+  [subtitle]="subtituloDetalle()"
+  icon="eye"
+  width="1100px"
+  [readOnly]="true"
+  (cancel)="detalleAbierto.set(false)">
+  @if (detalle(); as d) {
+    <div class="overflow-auto max-h-[60vh]" tabindex="0" role="region" aria-labelledby="dev-det-caption">
+      <table class="w-full text-sm">
+        <caption id="dev-det-caption" class="text-left py-2 font-medium">
+          Filas de la devolución bancaria: {{ d.marcadas }} marcadas · {{ d.sinCasar }} sin casar ·
+          {{ d.cuadra ? 'cuadra' : 'no cuadra' }}
+        </caption>
+        <thead class="sticky top-0 z-10 bg-card">
+          <tr class="border-b border-border text-left text-muted-foreground">
+            <th scope="col" class="py-2 px-3 font-medium">Deudor</th>
+            <th scope="col" class="py-2 px-3 font-medium text-right">Importe</th>
+            <th scope="col" class="py-2 px-3 font-medium">Vencimiento</th>
+            <th scope="col" class="py-2 px-3 font-medium">Motivo del banco</th>
+            <th scope="col" class="py-2 px-3 font-medium">Factura</th>
+            <th scope="col" class="py-2 px-3 font-medium">Qué se hizo</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (x of d.lineas; track x.orden) {
+            <tr class="border-b border-border/50 align-top">
+              <th scope="row" class="py-2 px-3 font-normal text-left">
+                {{ x.titular ?? '—' }}
+                <span class="block text-xs text-muted-foreground tabular-nums">{{ x.ibanEnmascarado ?? '' }}</span>
+              </th>
+              <td class="py-2 px-3 text-right tabular-nums whitespace-nowrap">{{ fmtEur(x.importe) }}</td>
+              <td class="py-2 px-3 tabular-nums whitespace-nowrap">{{ fmtFecha(x.vencimiento) }}</td>
+              <td class="py-2 px-3">{{ x.motivo ?? '—' }}</td>
+              <td class="py-2 px-3 tabular-nums">
+                @if (x.facturaId) {
+                  <a [routerLink]="['/vibra/facturas', x.facturaId]" class="underline">{{ x.facturaNumero }}</a>
+                } @else { {{ x.facturaNumero ?? '—' }} }
+              </td>
+              <td class="py-2 px-3">
+                <app-status-badge [tone]="resultadoTone(x.resultado)">{{ resultadoLabel[x.resultado] }}</app-status-badge>
+                @if (x.detalle) { <span class="block text-xs text-muted-foreground">{{ x.detalle }}</span> }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="text-xs text-muted-foreground mt-3">
+      Las filas «sin casar» son adeudos de recibos que no salieron de Control (por ejemplo, remesas de Kilowy):
+      búscalas en Impagos por el nombre y márcalas a mano si toca.
+    </p>
+  } @else {
+    <div class="py-8 text-center text-muted-foreground">Cargando…</div>
+  }
+</app-form-dialog>

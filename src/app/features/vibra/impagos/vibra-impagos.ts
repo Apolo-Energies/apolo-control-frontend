@@ -10,9 +10,11 @@ import { Pagination } from '../../../shared/components/pagination/pagination';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
+import { VibraDevolucionesBanco } from './vibra-devoluciones-banco';
 
 import { VibraImpagoService } from '../../../core/services/vibra-impago.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { AuthService } from '../../../core/auth';
 import {
   ESTADO_VIBRA_IMPAGO_VALUES,
   Page,
@@ -25,7 +27,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule, ReactiveFormsModule, RouterLink,
-    PageHeader, FormDialog, ConfirmDialog, Pagination, StatusBadge, TableSkeleton, Icon,
+    PageHeader, FormDialog, ConfirmDialog, Pagination, StatusBadge, TableSkeleton, Icon, VibraDevolucionesBanco,
   ],
   templateUrl: './vibra-impagos.html',
 })
@@ -33,6 +35,14 @@ export class VibraImpagos {
   private readonly service = inject(VibraImpagoService);
   private readonly notify = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
+  private readonly auth = inject(AuthService);
+
+  /** Pestaña: lista de impagos o PDF del banco procesados. */
+  protected readonly tab = signal<'impagos' | 'devoluciones'>('impagos');
+  /** Diálogo de subida del PDF del banco (vive en la pestaña de devoluciones). */
+  protected readonly subirDevoluciones = signal(false);
+  protected readonly puedeSubirDevoluciones = computed(() => this.auth.hasRole('admin', 'contabilidad'));
+  protected readonly puedeVerDevoluciones = computed(() => this.auth.hasRole('admin', 'contabilidad', 'operaciones'));
 
   protected readonly result = signal<Page<VibraImpago> | null>(null);
   protected readonly loading = signal(true);
