@@ -1,0 +1,74 @@
+<app-page-header title="Mis contratos" [subtitle]="total() + ' contratos a tu nombre'">
+  <a routerLink="/colaborador/contratos/nuevo"
+    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">
+    <ui-icon name="file-plus" [size]="16" /> Cargar contrato
+  </a>
+</app-page-header>
+
+<form class="flex flex-wrap items-end gap-2 mb-4" role="search" (ngSubmit)="buscar()">
+  <div class="relative flex-1 min-w-56 max-w-md">
+    <ui-icon name="search" [size]="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+    <input type="search" name="q" [(ngModel)]="q" aria-label="Buscar por titular, NIF, CUPS o email"
+      placeholder="Titular, NIF, CUPS o email…" enterkeyhint="search"
+      class="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-sm bg-input" />
+  </div>
+  <label class="flex flex-col gap-1 text-sm">
+    <span class="sr-only">Estado</span>
+    <select name="estado" [(ngModel)]="estado" (change)="buscar()" aria-label="Estado"
+      class="border border-border rounded-lg px-3 py-2 bg-input">
+      <option value="">Todos los estados</option>
+      @for (e of estados; track e) { <option [value]="e">{{ estadoLabel(e) }}</option> }
+    </select>
+  </label>
+  <button type="submit" class="px-4 py-2 rounded-lg border border-border text-sm hover:bg-accent">Buscar</button>
+</form>
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">
+    {{ msg }} <button type="button" (click)="load()" class="ml-2 underline">Reintentar</button>
+  </div>
+}
+
+@if (loading() && !result()) {
+  <app-table-skeleton [cols]="5" [rows]="8" />
+} @else {
+  <div class="rounded-2xl border border-border bg-card overflow-hidden">
+    <div class="overflow-auto max-h-[70vh]" tabindex="0" role="region" aria-labelledby="mis-contratos-caption">
+      <table class="w-full text-sm">
+        <caption id="mis-contratos-caption" class="sr-only">Tus contratos Vibra</caption>
+        <thead class="sticky top-0 z-10 bg-card">
+          <tr class="border-b border-border text-left text-muted-foreground">
+            <th scope="col" class="py-3 px-4 font-medium">Titular</th>
+            <th scope="col" class="py-3 px-4 font-medium">CUPS</th>
+            <th scope="col" class="py-3 px-4 font-medium">Fecha</th>
+            <th scope="col" class="py-3 px-4 font-medium">Activación</th>
+            <th scope="col" class="py-3 px-4 font-medium">Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of rows(); track c.id) {
+            <tr class="border-b border-border/50 hover:bg-accent/40">
+              <th scope="row" class="py-2 px-4 font-normal text-left">
+                <a [routerLink]="['/colaborador/contratos', c.id]" class="underline-offset-2 hover:underline">{{ c.titular ?? '—' }}</a>
+                <div class="text-xs text-muted-foreground">{{ c.nifCif }}</div>
+              </th>
+              <td class="py-2 px-4 font-mono text-xs whitespace-nowrap">{{ c.cups ?? '—' }}</td>
+              <td class="py-2 px-4 whitespace-nowrap">{{ fecha(c.fecha) }}</td>
+              <td class="py-2 px-4 whitespace-nowrap">{{ fecha(c.fechaActivacionContrato) }}</td>
+              <td class="py-2 px-4"><app-status-badge [tone]="estadoTone(c.estado)">{{ estadoLabel(c.estado) }}</app-status-badge></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5" class="py-16 text-center text-muted-foreground">No hay contratos</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (totalPages() > 1) {
+      <div class="border-t border-border px-4 py-2">
+        <app-pagination [page]="page()" [pageSize]="size()"
+          [totalElements]="total()" [totalPages]="totalPages()"
+          (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+      </div>
+    }
+  </div>
+}

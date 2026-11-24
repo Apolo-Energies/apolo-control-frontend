@@ -11,10 +11,21 @@ import { Icon } from '../../../shared/icons/icon';
 import { AuthService } from '../../../core/auth';
 import { VibraColaboradorService } from '../../../core/services/vibra-colaborador.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { VibraColaborador, VibraComisionHistorial } from '../../../core/models';
+import { ConfirmService } from '../../../core/services/confirm.service';
+import {
+  DatosFiscalesColaborador,
+  PASSWORD_PATTERN,
+  TIPO_FISCAL_VIBRA_LABEL,
+  VibraColaborador,
+  VibraComisionHistorial,
+} from '../../../core/models';
+import { mensajeError } from '../../../shared/utils/http-error';
 import { formatDateTime, formatEuro } from '../../../shared/utils/format';
 
-/** Equipo Vibra (como Red comercial → Equipo de Kilowy): comisión por alta de cada colaborador. */
+/**
+ * Equipo Vibra (como Red comercial → Equipo de Kilowy): comisión por alta, datos fiscales de la
+ * autofactura y acceso de cada colaborador a su portal.
+ */
 @Component({
   selector: 'app-vibra-equipo',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -25,6 +36,7 @@ export class VibraEquipo {
   private readonly service = inject(VibraColaboradorService);
   private readonly notify = inject(NotificationService);
   private readonly auth = inject(AuthService);
+  private readonly confirm = inject(ConfirmService);
 
   protected readonly isAdmin = this.auth.hasRole('admin');
   protected readonly rows = signal<VibraColaborador[]>([]);
@@ -37,7 +49,122 @@ export class VibraEquipo {
   protected readonly historial = signal<VibraComisionHistorial[]>([]);
   protected readonly historialLoading = signal(false);
 
+  // Dar acceso
+  protected readonly accesoDe = signal<VibraColaborador | null>(null);
+  protected readonly accesoSaving = signal(false);
+  protected readonly accesoError = signal<string | null>(null);
+  protected readonly verPassword = signal(false);
+  protected acceso = { email: '', password: '' };
+  protected readonly passwordPattern = PASSWORD_PATTERN;
+
+  // Datos fiscales
+  protected readonly fiscalDe = signal<VibraColaborador | null>(null);
+  protected readonly fiscalSaving = signal(false);
+  protected readonly fiscalError = signal<string | null>(null);
+  protected fiscal: DatosFiscalesColaborador = VibraEquipo.fiscalVacio();
+  protected readonly tiposFiscales = Object.entries(TIPO_FISCAL_VIBRA_LABEL);
+
   constructor() { this.load(); }
+
+  private reemplazar(r: VibraColaborador): void {
+    this.rows.update(list => list.map(x => (x.clave === r.clave ? r : x)));
+  }
+
+  // ── Acceso al portal ──────────────────────────────────────────
+
+  protected abrirAcceso(c: VibraColaborador): void {
+    this.acceso = { email: '', password: '' };
+    this.accesoError.set(null);
+    this.verPassword.set(false);
+    this.accesoDe.set(c);
+  }
+
+  protected cerrarAcceso(): void { this.accesoDe.set(null); }
+
+  protected darAcceso(): void {
+    const c = this.accesoDe();
+    if (!c) return;
+    this.accesoSaving.set(true);
+    this.accesoError.set(null);
+    this.service.darAcceso(c.clave, this.acceso.email.trim(), this.acceso.password).subscribe({
+      next: (r) => {
+        this.accesoSaving.set(false);
+        this.reemplazar(r);
+        this.accesoDe.set(null);
+        this.notify.success(`${r.nombre} ya puede entrar con ${r.accesoEmail}`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.accesoSaving.set(false);
+        this.accesoError.set(mensajeError(err, 'No se pudo dar acceso'));
+      },
+    });
+  }
+
+  protected async cambiarAcceso(c: VibraColaborador): Promise<void> {
+    const activar = !c.accesoActivo;
+    const ok = await this.confirm.ask({
+      header: activar ? 'Reactivar acceso' : 'Quitar acceso',
+      message: activar
+        ? `${c.nombre} podrá volver a entrar con ${c.accesoEmail}.`
+        : `${c.nombre} no podrá entrar a su portal hasta que se reactive.`,
+      acceptLabel: activar ? 'Reactivar' : 'Quitar acceso',
+      variant: activar ? 'default' : 'danger',
+    });
+    if (!ok) return;
+    this.saving.set(c.clave);
+    this.service.cambiarAcceso(c.clave, activar).subscribe({
+      next: (r) => {
+        this.saving.set(null);
+        this.reemplazar(r);
+        this.notify.success(activar ? `Acceso de ${r.nombre} reactivado` : `Acceso de ${r.nombre} quitado`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.saving.set(null);
+        this.notify.error(mensajeError(err, 'No se pudo cambiar el acceso'));
+      },
+    });
+  }
+
+  // ── Datos fiscales ────────────────────────────────────────────
+
+  private static fiscalVacio(): DatosFiscalesColaborador {
+    return { tipoFiscal: null, nombreFiscal: null, nifFiscal: null, direccionFiscal: null, iban: null, ivaPct: 21, irpfPct: 0 };
+  }
+
+  protected abrirFiscal(c: VibraColaborador): void {
+    this.fiscal = {
+      tipoFiscal: c.tipoFiscal,
+      nombreFiscal: c.nombreFiscal,
+      nifFiscal: c.nifFiscal,
+      direccionFiscal: c.direccionFiscal,
+      iban: c.iban,
+      ivaPct: c.ivaPct ?? 21,
+      irpfPct: c.irpfPct ?? 0,
+    };
+    this.fiscalError.set(null);
+    this.fiscalDe.set(c);
+  }
+
+  protected cerrarFiscal(): void { this.fiscalDe.set(null); }
+
+  protected guardarFiscal(): void {
+    const c = this.fiscalDe();
+    if (!c) return;
+    this.fiscalSaving.set(true);
+    this.fiscalError.set(null);
+    this.service.cambiarDatosFiscales(c.clave, this.fiscal).subscribe({
+      next: (r) => {
+        this.fiscalSaving.set(false);
+        this.reemplazar(r);
+        this.fiscalDe.set(null);
+        this.notify.success(`Datos fiscales de ${r.nombre} guardados`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.fiscalSaving.set(false);
+        this.fiscalError.set(mensajeError(err, 'No se pudieron guardar los datos fiscales'));
+      },
+    });
+  }
 
   protected load(): void {
     this.loading.set(true);

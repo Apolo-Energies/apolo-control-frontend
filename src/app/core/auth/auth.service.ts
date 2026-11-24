@@ -25,6 +25,10 @@ export class AuthService {
   readonly user            = computed<AuthenticatedUser | null>(() => this.sessionSignal()?.user ?? null);
   readonly isAuthenticated = computed(() => this.sessionSignal() !== null);
   readonly role            = computed<UserRole | null>(() => this.sessionSignal()?.user.rol ?? null);
+  /** Colaborador Vibra: solo entra a su portal (/colaborador). */
+  readonly esColaborador   = computed(() => this.role() === 'colaborador');
+  /** Pantalla de inicio según el rol. */
+  readonly homeUrl         = computed(() => (this.esColaborador() ? '/colaborador' : '/dashboard'));
 
   login(credentials: LoginRequest): Observable<LoginResponse> {
     return this.http

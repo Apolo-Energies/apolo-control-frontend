@@ -250,6 +250,12 @@
     outline-offset: -3px;
   }
 
+  /* Enlace de la página actual en la navegación del portal: subrayado, no solo color */
+  .nav-actual {
+    color: var(--color-foreground);
+    box-shadow: inset 0 -3px 0 var(--color-primary);
+  }
+
   /* Formularios: el error solo se ve tras interactuar (:user-invalid), con texto y no solo color */
   .campo input:user-invalid,
   .campo select:user-invalid,

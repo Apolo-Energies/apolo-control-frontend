@@ -1,0 +1,67 @@
+<app-page-header title="Mi perfil" />
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">{{ msg }}</div>
+}
+
+<div class="grid gap-4 md:grid-cols-2">
+  @if (perfil(); as p) {
+    <section class="rounded-2xl border border-border bg-card p-5" aria-labelledby="perfil-datos">
+      <h2 id="perfil-datos" class="font-semibold mb-3">Tus datos</h2>
+      <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+        <dt class="text-muted-foreground">Colaborador</dt><dd>{{ p.nombre }}</dd>
+        <dt class="text-muted-foreground">Email</dt><dd class="break-all">{{ p.email }}</dd>
+        <dt class="text-muted-foreground">Comisión por alta</dt><dd>{{ eur(p.comisionAlta) }}</dd>
+      </dl>
+
+      <h3 class="font-semibold mt-5 mb-3 flex items-center gap-2">
+        Datos fiscales de tu autofactura
+        @if (!p.datosFiscalesCompletos) { <app-status-badge tone="warning">Incompletos</app-status-badge> }
+      </h3>
+      <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+        <dt class="text-muted-foreground">Tipo</dt><dd>{{ p.tipoFiscal ? tipoLabel[p.tipoFiscal] : '—' }}</dd>
+        <dt class="text-muted-foreground">Nombre o razón social</dt><dd>{{ p.nombreFiscal ?? '—' }}</dd>
+        <dt class="text-muted-foreground">NIF</dt><dd>{{ p.nifFiscal ?? '—' }}</dd>
+        <dt class="text-muted-foreground">Dirección fiscal</dt><dd>{{ p.direccionFiscal ?? '—' }}</dd>
+        <dt class="text-muted-foreground">IBAN de cobro</dt><dd class="font-mono break-all">{{ p.iban ?? '—' }}</dd>
+        <dt class="text-muted-foreground">IVA</dt><dd>{{ p.ivaPct }} %</dd>
+        <dt class="text-muted-foreground">Retención IRPF</dt><dd>{{ p.irpfPct }} %</dd>
+      </dl>
+      <p class="text-xs text-muted-foreground mt-3">Si algún dato no es correcto, pide a administración que lo cambie.</p>
+    </section>
+  }
+
+  <section class="rounded-2xl border border-border bg-card p-5" aria-labelledby="perfil-password">
+    <h2 id="perfil-password" class="font-semibold mb-3">Cambiar contraseña</h2>
+    <form #pf="ngForm" ngNativeValidate class="flex flex-col gap-3 text-sm" (ngSubmit)="cambiarPassword(pf)">
+      <input type="email" name="username" autocomplete="username" [value]="perfil()?.email ?? ''" hidden />
+      <div class="campo flex flex-col gap-1">
+        <label for="pw-actual">Contraseña actual</label>
+        <input id="pw-actual" name="actual" [type]="verPassword() ? 'text' : 'password'" [(ngModel)]="actual"
+          required autocomplete="current-password"
+          class="border border-border rounded-lg px-3 py-2 bg-input" />
+      </div>
+      <div class="campo flex flex-col gap-1">
+        <label for="pw-nueva">Contraseña nueva</label>
+        <input id="pw-nueva" name="nueva" [type]="verPassword() ? 'text' : 'password'" [(ngModel)]="nueva" #nv="ngModel"
+          required [pattern]="pattern" autocomplete="new-password"
+          aria-describedby="pw-nueva-ayuda"
+          class="border border-border rounded-lg px-3 py-2 bg-input" />
+        <p id="pw-nueva-ayuda" class="text-xs text-muted-foreground">Al menos 10 caracteres, con letras y números.</p>
+        <p class="error-msg">Error: la contraseña debe tener al menos 10 caracteres, con letras y números.</p>
+      </div>
+      <label class="inline-flex items-center gap-2">
+        <input type="checkbox" [checked]="verPassword()" (change)="verPassword.set(!verPassword())" /> Mostrar contraseñas
+      </label>
+      @if (errorPassword(); as msg) {
+        <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3" role="alert">{{ msg }}</div>
+      }
+      <div class="flex justify-end">
+        <button type="submit" [disabled]="saving()"
+          class="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50">
+          {{ saving() ? 'Guardando…' : 'Cambiar contraseña' }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>

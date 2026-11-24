@@ -1,12 +1,42 @@
 import { Routes } from '@angular/router';
 
-import { authGuard, guestGuard } from './core/auth/auth.guard';
+import { authGuard, colaboradorGuard, guestGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   {
     path: 'login',
     canMatch: [guestGuard],
     loadComponent: () => import('./features/auth/login').then((m) => m.Login),
+  },
+  // Portal del colaborador Vibra: árbol propio, sin el layout interno
+  {
+    path: 'colaborador',
+    canActivate: [colaboradorGuard],
+    loadComponent: () => import('./features/colaborador/colaborador-layout').then((m) => m.ColaboradorLayout),
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'contratos' },
+      {
+        path: 'contratos',
+        loadComponent: () => import('./features/colaborador/mis-contratos').then((m) => m.MisContratos),
+      },
+      {
+        path: 'contratos/nuevo',
+        loadComponent: () => import('./features/colaborador/cargar-contrato').then((m) => m.CargarContrato),
+      },
+      {
+        path: 'contratos/:id',
+        loadComponent: () => import('./features/colaborador/contrato-detalle').then((m) => m.ContratoDetalle),
+      },
+      {
+        path: 'liquidaciones',
+        loadComponent: () => import('./features/colaborador/mis-liquidaciones').then((m) => m.MisLiquidaciones),
+      },
+      {
+        path: 'perfil',
+        loadComponent: () => import('./features/colaborador/mi-perfil').then((m) => m.MiPerfil),
+      },
+      { path: '**', redirectTo: 'contratos' },
+    ],
   },
   {
     path: '',

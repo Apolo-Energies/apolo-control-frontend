@@ -6,3 +6,15 @@ export function mensajeError(err: HttpErrorResponse, reserva: string): string {
   if (campos && Object.keys(campos).length) return Object.values(campos).join('. ');
   return err.error?.message ?? reserva;
 }
+
+/** Igual que mensajeError para peticiones con responseType 'blob' (el JSON de error llega como Blob). */
+export async function mensajeErrorBlob(err: HttpErrorResponse, reserva: string): Promise<string> {
+  if (err.error instanceof Blob) {
+    try {
+      return JSON.parse(await err.error.text())?.message ?? reserva;
+    } catch {
+      return reserva;
+    }
+  }
+  return mensajeError(err, reserva);
+}

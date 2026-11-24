@@ -44,7 +44,7 @@ export class Login {
       next: () => {
         this.loading.set(false);
         this.globalLoading.stop();
-        void this.router.navigateByUrl('/dashboard');
+        void this.router.navigateByUrl(this.auth.homeUrl());
       },
       error: (err: HttpErrorResponse) => {
         this.loading.set(false);

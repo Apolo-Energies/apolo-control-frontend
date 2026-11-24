@@ -1,0 +1,54 @@
+<a routerLink="/colaborador/contratos" class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3">
+  <ui-icon name="chevron-left" [size]="16" /> Mis contratos
+</a>
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3" role="alert">{{ msg }}</div>
+} @else if (contrato(); as c) {
+  <app-page-header [title]="c.titular ?? 'Contrato'"
+    [subtitle]="(c.numeroContrato ? 'Contrato nº ' + c.numeroContrato + ' · ' : '') + (c.cups ?? '')">
+    <app-status-badge [tone]="estadoTone(c.estado)">{{ estadoLabel(c.estado) }}</app-status-badge>
+  </app-page-header>
+
+  <div class="grid gap-4 md:grid-cols-2">
+    <section class="rounded-2xl border border-border bg-card p-5" aria-labelledby="det-titular">
+      <h2 id="det-titular" class="font-semibold mb-3">Titular</h2>
+      <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+        <dt class="text-muted-foreground">Nombre</dt><dd>{{ c.titular ?? '—' }}</dd>
+        <dt class="text-muted-foreground">NIF/CIF</dt><dd>{{ c.nifCif ?? '—' }}</dd>
+        <dt class="text-muted-foreground">Teléfono</dt><dd>{{ c.telefono ?? '—' }}</dd>
+        <dt class="text-muted-foreground">Email</dt><dd class="break-all">{{ c.email ?? '—' }}</dd>
+        <dt class="text-muted-foreground">IBAN</dt><dd class="font-mono">{{ c.cuentaBancaria ?? '—' }}</dd>
+      </dl>
+    </section>
+
+    <section class="rounded-2xl border border-border bg-card p-5" aria-labelledby="det-suministro">
+      <h2 id="det-suministro" class="font-semibold mb-3">Suministro</h2>
+      <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+        <dt class="text-muted-foreground">CUPS</dt><dd class="font-mono break-all">{{ c.cups ?? '—' }}</dd>
+        <dt class="text-muted-foreground">Dirección</dt>
+        <dd>{{ c.direccionSuministro ?? '—' }}@if (c.poblacion) {, {{ c.poblacion }}}@if (c.provincia) { ({{ c.provincia }})}</dd>
+        <dt class="text-muted-foreground">Potencias</dt>
+        <dd>
+          @for (p of potencias(); track p.periodo) {
+            <span class="mr-3 whitespace-nowrap">{{ p.periodo }}: {{ p.valor }} kW</span>
+          } @empty { — }
+        </dd>
+        <dt class="text-muted-foreground">Comercializadora</dt><dd>{{ c.comercializadora ?? '—' }}</dd>
+        <dt class="text-muted-foreground">Producto</dt><dd>{{ c.tarifaNombre ?? '—' }}</dd>
+      </dl>
+    </section>
+
+    <section class="rounded-2xl border border-border bg-card p-5 md:col-span-2" aria-labelledby="det-fechas">
+      <h2 id="det-fechas" class="font-semibold mb-3">Fechas</h2>
+      <dl class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+        <div><dt class="text-muted-foreground">Alta</dt><dd>{{ fecha(c.fecha) }}</dd></div>
+        <div><dt class="text-muted-foreground">Firma</dt><dd>{{ fecha(c.fechaFirma) }}</dd></div>
+        <div><dt class="text-muted-foreground">Activación</dt><dd>{{ fecha(c.fechaActivacionContrato) }}</dd></div>
+        <div><dt class="text-muted-foreground">Baja</dt><dd>{{ fecha(c.fechaBaja) }}</dd></div>
+      </dl>
+    </section>
+  </div>
+} @else {
+  <p class="py-16 text-center text-muted-foreground" role="status">Cargando…</p>
+}

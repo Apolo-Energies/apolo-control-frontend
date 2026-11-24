@@ -1,0 +1,123 @@
+<a routerLink="/colaborador/contratos" class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3">
+  <ui-icon name="chevron-left" [size]="16" /> Mis contratos
+</a>
+<app-page-header title="Cargar contrato" subtitle="Queda a tu nombre y pendiente de firma" />
+
+<form #f="ngForm" ngNativeValidate class="rounded-2xl border border-border bg-card p-5 grid grid-cols-1 sm:grid-cols-6 gap-4 text-sm"
+  (ngSubmit)="f.valid && guardar()">
+
+  <fieldset class="sm:col-span-6 grid grid-cols-1 sm:grid-cols-6 gap-3">
+    <legend class="font-semibold mb-2">Titular</legend>
+    <div class="campo sm:col-span-4 flex flex-col gap-1">
+      <label for="cc-titular">Nombre o razón social</label>
+      <input id="cc-titular" name="titular" [(ngModel)]="m.titular" #titular="ngModel" required maxlength="255"
+        autocomplete="off"
+        [attr.aria-invalid]="titular.invalid && titular.touched"
+        [attr.aria-describedby]="titular.invalid && titular.touched ? 'cc-titular-error' : null"
+        class="border border-border rounded-lg px-3 py-2 bg-input" />
+      <p id="cc-titular-error" class="error-msg">Error: el titular es obligatorio.</p>
+    </div>
+    <div class="campo sm:col-span-2 flex flex-col gap-1">
+      <label for="cc-nif">DNI/NIE/CIF</label>
+      <input id="cc-nif" name="nifCif" [(ngModel)]="m.nifCif" #nif="ngModel" required maxlength="20"
+        pattern="[A-Za-z0-9 .\-]{8,20}" autocomplete="off" spellcheck="false"
+        [attr.aria-invalid]="nif.invalid && nif.touched"
+        [attr.aria-describedby]="nif.invalid && nif.touched ? 'cc-nif-error' : null"
+        class="border border-border rounded-lg px-3 py-2 bg-input uppercase" />
+      <p id="cc-nif-error" class="error-msg">Error: escribe un DNI, NIE o CIF (p. ej. 12345678Z).</p>
+    </div>
+    <div class="campo sm:col-span-3 flex flex-col gap-1">
+      <label for="cc-tel">Teléfono</label>
+      <input id="cc-tel" name="telefono" type="tel" [(ngModel)]="m.telefono" maxlength="50" autocomplete="off"
+        class="border border-border rounded-lg px-3 py-2 bg-input" />
+    </div>
+    <div class="campo sm:col-span-3 flex flex-col gap-1">
+      <label for="cc-email">Email</label>
+      <input id="cc-email" name="email" type="email" [(ngModel)]="m.email" #email="ngModel" email maxlength="255"
+        autocomplete="off" spellcheck="false"
+        [attr.aria-invalid]="email.invalid && email.touched"
+        [attr.aria-describedby]="email.invalid && email.touched ? 'cc-email-error' : null"
+        class="border border-border rounded-lg px-3 py-2 bg-input" />
+      <p id="cc-email-error" class="error-msg">Error: escribe un email con el formato nombre&#64;dominio.es.</p>
+    </div>
+    <div class="campo sm:col-span-6 flex flex-col gap-1">
+      <label for="cc-iban">IBAN de domiciliación</label>
+      <input id="cc-iban" name="cuentaBancaria" [(ngModel)]="m.cuentaBancaria" #iban="ngModel" required maxlength="40"
+        pattern="[A-Za-z]{2}[0-9]{2}[A-Za-z0-9 ]{11,36}" autocomplete="off" spellcheck="false"
+        [attr.aria-invalid]="iban.invalid && iban.touched"
+        [attr.aria-describedby]="iban.invalid && iban.touched ? 'cc-iban-error' : null"
+        class="border border-border rounded-lg px-3 py-2 bg-input uppercase font-mono" />
+      <p id="cc-iban-error" class="error-msg">Error: escribe un IBAN (p. ej. ES91 2100 0418 4502 0005 1332).</p>
+    </div>
+  </fieldset>
+
+  <fieldset class="sm:col-span-6 grid grid-cols-1 sm:grid-cols-6 gap-3">
+    <legend class="font-semibold mb-2">Suministro</legend>
+    <div class="campo sm:col-span-3 flex flex-col gap-1">
+      <label for="cc-cups">CUPS</label>
+      <input id="cc-cups" name="cups" [(ngModel)]="m.cups" #cups="ngModel" required maxlength="30"
+        pattern="[A-Za-z]{2}[0-9 ]{16,20}[A-Za-z]{2}([0-9][A-Za-z])?" autocomplete="off" spellcheck="false"
+        [attr.aria-invalid]="cups.invalid && cups.touched"
+        [attr.aria-describedby]="cups.invalid && cups.touched ? 'cc-cups-error' : null"
+        class="border border-border rounded-lg px-3 py-2 bg-input uppercase font-mono" />
+      <p id="cc-cups-error" class="error-msg">Error: escribe un CUPS (ES + 16 dígitos + 2 letras).</p>
+    </div>
+    <div class="campo sm:col-span-3 flex flex-col gap-1">
+      <label for="cc-producto">Producto</label>
+      <select id="cc-producto" name="tarifaId" [(ngModel)]="m.tarifaId" class="border border-border rounded-lg px-3 py-2 bg-input">
+        <option [ngValue]="null">Sin elegir</option>
+        @for (p of productos(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }} ({{ p.tipo }})</option> }
+      </select>
+    </div>
+    <div class="campo sm:col-span-6 flex flex-col gap-1">
+      <label for="cc-dir">Dirección de suministro</label>
+      <input id="cc-dir" name="direccionSuministro" [(ngModel)]="m.direccionSuministro" #dir="ngModel" required maxlength="500"
+        autocomplete="off"
+        [attr.aria-invalid]="dir.invalid && dir.touched"
+        [attr.aria-describedby]="dir.invalid && dir.touched ? 'cc-dir-error' : null"
+        class="border border-border rounded-lg px-3 py-2 bg-input" />
+      <p id="cc-dir-error" class="error-msg">Error: la dirección de suministro es obligatoria.</p>
+    </div>
+    <div class="campo sm:col-span-3 flex flex-col gap-1">
+      <label for="cc-pob">Población</label>
+      <input id="cc-pob" name="poblacion" [(ngModel)]="m.poblacion" maxlength="120" autocomplete="off"
+        class="border border-border rounded-lg px-3 py-2 bg-input" />
+    </div>
+    <div class="campo sm:col-span-3 flex flex-col gap-1">
+      <label for="cc-prov">Provincia</label>
+      <input id="cc-prov" name="provincia" [(ngModel)]="m.provincia" maxlength="80" autocomplete="off"
+        class="border border-border rounded-lg px-3 py-2 bg-input" />
+    </div>
+    <div class="campo sm:col-span-6 flex flex-col gap-1">
+      <label for="cc-com">Comercializadora</label>
+      <select id="cc-com" name="comercializadora" [(ngModel)]="m.comercializadora" class="border border-border rounded-lg px-3 py-2 bg-input">
+        <option [ngValue]="null">Pendiente de tramitar</option>
+        @for (c of comercializadoras; track c) { <option [ngValue]="c">{{ c }}</option> }
+      </select>
+    </div>
+  </fieldset>
+
+  <fieldset class="sm:col-span-6 grid grid-cols-3 sm:grid-cols-6 gap-3">
+    <legend class="font-semibold mb-2">Potencias contratadas (kW)</legend>
+    @for (p of potencias; track p.campo) {
+      <div class="campo flex flex-col gap-1">
+        <label [for]="'cc-' + p.campo">{{ p.label }}</label>
+        <input [id]="'cc-' + p.campo" [name]="p.campo" type="number" min="0" step="0.001" inputmode="decimal"
+          [(ngModel)]="m[p.campo]" class="border border-border rounded-lg px-3 py-2 bg-input tabular-nums" />
+        <p class="error-msg">Error: potencia ≥ 0 con 3 decimales como máximo.</p>
+      </div>
+    }
+  </fieldset>
+
+  @if (error(); as msg) {
+    <div class="sm:col-span-6 rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3" role="alert">{{ msg }}</div>
+  }
+
+  <div class="sm:col-span-6 flex justify-end gap-2">
+    <a routerLink="/colaborador/contratos" class="px-4 py-2 rounded-lg border border-border hover:bg-accent">Cancelar</a>
+    <button type="submit" [disabled]="saving()"
+      class="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50">
+      {{ saving() ? 'Cargando…' : 'Cargar contrato' }}
+    </button>
+  </div>
+</form>
