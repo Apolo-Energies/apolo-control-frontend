@@ -12,6 +12,7 @@ import { TableSkeleton } from '../../../shared/components/table-skeleton/table-s
 import { Icon } from '../../../shared/icons/icon';
 
 import { VibraAltaService } from '../../../core/services/vibra-alta.service';
+import { VibraTarifaService } from '../../../core/services/vibra-tarifa.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import {
@@ -24,8 +25,10 @@ import {
   VibraAlta,
   VibraAltaFilter,
   VibraAltaPayload,
+  VibraTarifa,
 } from '../../../core/models';
-import { fechaProximaDotClass } from '../../../shared/utils/format';
+import { fechaProximaDotClass, formatDateTime } from '../../../shared/utils/format';
+import { mensajeError } from '../../../shared/utils/http-error';
 
 @Component({
   selector: 'app-vibra-altas',
@@ -41,6 +44,7 @@ export class VibraAltas {
   private readonly notify = inject(NotificationService);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
+  private readonly tarifaService = inject(VibraTarifaService);
 
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
@@ -104,6 +108,13 @@ export class VibraAltas {
   protected readonly puedeAdministrar = computed(() => this.auth.hasRole('admin', 'operaciones'));
   protected nuevaComercializadora = '';
 
+  // Contrato: productos, PDF y envío
+  protected readonly tarifas = signal<VibraTarifa[]>([]);
+  protected readonly confirmEnvioOpen = signal(false);
+  protected readonly pendingEnvio = signal<VibraAlta | null>(null);
+  protected readonly enviando = signal(false);
+  protected readonly potencias = [1, 2, 3, 4, 5, 6] as const;
+
   protected readonly form = this.fb.group({
     titular: ['', Validators.required],
     cups: [''],
@@ -131,9 +142,31 @@ export class VibraAltas {
     comisionComercializadora: [null as number | null],
     historialLiquidaciones: [''],
     comentarios: [''],
+    tarifaId: [null as string | null],
+    enviarContrato: [true],
+    potenciaP1: [null as number | null],
+    potenciaP2: [null as number | null],
+    potenciaP3: [null as number | null],
+    potenciaP4: [null as number | null],
+    potenciaP5: [null as number | null],
+    potenciaP6: [null as number | null],
   });
 
-  constructor() { this.load(); }
+  constructor() {
+    this.load();
+    this.tarifaService.list().subscribe({ next: (t) => this.tarifas.set(t), error: () => this.tarifas.set([]) });
+  }
+
+  /** Productos activos para el selector; si el alta tiene uno inactivo, también ese. */
+  protected productosSeleccionables(): VibraTarifa[] {
+    const actual = this.form.controls.tarifaId.value;
+    return this.tarifas().filter((t) => t.activa || t.id === actual);
+  }
+
+  protected nombreProducto(id: string | null): string {
+    if (!id) return '—';
+    return this.tarifas().find((t) => t.id === id)?.nombre ?? '—';
+  }
 
   protected load(): void {
     this.loading.set(true);
@@ -207,12 +240,13 @@ export class VibraAltas {
       liquidacionColaborador: a.liquidacionColaborador,
       comisionComercializadora: a.comisionComercializadora,
       historialLiquidaciones: a.historialLiquidaciones, comentarios: a.comentarios,
+      tarifaId: a.tarifaId,
     };
   }
 
   protected openCreate(): void {
     this.editing.set(null);
-    this.form.reset({ estado: 'PENDIENTE_FIRMA' });
+    this.form.reset({ estado: 'PENDIENTE_FIRMA', enviarContrato: true });
     this.dialogOpen.set(true);
   }
 
@@ -233,6 +267,9 @@ export class VibraAltas {
       comisionComercializadora: r.comisionComercializadora,
       historialLiquidaciones: r.historialLiquidaciones ?? '',
       comentarios: r.comentarios ?? '',
+      tarifaId: r.tarifaId, enviarContrato: false,
+      potenciaP1: r.potenciaP1, potenciaP2: r.potenciaP2, potenciaP3: r.potenciaP3,
+      potenciaP4: r.potenciaP4, potenciaP5: r.potenciaP5, potenciaP6: r.potenciaP6,
     });
     this.dialogOpen.set(true);
   }
@@ -244,18 +281,22 @@ export class VibraAltas {
     this.submitting.set(true);
     const r = this.editing();
     // Base de la fila: conserva los campos que no están en el formulario
-    const payload = { ...(r ? this.altaToPayload(r) : {}), ...this.form.getRawValue() } as VibraAltaPayload;
+    const { enviarContrato, ...valores } = this.form.getRawValue();
+    const payload = { ...(r ? this.altaToPayload(r) : {}), ...valores } as VibraAltaPayload;
+    if (!r) payload.enviarContrato = !!enviarContrato && this.puedeAdministrar();
     const obs = r ? this.service.update(r.id, payload) : this.service.create(payload);
     obs.subscribe({
-      next: () => {
+      next: (alta) => {
         this.submitting.set(false);
-        this.notify.success(r ? 'Alta actualizada' : 'Alta creada');
+        if (r) this.notify.success('Alta actualizada');
+        else if (alta.avisoContrato) this.notify.warn(`Alta creada. ${alta.avisoContrato}`);
+        else this.notify.success(alta.contratoEnviadoAt ? `Alta creada y contrato enviado a ${alta.email}` : 'Alta creada');
         this.closeDialog();
         this.load();
       },
       error: (err: HttpErrorResponse) => {
         this.submitting.set(false);
-        this.notify.error(err.error?.message ?? 'Error al guardar');
+        this.notify.error(mensajeError(err, 'Error al guardar'));
       },
     });
   }
@@ -287,6 +328,61 @@ export class VibraAltas {
       },
     });
   }
+
+  // ── Contrato ───────────────────────────────────────────
+  /** Abre el PDF en otra pestaña (la ventana se abre antes de la petición para que no la bloquee el navegador). */
+  protected verContrato(r: VibraAlta): void {
+    const ventana = window.open('', '_blank');
+    this.service.contratoPdf(r.id).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        if (ventana) ventana.location.href = url;
+        else window.location.href = url;
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      },
+      error: () => {
+        ventana?.close();
+        this.notify.error('No se pudo generar el contrato');
+      },
+    });
+  }
+
+  protected askEnviarContrato(r: VibraAlta): void {
+    this.pendingEnvio.set(r);
+    this.confirmEnvioOpen.set(true);
+  }
+
+  protected cancelEnviarContrato(): void {
+    this.confirmEnvioOpen.set(false);
+    this.pendingEnvio.set(null);
+  }
+
+  protected doEnviarContrato(): void {
+    const r = this.pendingEnvio();
+    if (!r) return;
+    this.enviando.set(true);
+    this.service.enviarContrato(r.id).subscribe({
+      next: (alta) => {
+        this.enviando.set(false);
+        this.notify.success(`Contrato enviado a ${alta.email}`);
+        this.cancelEnviarContrato();
+        if (this.detailData()?.id === alta.id) this.detailData.set(alta);
+        this.load();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.enviando.set(false);
+        this.notify.error(mensajeError(err, 'No se pudo enviar el contrato'));
+      },
+    });
+  }
+
+  protected envioLabel(r: VibraAlta): string {
+    return r.contratoEnviadoAt
+      ? `Reenviar contrato (último envío: ${formatDateTime(r.contratoEnviadoAt)})`
+      : 'Enviar contrato';
+  }
+
+  protected readonly fmtDateTime = formatDateTime;
 
   // ── Rotacion Semestral ─────────────────────────────────
   protected openRotacion(): void {

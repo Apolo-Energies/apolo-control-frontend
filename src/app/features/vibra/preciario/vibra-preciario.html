@@ -1,6 +1,12 @@
 <app-page-header title="Preciario" [subtitle]="all().length + ' tarifas registradas'">
   <a routerLink="/vibra/dashboard" class="text-sm text-muted-foreground hover:text-foreground">← Volver al Dashboard</a>
-  <button (click)="openCreate()" class="ml-auto inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90">
+  @if (isAdmin) {
+    <button type="button" (click)="abrirCarga()" class="ml-auto inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
+      <ui-icon name="upload" [size]="16" />
+      Cargar precios
+    </button>
+  }
+  <button (click)="openCreate()" [class.ml-auto]="!isAdmin" class="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90">
     <ui-icon name="plus" [size]="16" />
     Nueva Tarifa
   </button>
@@ -40,7 +46,7 @@
           <tr class="text-xs text-muted-foreground">
             <td></td>
             <td class="text-center">€/kWh</td><td class="text-center">€/kWh</td><td class="text-center">€/kWh</td>
-            <td class="text-center">€/kW·año</td><td class="text-center">€/kW·año</td><td class="text-center">€/kW·año</td>
+            <td class="text-center">€/kW·día</td><td class="text-center">€/kW·día</td><td class="text-center">€/kW·día</td>
             <td></td>
             <td></td>
           </tr>
@@ -168,7 +174,7 @@
         </div>
       </div>
       <div>
-        <h4 class="text-sm font-semibold mb-2">Potencia (€/kW·año)</h4>
+        <h4 class="text-sm font-semibold mb-2">Potencia (€/kW·día)</h4>
         <div class="grid gap-2" [class.grid-cols-3]="d.tipo === '2.0TD'" [class.grid-cols-6]="d.tipo !== '2.0TD'">
           @for (p of (d.tipo === '2.0TD' ? [1,2,3] : [1,2,3,4,5,6]); track p) {
             <div class="rounded-lg border border-border bg-neutral-soft/50 p-2 text-center">
@@ -220,7 +226,7 @@
       </div>
     </fieldset>
     <fieldset class="border border-border rounded-lg p-3">
-      <legend class="text-sm font-semibold px-2">Potencia (€/kW·año)</legend>
+      <legend class="text-sm font-semibold px-2">Potencia (€/kW·día)</legend>
       <div class="grid gap-2" [class.grid-cols-3]="form.value.tipo === '2.0TD'" [class.grid-cols-6]="form.value.tipo !== '2.0TD'">
         @for (p of (form.value.tipo === '2.0TD' ? [1,2,3] : [1,2,3,4,5,6]); track p) {
           <div>
@@ -246,3 +252,86 @@
     <app-status-badge [tone]="t.activa ? 'success' : 'neutral'">{{ t.activa ? 'Activa' : 'Inactiva' }}</app-status-badge>
   }
 </ng-template>
+
+<!-- Carga de precios desde la plantilla Excel (solo admin) -->
+<app-form-dialog
+  [open]="cargaOpen()" title="Cargar precios"
+  subtitle="Crea o actualiza productos desde la plantilla Excel"
+  icon="upload" width="1000px"
+  [saving]="cargaAplicando()" [canSave]="cargaPuedeAplicar()" saveLabel="Aplicar"
+  (cancel)="cerrarCarga()" (save)="aplicarCarga()">
+  <div class="space-y-4 text-sm">
+    <ol class="list-decimal ps-5 space-y-1 text-muted-foreground">
+      <li>Descarga la plantilla y rellena una fila por producto (energía en €/kWh, potencia en €/kW·día, sin IVA).</li>
+      <li>Sube el Excel: verás qué se hará con cada fila antes de tocar nada.</li>
+      <li>Los productos que ya usan contratos no se modifican: se crea una versión nueva.</li>
+    </ol>
+    <div class="flex flex-wrap items-end gap-4">
+      <button type="button" (click)="descargarPlantilla()"
+        class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 font-medium hover:bg-accent">
+        <ui-icon name="download" [size]="16" /> Descargar plantilla
+      </button>
+      <div class="campo flex flex-col gap-1">
+        <label for="carga-archivo" class="font-medium">Archivo Excel (.xlsx)</label>
+        <input id="carga-archivo" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          aria-describedby="carga-ayuda" (change)="onArchivoCarga($event)"
+          class="text-sm file:me-3 file:rounded-lg file:border file:border-border file:bg-card file:px-3 file:py-2 file:font-medium" />
+        <span id="carga-ayuda" class="text-xs text-muted-foreground">Máximo 200 filas. Decimales con coma o punto.</span>
+      </div>
+    </div>
+
+    <div role="status" aria-live="polite">
+      @if (cargaLeyendo()) {
+        <p class="text-muted-foreground">Leyendo el Excel…</p>
+      } @else if (cargaPreview(); as p) {
+        <p>
+          <strong>{{ p.filas.length }}</strong> filas:
+          {{ p.crear }} a crear, {{ p.actualizar }} a actualizar, {{ p.nuevaVersion }} versiones nuevas,
+          {{ p.sinCambios }} sin cambios
+          @if (p.errores > 0) { · <span class="text-danger-fg font-medium">{{ p.errores }} con error: corrígelas y vuelve a subir el archivo</span> }
+        </p>
+      }
+    </div>
+    @if (cargaError(); as msg) {
+      <p class="rounded-lg border border-danger/40 bg-danger-soft text-danger-fg px-3 py-2" role="alert">Error: {{ msg }}</p>
+    }
+
+    @if (cargaPreview(); as p) {
+      <div class="overflow-auto max-h-[50vh] rounded-lg border border-border" tabindex="0" role="region" aria-labelledby="carga-caption">
+        <table class="w-full text-xs">
+          <caption id="carga-caption" class="sr-only">Vista previa de la carga de precios</caption>
+          <thead class="sticky top-0 z-10 bg-card">
+            <tr class="border-b border-border text-left text-muted-foreground">
+              <th scope="col" class="py-2 px-2 font-medium text-right">Fila</th>
+              <th scope="col" class="py-2 px-2 font-medium">Nombre</th>
+              <th scope="col" class="py-2 px-2 font-medium">Tipo</th>
+              <th scope="col" class="py-2 px-2 font-medium">Energía (€/kWh)</th>
+              <th scope="col" class="py-2 px-2 font-medium">Potencia (€/kW·día)</th>
+              <th scope="col" class="py-2 px-2 font-medium">Activa</th>
+              <th scope="col" class="py-2 px-2 font-medium">Acción</th>
+              <th scope="col" class="py-2 px-2 font-medium">Detalle</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (f of p.filas; track f.fila) {
+              <tr class="border-b border-border/50 align-top" [class.bg-danger-soft]="f.accion === 'ERROR'">
+                <td class="py-1.5 px-2 text-right tabular-nums">{{ f.fila }}</td>
+                <th scope="row" class="py-1.5 px-2 text-left font-medium">{{ f.nombre ?? '—' }}</th>
+                <td class="py-1.5 px-2">{{ f.tipo ?? '—' }}</td>
+                <td class="py-1.5 px-2 tabular-nums">{{ periodos(f.energia) }}</td>
+                <td class="py-1.5 px-2 tabular-nums">{{ periodos(f.potencia) }}</td>
+                <td class="py-1.5 px-2">{{ f.activa == null ? '—' : f.activa ? 'Sí' : 'No' }}</td>
+                <td class="py-1.5 px-2"><app-status-badge [tone]="tonoAccion(f.accion)">{{ accionLabel[f.accion] }}</app-status-badge></td>
+                <td class="py-1.5 px-2">
+                  @if (f.accion === 'ERROR') { <span class="text-danger-fg">Error: {{ f.motivo }}</span> }
+                  @else if (f.accion === 'NUEVA_VERSION') { {{ f.motivo }}: <strong>{{ f.nombreResultado }}</strong> }
+                  @else { {{ f.motivo ?? '' }} }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</app-form-dialog>

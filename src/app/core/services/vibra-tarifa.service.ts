@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { VibraTarifa, VibraTarifaFilter, VibraTarifaPayload } from '../models';
+import { CargaTarifasResponse, VibraTarifa, VibraTarifaFilter, VibraTarifaPayload } from '../models';
 import { buildParams } from '../http/http-params.util';
 
 @Injectable({ providedIn: 'root' })
@@ -32,6 +32,17 @@ export class VibraTarifaService {
   /** Interruptor Activa/Inactiva de la lista (solo admin). */
   cambiarActiva(id: string, activa: boolean): Observable<VibraTarifa> {
     return this.http.patch<VibraTarifa>(`${this.baseUrl}/${id}/activa`, { activa });
+  }
+
+  plantilla(): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/plantilla.xlsx`, { responseType: 'blob' });
+  }
+
+  /** Carga de precios: aplicar=false devuelve la vista previa; con errores y aplicar=true responde 422. */
+  cargar(file: File, aplicar: boolean): Observable<CargaTarifasResponse> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<CargaTarifasResponse>(`${this.baseUrl}/carga`, form, { params: buildParams({ aplicar }) });
   }
 
   delete(id: string): Observable<void> {

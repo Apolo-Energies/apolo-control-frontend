@@ -69,6 +69,14 @@ export class VibraAltaService {
     return this.http.patch<VibraAlta>(`${this.baseUrl}/${id}/liquidacion-colaborador`, payload);
   }
 
+  contratoPdf(id: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/${id}/contrato.pdf`, { responseType: 'blob' });
+  }
+
+  enviarContrato(id: string): Observable<VibraAlta> {
+    return this.http.post<VibraAlta>(`${this.baseUrl}/${id}/enviar-contrato`, {});
+  }
+
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }

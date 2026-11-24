@@ -249,6 +249,17 @@
                 <button (click)="verDetalle(r.id)" class="p-1 hover:bg-info-soft rounded" title="Ver detalle">
                   <ui-icon name="eye" [size]="16" />
                 </button>
+                <button type="button" (click)="verContrato(r)" class="p-1 hover:bg-info-soft rounded ml-1"
+                  title="Ver contrato (PDF)" [attr.aria-label]="'Ver contrato de ' + (r.titular ?? '')">
+                  <ui-icon name="file-text" [size]="16" />
+                </button>
+                @if (puedeAdministrar()) {
+                  <button type="button" (click)="askEnviarContrato(r)" class="p-1 hover:bg-info-soft rounded ml-1"
+                    [class.text-success-fg]="!!r.contratoEnviadoAt"
+                    [title]="envioLabel(r)" [attr.aria-label]="envioLabel(r) + ': ' + (r.titular ?? '')">
+                    <ui-icon name="mail" [size]="16" />
+                  </button>
+                }
                 <button (click)="openEdit(r)" class="p-1 hover:bg-info-soft rounded ml-1" title="Editar">
                   <ui-icon name="edit" [size]="16" />
                 </button>
@@ -304,6 +315,26 @@
     <div class="py-8 text-center text-muted-foreground">Cargando…</div>
   } @else if (detailData(); as d) {
     <div class="space-y-4 py-2 text-sm">
+      <section>
+        <h4 class="text-xs font-semibold uppercase text-muted-foreground mb-2">Contrato</h4>
+        <div class="grid grid-cols-3 gap-3">
+          <div><dt class="text-xs text-muted-foreground">Nº de contrato</dt><dd class="tabular-nums">{{ d.numeroContrato ?? '—' }}</dd></div>
+          <div><dt class="text-xs text-muted-foreground">Producto</dt><dd>{{ nombreProducto(d.tarifaId) }}</dd></div>
+          <div><dt class="text-xs text-muted-foreground">Último envío</dt><dd class="tabular-nums">{{ d.contratoEnviadoAt ? fmtDateTime(d.contratoEnviadoAt) : 'No enviado' }}</dd></div>
+        </div>
+        <div class="flex flex-wrap gap-2 mt-3">
+          <button type="button" (click)="verContrato(d)"
+            class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-accent">
+            <ui-icon name="file-text" [size]="16" /> Ver contrato
+          </button>
+          @if (puedeAdministrar()) {
+            <button type="button" (click)="askEnviarContrato(d)"
+              class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-accent">
+              <ui-icon name="mail" [size]="16" /> {{ d.contratoEnviadoAt ? 'Reenviar contrato' : 'Enviar contrato' }}
+            </button>
+          }
+        </div>
+      </section>
       <section>
         <h4 class="text-xs font-semibold uppercase text-muted-foreground mb-2">Suministro</h4>
         <div class="grid grid-cols-2 gap-3">
@@ -406,6 +437,48 @@
   width="900px"
   (cancel)="closeDialog()" (save)="submit()">
   <form [formGroup]="form" class="space-y-4">
+    <fieldset class="border border-border rounded-lg p-3">
+      <legend class="text-sm font-semibold px-2">Contrato</legend>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="campo">
+          <label for="alta-producto" class="text-sm font-medium">Producto</label>
+          <select id="alta-producto" formControlName="tarifaId" aria-describedby="alta-producto-ayuda"
+            class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
+            <option [ngValue]="null">— Sin producto —</option>
+            @for (t of productosSeleccionables(); track t.id) {
+              <option [ngValue]="t.id">{{ t.nombre }} ({{ t.tipo }}){{ t.activa ? '' : ' · inactivo' }}</option>
+            }
+          </select>
+          <span id="alta-producto-ayuda" class="text-xs text-muted-foreground">Precios del contrato. Solo productos activos.</span>
+        </div>
+        @if (!editing() && puedeAdministrar()) {
+          <div class="flex items-start gap-2 pt-7">
+            <input id="alta-enviar-contrato" type="checkbox" formControlName="enviarContrato" aria-describedby="alta-enviar-ayuda" class="mt-0.5" />
+            <div>
+              <label for="alta-enviar-contrato" class="text-sm font-medium">Enviar el contrato al cliente al crear</label>
+              <p id="alta-enviar-ayuda" class="text-xs text-muted-foreground">Se envía en PDF al email del alta si hay producto y el email es válido.</p>
+            </div>
+          </div>
+        }
+      </div>
+      <div class="mt-3">
+        <span class="text-sm font-medium" id="alta-potencias-label">Potencias contratadas (kW)</span>
+        <div class="grid grid-cols-6 gap-2 mt-1" role="group" aria-labelledby="alta-potencias-label">
+          @for (p of potencias; track p) {
+            <div>
+              <label [for]="'alta-potencia-' + p" class="text-xs text-muted-foreground">P{{ p }}</label>
+              <input [id]="'alta-potencia-' + p" type="number" min="0" step="0.001" inputmode="decimal"
+                [formControlName]="'potenciaP' + p"
+                class="w-full border border-border rounded-lg px-2 py-1.5 text-sm bg-input tabular-nums"/>
+            </div>
+          }
+        </div>
+      </div>
+      @if (!editing()) {
+        <p class="text-xs text-muted-foreground mt-3">Al crear: si el NIF/CIF o el CUPS no existen en Clientes se dan de alta con estos datos.</p>
+      }
+    </fieldset>
+
     <div class="grid grid-cols-2 gap-3">
       <div>
         <label class="text-sm font-medium">CUPS</label>
@@ -457,8 +530,8 @@
         <input formControlName="provincia" placeholder="Provincia" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
       <div>
-        <label class="text-sm font-medium">Potencia</label>
-        <input formControlName="potenciaOriginal" placeholder="P1: 5 | P2: 5 | ..." class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        <label for="alta-potencia-original" class="text-sm font-medium">Potencia (texto original)</label>
+        <input id="alta-potencia-original" formControlName="potenciaOriginal" placeholder="P1: 5 | P2: 5 | ..." class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
 
       <div>
@@ -466,8 +539,9 @@
         <input formControlName="cuentaBancaria" placeholder="Cuenta bancaria (IBAN)" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
       </div>
       <div>
-        <label class="text-sm font-medium">NIF/CIF</label>
-        <input formControlName="nifCif" placeholder="NIF/CIF" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
+        <label for="alta-nif" class="text-sm font-medium">NIF/CIF</label>
+        <input id="alta-nif" formControlName="nifCif" placeholder="NIF/CIF" autocomplete="off" autocapitalize="characters" spellcheck="false"
+          class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
       </div>
 
       <div>
@@ -536,3 +610,16 @@
     </div>
   </form>
 </app-form-dialog>
+
+<!-- Confirmar envío del contrato -->
+<app-confirm-dialog
+  [open]="confirmEnvioOpen()"
+  [title]="pendingEnvio()?.contratoEnviadoAt ? 'Reenviar contrato' : 'Enviar contrato'"
+  [message]="'Se enviará el contrato en PDF a ' + (pendingEnvio()?.email ?? '(sin email)') + '.'
+    + (pendingEnvio()?.contratoEnviadoAt ? ' Último envío: ' + fmtDateTime(pendingEnvio()!.contratoEnviadoAt) + '.' : '')"
+  [confirmLabel]="pendingEnvio()?.contratoEnviadoAt ? 'Reenviar' : 'Enviar'"
+  [loading]="enviando()"
+  tone="info"
+  icon="mail"
+  (confirm)="doEnviarContrato()"
+  (cancel)="cancelEnviarContrato()" />

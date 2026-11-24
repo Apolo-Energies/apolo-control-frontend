@@ -14,7 +14,11 @@ import { Icon } from '../../../shared/icons/icon';
 import { VibraTarifaService } from '../../../core/services/vibra-tarifa.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { AuthService } from '../../../core/auth';
-import { VibraTarifa, VibraTarifaPayload } from '../../../core/models';
+import {
+  ACCION_CARGA_TARIFA_LABEL, AccionCargaTarifa, CargaTarifasResponse, VibraTarifa, VibraTarifaPayload,
+} from '../../../core/models';
+import { mensajeError } from '../../../shared/utils/http-error';
+import { StatusTone } from '../../../shared/components/status-badge/status-badge';
 import { parsePrecios } from '../../../shared/utils/format';
 
 @Component({
@@ -71,6 +75,19 @@ export class VibraPreciario {
     p5Potencia: [null as number | null],
     p6Potencia: [null as number | null],
   });
+
+  // Carga de precios desde la plantilla Excel (solo admin)
+  protected readonly cargaOpen = signal(false);
+  protected readonly cargaArchivo = signal<File | null>(null);
+  protected readonly cargaPreview = signal<CargaTarifasResponse | null>(null);
+  protected readonly cargaLeyendo = signal(false);
+  protected readonly cargaAplicando = signal(false);
+  protected readonly cargaError = signal<string | null>(null);
+  protected readonly cargaPuedeAplicar = computed(() => {
+    const p = this.cargaPreview();
+    return !!p && p.errores === 0 && p.crear + p.actualizar + p.nuevaVersion > 0;
+  });
+  protected readonly accionLabel = ACCION_CARGA_TARIFA_LABEL;
 
   constructor() { this.load(); }
 
@@ -174,6 +191,84 @@ export class VibraPreciario {
         this.notify.error(err.error?.message ?? 'No se pudo cambiar el estado');
       },
     });
+  }
+
+  // ── Carga de precios ─────────────────────────────────────
+
+  protected abrirCarga(): void {
+    this.cargaArchivo.set(null);
+    this.cargaPreview.set(null);
+    this.cargaError.set(null);
+    this.cargaOpen.set(true);
+  }
+
+  protected cerrarCarga(): void { this.cargaOpen.set(false); }
+
+  protected descargarPlantilla(): void {
+    this.service.plantilla().subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'vibra-plantilla-precios.xlsx';
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
+      },
+      error: () => this.notify.error('No se pudo descargar la plantilla'),
+    });
+  }
+
+  /** Al elegir archivo se pide la vista previa (no cambia nada). */
+  protected onArchivoCarga(ev: Event): void {
+    const file = (ev.target as HTMLInputElement).files?.[0] ?? null;
+    this.cargaArchivo.set(file);
+    this.cargaPreview.set(null);
+    this.cargaError.set(null);
+    if (!file) return;
+    this.cargaLeyendo.set(true);
+    this.service.cargar(file, false).subscribe({
+      next: (r) => { this.cargaPreview.set(r); this.cargaLeyendo.set(false); },
+      error: (err: HttpErrorResponse) => {
+        this.cargaLeyendo.set(false);
+        this.cargaError.set(mensajeError(err, 'No se pudo leer el Excel'));
+      },
+    });
+  }
+
+  protected aplicarCarga(): void {
+    const file = this.cargaArchivo();
+    if (!file || !this.cargaPuedeAplicar()) return;
+    this.cargaAplicando.set(true);
+    this.service.cargar(file, true).subscribe({
+      next: (r) => {
+        this.cargaAplicando.set(false);
+        this.notify.success(`Precios cargados: ${r.crear} nuevos, ${r.actualizar} actualizados, ${r.nuevaVersion} versiones nuevas`);
+        this.cerrarCarga();
+        this.load();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.cargaAplicando.set(false);
+        // 422: hay filas con error; trae la vista previa actualizada
+        if (err.status === 422 && err.error?.filas) this.cargaPreview.set(err.error as CargaTarifasResponse);
+        this.cargaError.set(mensajeError(err, 'No se aplicó ningún cambio: revisa las filas con error'));
+      },
+    });
+  }
+
+  protected tonoAccion(a: AccionCargaTarifa): StatusTone {
+    switch (a) {
+      case 'CREAR': return 'success';
+      case 'ACTUALIZAR': return 'info';
+      case 'NUEVA_VERSION': return 'purple';
+      case 'ERROR': return 'danger';
+      default: return 'neutral';
+    }
+  }
+
+  /** Precios de una fila de la carga: los periodos con valor, separados por « · ». */
+  protected periodos(valores: (number | null)[]): string {
+    const v = valores.map((n, i) => (n == null ? null : `P${i + 1} ${n.toLocaleString('es-ES', { maximumFractionDigits: 6 })}`))
+      .filter((x): x is string => x !== null);
+    return v.length ? v.join(' · ') : '—';
   }
 
   protected fmt(n: number | null): string {

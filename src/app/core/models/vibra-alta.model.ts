@@ -74,6 +74,14 @@ export interface VibraAlta {
   historialLiquidaciones: string | null;
   comentarios: string | null;
 
+  /** Producto (tarifa Vibra) del contrato. */
+  tarifaId: string | null;
+  /** Nº de Kilowy en las importadas; si no, el propio. */
+  numeroContrato: string | null;
+  contratoEnviadoAt: string | null;
+  /** Solo al crear con envío: por qué no se envió el contrato. */
+  avisoContrato?: string | null;
+
   createdAt: string;
   updatedAt: string;
 }
@@ -115,6 +123,10 @@ export interface VibraAltaPayload {
   comisionComercializadora?: number | null;
   historialLiquidaciones?: string | null;
   comentarios?: string | null;
+  /** Al editar, null = no cambia el producto. */
+  tarifaId?: string | null;
+  /** Solo al crear: envía el contrato al email del alta. */
+  enviarContrato?: boolean;
 }
 
 export interface KilowySyncResult {
