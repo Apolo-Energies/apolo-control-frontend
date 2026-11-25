@@ -46,7 +46,7 @@ export interface VibraImpagoGestionPayload {
   volverLlamar?: string | null;
 }
 
-export type MotivoAvisoImpago = 'ENVIADO' | 'PAGADO' | 'SIN_EMAIL' | 'ERROR_CORREO';
+export type MotivoAvisoImpago = 'ENVIADO' | 'PAGADO' | 'NO_AVISABLE' | 'SIN_EMAIL' | 'ERROR_CORREO';
 
 export interface VibraImpagoAviso {
   motivo: MotivoAvisoImpago;
