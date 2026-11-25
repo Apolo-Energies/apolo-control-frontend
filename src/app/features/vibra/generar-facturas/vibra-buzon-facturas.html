@@ -1,0 +1,138 @@
+<section class="rounded-2xl border border-border bg-card p-6 mb-4 flex flex-col gap-3 text-sm" aria-labelledby="buzon-titulo">
+  <div class="flex flex-wrap items-start gap-3">
+    <div class="flex-1 min-w-0">
+      <h2 id="buzon-titulo" class="font-medium text-base">Buzón de facturas {{ estado()?.buzon ?? '' }}</h2>
+      <p class="text-muted-foreground mt-1">
+        Se lee el buzón sin marcar nada como leído: los PDF adjuntos (Apolo) y los enlaces de descarga (Endesa, Repsol…)
+        crean su borrador con el contrato del CUPS. Lo que no casa queda «No procesado» con el motivo.
+      </p>
+    </div>
+    <button type="button" (click)="leer()" [disabled]="leyendo() || !estado()?.configurado || estado()?.leyendo"
+      class="inline-flex items-center gap-2 rounded-lg bg-primary-button text-primary-foreground px-4 py-2 font-medium disabled:opacity-50">
+      <ui-icon name="refresh-cw" [size]="16" />
+      {{ leyendo() || estado()?.leyendo ? 'Leyendo…' : 'Leer ahora' }}
+    </button>
+  </div>
+
+  @if (estado(); as e) {
+    <dl class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div>
+        <dt class="text-muted-foreground">Lectura automática</dt>
+        <dd>
+          @if (!e.configurado) {
+            <app-status-badge tone="danger">Sin configurar</app-status-badge>
+            <div class="text-muted-foreground mt-1">Faltan las variables VIBRA_BUZON_* del servidor</div>
+          } @else if (e.habilitado) {
+            <app-status-badge tone="success">Activada</app-status-badge> {{ horario() }} · últimos {{ e.diasAtras }} días
+          } @else {
+            <app-status-badge tone="neutral">Apagada</app-status-badge>
+            <div class="text-muted-foreground mt-1">Se enciende en Ajustes (vibra.buzon.habilitado)</div>
+          }
+        </dd>
+      </div>
+      <div>
+        <dt class="text-muted-foreground">Última lectura</dt>
+        <dd>
+          @if (e.ultimaLectura) {
+            <span class="tabular-nums">{{ fmtFechaHora(e.ultimaLectura) }}</span>
+            @if (e.ultimoResultado === 'ERROR') { <app-status-badge tone="danger">Error</app-status-badge> }
+            <div class="text-muted-foreground mt-1">{{ e.ultimoDetalle }}</div>
+          } @else {
+            Nunca
+          }
+        </dd>
+      </div>
+      <div>
+        <dt class="text-muted-foreground">Por revisar</dt>
+        <dd class="tabular-nums">{{ e.noProcesados }} no procesados · {{ e.errores }} con error</dd>
+      </div>
+    </dl>
+  }
+  <p role="status" class="text-foreground empty:hidden">{{ aviso() }}</p>
+</section>
+
+<div class="flex flex-wrap items-center gap-2 mb-4" role="group" aria-label="Filtro de correos">
+  <button type="button" [attr.aria-pressed]="!soloPendientes()" (click)="filtrar(false)"
+    class="rounded-lg border border-border px-3 py-1.5 text-sm aria-pressed:bg-accent aria-pressed:font-medium hover:bg-accent">Todos</button>
+  <button type="button" [attr.aria-pressed]="soloPendientes()" (click)="filtrar(true)"
+    class="rounded-lg border border-border px-3 py-1.5 text-sm aria-pressed:bg-accent aria-pressed:font-medium hover:bg-accent">
+    Por revisar <span class="tabular-nums">({{ pendientes() }})</span>
+  </button>
+</div>
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4">
+    {{ msg }} <button type="button" (click)="load()" class="ml-2 underline">Reintentar</button>
+  </div>
+}
+
+@if (loading() && !result()) {
+  <app-table-skeleton [cols]="5" [rows]="6" />
+} @else {
+  <div class="rounded-2xl border border-border bg-card overflow-hidden">
+    <div class="overflow-auto max-h-[70vh]" tabindex="0" role="region" aria-labelledby="buzon-caption">
+      <table class="w-full text-sm">
+        <caption id="buzon-caption" class="text-left px-4 py-3 font-medium">
+          {{ soloPendientes() ? 'Correos por revisar' : 'Correos leídos' }} ({{ total() }})
+        </caption>
+        <thead class="sticky top-0 z-10 bg-card">
+          <tr class="border-b border-border text-left text-muted-foreground">
+            <th scope="col" class="py-3 px-4 font-medium">Recibido</th>
+            <th scope="col" class="py-3 px-4 font-medium">Remitente</th>
+            <th scope="col" class="py-3 px-4 font-medium">Asunto</th>
+            <th scope="col" class="py-3 px-4 font-medium">Estado</th>
+            <th scope="col" class="py-3 px-4"><span class="sr-only">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of rows(); track c.id) {
+            <tr class="border-b border-border/50 align-top">
+              <td class="py-2 px-4 tabular-nums whitespace-nowrap">{{ fmtFechaHora(c.fecha) }}</td>
+              <td class="py-2 px-4 break-all">
+                {{ c.comercializadora ?? 'No reconocido' }}
+                <div class="text-xs text-muted-foreground">{{ c.remitente }}</div>
+              </td>
+              <th scope="row" class="py-2 px-4 font-normal text-left break-words">
+                {{ c.asunto ?? '(sin asunto)' }}
+                @if (c.nombreArchivo) { <div class="text-xs text-muted-foreground break-all">{{ c.nombreArchivo }}</div> }
+              </th>
+              <td class="py-2 px-4">
+                <app-status-badge [tone]="tone(c.estado)">{{ estadoLabel[c.estado] }}</app-status-badge>
+                @if (c.motivo) { <div class="mt-1" [class.text-danger-fg]="c.estado === 'ERROR'">{{ c.motivo }}</div> }
+                @if (c.intentos > 1) { <div class="text-xs text-muted-foreground">{{ c.intentos }} intentos</div> }
+              </td>
+              <td class="py-2 px-4">
+                <div class="flex flex-wrap justify-end gap-x-3 gap-y-1 whitespace-nowrap">
+                  @if (c.facturaId) {
+                    <a [routerLink]="['/vibra/facturas', c.facturaId]" class="underline">Revisar borrador</a>
+                  }
+                  @if (c.tienePdf) {
+                    <button type="button" (click)="verPdf(c)" class="underline">Ver PDF</button>
+                  }
+                  @if (c.enlace && c.estado !== 'PROCESADO') {
+                    <a [href]="c.enlace" target="_blank" rel="noopener noreferrer" class="underline">Abrir enlace</a>
+                  }
+                  @if (puedeReintentar(c)) {
+                    <button type="button" (click)="reintentar(c)" [disabled]="reintentando() !== null" class="underline disabled:opacity-50">
+                      {{ reintentando() === c.id ? 'Reintentando…' : 'Reintentar' }}
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5" class="py-8 px-4 text-center text-muted-foreground">
+                {{ soloPendientes() ? 'Nada por revisar' : 'Aún no se ha leído ningún correo' }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (totalPages() > 1) {
+      <app-pagination [page]="page()" [pageSize]="size()" [totalElements]="total()" [totalPages]="totalPages()"
+        (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+    }
+  </div>
+}

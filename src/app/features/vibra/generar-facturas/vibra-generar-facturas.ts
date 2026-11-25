@@ -7,22 +7,30 @@ import { PageHeader } from '../../../shared/components/page-header/page-header';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { Icon } from '../../../shared/icons/icon';
 import { mensajeError } from '../../../shared/utils/http-error';
+import { VibraBuzonFacturas } from './vibra-buzon-facturas';
 
 import { VibraFacturaService } from '../../../core/services/vibra-factura.service';
+import { AuthService } from '../../../core/auth';
 import { MAX_PDF_COMPRA_BYTES, ResultadoCompraVibra } from '../../../core/models';
 
 /**
  * «Generar facturas» (como Lotes de Kilowy): se suben los PDF de compra de la comercializadora y
  * cada uno se lee con el OCR y crea su borrador. Se mandan de uno en uno para ver el avance.
+ * Pestaña «Buzón de facturas»: las que llegan solas por correo.
  */
 @Component({
   selector: 'app-vibra-generar-facturas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, PageHeader, StatusBadge, Icon],
+  imports: [RouterLink, PageHeader, StatusBadge, Icon, VibraBuzonFacturas],
   templateUrl: './vibra-generar-facturas.html',
 })
 export class VibraGenerarFacturas {
   private readonly service = inject(VibraFacturaService);
+  private readonly auth = inject(AuthService);
+
+  /** Pestaña: subida a mano o buzón (ADMIN, CONTABILIDAD; como el backend). */
+  protected readonly tab = signal<'subir' | 'buzon'>('subir');
+  protected readonly puedeVerBuzon = computed(() => this.auth.hasRole('admin', 'contabilidad'));
 
   protected readonly archivos = signal<File[]>([]);
   protected readonly resultados = signal<ResultadoCompraVibra[]>([]);

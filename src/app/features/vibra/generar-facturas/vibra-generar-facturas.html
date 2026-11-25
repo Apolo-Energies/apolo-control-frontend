@@ -2,6 +2,22 @@
   <a routerLink="/vibra/facturas" class="text-sm text-muted-foreground hover:text-foreground">← Facturas</a>
 </app-page-header>
 
+@if (puedeVerBuzon()) {
+  <div class="tablist mb-4" focusgroup="tablist nomemory" role="tablist" aria-label="Facturas de compra">
+    <button type="button" role="tab" id="tab-subir" [attr.aria-selected]="tab() === 'subir'"
+      [attr.focusgroupstart]="tab() === 'subir' ? '' : null" (click)="tab.set('subir')">Subir PDF</button>
+    <button type="button" role="tab" id="tab-buzon" [attr.aria-selected]="tab() === 'buzon'"
+      [attr.focusgroupstart]="tab() === 'buzon' ? '' : null" (click)="tab.set('buzon')">Buzón de facturas</button>
+  </div>
+
+  <div role="tabpanel" aria-labelledby="tab-buzon" [hidden]="tab() !== 'buzon'">
+    @if (tab() === 'buzon') { <app-vibra-buzon-facturas /> }
+  </div>
+}
+
+<div [attr.role]="puedeVerBuzon() ? 'tabpanel' : null" [attr.aria-labelledby]="puedeVerBuzon() ? 'tab-subir' : null"
+  [hidden]="tab() !== 'subir'">
+
 <form class="rounded-2xl border border-border bg-card p-6 mb-4 flex flex-col gap-4 text-sm" aria-labelledby="gen-titulo"
   (submit)="$event.preventDefault(); procesar(fileInput)">
   <h2 id="gen-titulo" class="sr-only">Subir facturas de compra</h2>
@@ -77,3 +93,4 @@
     </div>
   </div>
 }
+</div>
