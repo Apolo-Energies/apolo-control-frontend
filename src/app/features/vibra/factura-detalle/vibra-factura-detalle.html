@@ -43,6 +43,12 @@
           <ui-icon name="refresh-cw" [size]="16" /> Re-leer compra
         </button>
       }
+      <span class="inline-flex items-center gap-2 text-sm">
+        <input id="enviar-al-emitir" type="checkbox" [checked]="enviarAlEmitir() && !!f.email" [disabled]="!f.email || !!ocupado()"
+          (change)="enviarAlEmitir.set($any($event.target).checked)" aria-describedby="enviar-al-emitir-ayuda" />
+        <label for="enviar-al-emitir">Enviar al emitir</label>
+        <span id="enviar-al-emitir-ayuda" class="text-xs text-muted-foreground">{{ f.email ? 'a ' + f.email : '(sin email del cliente)' }}</span>
+      </span>
       <button type="button" (click)="emitir()" [disabled]="!!ocupado()"
         class="inline-flex items-center gap-2 rounded-lg bg-primary-button text-primary-foreground px-4 py-2 text-sm font-medium disabled:opacity-50">
         <ui-icon name="check" [size]="16" /> Emitir factura

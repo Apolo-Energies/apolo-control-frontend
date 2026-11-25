@@ -42,7 +42,7 @@
     <select [(ngModel)]="estadoFilter" (change)="applyFilters()"
       class="border border-border rounded-lg px-3 py-2 text-sm bg-input">
       <option value="">Todos los estados</option>
-      @for (e of estadoValues; track e) {<option [value]="e">{{ e }}</option>}
+      @for (e of estadoValues; track e) {<option [value]="e">{{ estadoLabel[e] }}</option>}
     </select>
     <button (click)="applyFilters()" class="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90">
       Buscar
@@ -56,11 +56,12 @@
   }
 
   @if (loading() && !result()) {
-    <app-table-skeleton [cols]="10" [rows]="8" />
+    <app-table-skeleton [cols]="11" [rows]="8" />
   } @else {
     <div class="rounded-2xl border border-border bg-card overflow-hidden">
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto" tabindex="0" role="region" aria-labelledby="impagos-caption">
         <table class="w-full text-sm">
+          <caption id="impagos-caption" class="sr-only">Impagos de Vibra</caption>
           <thead>
             <tr class="border-b border-border text-left text-muted-foreground bg-neutral-soft/50">
               <th (click)="setSort('fechaDevolucion')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
@@ -103,6 +104,7 @@
                   @if (sortField()==='motivoDevolucion') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
                 </span>
               </th>
+              <th class="py-3 px-4 font-medium">Gestión</th>
               <th class="py-3 px-4 font-medium">Comentarios</th>
               <th class="py-3 px-4 font-medium text-right">Acciones</th>
             </tr>
@@ -112,26 +114,49 @@
               <tr class="border-b border-border/50 hover:bg-accent/40">
                 <td class="py-2 px-4">{{ r.fechaDevolucion ?? '—' }}</td>
                 <td class="py-2 px-4">{{ r.cliente ?? '—' }}</td>
-                <td class="py-2 px-4 text-muted-foreground">{{ r.factura ?? '—' }}</td>
+                <td class="py-2 px-4 text-muted-foreground">
+                  @if (r.facturaId) {
+                    <a [routerLink]="['/vibra/facturas', r.facturaId]" class="underline hover:text-foreground">{{ r.factura }}</a>
+                    @if (r.facturaEstado) { <span class="block text-xs">{{ facturaLabel[r.facturaEstado] }}</span> }
+                  } @else {
+                    {{ r.factura ?? '—' }}
+                  }
+                </td>
                 <td class="py-2 px-4 text-right tabular-nums">{{ fmtEur(r.importe) }}</td>
                 <td class="py-2 px-4">
                   <app-status-badge [tone]="activoTone(r.activoBaja)">{{ r.activoBaja ?? '—' }}</app-status-badge>
                 </td>
                 <td class="py-2 px-4">
-                  <select (change)="changeEstado(r, $any($event.target).value)"
+                  <select #sel (change)="changeEstado(r, $any(sel.value), sel)" [attr.aria-label]="'Estado del impago de ' + (r.cliente ?? '')"
                     class="border border-border rounded-md px-2 py-1 text-xs bg-input">
                     @for (e of estadoValues; track e) {
-                      <option [value]="e" [selected]="r.estado === e">{{ e }}</option>
-                    }
-                    @if (r.estado && !estadoValues.includes($any(r.estado))) {
-                      <option [value]="r.estado" selected>{{ r.estado }}</option>
+                      <option [value]="e" [selected]="r.estado === e" [disabled]="e === 'PAGADO' && !!r.facturaId && !puedeCobrar()">{{ estadoLabel[e] }}</option>
                     }
                   </select>
                 </td>
                 <td class="py-2 px-4">{{ r.colaborador ?? '—' }}</td>
                 <td class="py-2 px-4 text-muted-foreground">{{ r.motivoDevolucion ?? '—' }}</td>
+                <td class="py-2 px-4 text-xs">
+                  @if (r.ultimaGestion; as g) {
+                    <span class="block">{{ resultadoLabel[g.resultado] }} · {{ fmtFecha(g.createdAt) }}</span>
+                    @if (g.volverLlamar) { <span class="block text-muted-foreground">Volver a llamar el {{ fmtFecha(g.volverLlamar) }}</span> }
+                  } @else {
+                    <span class="block text-muted-foreground">Sin gestionar</span>
+                  }
+                  @if (r.avisadoAt) { <span class="block text-muted-foreground">Avisado el {{ fmtFecha(r.avisadoAt) }}</span> }
+                  @if (r.recargo) {
+                    <span class="block text-muted-foreground">Recargo {{ fmtEur(r.recargo) }} · {{ r.recargoFacturado ? 'en factura' : 'en la próxima factura' }}</span>
+                  }
+                </td>
                 <td class="py-2 px-4 text-muted-foreground text-xs max-w-xs truncate">{{ r.comentarios ?? '—' }}</td>
                 <td class="py-2 px-4 text-right whitespace-nowrap">
+                  <button type="button" (click)="abrirGestion(r)" class="px-2 py-1 text-xs rounded border border-border hover:bg-accent mr-1">Gestión…</button>
+                  @if (puedeCobrar() && r.estado !== 'PAGADO' && r.facturaId) {
+                    <button type="button" (click)="avisar(r)" [disabled]="avisando() === r.id"
+                      class="px-2 py-1 text-xs rounded border border-border hover:bg-accent mr-1 disabled:opacity-50">
+                      {{ avisando() === r.id ? 'Enviando…' : 'Avisar por correo' }}
+                    </button>
+                  }
                   <button (click)="verDetalle(r.id)" class="p-1 hover:bg-info-soft rounded" title="Ver detalle">
                     <ui-icon name="eye" [size]="16" />
                   </button>
@@ -145,7 +170,7 @@
               </tr>
             }
             @if (rows().length === 0) {
-              <tr><td colspan="10" class="py-16">
+              <tr><td colspan="11" class="py-16">
                 <div class="flex flex-col items-center gap-2 text-muted-foreground">
                   <ui-icon name="search" [size]="40" class="opacity-30"/>
                   <p class="font-medium text-base">Sin impagos</p>
@@ -196,7 +221,9 @@
       <div class="grid grid-cols-2 gap-3">
         <div><dt class="text-xs text-muted-foreground">Fecha devolución</dt><dd class="tabular-nums">{{ d.fechaDevolucion ?? '—' }}</dd></div>
         <div><dt class="text-xs text-muted-foreground">Importe</dt><dd class="font-medium tabular-nums">{{ fmtEur(d.importe) }}</dd></div>
-        <div><dt class="text-xs text-muted-foreground">Estado</dt><dd><app-status-badge [tone]="estadoTone(d.estado)">{{ d.estado ?? '—' }}</app-status-badge></dd></div>
+        <div><dt class="text-xs text-muted-foreground">Estado</dt><dd><app-status-badge [tone]="estadoTone(d.estado)">{{ estadoLabel[d.estado] }}</app-status-badge></dd></div>
+        <div><dt class="text-xs text-muted-foreground">Aviso al cliente</dt><dd>{{ d.avisadoAt ? 'Avisado el ' + fmtFechaHora(d.avisadoAt) : 'Sin avisar' }}</dd></div>
+        <div><dt class="text-xs text-muted-foreground">Recargo por devolución</dt><dd>{{ d.recargo ? fmtEur(d.recargo) + (d.recargoFacturado ? ' (en factura)' : ' (próxima factura)') : '—' }}</dd></div>
         <div><dt class="text-xs text-muted-foreground">Activo/Baja</dt><dd><app-status-badge [tone]="activoTone(d.activoBaja)">{{ d.activoBaja ?? '—' }}</app-status-badge></dd></div>
         <div><dt class="text-xs text-muted-foreground">Colaborador</dt><dd>{{ d.colaborador ?? '—' }}</dd></div>
         <div><dt class="text-xs text-muted-foreground">Motivo devolución</dt><dd>{{ d.motivoDevolucion ?? '—' }}</dd></div>
@@ -261,7 +288,7 @@
       <div>
         <label class="text-sm font-medium">Estado</label>
         <select formControlName="estado" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
-          @for (e of estadoValues; track e) {<option [value]="e">{{ e }}</option>}
+          @for (e of estadoValues; track e) {<option [value]="e">{{ estadoLabel[e] }}</option>}
         </select>
       </div>
       <div>
@@ -278,4 +305,73 @@
       <textarea formControlName="comentarios" rows="3" placeholder="Comentarios" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"></textarea>
     </div>
   </form>
+</app-form-dialog>
+
+<!-- Confirmar pagado: paga también la factura -->
+<app-confirm-dialog
+  [open]="!!pendientePago()"
+  title="Marcar pagado"
+  [message]="'La factura ' + (pendientePago()?.factura ?? '') + ' pasará a pagada con fecha de hoy. ¿Continuar?'"
+  confirmLabel="Marcar pagado"
+  (confirm)="confirmarPago()"
+  (cancel)="pendientePago.set(null)" />
+
+<!-- Gestiones de cobro -->
+<app-form-dialog
+  [open]="!!gestionImpago()"
+  [title]="'Gestión del cobro · ' + (gestionImpago()?.cliente ?? '')"
+  [subtitle]="gestionImpago()?.factura ?? null"
+  saveLabel="Apuntar gestión"
+  [saving]="gestionGuardando()"
+  width="640px"
+  (cancel)="cerrarGestion()" (save)="guardarGestion()">
+  <form [formGroup]="gestionForm" (ngSubmit)="guardarGestion()" class="space-y-3" aria-label="Nueva gestión">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="campo">
+        <label for="gestion-resultado" class="text-sm font-medium">Resultado <span aria-hidden="true">*</span></label>
+        <select id="gestion-resultado" formControlName="resultado" required aria-describedby="gestion-resultado-error"
+          class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
+          <option value="" disabled>Elige…</option>
+          @for (x of resultados; track x) {<option [value]="x">{{ resultadoLabel[x] }}</option>}
+        </select>
+        @if (gestionForm.controls.resultado.touched && gestionForm.controls.resultado.invalid) {
+          <span id="gestion-resultado-error" class="text-xs text-danger-fg" aria-live="polite">Error: elige el resultado de la gestión</span>
+        }
+      </div>
+      <div class="campo">
+        <label for="gestion-telefono" class="text-sm font-medium">Teléfono</label>
+        <input id="gestion-telefono" type="tel" formControlName="telefono" maxlength="30" autocomplete="off" inputmode="tel"
+          class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+      <div class="campo">
+        <label for="gestion-volver" class="text-sm font-medium">Volver a llamar</label>
+        <input id="gestion-volver" type="date" formControlName="volverLlamar"
+          class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+      </div>
+    </div>
+    <div class="campo">
+      <label for="gestion-nota" class="text-sm font-medium">Nota</label>
+      <textarea id="gestion-nota" formControlName="nota" rows="3" maxlength="2000"
+        class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"></textarea>
+    </div>
+  </form>
+
+  <h3 class="text-sm font-semibold mt-5 mb-2">Historial</h3>
+  @if (gestionesCargando()) {
+    <p class="text-sm text-muted-foreground">Cargando…</p>
+  } @else if (gestionesLista().length === 0) {
+    <p class="text-sm text-muted-foreground">Sin gestiones todavía.</p>
+  } @else {
+    <ol class="space-y-2 text-sm">
+      @for (g of gestionesLista(); track g.id) {
+        <li class="rounded-lg border border-border px-3 py-2">
+          <span class="font-medium">{{ resultadoLabel[g.resultado] }}</span>
+          <span class="text-muted-foreground"> · {{ fmtFechaHora(g.createdAt) }}{{ g.usuario ? ' · ' + g.usuario : '' }}</span>
+          @if (g.telefono) { <span class="block text-xs text-muted-foreground">Tel. {{ g.telefono }}</span> }
+          @if (g.volverLlamar) { <span class="block text-xs text-muted-foreground">Volver a llamar el {{ fmtFecha(g.volverLlamar) }}</span> }
+          @if (g.nota) { <p class="whitespace-pre-wrap mt-1">{{ g.nota }}</p> }
+        </li>
+      }
+    </ol>
+  }
 </app-form-dialog>

@@ -1,10 +1,58 @@
 import { EstadoFacturaVibra } from './vibra-factura.model';
 
-export type EstadoVibraImpago = 'Contactado' | 'Pdte. contactar' | 'Pagado';
+/** Estados del impago como Kilowy, más PAGADO (paga también la factura ligada). */
+export type EstadoVibraImpago =
+  | 'IMPAGADA' | 'PLAN_PAGOS' | 'ILOCALIZABLE' | 'BUROFAX' | 'RECLAMACION' | 'INCOBRABLE' | 'PAGADO';
 
 export const ESTADO_VIBRA_IMPAGO_VALUES: EstadoVibraImpago[] = [
-  'Pdte. contactar', 'Contactado', 'Pagado',
+  'IMPAGADA', 'PLAN_PAGOS', 'ILOCALIZABLE', 'BUROFAX', 'RECLAMACION', 'INCOBRABLE', 'PAGADO',
 ];
+
+export const ESTADO_VIBRA_IMPAGO_LABEL: Record<EstadoVibraImpago, string> = {
+  IMPAGADA: 'Impagada',
+  PLAN_PAGOS: 'Plan de pagos / fraccionada',
+  ILOCALIZABLE: 'Ilocalizable',
+  BUROFAX: 'Burofax enviado',
+  RECLAMACION: 'En reclamación judicial',
+  INCOBRABLE: 'Incobrable',
+  PAGADO: 'Pagado',
+};
+
+export type ResultadoGestionImpagoVibra = 'REGIRO' | 'TRANSFERENCIA' | 'TARJETA' | 'PROMESA' | 'ILOCALIZABLE' | 'OTRO';
+
+export const RESULTADO_GESTION_IMPAGO_LABEL: Record<ResultadoGestionImpagoVibra, string> = {
+  REGIRO: 'Volver a girar',
+  TRANSFERENCIA: 'Pagará por transferencia',
+  TARJETA: 'Pagará con tarjeta',
+  PROMESA: 'Promesa de pago',
+  ILOCALIZABLE: 'Ilocalizable',
+  OTRO: 'Otro',
+};
+
+export const RESULTADOS_GESTION_IMPAGO = Object.keys(RESULTADO_GESTION_IMPAGO_LABEL) as ResultadoGestionImpagoVibra[];
+
+export interface VibraImpagoGestion {
+  id: string;
+  resultado: ResultadoGestionImpagoVibra;
+  nota: string | null;
+  telefono: string | null;
+  volverLlamar: string | null;
+  usuario: string | null;
+  createdAt: string;
+}
+
+export interface VibraImpagoGestionPayload {
+  resultado: ResultadoGestionImpagoVibra;
+  nota?: string | null;
+  telefono?: string | null;
+  volverLlamar?: string | null;
+}
+
+export interface VibraImpagoAviso {
+  enviado: boolean;
+  mensaje: string;
+  avisadoAt: string | null;
+}
 
 export type ActivoBajaVibra = 'Activo' | 'Baja';
 
@@ -15,13 +63,21 @@ export interface VibraImpago {
   idExterno: string;
   cliente: string | null;
   factura: string | null;
+  /** Factura de Control ligada (null si el nº no casa). */
+  facturaId: string | null;
+  facturaEstado: EstadoFacturaVibra | null;
   importe: number | null;
   fechaDevolucion: string | null;
-  estado: string | null;
+  estado: EstadoVibraImpago;
   motivoDevolucion: string | null;
   activoBaja: string | null;
   colaborador: string | null;
   comentarios: string | null;
+  avisadoAt: string | null;
+  recargo: number | null;
+  recargoFacturado: boolean;
+  ultimaGestion: VibraImpagoGestion | null;
+  gestiones: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -31,7 +87,7 @@ export interface VibraImpagoPayload {
   factura?: string | null;
   importe?: number | null;
   fechaDevolucion?: string | null;
-  estado?: string | null;
+  estado?: EstadoVibraImpago | null;
   motivoDevolucion?: string | null;
   activoBaja?: string | null;
   colaborador?: string | null;
@@ -39,7 +95,7 @@ export interface VibraImpagoPayload {
 }
 
 export interface CambiarEstadoVibraImpagoPayload {
-  estado: string;
+  estado: EstadoVibraImpago;
 }
 
 export interface VibraImpagoFilter {

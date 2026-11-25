@@ -153,7 +153,35 @@ export class VibraFacturaDetalle {
       titulo: 'Emitir factura',
       mensaje: `Se asigna número y fecha de emisión de hoy por ${formatEuro(f.total)}. Una factura emitida ya no se puede cambiar.${avisos}`,
       label: 'Emitir', tone: 'warning',
-      accion: () => this.ejecutar('emitir', this.service.emitir(this.id()), 'Factura emitida'),
+      accion: () => this.emitirYEnviar(),
+    });
+  }
+
+  /** Casilla «Enviar al emitir» (solo con email del cliente). */
+  protected readonly enviarAlEmitir = signal(true);
+
+  /** Emite y, si se pidió, envía; un fallo del envío no deshace la emisión. */
+  private emitirYEnviar(): void {
+    const enviar = this.enviarAlEmitir() && !!this.factura()?.email;
+    this.ocupado.set('emitir');
+    this.service.emitir(this.id()).subscribe({
+      next: (f) => {
+        this.confirmacion.set(null);
+        this.factura.set(f);
+        if (!enviar) { this.ocupado.set(null); this.notify.success('Factura emitida'); return; }
+        this.service.enviar(f.id).subscribe({
+          next: (e) => { this.ocupado.set(null); this.factura.set(e); this.notify.success('Factura emitida y enviada a ' + e.email); },
+          error: (err: HttpErrorResponse) => {
+            this.ocupado.set(null);
+            this.notify.warn(mensajeError(err, 'No se pudo enviar') + '. La factura quedó emitida: envíala más tarde.', 'Emitida sin enviar');
+          },
+        });
+      },
+      error: (err: HttpErrorResponse) => {
+        this.ocupado.set(null);
+        this.confirmacion.set(null);
+        this.notify.error(mensajeError(err, 'No se pudo emitir'));
+      },
     });
   }
 

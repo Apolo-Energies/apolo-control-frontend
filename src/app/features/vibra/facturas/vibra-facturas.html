@@ -4,6 +4,13 @@
       class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
       <ui-icon name="download" [size]="16" /> Excel
     </button>
+    @if (puedeEnviarTodas) {
+      <button type="button" (click)="envioOpen.set(true)"
+        class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
+        <ui-icon name="mail" [size]="16" /> Enviar todas las sin enviar
+        @if (conteos()['SIN_ENVIAR']) { <span class="tabular-nums text-xs text-muted-foreground">(≤ {{ conteos()['SIN_ENVIAR'] }})</span> }
+      </button>
+    }
     @if (isAdmin) {
       <button type="button" (click)="importOpen.set(true)"
         class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
@@ -163,5 +170,36 @@
       <p class="text-sm text-muted-foreground">La numeración de Control sigue tras la secuencia {{ r.ultimaSecuencia }} de Kilowy.</p>
     }
     @for (a of r.avisos; track a) { <p class="text-sm text-warning-fg">{{ a }}</p> }
+  }
+</app-form-dialog>
+
+<app-confirm-dialog
+  [open]="envioOpen()"
+  title="Enviar todas las sin enviar"
+  message="Se envía por correo el PDF de cada factura emitida en Control que aún no se ha enviado y tiene email del cliente. Las importadas de Kilowy no se envían. Al terminar verás cuántas salieron, cuáles no tienen email y los errores."
+  confirmLabel="Enviar"
+  icon="mail"
+  tone="info"
+  [loading]="enviando()"
+  (confirm)="enviarTodas()"
+  (cancel)="envioOpen.set(false)" />
+
+<app-form-dialog
+  [open]="envioResult() !== null"
+  title="Envío terminado"
+  icon="check"
+  [readOnly]="true"
+  width="480px"
+  (cancel)="envioResult.set(null)">
+  @if (envioResult(); as r) {
+    <dl class="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1 text-sm my-2">
+      <dt>Enviadas</dt><dd class="text-right tabular-nums">{{ r.enviadas }}</dd>
+      <dt>Sin email del cliente</dt><dd class="text-right tabular-nums">{{ r.sinEmail.length }}</dd>
+      <dt>Con error</dt><dd class="text-right tabular-nums">{{ r.errores.length }}</dd>
+    </dl>
+    @if (r.sinEmail.length) {
+      <p class="text-sm text-muted-foreground">Sin email: {{ r.sinEmail.join(', ') }}</p>
+    }
+    @for (e of r.errores; track e.numero) { <p class="text-sm text-danger-fg">Error: {{ e.numero }} — {{ e.mensaje }}</p> }
   }
 </app-form-dialog>

@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import {
+  VibraEnvioFacturasResult,
   EstadoFacturaVibra, KilowyFacturasImportResult, Page, PageRequest, ResultadoCompraVibra, VibraFactura, VibraFacturaConteos,
   VibraFacturaFilter, VibraFacturaLineaPayload, VibraFacturaListItem,
 } from '../models';
@@ -72,6 +73,11 @@ export class VibraFacturaService {
 
   enviar(id: string): Observable<VibraFactura> {
     return this.http.post<VibraFactura>(`${this.baseUrl}/${id}/enviar`, {});
+  }
+
+  /** Envía todas las de Control sin enviar que tienen email. */
+  enviarPendientes(): Observable<VibraEnvioFacturasResult> {
+    return this.http.post<VibraEnvioFacturasResult>(`${this.baseUrl}/enviar-pendientes`, {});
   }
 
   borrar(id: string): Observable<void> {

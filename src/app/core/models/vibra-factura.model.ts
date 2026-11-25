@@ -142,3 +142,10 @@ export interface KilowyFacturasImportResult {
   ultimaSecuencia: number;
   avisos: string[];
 }
+
+/** Resumen de «Enviar todas las sin enviar». */
+export interface VibraEnvioFacturasResult {
+  enviadas: number;
+  sinEmail: string[];
+  errores: { numero: string; mensaje: string }[];
+}

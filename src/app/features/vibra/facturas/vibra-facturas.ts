@@ -17,6 +17,7 @@ import { VibraFacturaService } from '../../../core/services/vibra-factura.servic
 import { NotificationService } from '../../../core/services/notification.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import {
+  VibraEnvioFacturasResult,
   ESTADO_FACTURA_VIBRA_LABEL, EstadoFacturaVibra, KilowyFacturasImportResult, Page, VibraFacturaConteos, VibraFacturaFilter, VibraFacturaListItem,
 } from '../../../core/models';
 import { descargarBlob, estadoFacturaTone } from './vibra-factura-ui';
@@ -50,6 +51,12 @@ export class VibraFacturas {
   protected readonly importOpen = signal(false);
   protected readonly importando = signal(false);
   protected readonly importResult = signal<KilowyFacturasImportResult | null>(null);
+
+  /** «Enviar todas las sin enviar» (admin y contabilidad, como el backend). */
+  protected readonly puedeEnviarTodas = this.auth.hasRole('admin', 'contabilidad');
+  protected readonly envioOpen = signal(false);
+  protected readonly enviando = signal(false);
+  protected readonly envioResult = signal<VibraEnvioFacturasResult | null>(null);
 
   protected readonly pestanas = PESTANAS;
   protected readonly estadoLabel = ESTADO_FACTURA_VIBRA_LABEL;
@@ -98,6 +105,23 @@ export class VibraFacturas {
   protected limpiar(): void {
     this.q = ''; this.desde = ''; this.hasta = ''; this.importe = '';
     this.buscar();
+  }
+
+  protected enviarTodas(): void {
+    this.enviando.set(true);
+    this.service.enviarPendientes().subscribe({
+      next: (r) => {
+        this.enviando.set(false);
+        this.envioOpen.set(false);
+        this.envioResult.set(r);
+        this.load();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.enviando.set(false);
+        this.envioOpen.set(false);
+        this.notify.error(mensajeError(err, 'No se pudieron enviar las facturas'));
+      },
+    });
   }
 
   protected importar(): void {

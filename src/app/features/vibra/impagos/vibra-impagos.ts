@@ -16,11 +16,20 @@ import { VibraImpagoService } from '../../../core/services/vibra-impago.service'
 import { NotificationService } from '../../../core/services/notification.service';
 import { AuthService } from '../../../core/auth';
 import {
+  ESTADO_FACTURA_VIBRA_LABEL,
+  ESTADO_VIBRA_IMPAGO_LABEL,
   ESTADO_VIBRA_IMPAGO_VALUES,
+  EstadoVibraImpago,
   Page,
+  RESULTADO_GESTION_IMPAGO_LABEL,
+  RESULTADOS_GESTION_IMPAGO,
+  ResultadoGestionImpagoVibra,
   VibraImpago,
+  VibraImpagoGestion,
   VibraImpagoPayload,
 } from '../../../core/models';
+import { formatDate, formatDateTime } from '../../../shared/utils/format';
+import { mensajeError } from '../../../shared/utils/http-error';
 
 @Component({
   selector: 'app-vibra-impagos',
@@ -53,6 +62,14 @@ export class VibraImpagos {
   protected estadoFilter = '';
 
   protected readonly estadoValues = ESTADO_VIBRA_IMPAGO_VALUES;
+  protected readonly estadoLabel = ESTADO_VIBRA_IMPAGO_LABEL;
+  protected readonly facturaLabel = ESTADO_FACTURA_VIBRA_LABEL;
+  protected readonly resultados = RESULTADOS_GESTION_IMPAGO;
+  protected readonly resultadoLabel = RESULTADO_GESTION_IMPAGO_LABEL;
+  protected readonly fmtFecha = formatDate;
+  protected readonly fmtFechaHora = formatDateTime;
+  /** Avisar por correo y marcar pagado (paga la factura): como el backend. */
+  protected readonly puedeCobrar = computed(() => this.auth.hasRole('admin', 'contabilidad', 'operaciones'));
   protected readonly clientesDisponibles = signal<string[]>([]);
   protected readonly showClientesDropdown = signal(false);
   protected readonly clienteQuery = signal('');
@@ -115,7 +132,7 @@ export class VibraImpagos {
     factura: [''],
     importe: [null as number | null],
     fechaDevolucion: [null as string | null],
-    estado: ['Pdte. contactar'],
+    estado: ['IMPAGADA' as EstadoVibraImpago],
     motivoDevolucion: [''],
     activoBaja: ['Activo'],
     colaborador: [''],
@@ -149,16 +166,107 @@ export class VibraImpagos {
   protected onPageSize(s: number): void { this.size.set(s); this.page.set(0); this.load(); }
   protected applyFilters(): void { this.page.set(0); this.load(); }
 
-  protected changeEstado(r: VibraImpago, estado: string): void {
+  /** Pagado con factura ligada pide confirmación: paga también la factura. */
+  protected readonly pendientePago = signal<VibraImpago | null>(null);
+
+  protected changeEstado(r: VibraImpago, estado: EstadoVibraImpago, select?: HTMLSelectElement): void {
+    if (estado === 'PAGADO' && r.facturaId && r.facturaEstado !== 'PAGADA') {
+      if (select) select.value = r.estado;
+      this.pendientePago.set(r);
+      return;
+    }
+    this.guardarEstado(r, estado);
+  }
+
+  protected confirmarPago(): void {
+    const r = this.pendientePago();
+    if (!r) return;
+    this.pendientePago.set(null);
+    this.guardarEstado(r, 'PAGADO');
+  }
+
+  private guardarEstado(r: VibraImpago, estado: EstadoVibraImpago): void {
     this.service.cambiarEstado(r.id, { estado }).subscribe({
-      next: () => { this.notify.success('Estado actualizado'); this.load(); },
-      error: (err: HttpErrorResponse) => this.notify.error(err.error?.message ?? 'Error'),
+      next: () => {
+        this.notify.success(estado === 'PAGADO' && r.facturaId ? 'Impago y factura marcados pagados' : 'Estado actualizado');
+        this.load();
+      },
+      error: (err: HttpErrorResponse) => { this.notify.error(mensajeError(err, 'No se pudo cambiar el estado')); this.load(); },
+    });
+  }
+
+  // ── Aviso por correo ─────────────────────────────────────────
+  protected readonly avisando = signal<string | null>(null);
+
+  protected avisar(r: VibraImpago): void {
+    this.avisando.set(r.id);
+    this.service.avisar(r.id).subscribe({
+      next: (a) => {
+        this.avisando.set(null);
+        if (a.enviado) this.notify.success('Cliente avisado por correo');
+        else this.notify.warn(a.mensaje);
+        this.load();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.avisando.set(null);
+        this.notify.error(mensajeError(err, 'No se pudo enviar el aviso'));
+      },
+    });
+  }
+
+  // ── Gestiones ────────────────────────────────────────────────
+  protected readonly gestionImpago = signal<VibraImpago | null>(null);
+  protected readonly gestionesLista = signal<VibraImpagoGestion[]>([]);
+  protected readonly gestionesCargando = signal(false);
+  protected readonly gestionGuardando = signal(false);
+  protected readonly gestionForm = this.fb.group({
+    resultado: ['' as ResultadoGestionImpagoVibra | '', Validators.required],
+    nota: ['', Validators.maxLength(2000)],
+    telefono: ['', Validators.maxLength(30)],
+    volverLlamar: [null as string | null],
+  });
+
+  protected abrirGestion(r: VibraImpago): void {
+    this.gestionImpago.set(r);
+    this.gestionForm.reset({ resultado: '', nota: '', telefono: '', volverLlamar: null });
+    this.gestionesLista.set([]);
+    this.gestionesCargando.set(true);
+    this.service.gestiones(r.id).subscribe({
+      next: (g) => { this.gestionesLista.set(g); this.gestionesCargando.set(false); },
+      error: (err: HttpErrorResponse) => {
+        this.gestionesCargando.set(false);
+        this.notify.error(mensajeError(err, 'No se pudieron cargar las gestiones'));
+      },
+    });
+  }
+
+  protected cerrarGestion(): void { this.gestionImpago.set(null); }
+
+  protected guardarGestion(): void {
+    const r = this.gestionImpago();
+    if (!r || this.gestionForm.invalid) { this.gestionForm.markAllAsTouched(); return; }
+    const v = this.gestionForm.getRawValue();
+    this.gestionGuardando.set(true);
+    this.service.addGestion(r.id, {
+      resultado: v.resultado as ResultadoGestionImpagoVibra,
+      nota: v.nota || null, telefono: v.telefono || null, volverLlamar: v.volverLlamar || null,
+    }).subscribe({
+      next: () => {
+        this.gestionGuardando.set(false);
+        this.notify.success('Gestión apuntada');
+        this.cerrarGestion();
+        this.load();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.gestionGuardando.set(false);
+        this.notify.error(mensajeError(err, 'No se pudo apuntar la gestión'));
+      },
     });
   }
 
   protected openCreate(): void {
     this.editing.set(null);
-    this.form.reset({ estado: 'Pdte. contactar', activoBaja: 'Activo' });
+    this.form.reset({ estado: 'IMPAGADA', activoBaja: 'Activo' });
     this.clienteQuery.set('');
     this.dialogOpen.set(true);
   }
@@ -167,7 +275,7 @@ export class VibraImpagos {
     this.editing.set(r);
     this.form.reset({
       cliente: r.cliente ?? '', factura: r.factura ?? '', importe: r.importe,
-      fechaDevolucion: r.fechaDevolucion, estado: r.estado ?? 'Pdte. contactar',
+      fechaDevolucion: r.fechaDevolucion, estado: r.estado,
       motivoDevolucion: r.motivoDevolucion ?? '', activoBaja: r.activoBaja ?? 'Activo',
       colaborador: r.colaborador ?? '', comentarios: r.comentarios ?? '',
     });
@@ -259,11 +367,14 @@ export class VibraImpagos {
     document.body.removeChild(a); URL.revokeObjectURL(url);
   }
 
-  protected estadoTone(estado: string | null): 'success' | 'warning' | 'info' | 'neutral' {
-    if (estado === 'Pagado') return 'success';
-    if (estado === 'Pdte. contactar') return 'warning';
-    if (estado === 'Contactado') return 'info';
-    return 'neutral';
+  protected estadoTone(estado: EstadoVibraImpago | null): 'success' | 'warning' | 'info' | 'danger' | 'neutral' {
+    switch (estado) {
+      case 'PAGADO': return 'success';
+      case 'IMPAGADA': return 'warning';
+      case 'PLAN_PAGOS': return 'info';
+      case 'INCOBRABLE': case 'RECLAMACION': case 'BUROFAX': return 'danger';
+      default: return 'neutral';
+    }
   }
 
   protected activoTone(v: string | null): 'success' | 'danger' {
