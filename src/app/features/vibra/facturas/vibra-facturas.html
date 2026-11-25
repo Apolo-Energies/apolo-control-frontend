@@ -1,26 +1,13 @@
 <app-page-header title="Facturas" [subtitle]="total() + ' facturas de venta Vibra'">
-  <div class="ml-auto flex flex-wrap gap-2">
-    <button type="button" (click)="exportExcel()"
-      class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
-      <ui-icon name="download" [size]="16" /> Excel
+  @if (puedeEnviarTodas) {
+    <button secondary type="button" class="btn btn-secondary" (click)="abrirEnvio()">
+      <ui-icon name="mail" [size]="16" /> Enviar las sin enviar
     </button>
-    @if (puedeEnviarTodas) {
-      <button type="button" (click)="abrirEnvio()"
-        class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
-        <ui-icon name="mail" [size]="16" /> Enviar las sin enviar
-      </button>
-    }
-    @if (isAdmin) {
-      <button type="button" (click)="importOpen.set(true)"
-        class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
-        <ui-icon name="upload" [size]="16" /> Importar desde Kilowy
-      </button>
-    }
-    <a routerLink="/vibra/facturas/generar"
-      class="inline-flex items-center gap-2 rounded-lg bg-primary-button text-primary-foreground px-4 py-2 text-sm font-medium">
-      <ui-icon name="upload" [size]="16" /> Generar facturas
-    </a>
-  </div>
+  }
+  <app-actions-menu [items]="masAcciones" />
+  <a primary routerLink="/vibra/facturas/generar" class="btn btn-primary">
+    <ui-icon name="file-plus" [size]="16" /> Generar facturas
+  </a>
 </app-page-header>
 
 <div class="tablist mb-4" focusgroup="tablist nomemory" role="tablist" aria-label="Estado de la factura">
@@ -37,28 +24,31 @@
 </div>
 
 <search class="mb-4 block">
-  <form class="flex flex-wrap items-end gap-3 text-sm" (ngSubmit)="buscar()">
-    <div class="flex flex-col gap-1 flex-1 min-w-56 max-w-md">
+  <form class="filterbar" (ngSubmit)="buscar()">
+    <div class="filter filter-grow">
       <label for="fac-q">Buscar</label>
       <input id="fac-q" type="search" name="q" [(ngModel)]="q" placeholder="Nº de factura, cliente, DNI/CIF o CUPS"
-        autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
-        class="border border-border rounded-lg px-3 py-2 bg-input" />
+        autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
     </div>
-    <div class="flex flex-col gap-1">
+    <div class="filter">
       <label for="fac-desde">Emitida desde</label>
-      <input id="fac-desde" type="date" name="desde" [(ngModel)]="desde" class="border border-border rounded-lg px-3 py-2 bg-input" />
+      <input id="fac-desde" type="date" name="desde" [(ngModel)]="desde" />
     </div>
-    <div class="flex flex-col gap-1">
+    <div class="filter">
       <label for="fac-hasta">Emitida hasta</label>
-      <input id="fac-hasta" type="date" name="hasta" [(ngModel)]="hasta" class="border border-border rounded-lg px-3 py-2 bg-input" />
+      <input id="fac-hasta" type="date" name="hasta" [(ngModel)]="hasta" />
     </div>
-    <div class="flex flex-col gap-1 w-32">
+    <div class="filter filter-sm">
       <label for="fac-importe">Importe (€)</label>
       <input id="fac-importe" type="text" inputmode="decimal" name="importe" [(ngModel)]="importe"
-        pattern="-?[0-9]+([.,][0-9]{1,2})?" class="border border-border rounded-lg px-3 py-2 bg-input tabular-nums" />
+        pattern="-?[0-9]+([.,][0-9]{1,2})?" class="tabular-nums" />
     </div>
-    <button type="submit" class="rounded-lg border border-border bg-card px-4 py-2 hover:bg-accent">Buscar</button>
-    <button type="button" (click)="limpiar()" class="rounded-lg px-3 py-2 text-muted-foreground hover:text-foreground">Limpiar</button>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-secondary">
+        <ui-icon name="search" [size]="16" /> Buscar
+      </button>
+      <button type="button" class="btn btn-ghost" (click)="limpiar()">Limpiar</button>
+    </div>
   </form>
 </search>
 
@@ -70,59 +60,90 @@
 
 <div id="facturas-panel" role="tabpanel" [attr.aria-labelledby]="'tab-fac-' + tab()">
   @if (loading() && !result()) {
-    <app-table-skeleton [cols]="8" [rows]="8" />
+    <app-table-skeleton [cols]="7" [rows]="8" />
   } @else {
     <div class="rounded-2xl border border-border bg-card overflow-hidden">
-      <div class="overflow-auto max-h-[70vh]" tabindex="0" role="region" aria-labelledby="facturas-caption">
-        <table class="w-full text-sm">
+      <div class="vtable-region" tabindex="0" role="region" aria-labelledby="facturas-caption" style="--vtable-min: 66rem">
+        <table class="vtable">
           <caption id="facturas-caption" class="sr-only">Facturas de venta Vibra</caption>
-          <thead class="sticky top-0 z-10 bg-card">
-            <tr class="border-b border-border text-left text-muted-foreground">
-              <th scope="col" class="py-3 px-4 font-medium">Nº</th>
-              <th scope="col" class="py-3 px-4 font-medium">Cliente</th>
-              <th scope="col" class="py-3 px-4 font-medium">Contrato / CUPS</th>
-              <th scope="col" class="py-3 px-4 font-medium">Periodo</th>
-              <th scope="col" class="py-3 px-4 font-medium text-right">Total</th>
-              <th scope="col" class="py-3 px-4 font-medium text-right">Margen</th>
-              <th scope="col" class="py-3 px-4 font-medium">Estado</th>
-              <th scope="col" class="py-3 px-4 font-medium">Enviada</th>
+          <colgroup>
+            <col class="col-numdoc" />
+            <col class="col-texto" />
+            <col class="col-cups" />
+            <col class="col-periodo" />
+            <col class="col-importe" />
+            <col class="col-importe" />
+            <col class="col-estado" style="inline-size: 9.5rem" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col" class="vtable-fix">Nº</th>
+              <th scope="col">Cliente</th>
+              <th scope="col">Contrato / CUPS</th>
+              <th scope="col">Periodo</th>
+              <th scope="col" class="cell-num">Total</th>
+              <th scope="col" class="cell-num">Margen</th>
+              <th scope="col">Estado</th>
             </tr>
           </thead>
           <tbody>
             @for (f of rows(); track f.id) {
-              <tr class="border-b border-border/50 hover:bg-accent/40">
-                <th scope="row" class="py-2 px-4 font-normal text-left whitespace-nowrap">
-                  <a [routerLink]="['/vibra/facturas', f.id]" class="hover:underline tabular-nums">
-                    {{ f.numero ?? 'borrador' }}
+              <tr>
+                <th scope="row" class="vtable-fix">
+                  <a [routerLink]="['/vibra/facturas', f.id]" class="font-medium hover:underline underline-offset-2">
+                    @if (f.numero; as n) {
+                      <span class="cell-tail" [title]="n"><span>{{ n.slice(0, -6) }}</span>{{ n.slice(-6) }}</span>
+                    } @else {
+                      Borrador
+                    }
                   </a>
-                  <div class="text-xs text-muted-foreground">{{ fecha(f.fechaEmision ?? f.createdAt) }}</div>
-                  @if (f.deKilowy) {
-                    <app-status-badge tone="neutral">Kilowy</app-status-badge>
-                  }
-                  @if (f.avisos > 0) {
-                    <app-status-badge tone="warning">{{ f.avisos }} {{ f.avisos === 1 ? 'aviso' : 'avisos' }}</app-status-badge>
-                  }
+                  <div class="cell-badges">
+                    <span class="text-xs text-muted-foreground tabular-nums">{{ fecha(f.fechaEmision ?? f.createdAt) }}</span>
+                    @if (f.deKilowy) {
+                      <app-status-badge size="sm">Kilowy</app-status-badge>
+                    }
+                    @if (f.avisos > 0) {
+                      <app-status-badge size="sm" tone="warning">{{ f.avisos }} {{ f.avisos === 1 ? 'aviso' : 'avisos' }}</app-status-badge>
+                    }
+                  </div>
                 </th>
-                <td class="py-2 px-4">
-                  {{ f.titular ?? '—' }}
-                  <div class="text-xs text-muted-foreground tabular-nums">{{ f.nif }}</div>
+                <td data-label="Cliente">
+                  <span class="cell-clamp2" [title]="f.titular ?? ''">{{ f.titular ?? '—' }}</span>
+                  @if (f.nif) { <span class="cell-sub tabular-nums">{{ f.nif }}</span> }
                 </td>
-                <td class="py-2 px-4">
-                  {{ f.contrato ? '#' + f.contrato : 'Sin contrato' }}
-                  <div class="text-xs text-muted-foreground tabular-nums">{{ f.cups }}{{ f.tarifaAcceso ? ' · ' + f.tarifaAcceso : '' }}</div>
+                <td data-label="Contrato">
+                  @if (f.contrato) {
+                    <span class="tabular-nums">#{{ f.contrato }}</span>
+                  } @else {
+                    <span class="text-muted-foreground">Sin contrato</span>
+                  }
+                  @if (f.tarifaAcceso) { <span class="text-muted-foreground"> · {{ f.tarifaAcceso }}</span> }
+                  @if (f.cups; as c) {
+                    <span class="cell-sub cell-tail" [title]="c"><span>{{ c.slice(0, -4) }}</span>{{ c.slice(-4) }}</span>
+                  }
                 </td>
-                <td class="py-2 px-4 whitespace-nowrap tabular-nums">{{ fecha(f.periodoDesde) }} → {{ fecha(f.periodoHasta) }}</td>
-                <td class="py-2 px-4 text-right tabular-nums whitespace-nowrap">{{ euro(f.total) }}</td>
-                <td class="py-2 px-4 text-right tabular-nums whitespace-nowrap"
-                  [class.text-danger-fg]="f.margen !== null && f.margen <= 0">
+                <td data-label="Periodo" class="cell-nowrap tabular-nums"
+                  [title]="fecha(f.periodoDesde) + ' – ' + fecha(f.periodoHasta)">
+                  {{ periodo(f.periodoDesde, f.periodoHasta) }}
+                </td>
+                <td data-label="Total" class="cell-num font-medium">{{ euro(f.total) }}</td>
+                <td data-label="Margen" class="cell-num" [class.text-danger-fg]="f.margen !== null && f.margen <= 0">
                   {{ euro(f.margen) }}
-                  @if (f.margenPct !== null) { <div class="text-xs">{{ f.margenPct }} %</div> }
+                  @if (f.margenPct !== null) { <span class="cell-sub" [class.text-danger-fg]="f.margen !== null && f.margen <= 0">{{ numero(f.margenPct) }} %</span> }
                 </td>
-                <td class="py-2 px-4"><app-status-badge [tone]="tone(f.estado)">{{ estadoLabel[f.estado] }}</app-status-badge></td>
-                <td class="py-2 px-4 whitespace-nowrap">{{ f.estado === 'BORRADOR' ? '—' : f.enviadaAt ? fechaHora(f.enviadaAt) : 'Sin enviar' }}</td>
+                <td data-label="Estado">
+                  <app-status-badge [tone]="tone(f.estado)">{{ estadoLabel[f.estado] }}</app-status-badge>
+                  @if (f.estado !== 'BORRADOR') {
+                    @if (f.enviadaAt) {
+                      <span class="cell-sub cell-nowrap tabular-nums" [title]="'Enviada el ' + fechaHora(f.enviadaAt)">Enviada {{ fecha(f.enviadaAt) }}</span>
+                    } @else {
+                      <span class="cell-sub">Sin enviar</span>
+                    }
+                  }
+                </td>
               </tr>
             } @empty {
-              <tr><td colspan="8" class="py-16 text-center text-muted-foreground">
+              <tr><td colspan="7" class="vtable-empty">
                 Sin facturas con estos filtros. Sube las compras en «Generar facturas».
               </td></tr>
             }

@@ -554,3 +554,341 @@
   --p-button-primary-hover-background:  #38bdf8;
   --p-button-primary-active-background: #0284c7;
 }
+
+/* ============================================================
+   FUNDACIÓN UX (Vibra 014): botones, cabecera, filtros, tablas, menú «Más»
+   ============================================================ */
+@layer components {
+  /* Botones: un único primario; secundarios y fantasma con la misma altura */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-block-size: 2.5rem;
+    padding-inline: 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    white-space: nowrap;
+  }
+  .btn:focus-visible {
+    outline: 2px solid var(--color-foreground);
+    outline-offset: 2px;
+  }
+  .btn:disabled,
+  .btn[aria-disabled="true"] {
+    opacity: 0.5;
+  }
+  .btn-primary {
+    background-color: var(--color-primary-button);
+    color: var(--color-primary-foreground);
+  }
+  .btn-secondary {
+    border-color: var(--color-border);
+    background-color: var(--color-card);
+    color: var(--color-foreground);
+  }
+  .btn-ghost {
+    color: var(--color-muted-foreground);
+  }
+  .btn-secondary[aria-expanded="true"] {
+    background-color: var(--color-accent);
+  }
+  @media (hover: hover) {
+    .btn-primary:not(:disabled):hover { filter: brightness(1.08); }
+    .btn-secondary:not(:disabled):hover { background-color: var(--color-accent); }
+    .btn-ghost:not(:disabled):hover { color: var(--color-foreground); }
+  }
+  @media (pointer: coarse) {
+    .btn { min-block-size: 2.75rem; }
+  }
+
+  /* Barra de filtros: buscar ocupa lo que sobra; el resto a su ancho; mismas alturas */
+  .filterbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+  }
+  .filterbar .filter {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 0 0 auto;
+    min-inline-size: 0;
+  }
+  .filterbar .filter-grow {
+    flex: 1 1 16rem;
+    max-inline-size: 32rem;
+  }
+  .filterbar .filter > label {
+    color: var(--color-muted-foreground);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  .filterbar .filter :is(input, select) {
+    block-size: 2.5rem;
+    inline-size: 100%;
+    padding-inline: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background-color: var(--color-input);
+    color: var(--color-foreground);
+  }
+  .filterbar .filter input[type="date"] { inline-size: 10rem; }
+  .filterbar .filter-sm { inline-size: 8rem; }
+  .filterbar .filter-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+  @media (width < 40rem) {
+    .filterbar { display: grid; grid-template-columns: 1fr 1fr; }
+    .filterbar .filter-grow,
+    .filterbar .filter-actions { grid-column: 1 / -1; max-inline-size: none; }
+    .filterbar .filter input[type="date"] { inline-size: 100%; }
+    .filterbar .filter-sm { inline-size: auto; }
+    .filterbar .filter-actions > .btn { flex: 1; }
+  }
+
+  /* Tablas: región con scroll propio, cabecera y primera columna fijas */
+  .vtable-region {
+    overflow: auto;
+    max-inline-size: 100%;
+    max-block-size: 70vh;
+    container-type: inline-size;
+    overscroll-behavior-inline: contain;
+  }
+  .vtable-region:focus-visible {
+    outline: 2px solid var(--color-foreground);
+    outline-offset: -2px;
+  }
+  .vtable {
+    table-layout: fixed;
+    inline-size: 100%;
+    min-inline-size: var(--vtable-min, 0);
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.875rem;
+  }
+  .vtable :is(th, td) {
+    padding: 0.625rem 0.75rem;
+    text-align: start;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+  }
+  .vtable thead th {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 2;
+    padding-block: 0.75rem;
+    background-color: var(--color-card);
+    border-block-end: 1px solid var(--color-border);
+    color: var(--color-muted-foreground);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .vtable tbody > tr > * {
+    background-color: var(--color-card);
+    border-block-end: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+  }
+  .vtable tbody > tr:last-child > * { border-block-end: 0; }
+  .vtable tbody th { font-weight: 400; }
+  @media (hover: hover) {
+    .vtable tbody > tr:hover > * {
+      background-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-card));
+    }
+  }
+  .vtable .vtable-fix {
+    position: sticky;
+    inset-inline-start: 0;
+    z-index: 1;
+  }
+  .vtable thead .vtable-fix { z-index: 3; }
+  .vtable .vtable-empty {
+    padding-block: 4rem;
+    text-align: center;
+    color: var(--color-muted-foreground);
+  }
+
+  /* Anchos por tipo de dato (en <col> o <th>) */
+  .vtable .col-fecha    { inline-size: 7.5rem; }
+  .vtable .col-periodo  { inline-size: 9.5rem; }
+  .vtable .col-importe  { inline-size: 7rem; }
+  .vtable .col-numdoc   { inline-size: 12rem; }
+  .vtable .col-cups     { inline-size: 12rem; }
+  .vtable .col-nif      { inline-size: 7rem; }
+  .vtable .col-estado   { inline-size: 8rem; }
+  .vtable .col-texto    { inline-size: auto; }
+  .vtable .col-corto    { inline-size: 5rem; }
+  .vtable .col-acciones { inline-size: 6rem; }
+
+  /* Celdas */
+  .cell-num {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    text-align: end !important;
+  }
+  .cell-nowrap { white-space: nowrap; }
+  .cell-clamp2 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+  }
+  .cell-tail {
+    display: flex;
+    min-inline-size: 0;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .cell-tail > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cell-sub {
+    display: block;
+    margin-block-start: 0.125rem;
+    color: var(--color-muted-foreground);
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+  .cell-badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.375rem;
+    margin-block-start: 0.25rem;
+  }
+  .cell-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.25rem;
+  }
+
+  /* Apilado en tarjetas cuando el contenedor es estrecho; etiqueta desde data-label */
+  @container (width < 600px) {
+    .vtable,
+    .vtable :is(tbody, tr, th, td) { display: block; }
+    .vtable { min-inline-size: 0; }
+    .vtable :is(thead, colgroup) { display: none; }
+    .vtable tbody > tr {
+      padding: 0.75rem 1rem;
+      border-block-end: 1px solid var(--color-border);
+    }
+    .vtable tbody > tr:last-child { border-block-end: 0; }
+    .vtable tbody > tr > * {
+      position: relative;
+      padding: 0.25rem 0 0.25rem 7rem;
+      border: 0;
+      background: transparent;
+      text-align: start !important;
+    }
+    .vtable tbody > tr > .vtable-fix {
+      position: static;
+      padding-inline-start: 0;
+      padding-block-end: 0.5rem;
+      font-weight: 500;
+    }
+    .vtable tbody > tr > [data-label]::before {
+      content: attr(data-label);
+      position: absolute;
+      inset-inline-start: 0;
+      inset-block-start: 0.3rem;
+      inline-size: 6.5rem;
+      color: var(--color-muted-foreground);
+      font-size: 0.75rem;
+      font-weight: 400;
+    }
+    .vtable tbody > tr > .vtable-empty { padding: 3rem 0; }
+    .vtable .cell-actions { justify-content: flex-start; }
+  }
+  @media (width < 40rem) {
+    .vtable-region { max-block-size: none; }
+  }
+
+  /* Menú «Más» (popover + focusgroup): bajo el disparador, alineado a su borde final */
+  .actions-menu {
+    min-inline-size: 13rem;
+    max-inline-size: min(20rem, calc(100vw - 2rem));
+    margin: 0.25rem 0;
+    padding: 0.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.625rem;
+    background-color: var(--color-popover);
+    color: var(--color-popover-foreground);
+    box-shadow: var(--shadow-elevated);
+  }
+  @supports (position-area: block-end) {
+    .actions-menu {
+      inset: auto;
+      position-area: block-end span-inline-start;
+      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+    }
+  }
+  @supports not (position-area: block-end) {
+    .actions-menu {
+      position: fixed;
+      inset: auto;
+      margin: 0;
+    }
+  }
+  @supports not selector(:popover-open) {
+    .actions-menu:not(.\:popover-open) { display: none; }
+  }
+  .actions-menu [focusgroup] {
+    display: flex;
+    flex-direction: column;
+  }
+  .actions-menu [focusgroup] > button {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-block-size: 2.25rem;
+    padding-inline: 0.625rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    text-align: start;
+    white-space: nowrap;
+  }
+  .actions-menu [focusgroup] > button > .menu-icon {
+    flex: none;
+    inline-size: 1rem;
+    color: var(--color-muted-foreground);
+  }
+  .actions-menu [focusgroup] > button:focus { outline: none; }
+  .actions-menu [focusgroup] > button:focus-visible {
+    outline: 2px solid var(--color-foreground);
+    outline-offset: -2px;
+  }
+  .actions-menu [focusgroup] > button:is(:hover, :focus):not(:disabled) {
+    background-color: var(--color-accent);
+  }
+  .actions-menu [focusgroup] > button.menu-danger { color: var(--color-danger-fg); }
+  .actions-menu [focusgroup] > button.menu-danger > .menu-icon { color: currentColor; }
+  .actions-menu [focusgroup] > button:disabled { opacity: 0.5; }
+  .actions-menu hr {
+    margin: 0.25rem 0;
+    border-color: var(--color-border);
+  }
+  @media (pointer: coarse) {
+    .actions-menu [focusgroup] > button { min-block-size: 2.75rem; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .actions-menu {
+      opacity: 0;
+      transition: opacity 0.15s, display 0.15s, overlay 0.15s;
+      transition-behavior: allow-discrete;
+    }
+    .actions-menu:is(:popover-open, .\:popover-open) {
+      opacity: 1;
+      transition-duration: 0.1s;
+      @starting-style { opacity: 0; }
+    }
+  }
+}

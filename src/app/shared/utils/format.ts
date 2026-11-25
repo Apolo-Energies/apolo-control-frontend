@@ -119,15 +119,33 @@ export function formatEnergy(
   return { value: FULL_PRECISION_FORMATTER.format(mwh), unit, rawMwh: mwh };
 }
 
+/** Fecha sin hora (yyyy-mm-dd), sin pasar por zona horaria. */
+const SOLO_FECHA = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** dd/mm/aaaa; acepta yyyy-mm-dd, ISO con hora y Date. */
 export function formatDate(value: string | Date | null | undefined): string {
   if (!value) {
     return '—';
+  }
+  const m = typeof value === 'string' ? SOLO_FECHA.exec(value) : null;
+  if (m) {
+    return `${m[3]}/${m[2]}/${m[1]}`;
   }
   const date = typeof value === 'string' ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) {
     return '—';
   }
   return DATE_FORMATTER.format(date);
+}
+
+/** Periodo corto: «dd/mm → dd/mm/aa»; con años distintos, «dd/mm/aa → dd/mm/aa». */
+export function formatPeriodo(desde: string | Date | null | undefined, hasta: string | Date | null | undefined): string {
+  const d = formatDate(desde);
+  const h = formatDate(hasta);
+  if (d === '—' && h === '—') return '—';
+  if (d === '—' || h === '—') return d === '—' ? `→ ${h}` : `${d} →`;
+  const corta = (f: string) => f.slice(0, 6) + f.slice(8);
+  return d.slice(6) === h.slice(6) ? `${d.slice(0, 5)} → ${corta(h)}` : `${corta(d)} → ${corta(h)}`;
 }
 
 export function formatDateTime(value: string | Date | null | undefined): string {

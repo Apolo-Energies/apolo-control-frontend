@@ -1,0 +1,26 @@
+<button #trigger type="button" class="btn btn-secondary" [class.px-0]="iconOnly()" [class.w-10]="iconOnly()"
+  [id]="id + '-trigger'" aria-haspopup="menu" [attr.aria-expanded]="abierto()"
+  [attr.commandfor]="conCommand ? id : null" [attr.command]="conCommand ? 'toggle-popover' : null"
+  [attr.popovertarget]="conCommand ? null : id"
+  [attr.aria-label]="iconOnly() ? label() : null" [attr.title]="iconOnly() ? label() : null"
+  (pointerdown)="porPuntero = true" (keydown)="onTriggerKey($event)">
+  @if (iconOnly()) {
+    <ui-icon name="more-horizontal" [size]="16" />
+  } @else {
+    {{ label() }} <ui-icon name="chevron-down" [size]="14" />
+  }
+</button>
+<div #menu [id]="id" popover="auto" class="actions-menu" (toggle)="onToggle($event)">
+  <div focusgroup="menu nomemory" [attr.aria-labelledby]="id + '-trigger'" (keydown)="onMenuKey($event)">
+    @for (it of items(); track it.label) {
+      @if (it.separatorBefore) { <hr /> }
+      <button type="button" [class.menu-danger]="it.danger" [disabled]="it.disabled"
+        (click)="run(it)" (pointermove)="onHover($event)">
+        <span class="menu-icon">
+          @if (it.icon) { <ui-icon [name]="it.icon" [size]="16" /> }
+        </span>
+        {{ it.label }}
+      </button>
+    }
+  </div>
+</div>

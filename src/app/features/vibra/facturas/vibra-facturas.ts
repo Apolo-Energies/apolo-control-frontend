@@ -10,7 +10,8 @@ import { StatusBadge } from '../../../shared/components/status-badge/status-badg
 import { Icon } from '../../../shared/icons/icon';
 import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
-import { formatDate, formatDateTime, formatEuro, parseDecimal } from '../../../shared/utils/format';
+import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions-menu/actions-menu';
+import { formatDate, formatDateTime, formatEuro, formatNumber, formatPeriodo, parseDecimal } from '../../../shared/utils/format';
 import { mensajeError } from '../../../shared/utils/http-error';
 
 import { VibraFacturaService } from '../../../core/services/vibra-factura.service';
@@ -42,7 +43,7 @@ const PESTANAS: { id: Pestana; label: string }[] = [
 @Component({
   selector: 'app-vibra-facturas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, PageHeader, Pagination, TableSkeleton, StatusBadge, Icon, ConfirmDialog, FormDialog],
+  imports: [FormsModule, RouterLink, PageHeader, Pagination, TableSkeleton, StatusBadge, Icon, ConfirmDialog, FormDialog, ActionsMenu],
   templateUrl: './vibra-facturas.html',
 })
 export class VibraFacturas {
@@ -69,6 +70,16 @@ export class VibraFacturas {
   protected readonly euro = formatEuro;
   protected readonly fecha = formatDate;
   protected readonly fechaHora = formatDateTime;
+  protected readonly periodo = formatPeriodo;
+  protected readonly numero = formatNumber;
+
+  /** Acciones poco frecuentes de la cabecera. */
+  protected readonly masAcciones: ActionsMenuItem[] = [
+    { label: 'Descargar Excel', icon: 'download', action: () => this.exportExcel() },
+    ...(this.isAdmin
+      ? [{ label: 'Importar desde Kilowy', icon: 'upload', separatorBefore: true, action: () => this.importOpen.set(true) } satisfies ActionsMenuItem]
+      : []),
+  ];
 
   protected readonly result = signal<Page<VibraFacturaListItem> | null>(null);
   protected readonly conteos = signal<VibraFacturaConteos>({});
