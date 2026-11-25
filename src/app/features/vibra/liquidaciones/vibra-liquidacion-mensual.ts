@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
 
+import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions-menu/actions-menu';
 import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
 import { StatusBadge, StatusTone } from '../../../shared/components/status-badge/status-badge';
@@ -16,13 +17,13 @@ import { NotificationService } from '../../../core/services/notification.service
 import {
   EstadoLiquidacionMensual, VibraColaborador, VibraLiquidacionLinea, VibraLiquidacionMensual,
 } from '../../../core/models';
-import { formatEuro } from '../../../shared/utils/format';
+import { formatDate, formatEuro, formatMonthLong } from '../../../shared/utils/format';
 
 /** Liquidación de un colaborador y mes (como Kilowy: persona → mes a mes). */
 @Component({
   selector: 'app-vibra-liquidacion-mensual',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ConfirmDialog, FormDialog, StatusBadge, TableSkeleton, Icon],
+  imports: [FormsModule, ActionsMenu, ConfirmDialog, FormDialog, StatusBadge, TableSkeleton, Icon],
   templateUrl: './vibra-liquidacion-mensual.html',
 })
 export class VibraLiquidacionMensualView {
@@ -45,6 +46,9 @@ export class VibraLiquidacionMensualView {
   protected fechaPago = hoyIso();
   protected readonly hoy = hoyIso();
   protected readonly borrarOpen = signal(false);
+  protected readonly masAcciones: ActionsMenuItem[] = [
+    { label: 'Borrar liquidación', icon: 'trash', danger: true, action: () => this.borrarOpen.set(true) },
+  ];
 
   protected readonly puedeGuardar = computed(() => {
     const l = this.liq();
@@ -131,6 +135,8 @@ export class VibraLiquidacionMensualView {
   }
 
   protected readonly eur = formatEuro;
+  protected readonly fecha = formatDate;
+  protected readonly mesLargo = formatMonthLong;
 }
 
 function hoyIso(): string {

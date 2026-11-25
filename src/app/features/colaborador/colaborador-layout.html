@@ -1,40 +1,42 @@
 <div class="min-h-dvh bg-background text-foreground flex flex-col">
   <header class="border-b border-border bg-card/40">
-    <div class="max-w-6xl mx-auto px-4 lg:px-6 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+    <div class="max-w-6xl mx-auto px-4 lg:px-6 min-h-14 py-2 flex items-center gap-x-4">
       <a routerLink="/colaborador/contratos" class="font-semibold tracking-tight whitespace-nowrap">
-        Apolo <span class="text-muted-foreground font-normal">· Colaboradores Vibra</span>
+        Apolo <span class="text-muted-foreground font-normal md:hidden lg:inline">· Colaboradores Vibra</span>
       </a>
 
-      <div class="ml-auto flex items-center gap-2 order-2 sm:order-3">
-        <span class="hidden sm:inline text-sm text-muted-foreground max-w-48 truncate" [title]="nombre">{{ nombre }}</span>
-        <button type="button" (click)="theme.toggle()"
-          class="h-9 w-9 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground flex items-center justify-center"
-          [attr.aria-label]="theme.isDark() ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'">
-          <ui-icon [name]="theme.isDark() ? 'sun' : 'moon'" [size]="18" />
-        </button>
-        <button type="button" (click)="salir()"
-          class="h-9 px-3 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-foreground inline-flex items-center gap-2">
-          <ui-icon name="log-out" [size]="16" /> Salir
-        </button>
-      </div>
-
-      <nav aria-label="Portal del colaborador" class="order-3 sm:order-2 basis-full sm:basis-auto overflow-x-auto">
+      <nav aria-label="Portal del colaborador" class="portal-tabbar md:ml-2">
         <ul class="flex gap-1">
           @for (e of enlaces; track e.url) {
             <li>
               <a [routerLink]="e.url" routerLinkActive="nav-actual" ariaCurrentWhenActive="page"
                 [routerLinkActiveOptions]="{ exact: e.exact }"
-                class="inline-flex items-center gap-2 whitespace-nowrap px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-foreground">
-                <ui-icon [name]="e.icon" [size]="16" /> {{ e.label }}
+                class="flex items-center gap-2 whitespace-nowrap px-3 min-h-10 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-foreground">
+                <ui-icon [name]="e.icon" [size]="18" />
+                <span class="lg:hidden">{{ e.corto }}</span>
+                <span class="hidden lg:inline">{{ e.label }}</span>
               </a>
             </li>
           }
         </ul>
       </nav>
+
+      <div class="ml-auto flex items-center gap-1">
+        <span class="hidden lg:inline text-sm text-muted-foreground max-w-48 truncate mr-1" [title]="nombre">{{ nombre }}</span>
+        <button type="button" (click)="theme.toggle()"
+          class="h-10 w-10 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground flex items-center justify-center"
+          [attr.aria-label]="theme.isDark() ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'">
+          <ui-icon [name]="theme.isDark() ? 'sun' : 'moon'" [size]="18" />
+        </button>
+        <button type="button" (click)="salir()"
+          class="h-10 px-3 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-foreground inline-flex items-center gap-2">
+          <ui-icon name="log-out" [size]="16" /> Salir
+        </button>
+      </div>
     </div>
   </header>
 
-  <main class="flex-1 w-full max-w-6xl mx-auto px-4 lg:px-6 py-6">
+  <main class="portal-main flex-1 w-full max-w-6xl mx-auto px-4 lg:px-6 py-6">
     <router-outlet />
   </main>
 </div>

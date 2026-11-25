@@ -12,6 +12,7 @@ import { TableSkeleton } from '../../../shared/components/table-skeleton/table-s
 import { Icon, IconName } from '../../../shared/icons/icon';
 
 import { AuthService } from '../../../core/auth';
+import { ThemeService } from '../../../shared/services/theme';
 import { VibraDashboardService } from '../../../core/services/vibra-dashboard.service';
 import { VibraDashboard as VibraDashboardData, VibraRankingItem } from '../../../core/models';
 
@@ -34,6 +35,7 @@ interface SectionCard {
 export class VibraDashboard implements AfterViewInit, OnDestroy {
   private readonly service = inject(VibraDashboardService);
   private readonly auth = inject(AuthService);
+  private readonly theme = inject(ThemeService);
 
   @ViewChild('chartCanvas') chartCanvas?: ElementRef<HTMLCanvasElement>;
   private chart: Chart | null = null;
@@ -62,15 +64,25 @@ export class VibraDashboard implements AfterViewInit, OnDestroy {
     ] : []),
   ];
 
+  protected readonly toneClass: Record<SectionCard['tone'], string> = {
+    info: 'bg-info-soft text-info-fg',
+    success: 'bg-success-soft text-success-fg',
+    warning: 'bg-warning-soft text-warning-fg',
+    danger: 'bg-danger-soft text-danger-fg',
+    purple: 'bg-purple-soft text-purple-fg',
+    neutral: 'bg-neutral-soft text-neutral-fg',
+  };
+
   protected readonly topRanking = computed<VibraRankingItem[]>(() =>
     (this.data()?.ranking ?? []).slice(0, 10),
   );
 
   constructor() {
     this.load();
-    // Reconstruye el chart al cambiar data(); queueMicrotask espera a que el canvas esté visible.
+    // Reconstruye el chart al cambiar data() o el tema; queueMicrotask espera a que el canvas esté visible.
     effect(() => {
       const top = this.topRanking();
+      this.theme.isDark(); // repinta con los colores del tema
       if (top.length === 0) return;
       queueMicrotask(() => {
         if (this.chartCanvas) this.renderChart(top);
@@ -104,6 +116,12 @@ export class VibraDashboard implements AfterViewInit, OnDestroy {
     const ctx = this.chartCanvas.nativeElement.getContext('2d');
     if (!ctx) return;
 
+    // Colores del tema actual (claro u oscuro)
+    const css = getComputedStyle(document.documentElement);
+    const token = (n: string, def: string) => css.getPropertyValue(n).trim() || def;
+    const texto = token('--color-muted-foreground', '#a1a1aa');
+    const rejilla = token('--color-border', '#3f3f46');
+
     this.chart?.destroy();
     this.chart = new Chart(ctx, {
       type: 'bar',
@@ -111,15 +129,17 @@ export class VibraDashboard implements AfterViewInit, OnDestroy {
         labels: top.map(r => r.colaborador),
         datasets: [
           {
-            label: 'Cantidad de contratos',
+            label: 'Contratos',
             data: top.map(r => r.contratos),
-            backgroundColor: '#3b82f6',
+            backgroundColor: token('--color-info', '#12aff0'),
+            borderRadius: 3,
             yAxisID: 'y',
           },
           {
             label: 'Consumo (kWh)',
             data: top.map(r => r.consumoTotal),
-            backgroundColor: '#f59e0b',
+            backgroundColor: token('--color-warning', '#f59e0b'),
+            borderRadius: 3,
             yAxisID: 'y1',
           },
         ],
@@ -131,18 +151,23 @@ export class VibraDashboard implements AfterViewInit, OnDestroy {
         scales: {
           y: {
             type: 'linear', position: 'left', beginAtZero: true,
-            ticks: { precision: 0 },
+            ticks: { precision: 0, color: texto },
+            grid: { color: rejilla },
+            title: { display: true, text: 'Contratos', color: texto },
           },
           y1: {
             type: 'linear', position: 'right', beginAtZero: true,
             grid: { drawOnChartArea: false },
+            ticks: { color: texto },
+            title: { display: true, text: 'kWh', color: texto },
           },
           x: {
-            ticks: { autoSkip: false, maxRotation: 45, minRotation: 45 },
+            ticks: { autoSkip: false, maxRotation: 45, minRotation: 0, color: texto },
+            grid: { display: false },
           },
         },
         plugins: {
-          legend: { position: 'bottom' },
+          legend: { position: 'bottom', labels: { color: texto } },
           tooltip: { enabled: true },
         },
       },

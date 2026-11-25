@@ -172,6 +172,16 @@ export function formatMonthShort(yearMonth: string): string {
   return `${SHORT_MONTHS[month - 1]} ${yearShort}`;
 }
 
+const LONG_MONTH_FORMATTER = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+/** «2026-11» → «Noviembre de 2026». */
+export function formatMonthLong(yearMonth: string): string {
+  const d = new Date(`${yearMonth}-01T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return yearMonth;
+  const m = LONG_MONTH_FORMATTER.format(d);
+  return m.charAt(0).toUpperCase() + m.slice(1);
+}
+
 export function safeText(value: string | null | undefined, fallback = '—'): string {
   return value && value.trim().length > 0 ? value : fallback;
 }

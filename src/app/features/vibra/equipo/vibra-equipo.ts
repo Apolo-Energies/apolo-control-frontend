@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 
 import { PageHeader } from '../../../shared/components/page-header/page-header';
+import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions-menu/actions-menu';
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
@@ -29,7 +30,7 @@ import { formatDateTime, formatEuro } from '../../../shared/utils/format';
 @Component({
   selector: 'app-vibra-equipo',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, PageHeader, FormDialog, StatusBadge, TableSkeleton, Icon],
+  imports: [FormsModule, PageHeader, ActionsMenu, FormDialog, StatusBadge, TableSkeleton, Icon],
   templateUrl: './vibra-equipo.html',
 })
 export class VibraEquipo {
@@ -63,6 +64,23 @@ export class VibraEquipo {
   protected readonly fiscalError = signal<string | null>(null);
   protected fiscal: DatosFiscalesColaborador = VibraEquipo.fiscalVacio();
   protected readonly tiposFiscales = Object.entries(TIPO_FISCAL_VIBRA_LABEL);
+
+  /** Acciones de cada fila (solo admin). */
+  protected readonly menus = computed(() => {
+    const ocupado = this.saving();
+    return new Map(this.rows().map((c): [string, ActionsMenuItem[]] => [c.clave, [
+      { label: 'Datos fiscales', icon: 'edit', action: () => this.abrirFiscal(c) },
+      this.accesoItem(c, ocupado === c.clave),
+    ]]));
+  });
+
+  private accesoItem(c: VibraColaborador, ocupado: boolean): ActionsMenuItem {
+    if (!c.accesoEmail) return { label: 'Dar acceso al portal', icon: 'user', action: () => this.abrirAcceso(c) };
+    if (c.accesoActivo) {
+      return { label: 'Quitar acceso', icon: 'log-out', danger: true, separatorBefore: true, disabled: ocupado, action: () => void this.cambiarAcceso(c) };
+    }
+    return { label: 'Reactivar acceso', icon: 'user', disabled: ocupado, action: () => void this.cambiarAcceso(c) };
+  }
 
   constructor() { this.load(); }
 

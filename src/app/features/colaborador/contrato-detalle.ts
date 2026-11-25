@@ -35,6 +35,18 @@ export class ContratoDetalle {
       .filter((p) => p.valor !== null);
   });
 
+  /** Hitos del contrato; Baja solo si la hay. */
+  protected readonly fechas = computed(() => {
+    const c = this.contrato();
+    if (!c) return [];
+    const f = [
+      { label: 'Alta', valor: c.fecha },
+      { label: 'Firma', valor: c.fechaFirma },
+      { label: 'Activación', valor: c.fechaActivacionContrato },
+    ];
+    return c.fechaBaja ? [...f, { label: 'Baja', valor: c.fechaBaja }] : f;
+  });
+
   constructor() {
     effect(() => {
       const id = this.id();

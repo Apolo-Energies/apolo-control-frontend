@@ -22,11 +22,12 @@ export class ColaboradorLayout {
 
   protected readonly nombre = this.auth.user()?.nombre ?? '';
 
-  protected readonly enlaces: { url: string; label: string; icon: IconName; exact: boolean }[] = [
-    { url: '/colaborador/contratos', label: 'Mis contratos', icon: 'file-text', exact: true },
-    { url: '/colaborador/contratos/nuevo', label: 'Cargar contrato', icon: 'file-plus', exact: true },
-    { url: '/colaborador/liquidaciones', label: 'Mis liquidaciones', icon: 'wallet', exact: true },
-    { url: '/colaborador/perfil', label: 'Mi perfil', icon: 'user', exact: true },
+  /** `corto`: etiqueta de la barra inferior en móvil. */
+  protected readonly enlaces: { url: string; label: string; corto: string; icon: IconName; exact: boolean }[] = [
+    { url: '/colaborador/contratos', label: 'Mis contratos', corto: 'Contratos', icon: 'file-text', exact: true },
+    { url: '/colaborador/contratos/nuevo', label: 'Cargar contrato', corto: 'Cargar', icon: 'file-plus', exact: true },
+    { url: '/colaborador/liquidaciones', label: 'Mis liquidaciones', corto: 'Liquidaciones', icon: 'wallet', exact: true },
+    { url: '/colaborador/perfil', label: 'Mi perfil', corto: 'Perfil', icon: 'user', exact: true },
   ];
 
   protected salir(): void {

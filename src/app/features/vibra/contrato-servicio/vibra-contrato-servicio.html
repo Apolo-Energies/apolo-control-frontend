@@ -1,9 +1,4 @@
-<app-page-header title="Contrato Servicio" subtitle="Generador de contratos de servicios energéticos">
-  <a routerLink="/vibra/dashboard"
-    class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent">
-    <ui-icon name="chevron-left" [size]="16"/> Volver al Dashboard
-  </a>
-</app-page-header>
+<app-page-header title="Contrato Servicio" subtitle="Sube la factura del cliente, revisa los datos y crea el alta con su contrato en PDF" />
 
 @if (!ocrDone()) {
   <div class="max-w-3xl mx-auto">
@@ -36,7 +31,7 @@
           }
         </div>
         <button type="button" (click)="triggerFilePicker()"
-          class="inline-flex items-center gap-2 rounded-lg bg-success text-white px-6 py-3 text-sm font-semibold hover:opacity-90 cursor-pointer">
+          class="btn btn-primary">
           <ui-icon name="upload" [size]="18"/> Seleccionar factura
         </button>
         <div class="mt-4">
@@ -73,22 +68,22 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="md:col-span-2">
-            <label class="text-sm font-medium">Nombre / Razón Social *</label>
-            <input formControlName="nombre" placeholder="Nombre completo o razón social"
+            <label for="cs-nombre" class="text-sm font-medium">Nombre / Razón Social *</label>
+            <input id="cs-nombre" formControlName="nombre" placeholder="Nombre completo o razón social"
               class="w-full border rounded-lg px-3 py-2 mt-1 text-sm bg-input"
               [class.border-danger]="showError('nombre')" [class.border-border]="!showError('nombre')"/>
             @if (showError('nombre')) { <p class="text-xs text-danger-fg mt-1">{{ errorMsg('nombre') }}</p> }
           </div>
           <div>
-            <label class="text-sm font-medium">Nº de documento *</label>
-            <input formControlName="documentoNum" placeholder="12345678A"
+            <label for="cs-documentoNum" class="text-sm font-medium">Nº de documento *</label>
+            <input id="cs-documentoNum" formControlName="documentoNum" placeholder="12345678A"
               class="w-full border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"
               [class.border-danger]="showError('documentoNum')" [class.border-border]="!showError('documentoNum')"/>
             @if (showError('documentoNum')) { <p class="text-xs text-danger-fg mt-1">{{ errorMsg('documentoNum') }}</p> }
           </div>
           <div>
-            <label class="text-sm font-medium">Tipo</label>
-            <select formControlName="tipoDocumento"
+            <label for="cs-tipoDocumento" class="text-sm font-medium">Tipo</label>
+            <select id="cs-tipoDocumento" formControlName="tipoDocumento"
               class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
               <option value="DNI">DNI</option>
               <option value="NIE">NIE</option>
@@ -96,15 +91,15 @@
             </select>
           </div>
           <div>
-            <label class="text-sm font-medium">CUPS electricidad *</label>
-            <input formControlName="cups" placeholder="ES0021000000000000XX"
+            <label for="cs-cups" class="text-sm font-medium">CUPS electricidad *</label>
+            <input id="cs-cups" formControlName="cups" placeholder="ES0021000000000000XX"
               class="w-full border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"
               [class.border-danger]="showError('cups')" [class.border-border]="!showError('cups')"/>
             @if (showError('cups')) { <p class="text-xs text-danger-fg mt-1">{{ errorMsg('cups') }}</p> }
           </div>
           <div>
-            <label class="text-sm font-medium">Tarifa de acceso</label>
-            <input formControlName="tarifaAcceso" placeholder="2.0TD"
+            <label for="cs-tarifaAcceso" class="text-sm font-medium">Tarifa de acceso</label>
+            <input id="cs-tarifaAcceso" formControlName="tarifaAcceso" placeholder="2.0TD"
               class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
           </div>
         </div>
@@ -113,33 +108,33 @@
           <p class="text-sm font-medium mb-2">Dirección del suministro *</p>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div class="md:col-span-2">
-              <label class="text-xs text-muted-foreground">Calle</label>
-              <input formControlName="direccion" placeholder="Nombre de la calle"
+              <label for="cs-direccion" class="text-xs text-muted-foreground">Calle</label>
+              <input id="cs-direccion" formControlName="direccion" placeholder="Nombre de la calle"
                 class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
             </div>
             <div>
-              <label class="text-xs text-muted-foreground">Número</label>
-              <input formControlName="numero" placeholder="2"
+              <label for="cs-numero" class="text-xs text-muted-foreground">Número</label>
+              <input id="cs-numero" formControlName="numero" placeholder="2"
                 class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
             </div>
             <div>
-              <label class="text-xs text-muted-foreground">Piso / Puerta</label>
-              <input formControlName="pisoPuerta" placeholder="BAJO 2"
+              <label for="cs-pisoPuerta" class="text-xs text-muted-foreground">Piso / Puerta</label>
+              <input id="cs-pisoPuerta" formControlName="pisoPuerta" placeholder="BAJO 2"
                 class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
             </div>
             <div>
-              <label class="text-xs text-muted-foreground">Población</label>
-              <input formControlName="poblacion" placeholder="Valencia"
+              <label for="cs-poblacion" class="text-xs text-muted-foreground">Población</label>
+              <input id="cs-poblacion" formControlName="poblacion" placeholder="Valencia"
                 class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
             </div>
             <div>
-              <label class="text-xs text-muted-foreground">Provincia</label>
-              <input formControlName="provincia" placeholder="Valencia"
+              <label for="cs-provincia" class="text-xs text-muted-foreground">Provincia</label>
+              <input id="cs-provincia" formControlName="provincia" placeholder="Valencia"
                 class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
             </div>
             <div>
-              <label class="text-xs text-muted-foreground">Código postal</label>
-              <input formControlName="codigoPostal" placeholder="46023"
+              <label for="cs-codigoPostal" class="text-xs text-muted-foreground">Código postal</label>
+              <input id="cs-codigoPostal" formControlName="codigoPostal" placeholder="46023"
                 class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
             </div>
           </div>
@@ -150,8 +145,8 @@
           <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
             @for (p of [1,2,3,4,5,6]; track p) {
               <div>
-                <label class="block text-xs text-muted-foreground text-center mb-1">P{{ p }}</label>
-                <input [formControlName]="'p' + p" placeholder="0"
+                <label [for]="'cs-p' + p" class="block text-xs text-muted-foreground text-center mb-1">P{{ p }}</label>
+                <input [id]="'cs-p' + p" [formControlName]="'p' + p" inputmode="decimal" placeholder="0"
                   class="w-full text-center border border-border rounded-lg px-2 py-2 text-sm bg-input tabular-nums"/>
               </div>
             }
@@ -170,35 +165,35 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="text-sm font-medium">Consumo anual estimado (kWh)</label>
-            <input formControlName="consumoAnual" placeholder="2142"
+            <label for="cs-consumoAnual" class="text-sm font-medium">Consumo anual estimado (kWh)</label>
+            <input id="cs-consumoAnual" formControlName="consumoAnual" placeholder="2142"
               class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
           </div>
           <div>
-            <label class="text-sm font-medium">Fecha de activación</label>
-            <input type="date" formControlName="fechaInicio"
+            <label for="cs-fechaInicio" class="text-sm font-medium">Fecha de activación</label>
+            <input id="cs-fechaInicio" type="date" formControlName="fechaInicio"
               class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
           </div>
           <div class="md:col-span-2">
-            <label class="text-sm font-medium">IBAN</label>
-            <input formControlName="iban" placeholder="ES00 0000 0000 0000 0000 0000"
+            <label for="cs-iban" class="text-sm font-medium">IBAN</label>
+            <input id="cs-iban" formControlName="iban" placeholder="ES00 0000 0000 0000 0000 0000"
               class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
           </div>
           <div>
-            <label class="text-sm font-medium">Correo electrónico</label>
-            <input type="email" formControlName="email" placeholder="correo@ejemplo.com"
+            <label for="cs-email" class="text-sm font-medium">Correo electrónico</label>
+            <input id="cs-email" type="email" formControlName="email" placeholder="correo@ejemplo.com"
               class="w-full border rounded-lg px-3 py-2 mt-1 text-sm bg-input"
               [class.border-danger]="showError('email')" [class.border-border]="!showError('email')"/>
             @if (showError('email')) { <p class="text-xs text-danger-fg mt-1">{{ errorMsg('email') }}</p> }
           </div>
           <div>
-            <label class="text-sm font-medium">Teléfono</label>
-            <input formControlName="telefono" placeholder="600 000 000"
+            <label for="cs-telefono" class="text-sm font-medium">Teléfono</label>
+            <input id="cs-telefono" formControlName="telefono" placeholder="600 000 000"
               class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
           </div>
           <div class="md:col-span-2">
-            <label class="text-sm font-medium">Duración del contrato</label>
-            <input formControlName="duracion" placeholder="12 meses"
+            <label for="cs-duracion" class="text-sm font-medium">Duración del contrato</label>
+            <input id="cs-duracion" formControlName="duracion" placeholder="12 meses"
               class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
           </div>
         </div>
@@ -214,7 +209,7 @@
           <p class="text-sm font-medium mb-2">1. Tipo de tarifa</p>
           <div class="flex gap-3">
             @for (t of ['2.0TD','3.0TD']; track t) {
-              <button type="button" (click)="setTipoTarifa(t)"
+              <button type="button" (click)="setTipoTarifa(t)" [attr.aria-pressed]="tipoTarifaSelec() === t"
                 class="px-6 py-3 rounded-lg border-2 font-semibold text-sm transition-colors"
                 [class.border-primary]="tipoTarifaSelec() === t"
                 [class.bg-primary]="tipoTarifaSelec() === t"
@@ -237,7 +232,7 @@
             } @else {
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 @for (t of productos(); track t.id) {
-                  <button type="button" (click)="selectProducto(t)"
+                  <button type="button" (click)="selectProducto(t)" [attr.aria-pressed]="productoSelec()?.id === t.id"
                     class="text-left p-3 rounded-lg border-2 transition-colors"
                     [class.border-primary]="productoSelec()?.id === t.id"
                     [class.bg-primary-soft]="productoSelec()?.id === t.id"
@@ -296,8 +291,8 @@
               </div>
             </div>
             <button type="button" (click)="changeFactura()"
-              class="mt-3 w-full text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 py-1.5 rounded-lg border border-border hover:bg-accent">
-              <ui-icon name="upload" [size]="12"/> Subir otra factura
+              class="btn btn-secondary mt-3 w-full">
+              <ui-icon name="upload" [size]="16"/> Subir otra factura
             </button>
           } @else {
             <p class="text-xs text-muted-foreground">Alta manual sin factura.</p>
@@ -328,7 +323,7 @@
             </div>
             <div>
               <dt class="text-muted-foreground">Fecha activación</dt>
-              <dd class="tabular-nums">{{ form.value.fechaInicio || '—' }}</dd>
+              <dd class="tabular-nums">{{ form.value.fechaInicio ? fecha(form.value.fechaInicio) : '—' }}</dd>
             </div>
           </dl>
         </div>
@@ -346,12 +341,12 @@
         }
 
         <button type="button" (click)="crearAlta()" [disabled]="saving()"
-          class="w-full rounded-xl bg-success text-white py-3 text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 shadow-lg shadow-success/20">
+          class="btn btn-primary w-full">
           <ui-icon name="check-circle" [size]="18"/> Crear alta y generar PDF
         </button>
 
         <button type="button" (click)="descargarPdf()" [disabled]="generatingPdf() || saving()"
-          class="w-full rounded-xl border border-border bg-card text-foreground py-2.5 text-sm font-medium flex items-center justify-center gap-2 hover:bg-accent disabled:opacity-50">
+          class="btn btn-secondary w-full">
           @if (generatingPdf()) {
             <ui-icon name="loader" [size]="16" class="animate-spin"/> Generando…
           } @else {
@@ -359,7 +354,7 @@
           }
         </button>
         <p class="text-xs text-muted-foreground text-center">
-          "Descargar PDF" genera el contrato con los datos actuales sin guardar el alta.
+          «Descargar PDF» genera el contrato con los datos actuales sin guardar el alta.
         </p>
       </div>
     </aside>

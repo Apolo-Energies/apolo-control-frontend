@@ -12,16 +12,16 @@
     </div>
   }
 
-  <ol class="space-y-3" aria-label="Pasos de la migración">
-    <li class="rounded-xl border border-border bg-card p-4" aria-labelledby="paso-altas">
-      <div class="flex flex-wrap items-start gap-3">
-        <div class="flex-1 min-w-64">
-          <h2 id="paso-altas" class="font-semibold">1. Altas (contratos)</h2>
-          <p class="text-sm text-muted-foreground">Sincroniza los contratos de Kilowy. {{ e.altasKilowy }} altas vienen de Kilowy.</p>
-          @if (!e.syncHabilitado) { <p class="text-sm text-muted-foreground">La sincronización ya está desactivada.</p> }
+  <ol class="space-y-3 max-w-5xl" aria-label="Pasos de la migración">
+    <li class="rounded-xl border border-border bg-card p-4 sm:p-5" aria-labelledby="paso-altas">
+      <div class="flex flex-col sm:flex-row sm:items-start gap-3">
+        <div class="flex-1 min-w-0">
+          <h2 class="font-semibold" id="paso-altas">1. Altas (contratos)</h2>
+          <p class="mt-1 text-sm text-muted-foreground max-w-[70ch]">Sincroniza los contratos de Kilowy. {{ e.altasKilowy }} altas vienen de Kilowy.</p>
+          @if (!e.syncHabilitado) { <p class="mt-1 text-sm text-muted-foreground max-w-[70ch]">La sincronización ya está desactivada.</p> }
         </div>
         <button type="button" (click)="sincronizarAltas()" [disabled]="bloqueado() || !e.syncHabilitado"
-          class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">
+          class="btn btn-secondary w-full sm:w-auto">
           <ui-icon name="refresh-cw" [size]="16" /> {{ ocupado() === 'altas' ? 'Sincronizando…' : 'Sincronizar' }}
         </button>
       </div>
@@ -29,14 +29,14 @@
       @if (errorDe('altas'); as r) { <p class="mt-2 text-sm text-danger-fg" role="alert">{{ r }}</p> }
     </li>
 
-    <li class="rounded-xl border border-border bg-card p-4" aria-labelledby="paso-fichas">
-      <div class="flex flex-wrap items-start gap-3">
-        <div class="flex-1 min-w-64">
-          <h2 id="paso-fichas" class="font-semibold">2. Fichas de contrato</h2>
-          <p class="text-sm text-muted-foreground">Precios y servicios de la ficha de cada contrato de Kilowy.</p>
+    <li class="rounded-xl border border-border bg-card p-4 sm:p-5" aria-labelledby="paso-fichas">
+      <div class="flex flex-col sm:flex-row sm:items-start gap-3">
+        <div class="flex-1 min-w-0">
+          <h2 class="font-semibold" id="paso-fichas">2. Fichas de contrato</h2>
+          <p class="mt-1 text-sm text-muted-foreground max-w-[70ch]">Precios y servicios de la ficha de cada contrato de Kilowy.</p>
         </div>
         <button type="button" (click)="importarFichas()" [disabled]="bloqueado()"
-          class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">
+          class="btn btn-secondary w-full sm:w-auto">
           <ui-icon name="download" [size]="16" /> {{ ocupado() === 'fichas' ? 'Importando…' : 'Importar fichas' }}
         </button>
       </div>
@@ -44,31 +44,31 @@
       @if (errorDe('fichas'); as r) { <p class="mt-2 text-sm text-danger-fg" role="alert">{{ r }}</p> }
     </li>
 
-    <li class="rounded-xl border border-border bg-card p-4" aria-labelledby="paso-clientes">
-      <div class="flex flex-wrap items-start gap-3">
-        <div class="flex-1 min-w-64">
-          <h2 id="paso-clientes" class="font-semibold">3. Clientes, suministros y calle</h2>
-          <p class="text-sm text-muted-foreground">
+    <li class="rounded-xl border border-border bg-card p-4 sm:p-5" aria-labelledby="paso-clientes">
+      <div class="flex flex-col sm:flex-row sm:items-start gap-3">
+        <div class="flex-1 min-w-0">
+          <h2 class="font-semibold" id="paso-clientes">3. Clientes, suministros y calle</h2>
+          <p class="mt-1 text-sm text-muted-foreground max-w-[70ch]">
             CSV de clientes y puntos y, después, la dirección de la ficha de cada cliente que aún no tiene calle
             (unos 4 por segundo). {{ e.clientesConCalle }} de {{ e.clientes }} clientes tienen calle.
           </p>
         </div>
         <button type="button" (click)="importarClientes()" [disabled]="bloqueado()"
-          class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">
+          class="btn btn-secondary w-full sm:w-auto">
           <ui-icon name="download" [size]="16" /> Importar clientes
         </button>
       </div>
       <ng-container *ngTemplateOutlet="trabajo; context: { $implicit: e.clientesCalle, id: 'prog-clientes', paso: 'clientes' }" />
     </li>
 
-    <li class="rounded-xl border border-border bg-card p-4" aria-labelledby="paso-facturas">
-      <div class="flex flex-wrap items-start gap-3">
-        <div class="flex-1 min-w-64">
-          <h2 id="paso-facturas" class="font-semibold">4. Facturas</h2>
-          <p class="text-sm text-muted-foreground">Cabecera y totales de las facturas de Kilowy. {{ e.facturasKilowy }} importadas.</p>
+    <li class="rounded-xl border border-border bg-card p-4 sm:p-5" aria-labelledby="paso-facturas">
+      <div class="flex flex-col sm:flex-row sm:items-start gap-3">
+        <div class="flex-1 min-w-0">
+          <h2 class="font-semibold" id="paso-facturas">4. Facturas</h2>
+          <p class="mt-1 text-sm text-muted-foreground max-w-[70ch]">Cabecera y totales de las facturas de Kilowy. {{ e.facturasKilowy }} importadas.</p>
         </div>
         <button type="button" (click)="importarFacturas()" [disabled]="bloqueado()"
-          class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">
+          class="btn btn-secondary w-full sm:w-auto">
           <ui-icon name="download" [size]="16" /> {{ ocupado() === 'facturas' ? 'Importando…' : 'Importar facturas' }}
         </button>
       </div>
@@ -76,34 +76,34 @@
       @if (errorDe('facturas'); as r) { <p class="mt-2 text-sm text-danger-fg" role="alert">{{ r }}</p> }
     </li>
 
-    <li class="rounded-xl border border-border bg-card p-4" aria-labelledby="paso-pdfs">
-      <div class="flex flex-wrap items-start gap-3">
-        <div class="flex-1 min-w-64">
-          <h2 id="paso-pdfs" class="font-semibold">5. PDF de las facturas</h2>
-          <p class="text-sm text-muted-foreground">
+    <li class="rounded-xl border border-border bg-card p-4 sm:p-5" aria-labelledby="paso-pdfs">
+      <div class="flex flex-col sm:flex-row sm:items-start gap-3">
+        <div class="flex-1 min-w-0">
+          <h2 class="font-semibold" id="paso-pdfs">5. PDF de las facturas</h2>
+          <p class="mt-1 text-sm text-muted-foreground max-w-[70ch]">
             Descarga el PDF original de cada factura importada que aún no lo tiene. Es largo (dos peticiones por factura);
             si se corta, se relanza y sigue por donde iba. {{ e.facturasConPdf }} de {{ e.facturasKilowy }} con PDF.
           </p>
         </div>
         <button type="button" (click)="descargarPdfs()" [disabled]="bloqueado() || e.facturasConPdf >= e.facturasKilowy"
-          class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">
+          class="btn btn-secondary w-full sm:w-auto">
           <ui-icon name="file-text" [size]="16" /> Descargar PDF
         </button>
       </div>
       <ng-container *ngTemplateOutlet="trabajo; context: { $implicit: e.pdfs, id: 'prog-pdfs', paso: 'pdfs' }" />
     </li>
 
-    <li class="rounded-xl border border-border bg-card p-4" aria-labelledby="paso-remesas">
-      <div class="flex flex-wrap items-start gap-3">
-        <div class="flex-1 min-w-64">
-          <h2 id="paso-remesas" class="font-semibold">6. Numeración de remesas</h2>
-          <p class="text-sm text-muted-foreground">
+    <li class="rounded-xl border border-border bg-card p-4 sm:p-5" aria-labelledby="paso-remesas">
+      <div class="flex flex-col sm:flex-row sm:items-start gap-3">
+        <div class="flex-1 min-w-0">
+          <h2 class="font-semibold" id="paso-remesas">6. Numeración de remesas</h2>
+          <p class="mt-1 text-sm text-muted-foreground max-w-[70ch]">
             Sigue la numeración de Kilowy: la siguiente remesa de Control será la de después de la última de Kilowy.
             Nunca la baja. Última dada en Control: {{ e.ultimaRemesa }}.
           </p>
         </div>
         <button type="button" (click)="remesasOpen.set(true)" [disabled]="bloqueado()"
-          class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">
+          class="btn btn-secondary w-full sm:w-auto">
           <ui-icon name="arrow-up" [size]="16" /> {{ ocupado() === 'remesas' ? 'Leyendo…' : 'Avanzar numeración' }}
         </button>
       </div>
@@ -111,21 +111,21 @@
       @if (errorDe('remesas'); as r) { <p class="mt-2 text-sm text-danger-fg" role="alert">{{ r }}</p> }
     </li>
 
-    <li class="rounded-xl border border-border bg-card p-4" aria-labelledby="paso-empresa">
-      <div class="flex flex-wrap items-start gap-3">
-        <div class="flex-1 min-w-64">
-          <h2 id="paso-empresa" class="font-semibold">7. Datos de empresa</h2>
-          <p class="text-sm text-muted-foreground">
+    <li class="rounded-xl border border-border bg-card p-4 sm:p-5" aria-labelledby="paso-empresa">
+      <div class="flex flex-col sm:flex-row sm:items-start gap-3">
+        <div class="flex-1 min-w-0">
+          <h2 class="font-semibold" id="paso-empresa">7. Datos de empresa</h2>
+          <p class="mt-1 text-sm text-muted-foreground max-w-[70ch]">
             Rellena solo los datos vacíos con los de Kilowy (lo que ya tiene valor no se toca).
             @if (empresaVacios(); as v) { Vacíos: {{ v }}. } @else { Ninguno vacío. }
           </p>
-          <p class="text-sm text-muted-foreground">
+          <p class="mt-1 text-sm text-muted-foreground max-w-[70ch]">
             El IBAN de cobro no se puede traer (Kilowy lo enseña enmascarado): ponlo a mano en
             <a routerLink="/settings" class="underline">Configuración</a> (vibra.sepa.iban).
           </p>
         </div>
         <button type="button" (click)="importarEmpresa()" [disabled]="bloqueado()"
-          class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">
+          class="btn btn-secondary w-full sm:w-auto">
           <ui-icon name="download" [size]="16" /> {{ ocupado() === 'empresa' ? 'Leyendo…' : 'Traer datos' }}
         </button>
       </div>
@@ -133,11 +133,13 @@
       @if (errorDe('empresa'); as r) { <p class="mt-2 text-sm text-danger-fg" role="alert">{{ r }}</p> }
     </li>
 
-    <li class="rounded-xl border border-warning/40 bg-warning-soft p-4" aria-labelledby="paso-fin">
-      <h2 id="paso-fin" class="font-semibold">8. Al terminar: apagar Kilowy</h2>
-      <p class="text-sm">
+    <li class="rounded-xl border border-warning/40 bg-warning-soft text-warning-fg p-4 sm:p-5 max-w-5xl" aria-labelledby="paso-fin">
+      <h2 class="font-semibold" id="paso-fin">8. Al terminar: apagar Kilowy</h2>
+      <p class="mt-1 text-sm">
         Desactiva <strong>kilowy.sync.habilitado</strong> en <a routerLink="/settings" class="underline">Configuración</a>
         para que la sincronización diaria deje de traer altas.
+      </p>
+      <p class="mt-3">
         <app-status-badge [tone]="e.syncHabilitado ? 'warning' : 'success'">
           {{ e.syncHabilitado ? 'Sincronización activa' : 'Sincronización desactivada' }}
         </app-status-badge>
@@ -152,7 +154,7 @@
   <div class="mt-3 flex flex-wrap items-center gap-3 text-sm">
     <app-status-badge [tone]="tono(t)">{{ etiqueta(t) }}</app-status-badge>
     @if (t.enCurso) {
-      <progress [id]="id" class="w-48 accent-primary" [attr.max]="t.total || null" [attr.value]="t.total ? t.hechos : null"
+      <progress [id]="id" class="progreso w-48 max-w-full" [attr.max]="t.total || null" [attr.value]="t.total ? t.hechos : null"
         [attr.aria-label]="'Progreso del paso'"></progress>
     }
     <span role="status">{{ textoTrabajo(t) }}@if (t.fin) { · {{ fechaHora(t.fin) }} }</span>

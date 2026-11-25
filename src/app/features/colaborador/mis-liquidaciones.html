@@ -10,49 +10,62 @@
   <app-table-skeleton [cols]="6" [rows]="6" />
 } @else {
   <div class="rounded-2xl border border-border bg-card overflow-hidden">
-    <div class="overflow-auto max-h-[70vh]" tabindex="0" role="region" aria-labelledby="mis-liq-caption">
-      <table class="w-full text-sm">
+    <div class="vtable-region" tabindex="0" role="region" aria-labelledby="mis-liq-caption" style="--vtable-min: 52rem">
+      <table class="vtable">
         <caption id="mis-liq-caption" class="sr-only">Tus liquidaciones mensuales</caption>
-        <thead class="sticky top-0 z-10 bg-card">
-          <tr class="border-b border-border text-left text-muted-foreground">
-            <th scope="col" class="py-3 px-4 font-medium">Mes</th>
-            <th scope="col" class="py-3 px-4 font-medium">Estado</th>
-            <th scope="col" class="py-3 px-4 font-medium text-right">Altas</th>
-            <th scope="col" class="py-3 px-4 font-medium text-right">Bajas</th>
-            <th scope="col" class="py-3 px-4 font-medium text-right">Renovaciones</th>
-            <th scope="col" class="py-3 px-4 font-medium text-right">Neto</th>
-            <th scope="col" class="py-3 px-4 font-medium">Autofactura</th>
+        <colgroup>
+          <col style="inline-size: 9.5rem" />
+          <col class="col-estado" style="inline-size: 11rem" />
+          <col class="col-importe" />
+          <col class="col-importe" />
+          <col class="col-importe" style="inline-size: 8rem" />
+          <col class="col-importe" />
+          <col class="col-texto" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col" class="vtable-fix">Mes</th>
+            <th scope="col">Estado</th>
+            <th scope="col" class="cell-num">Altas</th>
+            <th scope="col" class="cell-num">Bajas</th>
+            <th scope="col" class="cell-num">Renovaciones</th>
+            <th scope="col" class="cell-num">Neto</th>
+            <th scope="col" class="cell-num">Autofactura</th>
           </tr>
         </thead>
         <tbody>
           @for (l of rows(); track l.id) {
-            <tr class="border-b border-border/50 hover:bg-accent/40">
-              <th scope="row" class="py-2 px-4 font-normal text-left capitalize whitespace-nowrap">{{ mes(l.mes) }}</th>
-              <td class="py-2 px-4 whitespace-nowrap">
+            <tr>
+              <th scope="row" class="vtable-fix cell-nowrap font-medium">{{ mes(l.mes) }}</th>
+              <td data-label="Estado">
                 @if (l.estado === 'PAGADA') {
-                  <app-status-badge tone="success">Pagada {{ fecha(l.fechaPago) }}</app-status-badge>
+                  <app-status-badge tone="success">Pagada</app-status-badge>
+                  <span class="cell-sub tabular-nums">el {{ fecha(l.fechaPago) }}</span>
                 } @else {
                   <app-status-badge tone="warning">Pendiente de pago</app-status-badge>
                 }
               </td>
-              <td class="py-2 px-4 text-right tabular-nums">{{ eur(l.totalAltas) }}</td>
-              <td class="py-2 px-4 text-right tabular-nums">{{ eur(l.totalBajas) }}</td>
-              <td class="py-2 px-4 text-right tabular-nums">{{ eur(l.totalAniversarios) }}</td>
-              <td class="py-2 px-4 text-right tabular-nums font-medium">{{ eur(l.totalNeto) }}</td>
-              <td class="py-2 px-4 whitespace-nowrap">
-                <button type="button" (click)="descargar(l)" [disabled]="descargando() === l.id"
-                  class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border hover:bg-accent disabled:opacity-50">
-                  <ui-icon name="download" [size]="14" />
-                  {{ descargando() === l.id ? 'Generando…' : 'Descargar autofactura' }}
-                  <span class="sr-only">de {{ mes(l.mes) }}</span>
-                </button>
-                @if (l.autofacturaNumero) {
-                  <div class="text-xs text-muted-foreground mt-1">{{ l.autofacturaNumero }} · {{ fecha(l.autofacturaFecha) }}</div>
-                }
+              <td data-label="Altas" class="cell-num">{{ eur(l.totalAltas) }}</td>
+              <td data-label="Bajas" class="cell-num" [class.text-danger-fg]="l.totalBajas < 0">{{ eur(l.totalBajas) }}</td>
+              <td data-label="Renovaciones" class="cell-num">{{ eur(l.totalAniversarios) }}</td>
+              <td data-label="Neto" class="cell-num font-semibold" [class.text-danger-fg]="l.totalNeto < 0">{{ eur(l.totalNeto) }}</td>
+              <td data-label="Autofactura">
+                <div class="cell-actions items-center">
+                  @if (l.autofacturaNumero) {
+                    <span class="text-xs text-muted-foreground text-right tabular-nums">{{ l.autofacturaNumero }}<br />{{ fecha(l.autofacturaFecha) }}</span>
+                  }
+                  <button type="button" (click)="descargar(l)" [disabled]="descargando() === l.id" class="btn btn-secondary">
+                    <ui-icon name="download" [size]="16" />
+                    {{ descargando() === l.id ? 'Generando…' : 'PDF' }}
+                    <span class="sr-only">de la autofactura de {{ mes(l.mes) }}</span>
+                  </button>
+                </div>
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="7" class="py-16 text-center text-muted-foreground">Aún no tienes liquidaciones</td></tr>
+            <tr><td colspan="7" class="vtable-empty">
+              Aún no tienes liquidaciones. Aparecen aquí cuando administración guarda la de un mes.
+            </td></tr>
           }
         </tbody>
       </table>

@@ -1,147 +1,133 @@
-<app-page-header title="Liquidaciones" [subtitle]="tab() === 'alta' ? total() + ' registros' : 'Por colaborador y mes: altas, bajas y renovaciones'">
-  <a routerLink="/vibra/dashboard" class="text-sm text-muted-foreground hover:text-foreground">← Volver al Dashboard</a>
-  <button type="button" (click)="exportExcel()" [hidden]="tab() !== 'alta'" class="ml-auto inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
-    <ui-icon name="download" [size]="16" /> Exportar
-  </button>
+<app-page-header title="Liquidaciones" [subtitle]="tab() === 'alta' ? total() + ' altas' : 'Por colaborador y mes: altas, bajas y renovaciones'">
+  @if (tab() === 'alta') {
+    <button secondary type="button" (click)="exportExcel()" class="btn btn-secondary">
+      <ui-icon name="download" [size]="16" /> Exportar Excel
+    </button>
+  }
 </app-page-header>
 
 <div class="tablist mb-4" focusgroup="tablist nomemory" role="tablist" aria-label="Vistas de liquidaciones">
-  <button type="button" role="tab" id="tab-mensual" [attr.aria-selected]="tab() === 'mensual'"
+  <button type="button" role="tab" id="tab-mensual" aria-controls="panel-mensual" [attr.aria-selected]="tab() === 'mensual'"
     [attr.focusgroupstart]="tab() === 'mensual' ? '' : null" (click)="abrirTab('mensual')">Por colaborador y mes</button>
-  <button type="button" role="tab" id="tab-alta" [attr.aria-selected]="tab() === 'alta'"
+  <button type="button" role="tab" id="tab-alta" aria-controls="panel-alta" [attr.aria-selected]="tab() === 'alta'"
     [attr.focusgroupstart]="tab() === 'alta' ? '' : null" (click)="abrirTab('alta')">Por alta</button>
 </div>
 
-<div role="tabpanel" aria-labelledby="tab-mensual" [hidden]="tab() !== 'mensual'">
+<div id="panel-mensual" role="tabpanel" aria-labelledby="tab-mensual" [hidden]="tab() !== 'mensual'">
   <app-vibra-liquidacion-mensual />
 </div>
 
-<div role="tabpanel" aria-labelledby="tab-alta" [hidden]="tab() !== 'alta'">
-<div class="flex flex-wrap items-center gap-2 mb-4">
-  <div class="relative flex-1 max-w-md">
-    <ui-icon name="search" [size]="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-    <input
-      [(ngModel)]="q" (keyup.enter)="applyFilters()"
-      placeholder="Buscar titular, CUPS, NIF…"
-      class="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-sm bg-input" />
-  </div>
-  <select [(ngModel)]="colaboradorFilter" (change)="applyFilters()"
-    class="border border-border rounded-lg px-3 py-2 text-sm bg-input">
-    <option value="">Filtrar por colaborador</option>
-    @for (c of colaboradores(); track c) {<option [value]="c">{{ c }}</option>}
-  </select>
-  <select [(ngModel)]="liquidacionColaboradorFilter" (change)="applyFilters()"
-    class="border border-border rounded-lg px-3 py-2 text-sm bg-input">
-    <option value="">Liq. colaborador: todos</option>
-    <option value="Pagado">Pagado</option>
-    <option value="No pagado">No pagado</option>
-  </select>
-</div>
-
-@if (error(); as msg) {
-  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4">
-    {{ msg }} <button (click)="load()" class="ml-2 underline">Reintentar</button>
-  </div>
-}
-
-@if (loading() && !result()) {
-  <app-table-skeleton [cols]="10" [rows]="8" />
-} @else {
-  <div class="rounded-2xl border border-border bg-card overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-border text-left text-muted-foreground bg-neutral-soft/50">
-            <th (click)="setSort('fecha')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
-              <span class="inline-flex items-center gap-1">Fecha
-                @if (sortField()==='fecha') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
-              </span>
-            </th>
-            <th (click)="setSort('titular')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
-              <span class="inline-flex items-center gap-1">Titular
-                @if (sortField()==='titular') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
-              </span>
-            </th>
-            <th (click)="setSort('nifCif')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
-              <span class="inline-flex items-center gap-1">NIF/CIF
-                @if (sortField()==='nifCif') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
-              </span>
-            </th>
-            <th (click)="setSort('email')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
-              <span class="inline-flex items-center gap-1">Email
-                @if (sortField()==='email') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
-              </span>
-            </th>
-            <th class="py-3 px-4 font-medium">Teléfono</th>
-            <th (click)="setSort('colaborador')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
-              <span class="inline-flex items-center gap-1">Colaborador
-                @if (sortField()==='colaborador') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
-              </span>
-            </th>
-            <th (click)="setSort('mesLiquidacion')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
-              <span class="inline-flex items-center gap-1">Producto
-                @if (sortField()==='mesLiquidacion') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
-              </span>
-            </th>
-            <th (click)="setSort('consumo')" class="py-3 px-4 font-medium text-right cursor-pointer select-none hover:bg-accent">
-              <span class="inline-flex items-center gap-1">Consumo
-                @if (sortField()==='consumo') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
-              </span>
-            </th>
-            <th (click)="setSort('liquidacionColaborador')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
-              <span class="inline-flex items-center gap-1">Liq. Colaborador
-                @if (sortField()==='liquidacionColaborador') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
-              </span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (r of rows(); track r.id) {
-            <tr class="border-b border-border/50 hover:bg-accent/40">
-              <td class="py-2 px-4">{{ r.fecha ?? '—' }}</td>
-              <td class="py-2 px-4">{{ r.titular ?? '—' }}</td>
-              <td class="py-2 px-4 text-muted-foreground tabular-nums">{{ r.nifCif ?? '—' }}</td>
-              <td class="py-2 px-4 text-muted-foreground text-xs">{{ r.email ?? '—' }}</td>
-              <td class="py-2 px-4 text-muted-foreground tabular-nums">{{ r.telefono ?? '—' }}</td>
-              <td class="py-2 px-4">{{ r.colaborador ?? '—' }}</td>
-              <td class="py-2 px-4 text-muted-foreground">{{ r.producto ?? '—' }}</td>
-              <td class="py-2 px-4 text-right tabular-nums">{{ fmtNumber(r.consumo) }}</td>
-              <td class="py-2 px-4">
-                <select (change)="changeLiquidacionColaborador(r, $any($event.target).value)"
-                  [disabled]="!isAdmin" [attr.aria-label]="'Liquidación del colaborador de ' + (r.titular ?? 'alta')"
-                  class="border border-border rounded-md px-2 py-1 text-xs bg-input">
-                  @if (!r.liquidacionColaborador) { <option value="" selected disabled>—</option> }
-                  @for (opt of liquidacionColaboradorOpts; track opt) {
-                    <option [value]="opt" [selected]="r.liquidacionColaborador === opt">{{ opt }}</option>
-                  }
-                  @if (r.liquidacionColaborador && !liquidacionColaboradorOpts.includes(r.liquidacionColaborador)) {
-                    <option [value]="r.liquidacionColaborador" selected>{{ r.liquidacionColaborador }}</option>
-                  }
-                </select>
-              </td>
-            </tr>
-          }
-          @if (rows().length === 0) {
-            <tr><td colspan="9" class="py-16">
-              <div class="flex flex-col items-center gap-2 text-muted-foreground">
-                <ui-icon name="search" [size]="40" class="opacity-30"/>
-                <p class="font-medium text-base">Sin liquidaciones</p>
-                <p class="text-xs">Probá ajustar los filtros</p>
-              </div>
-            </td></tr>
-          }
-        </tbody>
-      </table>
-    </div>
-    @if (totalPages() > 1) {
-      <div class="border-t border-border">
-        <app-pagination
-          [page]="page()" [pageSize]="size()"
-          [totalElements]="total()" [totalPages]="totalPages()"
-          (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+<div id="panel-alta" role="tabpanel" aria-labelledby="tab-alta" [hidden]="tab() !== 'alta'">
+  <search class="mb-4 block">
+    <form class="filterbar" (ngSubmit)="applyFilters()">
+      <div class="filter filter-grow">
+        <label for="liq-q">Buscar</label>
+        <input id="liq-q" type="search" name="q" [(ngModel)]="q" placeholder="Titular, CUPS o NIF"
+          autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
       </div>
-    }
-  </div>
-}
+      <div class="filter">
+        <label for="liq-colab">Colaborador</label>
+        <select id="liq-colab" name="colaborador" [(ngModel)]="colaboradorFilter" (change)="applyFilters()">
+          <option value="">Todos</option>
+          @for (c of colaboradores(); track c) { <option [value]="c">{{ c }}</option> }
+        </select>
+      </div>
+      <div class="filter">
+        <label for="liq-pago">Liquidación al colaborador</label>
+        <select id="liq-pago" name="liquidacionColaborador" [(ngModel)]="liquidacionColaboradorFilter" (change)="applyFilters()">
+          <option value="">Todas</option>
+          @for (o of liquidacionColaboradorOpts; track o) { <option [value]="o">{{ o }}</option> }
+        </select>
+      </div>
+      <div class="filter-actions">
+        <button type="submit" class="btn btn-secondary">
+          <ui-icon name="search" [size]="16" /> Buscar
+        </button>
+        <button type="button" class="btn btn-ghost" (click)="limpiar()">Limpiar</button>
+      </div>
+    </form>
+  </search>
 
+  @if (error(); as msg) {
+    <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">
+      {{ msg }} <button type="button" (click)="load()" class="ml-2 underline">Reintentar</button>
+    </div>
+  }
+
+  @if (loading() && !result()) {
+    <app-table-skeleton [cols]="7" [rows]="8" />
+  } @else {
+    <div class="rounded-2xl border border-border bg-card overflow-hidden">
+      <div class="vtable-region" tabindex="0" role="region" aria-labelledby="liq-alta-caption" style="--vtable-min: 62rem">
+        <table class="vtable">
+          <caption id="liq-alta-caption" class="sr-only">Liquidación de cada alta al colaborador</caption>
+          <colgroup>
+            <col class="col-fecha" />
+            <col class="col-texto" />
+            <col style="inline-size: 13rem" />
+            <col style="inline-size: 8.5rem" />
+            <col style="inline-size: 8rem" />
+            <col style="inline-size: 6rem" />
+            <col style="inline-size: 10.5rem" />
+          </colgroup>
+          <thead>
+            <tr>
+              @for (h of columnas; track h.label) {
+                <th scope="col" [class.vtable-fix]="$first" [class.cell-num]="h.num"
+                  [attr.aria-sort]="h.campo && sortField() === h.campo ? (sortDir() === 'asc' ? 'ascending' : 'descending') : null">
+                  @if (h.campo; as campo) {
+                    <button type="button" class="inline-flex items-center gap-1 rounded font-medium hover:text-foreground" (click)="setSort(campo)">
+                      {{ h.label }}
+                      <ui-icon [name]="sortField() === campo && sortDir() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="12"
+                        [class.opacity-0]="sortField() !== campo" />
+                    </button>
+                  } @else {
+                    {{ h.label }}
+                  }
+                </th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of rows(); track r.id) {
+              <tr>
+                <th scope="row" class="vtable-fix cell-nowrap tabular-nums">{{ r.fecha ? fecha(r.fecha) : 'Sin fecha' }}</th>
+                <td data-label="Titular">
+                  <span class="cell-clamp2" [title]="r.titular ?? ''">{{ r.titular ?? 'Sin titular' }}</span>
+                  @if (r.nifCif) { <span class="cell-sub tabular-nums">{{ r.nifCif }}</span> }
+                </td>
+                <td data-label="Contacto">
+                  @if (r.email) { <span class="block truncate" [title]="r.email">{{ r.email }}</span> }
+                  @if (r.telefono) { <span class="cell-sub tabular-nums">{{ r.telefono }}</span> }
+                  @if (!r.email && !r.telefono) { <span class="text-muted-foreground">Sin contacto</span> }
+                </td>
+                <td data-label="Colaborador"><span class="cell-clamp2" [title]="r.colaborador ?? ''">{{ r.colaborador ?? 'Sin colaborador' }}</span></td>
+                <td data-label="Producto" class="text-muted-foreground"><span class="cell-clamp2" [title]="r.producto ?? ''">{{ r.producto ?? 'Sin producto' }}</span></td>
+                <td data-label="Consumo" class="cell-num">{{ fmtNumber(r.consumo) }}</td>
+                <td data-label="Liq. colaborador">
+                  <div class="flex items-center gap-1">
+                    <app-status-badge [tone]="pagoTone(r.liquidacionColaborador)">{{ r.liquidacionColaborador ?? 'Sin marcar' }}</app-status-badge>
+                    @if (isAdmin) {
+                      <app-actions-menu [items]="menus().get(r.id) ?? []" [iconOnly]="true"
+                        [label]="'Cambiar liquidación del colaborador de ' + (r.titular ?? 'esta alta')" />
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7" class="vtable-empty">Sin altas con estos filtros. Prueba a quitar alguno.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (totalPages() > 1) {
+        <div class="border-t border-border">
+          <app-pagination
+            [page]="page()" [pageSize]="size()"
+            [totalElements]="total()" [totalPages]="totalPages()"
+            (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+        </div>
+      }
+    </div>
+  }
 </div>

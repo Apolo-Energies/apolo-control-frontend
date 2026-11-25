@@ -8,10 +8,8 @@ import { Icon } from '../../shared/icons/icon';
 import { VibraPortalService } from '../../core/services/vibra-portal.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { PortalLiquidacion } from '../../core/models';
-import { formatDate, formatEuro } from '../../shared/utils/format';
+import { formatDate, formatEuro, formatMonthLong } from '../../shared/utils/format';
 import { mensajeError, mensajeErrorBlob } from '../../shared/utils/http-error';
-
-const MES = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 /** Mis liquidaciones mensuales y su autofactura. */
 @Component({
@@ -64,11 +62,7 @@ export class MisLiquidaciones {
     });
   }
 
-  protected mes(ym: string): string {
-    const d = new Date(`${ym}-01T00:00:00Z`);
-    return Number.isNaN(d.getTime()) ? ym : MES.format(d);
-  }
-
+  protected readonly mes = formatMonthLong;
   protected readonly eur = formatEuro;
   protected readonly fecha = formatDate;
 }

@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 
 import { PageHeader } from '../../../shared/components/page-header/page-header';
+import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions-menu/actions-menu';
+import { StatusBadge, StatusTone } from '../../../shared/components/status-badge/status-badge';
 import { Pagination } from '../../../shared/components/pagination/pagination';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
@@ -15,11 +16,12 @@ import { NotificationService } from '../../../core/services/notification.service
 import { Page, VibraLiquidacion } from '../../../core/models';
 import { AuthService } from '../../../core/auth';
 import { VibraLiquidacionMensualView } from './vibra-liquidacion-mensual';
+import { formatDate } from '../../../shared/utils/format';
 
 @Component({
   selector: 'app-vibra-liquidaciones',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, PageHeader, Pagination, TableSkeleton, Icon, VibraLiquidacionMensualView],
+  imports: [FormsModule, PageHeader, ActionsMenu, StatusBadge, Pagination, TableSkeleton, Icon, VibraLiquidacionMensualView],
   templateUrl: './vibra-liquidaciones.html',
 })
 export class VibraLiquidaciones {
@@ -47,6 +49,26 @@ export class VibraLiquidaciones {
   protected readonly sortDir = signal<'asc' | 'desc'>('desc');
 
   protected readonly liquidacionColaboradorOpts = ['Pagado', 'No pagado'];
+
+  /** Cabeceras de la vista por alta; `campo`: ordenable por ese campo del servidor. */
+  protected readonly columnas: { label: string; campo?: string; num?: boolean }[] = [
+    { label: 'Fecha', campo: 'fecha' },
+    { label: 'Titular', campo: 'titular' },
+    { label: 'Contacto', campo: 'email' },
+    { label: 'Colaborador', campo: 'colaborador' },
+    { label: 'Producto', campo: 'mesLiquidacion' }, // campo de orden heredado de la vista anterior
+    { label: 'Consumo', campo: 'consumo', num: true },
+    { label: 'Liq. colaborador', campo: 'liquidacionColaborador' },
+  ];
+
+  /** Menú de cada fila para marcar la liquidación al colaborador. */
+  protected readonly menus = computed(() => new Map(!this.isAdmin ? [] : this.rows().map((r): [string, ActionsMenuItem[]] => [r.id,
+    this.liquidacionColaboradorOpts.map((o): ActionsMenuItem => ({
+      label: `Marcar ${o.toLowerCase()}`,
+      icon: o === 'Pagado' ? 'check' : 'x',
+      disabled: r.liquidacionColaborador === o,
+      action: () => this.changeLiquidacionColaborador(r, o),
+    }))])));
 
   protected setSort(field: string): void {
     if (this.sortField() === field) {
@@ -100,6 +122,18 @@ export class VibraLiquidaciones {
   protected onPage(p: number): void { this.page.set(p); this.load(); }
   protected onPageSize(s: number): void { this.size.set(s); this.page.set(0); this.load(); }
   protected applyFilters(): void { this.page.set(0); this.load(); }
+  protected limpiar(): void {
+    this.q = '';
+    this.colaboradorFilter = '';
+    this.liquidacionColaboradorFilter = '';
+    this.applyFilters();
+  }
+
+  protected pagoTone(v: string | null): StatusTone {
+    return v === 'Pagado' ? 'success' : v === 'No pagado' ? 'warning' : 'neutral';
+  }
+
+  protected readonly fecha = formatDate;
 
   protected changeLiquidacionColaborador(r: VibraLiquidacion, liquidacionColaborador: string): void {
     this.altaService.marcarLiquidacionColaborador(r.id, { liquidacionColaborador }).subscribe({

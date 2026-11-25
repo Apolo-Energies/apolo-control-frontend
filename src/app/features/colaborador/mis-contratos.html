@@ -1,27 +1,30 @@
 <app-page-header title="Mis contratos" [subtitle]="total() + ' contratos a tu nombre'">
-  <a routerLink="/colaborador/contratos/nuevo"
-    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">
+  <a primary routerLink="/colaborador/contratos/nuevo" class="btn btn-primary">
     <ui-icon name="file-plus" [size]="16" /> Cargar contrato
   </a>
 </app-page-header>
 
-<form class="flex flex-wrap items-end gap-2 mb-4" role="search" (ngSubmit)="buscar()">
-  <div class="relative flex-1 min-w-56 max-w-md">
-    <ui-icon name="search" [size]="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-    <input type="search" name="q" [(ngModel)]="q" aria-label="Buscar por titular, NIF, CUPS o email"
-      placeholder="Titular, NIF, CUPS o email…" enterkeyhint="search"
-      class="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-sm bg-input" />
-  </div>
-  <label class="flex flex-col gap-1 text-sm">
-    <span class="sr-only">Estado</span>
-    <select name="estado" [(ngModel)]="estado" (change)="buscar()" aria-label="Estado"
-      class="border border-border rounded-lg px-3 py-2 bg-input">
-      <option value="">Todos los estados</option>
-      @for (e of estados; track e) { <option [value]="e">{{ estadoLabel(e) }}</option> }
-    </select>
-  </label>
-  <button type="submit" class="px-4 py-2 rounded-lg border border-border text-sm hover:bg-accent">Buscar</button>
-</form>
+<search class="mb-4 block">
+  <form class="filterbar" (ngSubmit)="buscar()">
+    <div class="filter filter-grow">
+      <label for="mc-q">Buscar</label>
+      <input id="mc-q" type="search" name="q" [(ngModel)]="q" placeholder="Titular, NIF, CUPS o email"
+        enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+    </div>
+    <div class="filter">
+      <label for="mc-estado">Estado</label>
+      <select id="mc-estado" name="estado" [(ngModel)]="estado" (change)="buscar()">
+        <option value="">Todos</option>
+        @for (e of estados; track e) { <option [value]="e">{{ estadoLabel(e) }}</option> }
+      </select>
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-secondary">
+        <ui-icon name="search" [size]="16" /> Buscar
+      </button>
+    </div>
+  </form>
+</search>
 
 @if (error(); as msg) {
   <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">
@@ -33,38 +36,57 @@
   <app-table-skeleton [cols]="5" [rows]="8" />
 } @else {
   <div class="rounded-2xl border border-border bg-card overflow-hidden">
-    <div class="overflow-auto max-h-[70vh]" tabindex="0" role="region" aria-labelledby="mis-contratos-caption">
-      <table class="w-full text-sm">
+    <div class="vtable-region" tabindex="0" role="region" aria-labelledby="mis-contratos-caption">
+      <table class="vtable">
         <caption id="mis-contratos-caption" class="sr-only">Tus contratos Vibra</caption>
-        <thead class="sticky top-0 z-10 bg-card">
-          <tr class="border-b border-border text-left text-muted-foreground">
-            <th scope="col" class="py-3 px-4 font-medium">Titular</th>
-            <th scope="col" class="py-3 px-4 font-medium">CUPS</th>
-            <th scope="col" class="py-3 px-4 font-medium">Fecha</th>
-            <th scope="col" class="py-3 px-4 font-medium">Activación</th>
-            <th scope="col" class="py-3 px-4 font-medium">Estado</th>
+        <colgroup>
+          <col class="col-texto" />
+          <col class="col-cups" />
+          <col class="col-fecha" />
+          <col class="col-fecha" />
+          <col class="col-estado" style="inline-size: 9rem" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col" class="vtable-fix">Titular</th>
+            <th scope="col">CUPS</th>
+            <th scope="col">Alta</th>
+            <th scope="col">Activación</th>
+            <th scope="col">Estado</th>
           </tr>
         </thead>
         <tbody>
           @for (c of rows(); track c.id) {
-            <tr class="border-b border-border/50 hover:bg-accent/40">
-              <th scope="row" class="py-2 px-4 font-normal text-left">
-                <a [routerLink]="['/colaborador/contratos', c.id]" class="underline-offset-2 hover:underline">{{ c.titular ?? '—' }}</a>
-                <div class="text-xs text-muted-foreground">{{ c.nifCif }}</div>
+            <tr>
+              <th scope="row" class="vtable-fix">
+                <a [routerLink]="['/colaborador/contratos', c.id]" class="cell-clamp2 font-medium underline-offset-2 hover:underline"
+                  [title]="c.titular ?? ''">{{ c.titular ?? 'Sin titular' }}</a>
+                @if (c.nifCif) { <span class="cell-sub tabular-nums">{{ c.nifCif }}</span> }
               </th>
-              <td class="py-2 px-4 font-mono text-xs whitespace-nowrap">{{ c.cups ?? '—' }}</td>
-              <td class="py-2 px-4 whitespace-nowrap">{{ fecha(c.fecha) }}</td>
-              <td class="py-2 px-4 whitespace-nowrap">{{ fecha(c.fechaActivacionContrato) }}</td>
-              <td class="py-2 px-4"><app-status-badge [tone]="estadoTone(c.estado)">{{ estadoLabel(c.estado) }}</app-status-badge></td>
+              <td data-label="CUPS">
+                @if (c.cups; as cups) {
+                  <span class="cell-tail" [title]="cups"><span>{{ cups.slice(0, -4) }}</span>{{ cups.slice(-4) }}</span>
+                } @else {
+                  <span class="text-muted-foreground">Sin CUPS</span>
+                }
+              </td>
+              <td data-label="Alta" class="cell-nowrap tabular-nums">{{ fecha(c.fecha) }}</td>
+              <td data-label="Activación" class="cell-nowrap tabular-nums">
+                @if (c.fechaActivacionContrato) { {{ fecha(c.fechaActivacionContrato) }} }
+                @else { <span class="text-muted-foreground">Sin activar</span> }
+              </td>
+              <td data-label="Estado"><app-status-badge [tone]="estadoTone(c.estado)">{{ estadoLabel(c.estado) }}</app-status-badge></td>
             </tr>
           } @empty {
-            <tr><td colspan="5" class="py-16 text-center text-muted-foreground">No hay contratos</td></tr>
+            <tr><td colspan="5" class="vtable-empty">
+              Sin contratos. Si buscabas uno, prueba con otro texto o estado; los nuevos se cargan en «Cargar contrato».
+            </td></tr>
           }
         </tbody>
       </table>
     </div>
     @if (totalPages() > 1) {
-      <div class="border-t border-border px-4 py-2">
+      <div class="border-t border-border">
         <app-pagination [page]="page()" [pageSize]="size()"
           [totalElements]="total()" [totalPages]="totalPages()"
           (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
