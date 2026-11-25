@@ -20,6 +20,8 @@ import {
   VibraDevolucionLeida,
   VibraDevolucionLote,
 } from '../../../core/models';
+import { CellTail } from '../../../shared/components/cell-tail/cell-tail';
+import { estadoFacturaTone } from '../facturas/vibra-factura-ui';
 
 /** Fila de la vista previa con lo que el usuario corrige. */
 interface FilaEditable {
@@ -33,7 +35,7 @@ interface FilaEditable {
 @Component({
   selector: 'app-vibra-devoluciones-banco',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, FormDialog, StatusBadge, Icon],
+  imports: [RouterLink, FormDialog, StatusBadge, Icon, CellTail],
   templateUrl: './vibra-devoluciones-banco.html',
 })
 export class VibraDevolucionesBanco {
@@ -52,6 +54,7 @@ export class VibraDevolucionesBanco {
   protected readonly fmtFechaHora = formatDateTime;
   protected readonly motivos = MOTIVOS_DEVOLUCION_VIBRA;
   protected readonly estadoFactura = ESTADO_FACTURA_VIBRA_LABEL;
+  protected readonly facturaTone = estadoFacturaTone;
   protected readonly resultadoLabel = RESULTADO_DEVOLUCION_VIBRA_LABEL;
 
   // Historial

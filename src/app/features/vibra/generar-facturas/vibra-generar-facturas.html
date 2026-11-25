@@ -105,7 +105,7 @@
                 @if (r.facturaId) {
                   <span class="cell-clamp2" [title]="r.titular ?? ''">{{ r.titular ?? 'Sin titular' }}</span>
                   @if (r.cups; as c) {
-                    <span class="cell-sub"><span class="cell-tail" [title]="c"><span>{{ c.slice(0, -4) }}</span>{{ c.slice(-4) }}</span></span>
+                    <span class="cell-sub" [cellTail]="c" [title]="c"></span>
                   }
                 } @else {
                   <span class="text-danger-fg">{{ r.error }}</span>

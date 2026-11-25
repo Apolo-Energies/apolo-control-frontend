@@ -12,13 +12,14 @@ import { VibraPortalService } from '../../core/services/vibra-portal.service';
 import { ESTADO_VIBRA_ALTA_VALUES, Page, PortalContrato } from '../../core/models';
 import { formatDate } from '../../shared/utils/format';
 import { mensajeError } from '../../shared/utils/http-error';
-import { estadoLabel, estadoTone } from './estado-contrato';
+import { estadoAltaLabel, estadoAltaTone } from '../vibra/altas/vibra-alta-ui';
+import { CellTail } from '../../shared/components/cell-tail/cell-tail';
 
 /** Mis contratos: las altas Vibra a nombre del colaborador. */
 @Component({
   selector: 'app-mis-contratos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, PageHeader, Pagination, StatusBadge, TableSkeleton, Icon],
+  imports: [FormsModule, RouterLink, PageHeader, Pagination, StatusBadge, TableSkeleton, Icon, CellTail],
   templateUrl: './mis-contratos.html',
 })
 export class MisContratos {
@@ -61,6 +62,6 @@ export class MisContratos {
   protected onPageSize(s: number): void { this.size.set(s); this.page.set(0); this.load(); }
 
   protected readonly fecha = formatDate;
-  protected readonly estadoLabel = estadoLabel;
-  protected readonly estadoTone = estadoTone;
+  protected readonly estadoLabel = estadoAltaLabel;
+  protected readonly estadoTone = estadoAltaTone;
 }

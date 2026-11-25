@@ -9,7 +9,7 @@ import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
 import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 import { Pagination } from '../../../shared/components/pagination/pagination';
-import { StatusBadge, StatusTone } from '../../../shared/components/status-badge/status-badge';
+import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
 import { VibraDevolucionesBanco } from './vibra-devoluciones-banco';
@@ -32,13 +32,16 @@ import {
 } from '../../../core/models';
 import { formatDate, formatDateTime, formatEuro } from '../../../shared/utils/format';
 import { mensajeError } from '../../../shared/utils/http-error';
+import { CellTail } from '../../../shared/components/cell-tail/cell-tail';
+import { ariaSort } from '../../../shared/utils/sort';
+import { activoBajaTone, estadoImpagoCorto, estadoImpagoTone } from './vibra-impago-ui';
 
 @Component({
   selector: 'app-vibra-impagos',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule, ReactiveFormsModule, RouterLink, NgTemplateOutlet,
-    PageHeader, ActionsMenu, FormDialog, ConfirmDialog, Pagination, StatusBadge, TableSkeleton, Icon, VibraDevolucionesBanco,
+    PageHeader, ActionsMenu, FormDialog, ConfirmDialog, Pagination, StatusBadge, TableSkeleton, Icon, VibraDevolucionesBanco, CellTail,
   ],
   templateUrl: './vibra-impagos.html',
 })
@@ -114,8 +117,7 @@ export class VibraImpagos {
   }
 
   protected ariaSort(field: string): 'ascending' | 'descending' | null {
-    if (this.sortField() !== field) return null;
-    return this.sortDir() === 'asc' ? 'ascending' : 'descending';
+    return ariaSort(this.sortField() === field, this.sortDir());
   }
 
   protected readonly rows = computed(() => this.result()?.content ?? []);
@@ -132,7 +134,7 @@ export class VibraImpagos {
     const avisando = this.avisando();
     return new Map(this.rows().map((r) => {
       const estado: ActionsMenuItem[] = this.estadoValues.map((e) => ({
-        label: this.estadoLabel[e], checked: r.estado === e, action: () => this.changeEstado(r, e),
+        label: this.estadoLabel[e], checked: r.estado === e, action: () => { if (r.estado !== e) this.changeEstado(r, e); },
       }));
       const acciones: ActionsMenuItem[] = [
         { label: 'Ver detalle', icon: 'eye', action: () => this.verDetalle(r.id) },
@@ -407,28 +409,9 @@ export class VibraImpagos {
     document.body.removeChild(a); URL.revokeObjectURL(url);
   }
 
-  protected estadoTone(estado: EstadoVibraImpago | null): StatusTone {
-    switch (estado) {
-      case 'PAGADO': return 'success';
-      case 'IMPAGADA': return 'warning';
-      case 'PLAN_PAGOS': return 'info';
-      case 'INCOBRABLE': case 'RECLAMACION': case 'BUROFAX': return 'danger';
-      default: return 'neutral';
-    }
-  }
-
-  /** Etiqueta corta para el badge de la tabla (la completa va en el menú y en el nombre accesible). */
-  protected estadoCorto(estado: EstadoVibraImpago): string {
-    switch (estado) {
-      case 'PLAN_PAGOS': return 'Plan de pagos';
-      case 'RECLAMACION': return 'En reclamación';
-      default: return this.estadoLabel[estado];
-    }
-  }
-
-  protected activoTone(v: string | null): StatusTone {
-    return v === 'Baja' ? 'danger' : 'success';
-  }
+  protected readonly estadoTone = estadoImpagoTone;
+  protected readonly estadoCorto = estadoImpagoCorto;
+  protected readonly activoTone = activoBajaTone;
 
   /** Recargo por devolución y si ya va en una factura; null sin recargo. */
   protected recargoTexto(r: VibraImpago): string | null {

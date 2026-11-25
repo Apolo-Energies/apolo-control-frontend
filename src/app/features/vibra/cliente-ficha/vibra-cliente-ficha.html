@@ -81,7 +81,7 @@
             @for (s of f.suministros; track s.id) {
               <tr>
                 <th scope="row" class="vtable-fix">
-                  <span class="cell-tail" [title]="s.cups"><span>{{ s.cups.slice(0, -4) }}</span>{{ s.cups.slice(-4) }}</span>
+                  <span [cellTail]="s.cups" [title]="s.cups"></span>
                 </th>
                 <td data-label="Dirección">
                   <span class="cell-clamp2" [title]="s.direccion ?? ''">{{ s.direccion ?? 'Sin dirección' }}</span>
@@ -137,7 +137,7 @@
               <tr>
                 <th scope="row" class="vtable-fix">
                   @if (c.cups; as cu) {
-                    <span class="cell-tail" [title]="cu"><span>{{ cu.slice(0, -4) }}</span>{{ cu.slice(-4) }}</span>
+                    <span [cellTail]="cu" [title]="cu"></span>
                   } @else { <span class="text-muted-foreground">Sin CUPS</span> }
                 </th>
                 <td data-label="Estado"><app-status-badge [tone]="estadoTone(c.estado)">{{ estadoLabel(c.estado) }}</app-status-badge></td>
@@ -187,7 +187,7 @@
                   <th scope="row" class="vtable-fix">
                     <a [routerLink]="['/vibra/facturas', fa.id]" class="font-medium hover:underline underline-offset-2">
                       @if (fa.numero; as n) {
-                        <span class="cell-tail" [title]="n"><span>{{ n.slice(0, -6) }}</span>{{ n.slice(-6) }}</span>
+                        <span [cellTail]="n" [keep]="6" [title]="n"></span>
                       } @else {
                         Borrador
                       }
@@ -199,7 +199,7 @@
                   </th>
                   <td data-label="CUPS">
                     @if (fa.cups; as c) {
-                      <span class="cell-tail" [title]="c"><span>{{ c.slice(0, -4) }}</span>{{ c.slice(-4) }}</span>
+                      <span [cellTail]="c" [title]="c"></span>
                     } @else { <span class="text-muted-foreground">—</span> }
                   </td>
                   <td data-label="Periodo" class="cell-nowrap tabular-nums" [title]="fecha(fa.periodoDesde) + ' – ' + fecha(fa.periodoHasta)">

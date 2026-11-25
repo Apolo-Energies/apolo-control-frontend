@@ -19,6 +19,8 @@ import { ListStateService } from '../../../core/services/list-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { COMERCIALIZADORA_VIBRA_VALUES, VibraAlta, VibraRenovaciones as Renovaciones } from '../../../core/models';
 import { formatDate, safeText } from '../../../shared/utils/format';
+import { CellTail } from '../../../shared/components/cell-tail/cell-tail';
+import { ariaSort } from '../../../shared/utils/sort';
 
 type SortCol = 'titular' | 'cups' | 'colaborador' | 'comercializadora'
              | 'fechaActivacionContrato' | 'fechaRenovacion' | 'consumo';
@@ -35,7 +37,7 @@ function extractMessage(err: HttpErrorResponse): string {
 @Component({
   selector: 'app-vibra-renovaciones',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, NgTemplateOutlet, PageHeader, Pagination, TableSkeleton, FormDialog, Icon, StatusBadge],
+  imports: [FormsModule, NgTemplateOutlet, PageHeader, Pagination, TableSkeleton, FormDialog, Icon, StatusBadge, CellTail],
   templateUrl: './vibra-renovaciones.html',
   styles: `
     .ren-toggle {
@@ -198,7 +200,7 @@ export class VibraRenovaciones implements OnDestroy {
   }
 
   protected ariaSort(col: SortCol): 'ascending' | 'descending' | null {
-    return this.sortCol() === col ? (this.sortDir() === 'asc' ? 'ascending' : 'descending') : null;
+    return ariaSort(this.sortCol() === col, this.sortDir());
   }
 
   protected openEdit(row: VibraAlta): void {

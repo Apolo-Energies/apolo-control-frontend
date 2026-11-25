@@ -14,15 +14,15 @@
   <app-table-skeleton [cols]="6" [rows]="6" />
 } @else {
   <div class="rounded-2xl border border-border bg-card overflow-hidden">
-    <div class="vtable-region" tabindex="0" role="region" aria-labelledby="tram-caption" style="--vtable-min: 72rem">
+    <div class="vtable-region" tabindex="0" role="region" aria-labelledby="tram-caption" style="--vtable-min: 64rem">
       <table class="vtable">
         <caption id="tram-caption" class="sr-only">Contratos pendientes de tramitar</caption>
         <colgroup>
-          <col style="inline-size: 14rem" />
+          <col style="inline-size: 12rem" />
           <col class="col-cups" />
           <col class="col-texto" />
-          <col style="inline-size: 13rem" />
-          <col style="inline-size: 10rem" />
+          <col style="inline-size: 12rem" />
+          <col style="inline-size: 8rem" />
           <col style="inline-size: 9.5rem" />
         </colgroup>
         <thead>
@@ -44,7 +44,7 @@
               </th>
               <td data-label="CUPS">
                 @if (r.cups; as c) {
-                  <span class="cell-tail" [title]="c"><span>{{ c.slice(0, -4) }}</span>{{ c.slice(-4) }}</span>
+                  <span [cellTail]="c" [title]="c"></span>
                 } @else { <span class="text-muted-foreground">—</span> }
                 @if (r.potenciaOriginal) { <span class="cell-sub cell-clamp2" [title]="r.potenciaOriginal">{{ r.potenciaOriginal }}</span> }
               </td>
@@ -58,7 +58,7 @@
                 @if (r.telefono) { <span class="block tabular-nums cell-nowrap">{{ r.telefono }}</span> }
                 @if (r.email) { <span class="cell-sub truncate" [title]="r.email">{{ r.email }}</span> }
                 @if (r.cuentaBancaria; as cb) {
-                  <span class="cell-sub"><span class="cell-tail" [title]="'Cuenta ' + cb"><span>{{ cb.slice(0, -4) }}</span>{{ cb.slice(-4) }}</span></span>
+                  <span class="cell-sub" [cellTail]="cb" [title]="'Cuenta ' + cb"></span>
                 }
                 @if (!r.telefono && !r.email && !r.cuentaBancaria) { <span class="text-muted-foreground">—</span> }
               </td>

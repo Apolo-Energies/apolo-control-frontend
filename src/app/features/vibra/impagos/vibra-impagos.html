@@ -123,9 +123,9 @@
                 <td data-label="Factura">
                   @if (r.factura; as n) {
                     @if (r.facturaId) {
-                      <a [routerLink]="['/vibra/facturas', r.facturaId]" class="cell-tail hover:underline underline-offset-2" [title]="n"><span>{{ n.slice(0, -6) }}</span>{{ n.slice(-6) }}</a>
+                      <a [cellTail]="n" [keep]="6" [routerLink]="['/vibra/facturas', r.facturaId]" class="hover:underline underline-offset-2" [title]="n"></a>
                     } @else {
-                      <span class="cell-tail" [title]="n"><span>{{ n.slice(0, -6) }}</span>{{ n.slice(-6) }}</span>
+                      <span [cellTail]="n" [keep]="6" [title]="n"></span>
                     }
                     @if (r.facturaEstado) { <span class="cell-sub">Factura {{ facturaLabel[r.facturaEstado].toLowerCase() }}</span> }
                   } @else {

@@ -17,12 +17,13 @@ import { ESTADO_FACTURA_VIBRA_LABEL, VibraFacturaListItem } from '../../../core/
 import { estadoFacturaTone } from '../facturas/vibra-factura-ui';
 import { NotificationService } from '../../../core/services/notification.service';
 import {
-  ESTADO_VIBRA_ALTA_LABEL, EstadoVibraAlta, TIPO_CLIENTE_VIBRA_LABEL, TIPO_SUMINISTRO_VIBRA_LABEL,
+  TIPO_CLIENTE_VIBRA_LABEL, TIPO_SUMINISTRO_VIBRA_LABEL,
   VibraClienteFicha, VibraSuministro, VibraSuministroPayload,
 } from '../../../core/models';
 import { mensajeError } from '../../../shared/utils/http-error';
 import { VibraClienteForm } from '../clientes/vibra-cliente-form';
-import { estadoAltaTone } from '../altas/vibra-alta-ui';
+import { estadoAltaLabel, estadoAltaTone } from '../altas/vibra-alta-ui';
+import { CellTail } from '../../../shared/components/cell-tail/cell-tail';
 
 type Pestana = 'datos' | 'suministros' | 'contratos' | 'facturas';
 
@@ -30,7 +31,7 @@ type Pestana = 'datos' | 'suministros' | 'contratos' | 'facturas';
 @Component({
   selector: 'app-vibra-cliente-ficha',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, PageHeader, FormDialog, StatusBadge, TableSkeleton, Icon, VibraClienteForm],
+  imports: [FormsModule, RouterLink, PageHeader, FormDialog, StatusBadge, TableSkeleton, Icon, VibraClienteForm, CellTail],
   templateUrl: './vibra-cliente-ficha.html',
 })
 export class VibraClienteFichaView {
@@ -79,9 +80,7 @@ export class VibraClienteFichaView {
   protected readonly tipoCliente = TIPO_CLIENTE_VIBRA_LABEL;
   protected readonly tipoSuministro = TIPO_SUMINISTRO_VIBRA_LABEL;
 
-  protected estadoLabel(estado: string | null): string {
-    return estado ? (ESTADO_VIBRA_ALTA_LABEL[estado as EstadoVibraAlta] ?? estado) : '—';
-  }
+  protected readonly estadoLabel = estadoAltaLabel;
   protected readonly direccion = computed(() => {
     const f = this.ficha();
     if (!f) return '—';

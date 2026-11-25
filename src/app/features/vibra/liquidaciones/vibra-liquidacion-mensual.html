@@ -124,7 +124,7 @@
               <td data-label="Titular"><span class="cell-clamp2" [title]="r.titular ?? ''">{{ r.titular ?? 'Sin titular' }}</span></td>
               <td data-label="CUPS">
                 @if (r.cups; as c) {
-                  <span class="cell-tail" [title]="c"><span>{{ c.slice(0, -4) }}</span>{{ c.slice(-4) }}</span>
+                  <span [cellTail]="c" [title]="c"></span>
                 } @else { <span class="text-muted-foreground">Sin CUPS</span> }
               </td>
               <td data-label="Activación" class="cell-nowrap tabular-nums" [class.text-warning-fg]="r.revisar && !r.fechaActivacion">

@@ -8,11 +8,12 @@ import { Icon } from '../../../shared/icons/icon';
 import { VibraAltaService } from '../../../core/services/vibra-alta.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { VibraAlta } from '../../../core/models';
+import { CellTail } from '../../../shared/components/cell-tail/cell-tail';
 
 @Component({
   selector: 'app-vibra-tramitacion',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PageHeader, TableSkeleton, Icon],
+  imports: [PageHeader, TableSkeleton, Icon, CellTail],
   templateUrl: './vibra-tramitacion.html',
 })
 export class VibraTramitacion {

@@ -18,6 +18,7 @@ import {
   ESTADO_REMESA_VIBRA_LABEL, RESULTADO_RECIBO_VIBRA_LABEL, TIPO_REMESA_VIBRA_LABEL, VibraRemesa,
 } from '../../../core/models';
 import { descargarXml, estadoRemesaTone, fechaMadrid, resultadoReciboTone } from '../remesas/vibra-remesa-ui';
+import { CellTail } from '../../../shared/components/cell-tail/cell-tail';
 
 type Accion = 'anular' | 'cobrada';
 
@@ -25,7 +26,7 @@ type Accion = 'anular' | 'cobrada';
 @Component({
   selector: 'app-vibra-remesa-detalle',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, PageHeader, ActionsMenu, TableSkeleton, StatusBadge, ConfirmDialog, Icon],
+  imports: [RouterLink, PageHeader, ActionsMenu, TableSkeleton, StatusBadge, ConfirmDialog, Icon, CellTail],
   templateUrl: './vibra-remesa-detalle.html',
 })
 export class VibraRemesaDetalle {

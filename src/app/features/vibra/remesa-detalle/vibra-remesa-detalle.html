@@ -91,7 +91,7 @@
           @for (l of r.lineas; track l.facturaId) {
             <tr>
               <th scope="row" class="vtable-fix">
-                <a [routerLink]="['/vibra/facturas', l.facturaId]" class="cell-tail font-medium hover:underline underline-offset-2" [title]="l.factura"><span>{{ l.factura.slice(0, -6) }}</span>{{ l.factura.slice(-6) }}</a>
+                <a [cellTail]="l.factura" [keep]="6" [routerLink]="['/vibra/facturas', l.facturaId]" class="font-medium hover:underline underline-offset-2" [title]="l.factura"></a>
               </th>
               <td data-label="Cliente">
                 <span class="cell-clamp2" [title]="l.titular ?? ''">{{ l.titular ?? 'Sin titular' }}</span>

@@ -9,7 +9,7 @@ import { VibraPortalService } from '../../core/services/vibra-portal.service';
 import { PortalContrato } from '../../core/models';
 import { formatDate } from '../../shared/utils/format';
 import { mensajeError } from '../../shared/utils/http-error';
-import { estadoLabel, estadoTone } from './estado-contrato';
+import { estadoAltaLabel, estadoAltaTone } from '../vibra/altas/vibra-alta-ui';
 
 /** Detalle de uno de mis contratos (solo lectura). */
 @Component({
@@ -60,6 +60,6 @@ export class ContratoDetalle {
   }
 
   protected readonly fecha = formatDate;
-  protected readonly estadoLabel = estadoLabel;
-  protected readonly estadoTone = estadoTone;
+  protected readonly estadoLabel = estadoAltaLabel;
+  protected readonly estadoTone = estadoAltaTone;
 }

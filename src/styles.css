@@ -747,7 +747,7 @@
     .column-picker label { min-block-size: 2.75rem; }
   }
 
-  /* Formulario en bloques: fieldset con leyenda, etiqueta encima, controles de la misma altura */
+  /* Formulario en bloques (.vform): fieldset con leyenda; sus .campo son campos .vfield (ver abajo) */
   .vform fieldset:not(.servicio) {
     min-inline-size: 0;
     padding: 0.75rem 1rem 1rem;
@@ -757,26 +757,6 @@
   .vform fieldset:not(.servicio) > legend {
     padding-inline: 0.25rem;
     font-weight: 600;
-  }
-  .vform .campo {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    min-inline-size: 0;
-  }
-  .vform .campo > label {
-    color: var(--color-muted-foreground);
-    font-size: 0.75rem;
-    font-weight: 500;
-  }
-  .vform :is(input:not([type="checkbox"], [type="radio"], [type="file"]), select, textarea) {
-    inline-size: 100%;
-    min-block-size: 2.5rem;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--color-border);
-    border-radius: 0.5rem;
-    background-color: var(--color-input);
-    color: var(--color-foreground);
   }
   .vform :is(input[type="checkbox"], input[type="radio"]) { accent-color: var(--color-primary); }
 
@@ -824,6 +804,8 @@
     font-size: 0.75rem;
     line-height: 1rem;
   }
+  /* Subtexto que además se recorta por delante: manda el flex de .cell-tail */
+  .cell-sub.cell-tail { display: flex; }
   .cell-badges {
     display: flex;
     flex-wrap: wrap;
@@ -1058,20 +1040,23 @@
 
 /* FUNDACIÓN UX (Vibra 014): campo de formulario y barra inferior del portal */
 @layer components {
-  /* Campo: etiqueta encima, control de alto único; en táctil 44px y 16px (sin zoom de iOS) */
-  .vfield {
+  /* Campo: etiqueta encima, control de alto único; en táctil 44px y 16px (sin zoom de iOS).
+     Un único patrón: .vfield suelto o cualquier .campo dentro de .vform */
+  .vfield,
+  .vform .campo {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
     min-inline-size: 0;
   }
   .vfield > label,
+  .vform .campo > label,
   .vfield-label {
     color: var(--color-foreground);
     font-size: 0.8125rem;
     font-weight: 500;
   }
-  .vfield :is(input:not([type="checkbox"], [type="radio"]), select, textarea) {
+  :is(.vfield, .vform) :is(input:not([type="checkbox"], [type="radio"], [type="file"]), select, textarea) {
     inline-size: 100%;
     min-block-size: 2.5rem;
     padding-inline: 0.75rem;
@@ -1082,8 +1067,13 @@
     font: inherit;
     font-size: 0.875rem;
   }
-  .vfield textarea { padding-block: 0.5rem; }
-  .vfield :is(input, select, textarea):focus-visible {
+  :is(.vfield, .vform) textarea { padding-block: 0.5rem; }
+  /* Error tras interactuar: va después del control base para ganarle */
+  :is(.vfield, .vform) :is(input, select, textarea):user-invalid {
+    border-color: var(--color-danger);
+    background-color: var(--color-danger-soft);
+  }
+  :is(.vfield, .vform) :is(input, select, textarea):focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 1px;
   }
@@ -1092,7 +1082,7 @@
     font-size: 0.75rem;
   }
   @media (pointer: coarse) {
-    .vfield :is(input:not([type="checkbox"], [type="radio"]), select, textarea) {
+    :is(.vfield, .vform) :is(input:not([type="checkbox"], [type="radio"], [type="file"]), select, textarea) {
       min-block-size: 2.75rem;
       font-size: max(1rem, 1em);
     }

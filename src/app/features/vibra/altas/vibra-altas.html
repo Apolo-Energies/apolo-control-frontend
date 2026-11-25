@@ -120,16 +120,16 @@
       <table class="vtable">
         <caption id="altas-caption" class="sr-only">Altas de Vibra</caption>
         <colgroup>
-          <col style="inline-size: 13rem" />
+          <col style="inline-size: 12rem" />
           <col class="col-cups" style="inline-size: 11rem" />
-          <col class="col-fecha" style="inline-size: 7rem" />
-          <col style="inline-size: 10rem" />
-          <col style="inline-size: 9.5rem" />
+          <col class="col-fecha" />
+          <col style="inline-size: 9rem" />
+          <col style="inline-size: 9rem" />
           @for (c of columnasOpcionales; track c.id) {
             @if (ver(c.id)) { <col [style.inline-size.rem]="c.ancho" /> }
           }
           <col class="col-texto" />
-          <col style="inline-size: 6.5rem" />
+          <col style="inline-size: 6rem" />
           <col style="inline-size: 4rem" />
         </colgroup>
         <thead>
@@ -239,7 +239,7 @@
               </th>
               <td data-label="CUPS">
                 @if (r.cups; as c) {
-                  <span class="cell-tail" [title]="c"><span>{{ c.slice(0, -4) }}</span>{{ c.slice(-4) }}</span>
+                  <span [cellTail]="c" [title]="c"></span>
                 } @else {
                   <span class="text-muted-foreground">—</span>
                 }

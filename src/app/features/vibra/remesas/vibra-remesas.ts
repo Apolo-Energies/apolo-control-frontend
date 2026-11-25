@@ -22,6 +22,7 @@ import {
 } from '../../../core/models';
 import { descargarXml, estadoRemesaTone, fechaMadrid } from './vibra-remesa-ui';
 import { estadoFacturaTone } from '../facturas/vibra-factura-ui';
+import { CellTail } from '../../../shared/components/cell-tail/cell-tail';
 
 type Pestana = 'PENDIENTES' | 'REGIRO' | 'GENERADAS';
 
@@ -35,7 +36,7 @@ const PESTANAS: { id: Pestana; label: string }[] = [
 @Component({
   selector: 'app-vibra-remesas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, FormsModule, RouterLink, PageHeader, ActionsMenu, TableSkeleton, StatusBadge, ConfirmDialog, Icon],
+  imports: [NgTemplateOutlet, FormsModule, RouterLink, PageHeader, ActionsMenu, TableSkeleton, StatusBadge, ConfirmDialog, Icon, CellTail],
   templateUrl: './vibra-remesas.html',
 })
 export class VibraRemesas {

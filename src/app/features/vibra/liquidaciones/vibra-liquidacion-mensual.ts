@@ -18,12 +18,13 @@ import {
   EstadoLiquidacionMensual, VibraColaborador, VibraLiquidacionLinea, VibraLiquidacionMensual,
 } from '../../../core/models';
 import { formatDate, formatEuro, formatMonthLong } from '../../../shared/utils/format';
+import { CellTail } from '../../../shared/components/cell-tail/cell-tail';
 
 /** Liquidación de un colaborador y mes (como Kilowy: persona → mes a mes). */
 @Component({
   selector: 'app-vibra-liquidacion-mensual',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ActionsMenu, ConfirmDialog, FormDialog, StatusBadge, TableSkeleton, Icon],
+  imports: [FormsModule, ActionsMenu, ConfirmDialog, FormDialog, StatusBadge, TableSkeleton, Icon, CellTail],
   templateUrl: './vibra-liquidacion-mensual.html',
 })
 export class VibraLiquidacionMensualView {

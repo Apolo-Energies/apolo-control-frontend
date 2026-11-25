@@ -12,6 +12,7 @@ import { VibraBuzonFacturas } from './vibra-buzon-facturas';
 import { VibraFacturaService } from '../../../core/services/vibra-factura.service';
 import { AuthService } from '../../../core/auth';
 import { MAX_PDF_COMPRA_BYTES, ResultadoCompraVibra } from '../../../core/models';
+import { CellTail } from '../../../shared/components/cell-tail/cell-tail';
 
 /**
  * «Generar facturas» (como Lotes de Kilowy): se suben los PDF de compra de la comercializadora y
@@ -21,7 +22,7 @@ import { MAX_PDF_COMPRA_BYTES, ResultadoCompraVibra } from '../../../core/models
 @Component({
   selector: 'app-vibra-generar-facturas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, PageHeader, StatusBadge, Icon, VibraBuzonFacturas],
+  imports: [RouterLink, PageHeader, StatusBadge, Icon, VibraBuzonFacturas, CellTail],
   templateUrl: './vibra-generar-facturas.html',
 })
 export class VibraGenerarFacturas {

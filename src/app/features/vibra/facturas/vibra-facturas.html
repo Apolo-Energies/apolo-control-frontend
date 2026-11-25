@@ -92,7 +92,7 @@
                 <th scope="row" class="vtable-fix">
                   <a [routerLink]="['/vibra/facturas', f.id]" class="font-medium hover:underline underline-offset-2">
                     @if (f.numero; as n) {
-                      <span class="cell-tail" [title]="n"><span>{{ n.slice(0, -6) }}</span>{{ n.slice(-6) }}</span>
+                      <span [cellTail]="n" [keep]="6" [title]="n"></span>
                     } @else {
                       Borrador
                     }
@@ -119,7 +119,7 @@
                   }
                   @if (f.tarifaAcceso) { <span class="text-muted-foreground"> · {{ f.tarifaAcceso }}</span> }
                   @if (f.cups; as c) {
-                    <span class="cell-sub cell-tail" [title]="c"><span>{{ c.slice(0, -4) }}</span>{{ c.slice(-4) }}</span>
+                    <span [cellTail]="c" class="cell-sub" [title]="c"></span>
                   }
                 </td>
                 <td data-label="Periodo" class="cell-nowrap tabular-nums"

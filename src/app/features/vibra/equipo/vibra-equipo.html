@@ -62,8 +62,7 @@
                         [value]="c.comisionAlta ?? ''" [disabled]="saving() === c.clave"
                         (blur)="guardarComision(c, com)" (keyup.enter)="com.blur()"
                         placeholder="Sin fijar"
-                        class="w-24 h-9 border rounded-md px-2 text-right tabular-nums bg-input"
-                        [class.border-border]="c.comisionAlta != null" [class.border-warning]="c.comisionAlta == null" />
+                        class="cell-input w-24 text-end tabular-nums" [class.border-warning]="c.comisionAlta == null" />
                       <span aria-hidden="true" class="text-muted-foreground">€</span>
                     </label>
                   } @else if (c.comisionAlta != null) {
@@ -71,7 +70,7 @@
                   } @else {
                     <app-status-badge size="sm" tone="warning">Sin comisión</app-status-badge>
                   }
-                  <button type="button" (click)="verHistorial(c)" class="btn btn-ghost px-0 w-9 min-h-9"
+                  <button type="button" (click)="verHistorial(c)" class="btn btn-ghost btn-icon"
                     [attr.aria-label]="'Histórico de comisión de ' + c.nombre" title="Histórico de comisión">
                     <ui-icon name="clock" [size]="16" />
                   </button>

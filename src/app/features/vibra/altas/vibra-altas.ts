@@ -21,9 +21,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import {
   COMERCIALIZADORA_PTE_TRAMITAR,
   COMERCIALIZADORA_VIBRA_VALUES,
-  ESTADO_VIBRA_ALTA_LABEL,
   ESTADO_VIBRA_ALTA_VALUES,
-  EstadoVibraAlta,
   KilowyFichasEstado,
   MODO_SERVICIO_LABEL,
   ModoServicioVibra,
@@ -38,7 +36,9 @@ import {
 } from '../../../core/models';
 import { fechaProximaDotClass, formatDate, formatDateTime } from '../../../shared/utils/format';
 import { mensajeError } from '../../../shared/utils/http-error';
-import { estadoAltaTone } from './vibra-alta-ui';
+import { estadoAltaLabel, estadoAltaTone } from './vibra-alta-ui';
+import { CellTail } from '../../../shared/components/cell-tail/cell-tail';
+import { ariaSort } from '../../../shared/utils/sort';
 
 /** Columnas que se pueden mostrar u ocultar (las demás van siempre). */
 type ColumnaOpcional = 'direccion' | 'poblacion' | 'provincia' | 'potencia' | 'fechaFirma' | 'fechaCambio'
@@ -84,7 +84,7 @@ interface MenusFila { acciones: ActionsMenuItem[]; estados: ActionsMenuItem[]; c
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule, ReactiveFormsModule, NgTemplateOutlet,
-    PageHeader, FormDialog, ConfirmDialog, StatusBadge, Pagination, TableSkeleton, Icon, ActionsMenu,
+    PageHeader, FormDialog, ConfirmDialog, StatusBadge, Pagination, TableSkeleton, Icon, ActionsMenu, CellTail,
   ],
   templateUrl: './vibra-altas.html',
 })
@@ -127,7 +127,7 @@ export class VibraAltas {
   }
 
   protected ariaSort(field: string): 'ascending' | 'descending' | null {
-    return this.sortField() === field ? (this.sortDir() === 'asc' ? 'ascending' : 'descending') : null;
+    return ariaSort(this.sortField() === field, this.sortDir());
   }
 
   protected readonly estadoValues = ESTADO_VIBRA_ALTA_VALUES;
@@ -792,10 +792,7 @@ export class VibraAltas {
     });
   }
 
-  protected estadoLabel(e: string | null): string {
-    if (!e) return '—';
-    return ESTADO_VIBRA_ALTA_LABEL[e as EstadoVibraAlta] ?? e;
-  }
+  protected readonly estadoLabel = estadoAltaLabel;
 
   protected fmtNumber(n: number | null | undefined): string {
     if (n == null) return '—';

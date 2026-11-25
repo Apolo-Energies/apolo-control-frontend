@@ -68,18 +68,18 @@
             <col style="inline-size: 8.5rem" />
             <col style="inline-size: 8rem" />
             <col style="inline-size: 6rem" />
-            <col style="inline-size: 10.5rem" />
+            <col class="col-estado" />
           </colgroup>
           <thead>
             <tr>
               @for (h of columnas; track h.label) {
-                <th scope="col" [class.vtable-fix]="$first" [class.cell-num]="h.num"
-                  [attr.aria-sort]="h.campo && sortField() === h.campo ? (sortDir() === 'asc' ? 'ascending' : 'descending') : null">
+                <th scope="col" [class.vtable-fix]="$first" [class.cell-num]="h.num" [attr.aria-sort]="h.campo ? ariaSort(h.campo) : null">
                   @if (h.campo; as campo) {
-                    <button type="button" class="inline-flex items-center gap-1 rounded font-medium hover:text-foreground" (click)="setSort(campo)">
+                    <button type="button" class="th-sort" (click)="setSort(campo)">
                       {{ h.label }}
-                      <ui-icon [name]="sortField() === campo && sortDir() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="12"
-                        [class.opacity-0]="sortField() !== campo" />
+                      @if (sortField() === campo) {
+                        <ui-icon [name]="sortDir() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="12" aria-hidden="true" />
+                      }
                     </button>
                   } @else {
                     {{ h.label }}
@@ -105,13 +105,13 @@
                 <td data-label="Producto" class="text-muted-foreground"><span class="cell-clamp2" [title]="r.producto ?? ''">{{ r.producto ?? 'Sin producto' }}</span></td>
                 <td data-label="Consumo" class="cell-num">{{ fmtNumber(r.consumo) }}</td>
                 <td data-label="Liq. colaborador">
-                  <div class="flex items-center gap-1">
+                  @if (isAdmin) {
+                    <app-actions-menu [items]="menus().get(r.id) ?? []" [label]="r.liquidacionColaborador ?? 'Sin marcar'"
+                      [tone]="pagoTone(r.liquidacionColaborador)"
+                      [ariaLabel]="'Liquidación del colaborador de ' + (r.titular ?? 'esta alta') + ': ' + (r.liquidacionColaborador ?? 'sin marcar')" />
+                  } @else {
                     <app-status-badge [tone]="pagoTone(r.liquidacionColaborador)">{{ r.liquidacionColaborador ?? 'Sin marcar' }}</app-status-badge>
-                    @if (isAdmin) {
-                      <app-actions-menu [items]="menus().get(r.id) ?? []" [iconOnly]="true"
-                        [label]="'Cambiar liquidación del colaborador de ' + (r.titular ?? 'esta alta')" />
-                    }
-                  </div>
+                  }
                 </td>
               </tr>
             } @empty {

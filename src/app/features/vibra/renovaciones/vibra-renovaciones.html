@@ -37,6 +37,9 @@
       <input id="ren-hasta" type="date" name="hasta" [ngModel]="fechaHasta()" (ngModelChange)="fechaHasta.set($event); applyFilters()" />
     </div>
     <div class="filter-actions">
+      <button type="submit" class="btn btn-secondary">
+        <ui-icon name="search" [size]="16" /> Buscar
+      </button>
       <button type="button" class="btn btn-ghost" (click)="clearFilters()" [disabled]="!hasFilters">Limpiar</button>
     </div>
   </form>
@@ -148,8 +151,8 @@
             </th>
             <td data-label="CUPS">
               @if (row.cups; as c) {
-                <button type="button" class="cell-tail max-w-full hover:underline underline-offset-2" (click)="copyCups(c)"
-                  [title]="'Copiar CUPS ' + c" [attr.aria-label]="'Copiar CUPS ' + c"><span>{{ c.slice(0, -4) }}</span>{{ c.slice(-4) }}</button>
+                <button [cellTail]="c" type="button" class="max-w-full hover:underline underline-offset-2" (click)="copyCups(c)"
+                  [title]="'Copiar CUPS ' + c" [attr.aria-label]="'Copiar CUPS ' + c"></button>
               } @else { <span class="text-muted-foreground">—</span> }
             </td>
             <td data-label="Renovación" class="cell-nowrap tabular-nums font-medium" [class]="fechaClass">{{ date(row.fechaRenovacion) }}</td>

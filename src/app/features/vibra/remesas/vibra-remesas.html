@@ -54,7 +54,7 @@
               @for (e of lista; track e.facturaId) {
                 <tr>
                   <th scope="row">
-                    <a [routerLink]="['/vibra/facturas', e.facturaId]" class="cell-tail font-medium hover:underline underline-offset-2" [title]="e.numero"><span>{{ e.numero.slice(0, -6) }}</span>{{ e.numero.slice(-6) }}</a>
+                    <a [cellTail]="e.numero" [keep]="6" [routerLink]="['/vibra/facturas', e.facturaId]" class="font-medium hover:underline underline-offset-2" [title]="e.numero"></a>
                   </th>
                   <td data-label="Cliente">
                     <span class="cell-clamp2" [title]="e.titular ?? ''">{{ e.titular ?? 'Sin titular' }}</span>
@@ -81,7 +81,7 @@
           [checked]="marcada" (change)="alternar(f.facturaId, regiro)" />
       }
       <div class="min-w-0">
-        <label [attr.for]="puedeGestionar ? pref + f.facturaId : null" class="cell-tail font-medium" [title]="f.numero"><span>{{ f.numero.slice(0, -6) }}</span>{{ f.numero.slice(-6) }}</label>
+        <label [cellTail]="f.numero" [keep]="6" [attr.for]="puedeGestionar ? pref + f.facturaId : null" class="font-medium" [title]="f.numero"></label>
         <a [routerLink]="['/vibra/facturas', f.facturaId]" class="cell-sub hover:underline underline-offset-2">Ver factura</a>
       </div>
     </div>

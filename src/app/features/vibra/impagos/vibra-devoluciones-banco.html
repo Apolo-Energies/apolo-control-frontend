@@ -194,7 +194,7 @@
                   } @else if (f.leida.factura; as fac) {
                     <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <a [routerLink]="['/vibra/facturas', fac.id]" target="_blank" class="underline underline-offset-2 tabular-nums">{{ fac.numero }}</a>
-                      <app-status-badge size="sm" [tone]="fac.estado === 'DEVUELTA' ? 'info' : 'neutral'">{{ estadoFactura[fac.estado] }}</app-status-badge>
+                      <app-status-badge size="sm" [tone]="facturaTone(fac.estado)">{{ estadoFactura[fac.estado] }}</app-status-badge>
                     </span>
                     <span class="cell-sub">{{ fac.titular ?? '—' }} · <span class="cell-nowrap tabular-nums">{{ fmtEur(fac.total) }}</span></span>
                   } @else {
@@ -262,9 +262,9 @@
                 <td data-label="Factura">
                   @if (x.facturaId) {
                     @let n = x.facturaNumero ?? 'Ver factura';
-                    <a [routerLink]="['/vibra/facturas', x.facturaId]" class="cell-tail underline underline-offset-2" [title]="n"><span>{{ n.slice(0, -6) }}</span>{{ n.slice(-6) }}</a>
+                    <a [cellTail]="n" [keep]="6" [routerLink]="['/vibra/facturas', x.facturaId]" class="underline underline-offset-2" [title]="n"></a>
                   } @else if (x.facturaNumero; as n) {
-                    <span class="cell-tail" [title]="n"><span>{{ n.slice(0, -6) }}</span>{{ n.slice(-6) }}</span>
+                    <span [cellTail]="n" [keep]="6" [title]="n"></span>
                   } @else {
                     <span class="text-muted-foreground">—</span>
                   }

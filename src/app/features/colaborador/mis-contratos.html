@@ -65,7 +65,7 @@
               </th>
               <td data-label="CUPS">
                 @if (c.cups; as cups) {
-                  <span class="cell-tail" [title]="cups"><span>{{ cups.slice(0, -4) }}</span>{{ cups.slice(-4) }}</span>
+                  <span [cellTail]="cups" [title]="cups"></span>
                 } @else {
                   <span class="text-muted-foreground">Sin CUPS</span>
                 }

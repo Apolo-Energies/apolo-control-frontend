@@ -22,6 +22,7 @@ import {
   ESTADO_FACTURA_VIBRA_LABEL, EstadoFacturaVibra, KilowyFacturasImportResult, Page, VibraFacturaConteos, VibraFacturaFilter, VibraFacturaListItem,
 } from '../../../core/models';
 import { descargarBlob, estadoFacturaTone } from './vibra-factura-ui';
+import { CellTail } from '../../../shared/components/cell-tail/cell-tail';
 
 /** Facturas por llamada de «Enviar las sin enviar» (como el backend). */
 const ENVIO_TOPE = 50;
@@ -43,7 +44,7 @@ const PESTANAS: { id: Pestana; label: string }[] = [
 @Component({
   selector: 'app-vibra-facturas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, PageHeader, Pagination, TableSkeleton, StatusBadge, Icon, ConfirmDialog, FormDialog, ActionsMenu],
+  imports: [FormsModule, RouterLink, PageHeader, Pagination, TableSkeleton, StatusBadge, Icon, ConfirmDialog, FormDialog, ActionsMenu, CellTail],
   templateUrl: './vibra-facturas.html',
 })
 export class VibraFacturas {

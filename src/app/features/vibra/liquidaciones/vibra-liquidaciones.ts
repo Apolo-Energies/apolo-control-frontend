@@ -17,6 +17,7 @@ import { Page, VibraLiquidacion } from '../../../core/models';
 import { AuthService } from '../../../core/auth';
 import { VibraLiquidacionMensualView } from './vibra-liquidacion-mensual';
 import { formatDate } from '../../../shared/utils/format';
+import { ariaSort } from '../../../shared/utils/sort';
 
 @Component({
   selector: 'app-vibra-liquidaciones',
@@ -64,10 +65,9 @@ export class VibraLiquidaciones {
   /** Menú de cada fila para marcar la liquidación al colaborador. */
   protected readonly menus = computed(() => new Map(!this.isAdmin ? [] : this.rows().map((r): [string, ActionsMenuItem[]] => [r.id,
     this.liquidacionColaboradorOpts.map((o): ActionsMenuItem => ({
-      label: `Marcar ${o.toLowerCase()}`,
-      icon: o === 'Pagado' ? 'check' : 'x',
-      disabled: r.liquidacionColaborador === o,
-      action: () => this.changeLiquidacionColaborador(r, o),
+      label: o,
+      checked: r.liquidacionColaborador === o,
+      action: () => { if (r.liquidacionColaborador !== o) this.changeLiquidacionColaborador(r, o); },
     }))])));
 
   protected setSort(field: string): void {
@@ -79,6 +79,10 @@ export class VibraLiquidaciones {
     }
     this.page.set(0);
     this.load();
+  }
+
+  protected ariaSort(field: string): 'ascending' | 'descending' | null {
+    return ariaSort(this.sortField() === field, this.sortDir());
   }
 
   protected readonly rows = computed(() => this.result()?.content ?? []);
