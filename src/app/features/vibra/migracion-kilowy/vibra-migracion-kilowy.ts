@@ -119,7 +119,7 @@ export class VibraMigracionKilowy {
   }
 
   protected importarFichas(): void {
-    this.ejecutar('fichas', this.service.fichas(), () => 'Fichas de contrato importadas');
+    this.ejecutar('fichas', this.service.fichas(), () => 'Lanzado en segundo plano: el progreso y el resumen están en Vibra → Altas');
   }
 
   protected importarClientes(): void {
