@@ -273,6 +273,12 @@
     display: block;
   }
 
+  /* Barra de progreso nativa: solo color y ancho (más estilo desactiva el de la plataforma) */
+  progress.progreso {
+    accent-color: var(--color-primary);
+    inline-size: 100%;
+  }
+
   :root:not(.dark) .bg-card {
     box-shadow: var(--shadow-card);
   }

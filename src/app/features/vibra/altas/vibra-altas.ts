@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal, ViewChild, ElementRef } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal, ViewChild, ElementRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormArray, FormBuilder, FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Observable, catchError, map, of, switchMap, takeWhile, tap, timer } from 'rxjs';
 import { RouterLink } from '@angular/router';
 
 import { PageHeader } from '../../../shared/components/page-header/page-header';
@@ -21,11 +23,17 @@ import {
   ESTADO_VIBRA_ALTA_LABEL,
   ESTADO_VIBRA_ALTA_VALUES,
   EstadoVibraAlta,
+  KilowyFichasEstado,
+  MODO_SERVICIO_LABEL,
+  ModoServicioVibra,
   Page,
   VibraAlta,
   VibraAltaFilter,
   VibraAltaPayload,
+  VibraAltaPreciosPayload,
+  VibraAltaServicio,
   VibraTarifa,
+  ZonaServicioVibra,
 } from '../../../core/models';
 import { fechaProximaDotClass, formatDateTime } from '../../../shared/utils/format';
 import { mensajeError } from '../../../shared/utils/http-error';
@@ -45,6 +53,7 @@ export class VibraAltas {
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly tarifaService = inject(VibraTarifaService);
+  private readonly destroyRef = inject(DestroyRef);
 
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
@@ -152,8 +161,37 @@ export class VibraAltas {
     potenciaP6: [null as number | null],
   });
 
+  // Precios del contrato y servicios (ADMIN y OPERACIONES)
+  protected readonly modosServicio = Object.keys(MODO_SERVICIO_LABEL) as ModoServicioVibra[];
+  protected readonly modoServicioLabel = MODO_SERVICIO_LABEL;
+  protected readonly ivasServicio = [21, 10, 5, 0] as const;
+  protected readonly tarifasAcceso = ['2.0TD', '3.0TD', '3.0TDVE', '6.1TD', '6.1TDVE', '6.2TD', '6.3TD', '6.4TD'] as const;
+  protected readonly preciosCargando = signal(false);
+  protected readonly preciosForm = this.fb.group({
+    modo: ['producto' as 'producto' | 'propios'],
+    tarifaAcceso: [null as string | null],
+    energia: this.fb.array(this.potencias.map(() => new FormControl<number | null>(null, [Validators.min(0), Validators.max(9999.999999)]))),
+    potencia: this.fb.array(this.potencias.map(() => new FormControl<number | null>(null, [Validators.min(0), Validators.max(9999.999999)]))),
+    servicios: this.fb.array<FormGroup>([]),
+  });
+
+  protected get serviciosForm(): FormArray<FormGroup> {
+    return this.preciosForm.controls.servicios;
+  }
+
+  // Importación única de fichas de Kilowy (ADMIN)
+  protected readonly esAdmin = computed(() => this.auth.hasRole('admin'));
+  protected readonly fichasEstado = signal<KilowyFichasEstado | null>(null);
+  protected readonly fichasResumenOpen = signal(false);
+
   constructor() {
     this.load();
+    if (this.esAdmin()) {
+      this.service.estadoImportacionKilowyFichas().subscribe({
+        next: (e) => { this.fichasEstado.set(e); if (e.enCurso) this.seguirImportacionFichas(); },
+        error: () => this.fichasEstado.set(null),
+      });
+    }
     this.tarifaService.list().subscribe({ next: (t) => this.tarifas.set(t), error: () => this.tarifas.set([]) });
   }
 
@@ -247,11 +285,154 @@ export class VibraAltas {
   protected openCreate(): void {
     this.editing.set(null);
     this.form.reset({ estado: 'PENDIENTE_FIRMA', enviarContrato: true });
+    this.resetPrecios(null);
     this.dialogOpen.set(true);
+  }
+
+  // ── Precios del contrato y servicios ───────────────────
+  private resetPrecios(a: VibraAlta | null): void {
+    const energia = a?.precioEnergia ?? [];
+    const potencia = a?.precioPotencia ?? [];
+    const propios = [...energia, ...potencia].some((v) => v != null);
+    this.preciosForm.reset({
+      modo: propios ? 'propios' : 'producto',
+      tarifaAcceso: a?.tarifaAcceso ?? null,
+      energia: this.potencias.map((_, i) => energia[i] ?? null),
+      potencia: this.potencias.map((_, i) => potencia[i] ?? null),
+    });
+    this.serviciosForm.clear();
+    (a?.servicios ?? []).forEach((s) => this.serviciosForm.push(this.servicioGroup(s)));
+  }
+
+  private servicioGroup(s?: VibraAltaServicio): FormGroup {
+    return this.fb.group({
+      concepto: [s?.concepto ?? '', [Validators.required, Validators.maxLength(120)]],
+      modo: [s?.modo ?? ('PCT_COMPRA' as ModoServicioVibra), Validators.required],
+      valor: [s?.valor ?? (null as number | null), Validators.required],
+      // '' = no sujeto
+      ivaPct: [s ? (s.ivaPct == null ? '' : String(s.ivaPct)) : '21'],
+      zona: [s?.zona ?? ('DESPUES' as ZonaServicioVibra)],
+    });
+  }
+
+  protected addServicio(): void {
+    this.serviciosForm.push(this.servicioGroup());
+    this.preciosForm.markAsDirty();
+  }
+
+  protected removeServicio(i: number): void {
+    this.serviciosForm.removeAt(i);
+    this.preciosForm.markAsDirty();
+  }
+
+  /** Al pasar a personalizados con todo vacío, parte de los precios del producto elegido. */
+  protected onModoPrecios(): void {
+    const v = this.preciosForm.getRawValue();
+    if (v.modo !== 'propios' || [...v.energia, ...v.potencia].some((x) => x != null)) return;
+    const t = this.tarifas().find((x) => x.id === this.form.controls.tarifaId.value);
+    if (!t) return;
+    const r = t as unknown as Record<string, number | null>;
+    this.preciosForm.patchValue({
+      energia: this.potencias.map((p) => r[`p${p}Energia`] ?? null),
+      potencia: this.potencias.map((p) => r[`p${p}Potencia`] ?? null),
+    });
+  }
+
+  private preciosPayload(): VibraAltaPreciosPayload {
+    const v = this.preciosForm.getRawValue();
+    const propios = v.modo === 'propios';
+    return {
+      energia: v.energia.map((x) => (propios ? x : null)),
+      potencia: v.potencia.map((x) => (propios ? x : null)),
+      tarifaAcceso: v.tarifaAcceso || null,
+      servicios: this.serviciosForm.getRawValue().map((s) => ({
+        concepto: s['concepto'], modo: s['modo'], valor: s['valor'], zona: s['zona'],
+        ivaPct: s['zona'] === 'ANTES' || s['ivaPct'] === '' ? null : Number(s['ivaPct']),
+      })),
+    };
+  }
+
+  /** Guarda precios y servicios tras el alta si se tocaron. */
+  private guardarPrecios(alta: VibraAlta): Observable<VibraAlta> {
+    if (!this.puedeAdministrar() || !this.preciosForm.dirty) return of(alta);
+    return this.service.actualizarPrecios(alta.id, this.preciosPayload());
+  }
+
+  protected modoServicio(i: number): ModoServicioVibra {
+    return this.serviciosForm.at(i).controls['modo'].value as ModoServicioVibra;
+  }
+
+  protected zonaServicio(i: number): ZonaServicioVibra {
+    return this.serviciosForm.at(i).controls['zona'].value as ZonaServicioVibra;
+  }
+
+  protected tienePreciosPropios(a: VibraAlta): boolean {
+    return [...(a.precioEnergia ?? []), ...(a.precioPotencia ?? [])].some((v) => v != null);
+  }
+
+  /** Precio del periodo para el detalle: propio o del producto. */
+  protected precioDetalle(a: VibraAlta, tipo: 'Energia' | 'Potencia', p: number): number | null {
+    const propio = (tipo === 'Energia' ? a.precioEnergia : a.precioPotencia)?.[p - 1];
+    if (propio != null) return propio;
+    const t = this.tarifas().find((x) => x.id === a.tarifaId) as unknown as Record<string, number | null> | undefined;
+    return t?.[`p${p}${tipo}`] ?? null;
+  }
+
+  protected servicioTexto(s: VibraAltaServicio): string {
+    const valor = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 6 }).format(s.valor);
+    const cobro = s.modo === 'PCT_COMPRA' ? `${valor} % de la compra`
+      : s.modo === 'IMPORTE_MES' ? `${valor} €/mes`
+      : s.modo === 'IMPORTE_DIA' ? `${valor} €/día` : `${valor} € por factura`;
+    const iva = s.zona === 'ANTES' ? 'en la base del impuesto eléctrico' : s.ivaPct == null ? 'sin IVA' : `IVA ${s.ivaPct} %`;
+    return `${cobro} · ${iva}`;
+  }
+
+  // ── Importación de fichas de Kilowy ────────────────────
+  protected importarFichas(): void {
+    this.service.importarKilowyFichas().subscribe({
+      next: (e) => {
+        this.fichasEstado.set(e);
+        this.notify.success('Importación de fichas de Kilowy iniciada: tarda unos minutos');
+        this.seguirImportacionFichas();
+      },
+      error: (err: HttpErrorResponse) => this.notify.error(mensajeError(err, 'No se pudo iniciar la importación de fichas')),
+    });
+  }
+
+  /** Consulta el estado cada 5 s hasta que termina. */
+  private seguirImportacionFichas(): void {
+    timer(5000, 5000).pipe(
+      switchMap(() => this.service.estadoImportacionKilowyFichas()),
+      takeWhile((e) => e.enCurso, true),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe((e) => {
+      this.fichasEstado.set(e);
+      if (e.enCurso) return;
+      if (e.error) this.notify.error(e.error);
+      else {
+        this.notify.success(`Fichas de Kilowy: ${e.resultado?.completadas ?? 0} altas completadas`);
+        this.fichasResumenOpen.set(true);
+        this.load();
+      }
+    });
+  }
+
+  protected rellenados(): { campo: string; altas: number }[] {
+    const r = this.fichasEstado()?.resultado?.rellenados ?? {};
+    return Object.entries(r).map(([campo, altas]) => ({ campo, altas }));
   }
 
   protected openEdit(r: VibraAlta): void {
     this.editing.set(r);
+    this.resetPrecios(r);
+    if (this.puedeAdministrar()) {
+      // Los servicios solo vienen en el detalle
+      this.preciosCargando.set(true);
+      this.service.getById(r.id).subscribe({
+        next: (d) => { if (this.editing()?.id === d.id) this.resetPrecios(d); this.preciosCargando.set(false); },
+        error: () => this.preciosCargando.set(false),
+      });
+    }
     this.form.reset({
       titular: r.titular ?? '', cups: r.cups ?? '', nifCif: r.nifCif ?? '',
       direccionSuministro: r.direccionSuministro ?? '', poblacion: r.poblacion ?? '',
@@ -277,14 +458,25 @@ export class VibraAltas {
   protected closeDialog(): void { this.dialogOpen.set(false); }
 
   protected submit(): void {
-    if (this.form.invalid) return;
+    if (this.form.invalid || this.preciosForm.invalid) return;
     this.submitting.set(true);
     const r = this.editing();
     // Base de la fila: conserva los campos que no están en el formulario
     const { enviarContrato, ...valores } = this.form.getRawValue();
     const payload = { ...(r ? this.altaToPayload(r) : {}), ...valores } as VibraAltaPayload;
     if (!r) payload.enviarContrato = !!enviarContrato && this.puedeAdministrar();
-    const obs = r ? this.service.update(r.id, payload) : this.service.create(payload);
+    // Con precios o servicios nuevos el contrato se envía después de guardarlos, para que salgan en el PDF
+    const enviarDespues = !r && !!payload.enviarContrato && this.preciosForm.dirty;
+    if (enviarDespues) payload.enviarContrato = false;
+    const obs = (r ? this.service.update(r.id, payload) : this.service.create(payload)).pipe(
+      // Ya creada: si falla lo siguiente, reintentar la edita en vez de duplicarla
+      tap((alta) => { if (!r) this.editing.set(alta); }),
+      switchMap((alta) => this.guardarPrecios(alta).pipe(
+        // El aviso del contrato viene en la respuesta de crear
+        map((conPrecios) => ({ ...conPrecios, avisoContrato: alta.avisoContrato, contratoEnviadoAt: alta.contratoEnviadoAt })))),
+      switchMap((alta) => !enviarDespues ? of(alta) : this.service.enviarContrato(alta.id).pipe(
+        catchError((err: HttpErrorResponse) => of({ ...alta, avisoContrato: `No se envió el contrato: ${mensajeError(err, 'error al enviarlo')}` })))),
+    );
     obs.subscribe({
       next: (alta) => {
         this.submitting.set(false);

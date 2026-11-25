@@ -7,6 +7,13 @@
         <ui-icon name="refresh-cw" [size]="16" [class]="kilowySyncing() ? 'animate-spin' : ''" /> {{ kilowySyncing() ? 'Sincronizando…' : 'Sincronizar Kilowy' }}
       </button>
     }
+    @if (esAdmin()) {
+      <button type="button" (click)="importarFichas()" [disabled]="fichasEstado()?.enCurso"
+        title="Migración única: lee la ficha de cada contrato en Kilowy y rellena lo vacío (IBAN, contacto, potencias, producto o precios, servicios…)"
+        class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">
+        <ui-icon name="download" [size]="16" /> {{ fichasEstado()?.enCurso ? 'Importando fichas…' : 'Importar fichas Kilowy' }}
+      </button>
+    }
     <button (click)="exportExcel()" class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-accent">
       <ui-icon name="download" [size]="16" /> Exportar
     </button>
@@ -24,6 +31,27 @@
     </button>
   </div>
 </app-page-header>
+
+@if (esAdmin() && fichasEstado(); as fe) {
+  @if (fe.enCurso || fe.resultado || fe.error) {
+    <div role="status" class="mb-4 rounded-lg border border-border bg-card px-4 py-3 text-sm">
+      @if (fe.enCurso) {
+        <label for="fichas-progreso" class="font-medium">
+          Importando fichas de Kilowy: {{ fe.leidas }} de {{ fe.contratos || '…' }} contratos
+        </label>
+        <progress id="fichas-progreso" class="progreso mt-2 block w-full" [attr.max]="fe.contratos || null" [attr.value]="fe.contratos ? fe.leidas : null"></progress>
+      } @else if (fe.error) {
+        <p><strong>Error:</strong> la importación de fichas se cortó: {{ fe.error }}</p>
+      } @else if (fe.resultado; as res) {
+        <p>
+          Fichas de Kilowy importadas ({{ fmtDateTime(fe.fin) }}): {{ res.completadas }} altas completadas, {{ res.sinCambios }} sin cambios,
+          {{ res.sinAlta }} sin alta en Control.
+          <button type="button" (click)="fichasResumenOpen.set(true)" class="ml-2 underline">Ver resumen</button>
+        </p>
+      }
+    </div>
+  }
+}
 
 <!-- Filtros -->
 <div class="flex flex-wrap items-center gap-2 mb-4">
@@ -336,6 +364,40 @@
         </div>
       </section>
       <section>
+        <h4 class="text-xs font-semibold uppercase text-muted-foreground mb-2">Precios del contrato</h4>
+        <p class="text-xs text-muted-foreground mb-2">
+          {{ tienePreciosPropios(d) ? 'Precios propios del contrato (los periodos vacíos, del producto).' : d.tarifaId ? 'Precios del producto.' : 'Sin producto ni precios propios: las facturas salen a 0.' }}
+          Tarifa de acceso: {{ d.tarifaAcceso ?? '—' }}.
+        </p>
+        <div role="region" aria-labelledby="detalle-precios-caption" tabindex="0" class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <caption id="detalle-precios-caption" class="sr-only">Precios por periodo</caption>
+            <thead><tr class="text-xs text-muted-foreground"><th scope="col" class="text-left">Periodo</th><th scope="col" class="text-right">Energía €/kWh</th><th scope="col" class="text-right">Potencia €/kW·día</th></tr></thead>
+            <tbody>
+              @for (p of potencias; track p) {
+                @if (precioDetalle(d, 'Energia', p) != null || precioDetalle(d, 'Potencia', p) != null) {
+                  <tr><th scope="row" class="text-left font-normal">P{{ p }}</th>
+                    <td class="text-right tabular-nums">{{ precioDetalle(d, 'Energia', p) ?? '—' }}</td>
+                    <td class="text-right tabular-nums">{{ precioDetalle(d, 'Potencia', p) ?? '—' }}</td></tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section>
+        <h4 class="text-xs font-semibold uppercase text-muted-foreground mb-2">Servicios</h4>
+        @if (d.servicios?.length) {
+          <ul class="space-y-1">
+            @for (s of d.servicios; track $index) {
+              <li><span class="font-medium">{{ s.concepto }}</span> — {{ servicioTexto(s) }}</li>
+            }
+          </ul>
+        } @else {
+          <p class="text-muted-foreground">Sin servicios contratados.</p>
+        }
+      </section>
+      <section>
         <h4 class="text-xs font-semibold uppercase text-muted-foreground mb-2">Suministro</h4>
         <div class="grid grid-cols-2 gap-3">
           <div><dt class="text-xs text-muted-foreground">CUPS</dt><dd class="tabular-nums">{{ d.cups ?? '—' }}</dd></div>
@@ -433,7 +495,7 @@
 <!-- Dialog crear/editar Alta -->
 <app-form-dialog
   [open]="dialogOpen()" [title]="editing() ? 'Editar alta' : 'Nueva alta'"
-  [saving]="submitting()" [canSave]="form.valid"
+  [saving]="submitting()" [canSave]="form.valid && preciosForm.valid"
   width="900px"
   (cancel)="closeDialog()" (save)="submit()">
   <form [formGroup]="form" class="space-y-4">
@@ -478,6 +540,113 @@
         <p class="text-xs text-muted-foreground mt-3">Al crear: si el NIF/CIF o el CUPS no existen en Clientes se dan de alta con estos datos.</p>
       }
     </fieldset>
+
+    @if (puedeAdministrar()) {
+      <ng-container [formGroup]="preciosForm">
+        <fieldset class="border border-border rounded-lg p-3">
+          <legend class="text-sm font-semibold px-2">Precios del contrato</legend>
+          @if (preciosCargando()) { <p class="text-xs text-muted-foreground" role="status">Cargando precios y servicios…</p> }
+          <div class="flex flex-wrap items-center gap-x-6 gap-y-2" role="radiogroup" aria-label="Origen de los precios">
+            <div class="flex items-center gap-2">
+              <input id="precios-producto" type="radio" formControlName="modo" value="producto" (change)="onModoPrecios()" />
+              <label for="precios-producto" class="text-sm">Usar los del producto</label>
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="precios-propios" type="radio" formControlName="modo" value="propios" (change)="onModoPrecios()" />
+              <label for="precios-propios" class="text-sm">Personalizados para este contrato</label>
+            </div>
+            <div class="campo ml-auto">
+              <label for="precios-tarifa-acceso" class="text-sm font-medium">Tarifa de acceso</label>
+              <select id="precios-tarifa-acceso" formControlName="tarifaAcceso" class="border border-border rounded-lg px-3 py-1.5 mt-1 text-sm bg-input">
+                <option [ngValue]="null">— La del producto —</option>
+                @for (t of tarifasAcceso; track t) { <option [ngValue]="t">{{ t }}</option> }
+              </select>
+            </div>
+          </div>
+          @if (preciosForm.controls.modo.value === 'propios') {
+            <p id="precios-ayuda" class="text-xs text-muted-foreground mt-2">Un periodo vacío usa el precio del producto. Energía en €/kWh y potencia en €/kW·día.</p>
+            <div class="grid grid-cols-[auto_repeat(6,minmax(0,1fr))] gap-2 mt-2 items-end">
+              <span class="text-xs text-muted-foreground" id="precios-energia-label">Energía</span>
+              @for (p of potencias; track p; let i = $index) {
+                <div class="campo" formArrayName="energia">
+                  <label [for]="'precio-energia-' + p" class="text-xs text-muted-foreground">P{{ p }}</label>
+                  <input [id]="'precio-energia-' + p" type="number" min="0" max="9999.999999" step="any" inputmode="decimal" [formControlName]="i"
+                    aria-describedby="precios-ayuda" class="w-full border border-border rounded-lg px-2 py-1.5 text-sm bg-input tabular-nums"/>
+                  <span class="error-msg">Error: entre 0 y 9999,999999</span>
+                </div>
+              }
+              <span class="text-xs text-muted-foreground" id="precios-potencia-label">Potencia</span>
+              @for (p of potencias; track p; let i = $index) {
+                <div class="campo" formArrayName="potencia">
+                  <label [for]="'precio-potencia-' + p" class="text-xs text-muted-foreground">P{{ p }}</label>
+                  <input [id]="'precio-potencia-' + p" type="number" min="0" max="9999.999999" step="any" inputmode="decimal" [formControlName]="i"
+                    aria-describedby="precios-ayuda" class="w-full border border-border rounded-lg px-2 py-1.5 text-sm bg-input tabular-nums"/>
+                  <span class="error-msg">Error: entre 0 y 9999,999999</span>
+                </div>
+              }
+            </div>
+          }
+        </fieldset>
+
+        <fieldset class="border border-border rounded-lg p-3">
+          <legend class="text-sm font-semibold px-2">Servicios</legend>
+          <p class="text-xs text-muted-foreground mb-2">Cada servicio añade una línea en todas las facturas del contrato (p. ej. «Sobrecoste REE», 10 % de la factura de compra).</p>
+          <div formArrayName="servicios" class="space-y-3">
+            @for (g of serviciosForm.controls; track g; let i = $index) {
+              <fieldset [formGroupName]="i" class="grid grid-cols-12 gap-2 items-end border-t border-border pt-3 first:border-t-0 first:pt-0">
+                <legend class="sr-only">Servicio {{ i + 1 }}</legend>
+                <div class="campo col-span-4">
+                  <label [for]="'servicio-concepto-' + i" class="text-xs text-muted-foreground">Concepto (lo ve el cliente) <span aria-hidden="true">*</span></label>
+                  <input [id]="'servicio-concepto-' + i" formControlName="concepto" required maxlength="120"
+                    class="w-full border border-border rounded-lg px-2 py-1.5 text-sm bg-input"/>
+                  <span class="error-msg">Error: escribe el concepto</span>
+                </div>
+                <div class="campo col-span-3">
+                  <label [for]="'servicio-modo-' + i" class="text-xs text-muted-foreground">Cobro</label>
+                  <select [id]="'servicio-modo-' + i" formControlName="modo" class="w-full border border-border rounded-lg px-2 py-1.5 text-sm bg-input">
+                    @for (m of modosServicio; track m) { <option [ngValue]="m">{{ modoServicioLabel[m] }}</option> }
+                  </select>
+                </div>
+                <div class="campo col-span-1">
+                  <label [for]="'servicio-valor-' + i" class="text-xs text-muted-foreground">{{ modoServicio(i) === 'PCT_COMPRA' ? '%' : '€' }} <span aria-hidden="true">*</span></label>
+                  <input [id]="'servicio-valor-' + i" type="number" step="any" inputmode="decimal" formControlName="valor" required
+                    [attr.min]="modoServicio(i) === 'PCT_COMPRA' ? -100 : null" [attr.max]="modoServicio(i) === 'PCT_COMPRA' ? 100 : null"
+                    class="w-full border border-border rounded-lg px-2 py-1.5 text-sm bg-input tabular-nums"/>
+                  <span class="error-msg">Error: valor no válido</span>
+                </div>
+                <div class="campo col-span-2">
+                  <label [for]="'servicio-zona-' + i" class="text-xs text-muted-foreground">Dónde va</label>
+                  <select [id]="'servicio-zona-' + i" formControlName="zona" class="w-full border border-border rounded-lg px-2 py-1.5 text-sm bg-input">
+                    <option ngValue="DESPUES">Después del impuesto eléctrico</option>
+                    <option ngValue="ANTES">Dentro de la base del impuesto</option>
+                  </select>
+                </div>
+                <div class="campo col-span-1">
+                  <label [for]="'servicio-iva-' + i" class="text-xs text-muted-foreground">IVA</label>
+                  <select [id]="'servicio-iva-' + i" formControlName="ivaPct" [attr.disabled]="zonaServicio(i) === 'ANTES' ? '' : null"
+                    [attr.aria-describedby]="zonaServicio(i) === 'ANTES' ? 'servicio-iva-ayuda-' + i : null"
+                    class="w-full border border-border rounded-lg px-2 py-1.5 text-sm bg-input">
+                    @for (v of ivasServicio; track v) { <option [value]="'' + v">{{ v }} %</option> }
+                    <option value="">Sin IVA</option>
+                  </select>
+                  @if (zonaServicio(i) === 'ANTES') { <span [id]="'servicio-iva-ayuda-' + i" class="sr-only">Dentro de la base va con el IVA general</span> }
+                </div>
+                <div class="col-span-1">
+                  <button type="button" (click)="removeServicio(i)" [attr.aria-label]="'Quitar el servicio ' + (i + 1)"
+                    class="inline-flex items-center justify-center rounded-lg border border-border px-2 py-1.5 text-sm hover:bg-accent">
+                    <ui-icon name="trash" [size]="16" />
+                  </button>
+                </div>
+              </fieldset>
+            }
+          </div>
+          <button type="button" (click)="addServicio()"
+            class="mt-3 inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-accent">
+            <ui-icon name="plus" [size]="16" /> Añadir servicio
+          </button>
+        </fieldset>
+      </ng-container>
+    }
 
     <div class="grid grid-cols-2 gap-3">
       <div>
@@ -623,3 +792,34 @@
   icon="mail"
   (confirm)="doEnviarContrato()"
   (cancel)="cancelEnviarContrato()" />
+
+<!-- Resumen de la importación de fichas de Kilowy -->
+<app-form-dialog
+  [open]="fichasResumenOpen()" title="Importación de fichas de Kilowy" icon="download"
+  [readOnly]="true" width="640px" (cancel)="fichasResumenOpen.set(false)">
+  @if (fichasEstado()?.resultado; as res) {
+    <div class="space-y-3 text-sm">
+      <p>{{ res.leidas }} fichas leídas de {{ res.contratos }} contratos ({{ res.fallidas }} no leídas).
+        {{ res.completadas }} altas completadas, {{ res.sinCambios }} sin cambios, {{ res.sinAlta }} sin alta en Control.</p>
+      @if (rellenados().length) {
+        <div role="region" aria-labelledby="fichas-rellenados-caption" tabindex="0">
+          <table class="w-full">
+            <caption id="fichas-rellenados-caption" class="text-left font-semibold mb-1">Campos rellenados (solo los que estaban vacíos)</caption>
+            <thead><tr class="text-xs text-muted-foreground"><th scope="col" class="text-left">Campo</th><th scope="col" class="text-right">Altas</th></tr></thead>
+            <tbody>
+              @for (r of rellenados(); track r.campo) {
+                <tr><th scope="row" class="text-left font-normal">{{ r.campo }}</th><td class="text-right tabular-nums">{{ r.altas }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      @if (res.avisos.length) {
+        <h4 class="font-semibold">Avisos</h4>
+        <ul class="list-disc pl-5 space-y-1">
+          @for (a of res.avisos; track $index) { <li>{{ a }}</li> }
+        </ul>
+      }
+    </div>
+  }
+</app-form-dialog>
