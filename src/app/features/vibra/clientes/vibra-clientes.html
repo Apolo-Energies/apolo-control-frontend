@@ -1,41 +1,37 @@
 <app-page-header title="Clientes" [subtitle]="total() + ' clientes Vibra'">
-  <div class="ml-auto flex flex-wrap gap-2">
-    @if (puedeEditar()) {
-      <button type="button" (click)="exportExcel()"
-        class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
-        <ui-icon name="download" [size]="16" /> Excel
-      </button>
-    }
-    @if (esAdmin()) {
-      <button type="button" (click)="importOpen.set(true)"
-        class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
-        <ui-icon name="upload" [size]="16" /> Importar desde Kilowy
-      </button>
-    }
-    @if (puedeEditar()) {
-      <button type="button" (click)="formOpen.set(true)"
-        class="inline-flex items-center gap-2 rounded-lg bg-primary-button text-primary-foreground px-4 py-2 text-sm font-medium">
-        <ui-icon name="plus" [size]="16" /> Nuevo cliente
-      </button>
-    }
-  </div>
+  @if (masAcciones.length) {
+    <app-actions-menu [items]="masAcciones" />
+  }
+  @if (puedeEditar()) {
+    <button primary type="button" class="btn btn-primary" (click)="formOpen.set(true)">
+      <ui-icon name="plus" [size]="16" /> Nuevo cliente
+    </button>
+  }
 </app-page-header>
 
-<form class="flex flex-wrap items-center gap-2 mb-4" role="search" (ngSubmit)="buscar()">
-  <div class="relative flex-1 max-w-md">
-    <ui-icon name="search" [size]="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-    <input type="search" name="q" [(ngModel)]="q" aria-label="Buscar cliente"
-      placeholder="Nombre, DNI/CIF, teléfono, email, población o CUPS…"
-      class="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-sm bg-input" />
-  </div>
-  <select name="tipo" [(ngModel)]="tipo" (change)="buscar()" aria-label="Tipo de persona"
-    class="border border-border rounded-lg px-3 py-2 text-sm bg-input">
-    <option value="">Físicas y jurídicas</option>
-    <option value="FISICA">Solo físicas</option>
-    <option value="JURIDICA">Solo jurídicas</option>
-  </select>
-  <button type="submit" class="rounded-lg border border-border bg-card px-4 py-2 text-sm hover:bg-accent">Buscar</button>
-</form>
+<search class="mb-4 block">
+  <form class="filterbar" (ngSubmit)="buscar()">
+    <div class="filter filter-grow">
+      <label for="cli-q">Buscar</label>
+      <input id="cli-q" type="search" name="q" [(ngModel)]="q" placeholder="Nombre, DNI/CIF, teléfono, email, población o CUPS"
+        autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+    </div>
+    <div class="filter">
+      <label for="cli-tipo">Tipo de persona</label>
+      <select id="cli-tipo" name="tipo" [(ngModel)]="tipo" (change)="buscar()">
+        <option value="">Físicas y jurídicas</option>
+        <option value="FISICA">Solo físicas</option>
+        <option value="JURIDICA">Solo jurídicas</option>
+      </select>
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-secondary">
+        <ui-icon name="search" [size]="16" /> Buscar
+      </button>
+      <button type="button" class="btn btn-ghost" (click)="limpiarFiltros()">Limpiar</button>
+    </div>
+  </form>
+</search>
 
 @if (error(); as msg) {
   <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">
@@ -47,37 +43,47 @@
   <app-table-skeleton [cols]="6" [rows]="8" />
 } @else {
   <div class="rounded-2xl border border-border bg-card overflow-hidden">
-    <div class="overflow-auto max-h-[70vh]" tabindex="0" role="region" aria-labelledby="clientes-caption">
-      <table class="w-full text-sm">
+    <div class="vtable-region" tabindex="0" role="region" aria-labelledby="clientes-caption" style="--vtable-min: 60rem">
+      <table class="vtable">
         <caption id="clientes-caption" class="sr-only">Clientes Vibra</caption>
-        <thead class="sticky top-0 z-10 bg-card">
-          <tr class="border-b border-border text-left text-muted-foreground">
-            <th scope="col" class="py-3 px-4 font-medium">Cliente</th>
-            <th scope="col" class="py-3 px-4 font-medium">DNI/CIF</th>
-            <th scope="col" class="py-3 px-4 font-medium">Población</th>
-            <th scope="col" class="py-3 px-4 font-medium">Teléfono</th>
-            <th scope="col" class="py-3 px-4 font-medium">Tipo</th>
-            <th scope="col" class="py-3 px-4 font-medium text-right">Suministros</th>
+        <colgroup>
+          <col class="col-texto" />
+          <col style="inline-size: 9.5rem" />
+          <col style="inline-size: 12rem" />
+          <col style="inline-size: 9rem" />
+          <col style="inline-size: 7rem" />
+          <col style="inline-size: 7rem" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col" class="vtable-fix">Cliente</th>
+            <th scope="col">DNI/CIF</th>
+            <th scope="col">Población</th>
+            <th scope="col">Teléfono</th>
+            <th scope="col">Tipo</th>
+            <th scope="col" class="cell-num">Suministros</th>
           </tr>
         </thead>
         <tbody>
           @for (c of rows(); track c.id) {
-            <tr class="border-b border-border/50 hover:bg-accent/40">
-              <th scope="row" class="py-2 px-4 font-normal text-left">
-                <a [routerLink]="['/vibra/clientes', c.id]" class="hover:underline">{{ c.nombre }}</a>
+            <tr>
+              <th scope="row" class="vtable-fix">
+                <a [routerLink]="['/vibra/clientes', c.id]" class="cell-clamp2 font-medium hover:underline underline-offset-2" [title]="c.nombre">{{ c.nombre }}</a>
               </th>
-              <td class="py-2 px-4 tabular-nums">
-                {{ c.nif }}
-                @if (c.dniRevisar) { <app-status-badge tone="warning" class="ml-1">A revisar</app-status-badge> }
+              <td data-label="DNI/CIF">
+                <span class="tabular-nums cell-nowrap">{{ c.nif }}</span>
+                @if (c.dniRevisar) {
+                  <div class="cell-badges"><app-status-badge size="sm" tone="warning">DNI a revisar</app-status-badge></div>
+                }
               </td>
-              <td class="py-2 px-4">{{ c.poblacion ?? '—' }}</td>
-              <td class="py-2 px-4 tabular-nums">{{ c.telefono1 ?? '—' }}</td>
-              <td class="py-2 px-4">{{ tipoCliente[c.tipo] }}</td>
-              <td class="py-2 px-4 text-right tabular-nums">{{ c.suministros }}</td>
+              <td data-label="Población"><span class="cell-clamp2" [title]="c.poblacion ?? ''">{{ c.poblacion ?? '—' }}</span></td>
+              <td data-label="Teléfono" class="cell-nowrap tabular-nums">{{ c.telefono1 ?? '—' }}</td>
+              <td data-label="Tipo">{{ tipoCliente[c.tipo] }}</td>
+              <td data-label="Suministros" class="cell-num">{{ c.suministros }}</td>
             </tr>
           } @empty {
-            <tr><td colspan="6" class="py-16 text-center text-muted-foreground">
-              Sin clientes{{ esAdmin() ? ' — usa «Importar desde Kilowy» para traerlos' : '' }}
+            <tr><td colspan="6" class="vtable-empty">
+              Sin clientes con estos filtros.{{ esAdmin() ? ' Si aún no hay ninguno, usa «Importar desde Kilowy» en «Más».' : '' }}
             </td></tr>
           }
         </tbody>

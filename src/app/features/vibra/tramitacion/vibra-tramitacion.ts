@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { RouterLink } from '@angular/router';
 
 import { PageHeader } from '../../../shared/components/page-header/page-header';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
@@ -13,7 +12,7 @@ import { VibraAlta } from '../../../core/models';
 @Component({
   selector: 'app-vibra-tramitacion',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, PageHeader, TableSkeleton, Icon],
+  imports: [PageHeader, TableSkeleton, Icon],
   templateUrl: './vibra-tramitacion.html',
 })
 export class VibraTramitacion {

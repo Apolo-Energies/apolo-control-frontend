@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormArray, FormBuilder, FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Observable, catchError, map, of, switchMap, takeWhile, tap, timer } from 'rxjs';
-import { RouterLink } from '@angular/router';
+import { NgTemplateOutlet } from '@angular/common';
 
 import { PageHeader } from '../../../shared/components/page-header/page-header';
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
@@ -12,6 +12,7 @@ import { StatusBadge } from '../../../shared/components/status-badge/status-badg
 import { Pagination } from '../../../shared/components/pagination/pagination';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
+import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions-menu/actions-menu';
 
 import { VibraAltaService } from '../../../core/services/vibra-alta.service';
 import { VibraTarifaService } from '../../../core/services/vibra-tarifa.service';
@@ -35,15 +36,55 @@ import {
   VibraTarifa,
   ZonaServicioVibra,
 } from '../../../core/models';
-import { fechaProximaDotClass, formatDateTime } from '../../../shared/utils/format';
+import { fechaProximaDotClass, formatDate, formatDateTime } from '../../../shared/utils/format';
 import { mensajeError } from '../../../shared/utils/http-error';
+import { estadoAltaTone } from './vibra-alta-ui';
+
+/** Columnas que se pueden mostrar u ocultar (las demás van siempre). */
+type ColumnaOpcional = 'direccion' | 'poblacion' | 'provincia' | 'potencia' | 'fechaFirma' | 'fechaCambio'
+  | 'fechaRenovacion' | 'fechaActivacion' | 'fechaBaja' | 'comision' | 'consumo' | 'liquidado' | 'historial' | 'comentarios';
+
+/** ancho en rem: suma al mínimo de la tabla para el scroll interno. */
+const COLUMNAS_OPCIONALES: { id: ColumnaOpcional; label: string; ancho: number }[] = [
+  { id: 'direccion', label: 'Dirección', ancho: 14 },
+  { id: 'poblacion', label: 'Población', ancho: 9 },
+  { id: 'provincia', label: 'Provincia', ancho: 8 },
+  { id: 'potencia', label: 'Potencia', ancho: 9 },
+  { id: 'fechaFirma', label: 'Fecha firma', ancho: 7.5 },
+  { id: 'fechaCambio', label: 'Fecha cambio', ancho: 8.5 },
+  { id: 'fechaRenovacion', label: 'Fecha renovación', ancho: 7.5 },
+  { id: 'fechaActivacion', label: 'Fecha activación', ancho: 7.5 },
+  { id: 'fechaBaja', label: 'Fecha baja', ancho: 7.5 },
+  { id: 'comision', label: 'Comisión comer.', ancho: 7 },
+  { id: 'consumo', label: 'Consumo', ancho: 7 },
+  { id: 'liquidado', label: 'Liq. Energaze', ancho: 7 },
+  { id: 'historial', label: 'Historial liquidación', ancho: 12 },
+  { id: 'comentarios', label: 'Comentarios', ancho: 14 },
+];
+
+/** Columnas que siempre se ven y su ancho mínimo total (rem): deben cuadrar con la plantilla. */
+const COLUMNAS_FIJAS = 8;
+const ANCHO_BASE = 65;
+const COLUMNAS_KEY = 'vibra-altas-columnas';
+
+function leerColumnas(): Set<ColumnaOpcional> {
+  try {
+    const v = JSON.parse(localStorage.getItem(COLUMNAS_KEY) ?? '[]');
+    return new Set(Array.isArray(v) ? v.filter((x) => COLUMNAS_OPCIONALES.some((c) => c.id === x)) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+/** Menús de una fila. */
+interface MenusFila { acciones: ActionsMenuItem[]; estados: ActionsMenuItem[]; comercializadoras: ActionsMenuItem[] }
 
 @Component({
   selector: 'app-vibra-altas',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    FormsModule, ReactiveFormsModule, RouterLink,
-    PageHeader, FormDialog, ConfirmDialog, StatusBadge, Pagination, TableSkeleton, Icon,
+    FormsModule, ReactiveFormsModule, NgTemplateOutlet,
+    PageHeader, FormDialog, ConfirmDialog, StatusBadge, Pagination, TableSkeleton, Icon, ActionsMenu,
   ],
   templateUrl: './vibra-altas.html',
 })
@@ -85,11 +126,78 @@ export class VibraAltas {
     this.load();
   }
 
+  protected ariaSort(field: string): 'ascending' | 'descending' | null {
+    return this.sortField() === field ? (this.sortDir() === 'asc' ? 'ascending' : 'descending') : null;
+  }
+
   protected readonly estadoValues = ESTADO_VIBRA_ALTA_VALUES;
   protected readonly comercializadoraValues = COMERCIALIZADORA_VIBRA_VALUES;
   protected readonly comercializadorasRotacion = COMERCIALIZADORA_VIBRA_VALUES.filter((c) => c !== COMERCIALIZADORA_PTE_TRAMITAR);
 
   protected readonly rows = computed(() => this.result()?.content ?? []);
+
+  // Columnas visibles (preferencia del navegador)
+  protected readonly columnasOpcionales = COLUMNAS_OPCIONALES;
+  protected readonly columnas = signal(leerColumnas());
+  protected readonly vtableMin = computed(() =>
+    `${ANCHO_BASE + COLUMNAS_OPCIONALES.filter((c) => this.columnas().has(c.id)).reduce((s, c) => s + c.ancho, 0)}rem`);
+  protected readonly numColumnas = computed(() => COLUMNAS_FIJAS + this.columnas().size);
+
+  protected ver(id: ColumnaOpcional): boolean { return this.columnas().has(id); }
+
+  protected toggleColumna(id: ColumnaOpcional, on: boolean): void {
+    const s = new Set(this.columnas());
+    if (on) s.add(id); else s.delete(id);
+    this.columnas.set(s);
+    try { localStorage.setItem(COLUMNAS_KEY, JSON.stringify([...s])); } catch { /* sin almacenamiento */ }
+  }
+
+  /** Menús por fila: acciones, estado y comercializadora (sustituyen a los <select>). */
+  protected readonly menus = computed(() => new Map<string, MenusFila>(this.rows().map((r) => [r.id, this.menusFila(r)])));
+
+  private menusFila(r: VibraAlta): MenusFila {
+    const acciones: ActionsMenuItem[] = [
+      { label: 'Ver detalle', icon: 'eye', action: () => this.verDetalle(r.id) },
+      { label: 'Ver contrato (PDF)', icon: 'file-text', action: () => this.verContrato(r) },
+      ...(this.puedeAdministrar()
+        ? [{ label: r.contratoEnviadoAt ? 'Reenviar contrato' : 'Enviar contrato', icon: 'mail', action: () => this.askEnviarContrato(r) } satisfies ActionsMenuItem]
+        : []),
+      { label: 'Editar', icon: 'edit', action: () => this.openEdit(r) },
+      { label: r.tramitado ? 'Marcar como no tramitado' : 'Marcar como tramitado', icon: 'check',
+        action: () => this.changeTramitado(r, !r.tramitado) },
+      { label: 'Eliminar', icon: 'trash', danger: true, separatorBefore: true, action: () => this.askDelete(r) },
+    ];
+    const estados = this.estadoValues.map((e): ActionsMenuItem => ({
+      label: this.estadoLabel(e), checked: r.estado === e, action: () => { if (r.estado !== e) this.changeEstado(r, e); },
+    }));
+    const comercializadoras = this.comercializadoraValues.map((c): ActionsMenuItem => ({
+      label: c, checked: r.comercializadora === c,
+      action: () => { if (r.comercializadora !== c) this.changeComercializadora(r, c); },
+    }));
+    return { acciones, estados, comercializadoras };
+  }
+
+  /** Acciones poco frecuentes de la cabecera. */
+  protected readonly masAcciones = computed<ActionsMenuItem[]>(() => {
+    const items: ActionsMenuItem[] = [];
+    if (this.puedeAdministrar()) {
+      items.push({ label: this.kilowySyncing() ? 'Sincronizando Kilowy…' : 'Sincronizar Kilowy (también cada día)', icon: 'refresh-cw',
+        disabled: this.kilowySyncing(), action: () => this.syncKilowy() });
+    }
+    if (this.esAdmin()) {
+      const enCurso = !!this.fichasEstado()?.enCurso;
+      items.push({ label: enCurso ? 'Importando fichas…' : 'Importar fichas Kilowy (migración única)', icon: 'download',
+        disabled: enCurso, action: () => this.importarFichas() });
+    }
+    items.push(
+      { label: 'Exportar Excel', icon: 'download', separatorBefore: items.length > 0, action: () => this.exportExcel() },
+      { label: 'Importar Excel', icon: 'upload', action: () => this.triggerImportExcel() },
+    );
+    if (this.puedeAdministrar()) {
+      items.push({ label: 'Rotación semestral', icon: 'refresh-cw', separatorBefore: true, action: () => this.openRotacion() });
+    }
+    return items;
+  });
   protected readonly total = computed(() => this.result()?.totalElements ?? 0);
   protected readonly totalPages = computed(() => this.result()?.totalPages ?? 0);
 
@@ -219,6 +327,17 @@ export class VibraAltas {
         this.loading.set(false);
       },
     });
+  }
+
+  protected limpiarFiltros(): void {
+    this.q = '';
+    this.estadoFilter = '';
+    this.colaboradorFilter = '';
+    this.comercializadoraFilter = '';
+    this.tramitadoFilter = '';
+    this.fechaDesdeFilter = '';
+    this.fechaHastaFilter = '';
+    this.applyFilters();
   }
 
   protected onPage(p: number): void { this.page.set(p); this.load(); }
@@ -568,12 +687,6 @@ export class VibraAltas {
     });
   }
 
-  protected envioLabel(r: VibraAlta): string {
-    return r.contratoEnviadoAt
-      ? `Reenviar contrato (último envío: ${formatDateTime(r.contratoEnviadoAt)})`
-      : 'Enviar contrato';
-  }
-
   protected readonly fmtDateTime = formatDateTime;
 
   // ── Rotacion Semestral ─────────────────────────────────
@@ -690,11 +803,22 @@ export class VibraAltas {
   }
 
   protected readonly cambioDot = fechaProximaDotClass;
+  protected readonly estadoTone = estadoAltaTone;
+  protected readonly fmtDate = formatDate;
 
-  /** YYYY-MM-DD → dd/mm/aaaa sin pasar por UTC (evita un día menos fuera de España). */
-  protected fmtDate(d: string | null): string {
-    if (!d) return '—';
-    const [y, m, dd] = d.slice(0, 10).split('-');
-    return `${dd}/${m}/${y}`;
+  /** Texto del punto de color de la fecha de cambio (no solo color). */
+  protected cambioAviso(iso: string | null): string {
+    const c = fechaProximaDotClass(iso);
+    return c === 'bg-danger' ? 'Cambio vencido' : c === 'bg-warning' ? 'Cambio próximo' : 'Cambio';
+  }
+
+  /** Fechas con valor, para el detalle. */
+  protected fechasDetalle(a: VibraAlta): { label: string; v: string }[] {
+    const f: [string, string | null][] = [
+      ['Alta', a.fecha], ['Firma', a.fechaFirma], ['Tramitación', a.fechaTramitacion],
+      ['Activación', a.fechaActivacionContrato], ['Cambio comercializadora', a.fechaCambioComercializadora],
+      ['Renovación', a.fechaRenovacion], ['Baja', a.fechaBaja],
+    ];
+    return f.filter(([, v]) => !!v).map(([label, v]) => ({ label, v: formatDate(v) }));
   }
 }

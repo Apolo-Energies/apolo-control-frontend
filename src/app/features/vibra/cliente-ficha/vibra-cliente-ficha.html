@@ -3,94 +3,103 @@
 }
 
 @if (ficha(); as f) {
-  <app-page-header [title]="f.nombre" [subtitle]="'Persona ' + tipoCliente[f.tipo].toLowerCase() + ' · ' + f.nif">
-    <a routerLink="/vibra/clientes" class="text-sm text-muted-foreground hover:text-foreground">← Clientes</a>
+  <a routerLink="/vibra/clientes" class="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+    <ui-icon name="chevron-left" [size]="16" /> Clientes
+  </a>
+  <app-page-header [title]="f.nombre" [subtitle]="'Persona ' + tipoCliente[f.tipo].toLowerCase() + ' · ' + f.nif + (f.deKilowy ? ' · importado de Kilowy' : '')">
     @if (puedeEditar()) {
-      <button type="button" (click)="editOpen.set(true)"
-        class="ml-auto inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
-        <ui-icon name="edit" [size]="16" /> Editar
+      <button secondary type="button" class="btn btn-secondary" (click)="editOpen.set(true)">
+        <ui-icon name="edit" [size]="16" /> Editar cliente
       </button>
     }
   </app-page-header>
 
   @if (f.dniRevisar) {
-    <div class="rounded-xl border border-warning/40 bg-warning-soft px-4 py-3 mb-4 text-sm" role="status">
-      El DNI/CIF que vino de Kilowy no es válido. Corrígelo con «Editar».
+    <div class="rounded-xl border border-warning/40 bg-warning-soft text-warning-fg px-4 py-3 mb-4 text-sm" role="status">
+      El DNI/CIF que vino de Kilowy no es válido. Corrígelo con «Editar cliente».
     </div>
   }
 
   <div class="tablist mb-4" focusgroup="tablist nomemory" role="tablist" aria-label="Ficha del cliente">
-    <button type="button" role="tab" id="tab-datos" [attr.aria-selected]="tab() === 'datos'"
-      [attr.focusgroupstart]="tab() === 'datos' ? '' : null" (click)="tab.set('datos')">Datos</button>
-    <button type="button" role="tab" id="tab-sum" [attr.aria-selected]="tab() === 'suministros'"
-      [attr.focusgroupstart]="tab() === 'suministros' ? '' : null" (click)="tab.set('suministros')">
-      Suministros ({{ f.suministros.length }})</button>
-    <button type="button" role="tab" id="tab-con" [attr.aria-selected]="tab() === 'contratos'"
-      [attr.focusgroupstart]="tab() === 'contratos' ? '' : null" (click)="tab.set('contratos')">
-      Contratos ({{ f.contratos.length }})</button>
-    @if (verFacturas) {
-      <button type="button" role="tab" id="tab-fac" [attr.aria-selected]="tab() === 'facturas'"
-        [attr.focusgroupstart]="tab() === 'facturas' ? '' : null" (click)="tab.set('facturas')">
-        Facturas{{ facturas() ? ' (' + facturas()!.length + ')' : '' }}</button>
+    @for (p of pestanas(); track p.id) {
+      <button type="button" role="tab" [id]="'tab-' + p.id" [attr.aria-controls]="'panel-' + p.id"
+        [attr.aria-selected]="tab() === p.id" [attr.focusgroupstart]="tab() === p.id ? '' : null" (click)="tab.set(p.id)">
+        {{ p.label }}
+        @if (p.n !== null) { <span class="ml-1 tabular-nums text-xs text-muted-foreground">{{ p.n }}</span> }
+      </button>
     }
   </div>
 
-  <div role="tabpanel" aria-labelledby="tab-datos" [hidden]="tab() !== 'datos'">
-    <dl class="rounded-2xl border border-border bg-card p-6 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
-      <div><dt class="text-muted-foreground">DNI/NIE/CIF</dt><dd class="tabular-nums">{{ f.nif }}</dd></div>
-      <div><dt class="text-muted-foreground">Tipo</dt><dd>{{ tipoCliente[f.tipo] }}</dd></div>
-      <div><dt class="text-muted-foreground">Teléfono 1</dt><dd class="tabular-nums">{{ f.telefono1 ?? '—' }}</dd></div>
-      <div><dt class="text-muted-foreground">Teléfono 2</dt><dd class="tabular-nums">{{ f.telefono2 ?? '—' }}</dd></div>
-      <div><dt class="text-muted-foreground">Email</dt><dd>{{ f.email ?? '—' }}</dd></div>
-      <div><dt class="text-muted-foreground">Fecha de alta</dt><dd>{{ fecha(f.fechaAlta) }}</dd></div>
-      <div class="sm:col-span-2"><dt class="text-muted-foreground">Dirección del cliente</dt><dd>{{ direccion() }}</dd></div>
-      @if (f.observaciones) {
-        <div class="sm:col-span-2"><dt class="text-muted-foreground">Observaciones</dt><dd class="whitespace-pre-line">{{ f.observaciones }}</dd></div>
-      }
-      <div><dt class="text-muted-foreground">Origen</dt><dd>{{ f.deKilowy ? 'Importado de Kilowy' : 'Creado en Control' }}</dd></div>
-    </dl>
+  <div id="panel-datos" role="tabpanel" aria-labelledby="tab-datos" [hidden]="tab() !== 'datos'">
+    <div class="rounded-2xl border border-border bg-card p-6">
+      <dl class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm">
+        @if (f.telefono1) { <div><dt class="text-xs text-muted-foreground">Teléfono</dt><dd class="tabular-nums">{{ f.telefono1 }}</dd></div> }
+        @if (f.telefono2) { <div><dt class="text-xs text-muted-foreground">Teléfono 2</dt><dd class="tabular-nums">{{ f.telefono2 }}</dd></div> }
+        @if (f.email) { <div class="min-w-0"><dt class="text-xs text-muted-foreground">Email</dt><dd class="break-all">{{ f.email }}</dd></div> }
+        @if (!f.telefono1 && !f.telefono2 && !f.email) {
+          <div><dt class="text-xs text-muted-foreground">Contacto</dt><dd class="text-muted-foreground">Sin teléfono ni email</dd></div>
+        }
+        <div class="sm:col-span-2 lg:col-span-3"><dt class="text-xs text-muted-foreground">Dirección del cliente</dt><dd>{{ direccion() }}</dd></div>
+        @if (f.fechaAlta) { <div><dt class="text-xs text-muted-foreground">Fecha de alta</dt><dd class="tabular-nums">{{ fecha(f.fechaAlta) }}</dd></div> }
+        <div><dt class="text-xs text-muted-foreground">Origen</dt><dd>{{ f.deKilowy ? 'Importado de Kilowy' : 'Creado en Control' }}</dd></div>
+        @if (f.observaciones) {
+          <div class="sm:col-span-2 lg:col-span-3"><dt class="text-xs text-muted-foreground">Observaciones</dt><dd class="whitespace-pre-line">{{ f.observaciones }}</dd></div>
+        }
+      </dl>
+    </div>
   </div>
 
-  <div role="tabpanel" aria-labelledby="tab-sum" [hidden]="tab() !== 'suministros'">
+  <div id="panel-suministros" role="tabpanel" aria-labelledby="tab-suministros" [hidden]="tab() !== 'suministros'">
     @if (puedeEditar()) {
-      <div class="flex justify-end mb-2">
-        <button type="button" (click)="abrirSuministro(null)"
-          class="inline-flex items-center gap-2 rounded-lg bg-primary-button text-primary-foreground px-4 py-2 text-sm font-medium">
-          <ui-icon name="plus" [size]="16" /> Nuevo punto
+      <div class="flex justify-end mb-3">
+        <button type="button" class="btn btn-secondary" (click)="abrirSuministro(null)">
+          <ui-icon name="plus" [size]="16" /> Nuevo punto de suministro
         </button>
       </div>
     }
     <div class="rounded-2xl border border-border bg-card overflow-hidden">
-      <div class="overflow-x-auto" tabindex="0" role="region" aria-labelledby="sum-caption">
-        <table class="w-full text-sm">
+      <div class="vtable-region" tabindex="0" role="region" aria-labelledby="sum-caption" style="--vtable-min: 44rem">
+        <table class="vtable">
           <caption id="sum-caption" class="sr-only">Puntos de suministro de {{ f.nombre }}</caption>
+          <colgroup>
+            <col class="col-cups" style="inline-size: 13rem" />
+            <col class="col-texto" />
+            <col style="inline-size: 5rem" />
+            <col style="inline-size: 6rem" />
+            @if (puedeEditar()) { <col style="inline-size: 4rem" /> }
+          </colgroup>
           <thead>
-            <tr class="border-b border-border text-left text-muted-foreground">
-              <th scope="col" class="py-3 px-4 font-medium">CUPS</th>
-              <th scope="col" class="py-3 px-4 font-medium">Dirección</th>
-              <th scope="col" class="py-3 px-4 font-medium">Población</th>
-              <th scope="col" class="py-3 px-4 font-medium">Tipo</th>
-              <th scope="col" class="py-3 px-4 font-medium">Tarifa</th>
-              @if (puedeEditar()) { <th scope="col" class="py-3 px-4"><span class="sr-only">Acciones</span></th> }
+            <tr>
+              <th scope="col" class="vtable-fix">CUPS</th>
+              <th scope="col">Dirección</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Tarifa</th>
+              @if (puedeEditar()) { <th scope="col"><span class="sr-only">Acciones</span></th> }
             </tr>
           </thead>
           <tbody>
             @for (s of f.suministros; track s.id) {
-              <tr class="border-b border-border/50">
-                <th scope="row" class="py-2 px-4 font-normal text-left tabular-nums">{{ s.cups }}</th>
-                <td class="py-2 px-4">{{ s.direccion ?? '—' }}</td>
-                <td class="py-2 px-4">{{ s.cp }} {{ s.poblacion ?? '' }}</td>
-                <td class="py-2 px-4">{{ tipoSuministro[s.tipo] }}</td>
-                <td class="py-2 px-4">{{ s.tarifaAcceso ?? '—' }}</td>
+              <tr>
+                <th scope="row" class="vtable-fix">
+                  <span class="cell-tail" [title]="s.cups"><span>{{ s.cups.slice(0, -4) }}</span>{{ s.cups.slice(-4) }}</span>
+                </th>
+                <td data-label="Dirección">
+                  <span class="cell-clamp2" [title]="s.direccion ?? ''">{{ s.direccion ?? 'Sin dirección' }}</span>
+                  @if (s.cp || s.poblacion) { <span class="cell-sub">{{ s.cp }} {{ s.poblacion ?? '' }}{{ s.provincia ? ' (' + s.provincia + ')' : '' }}</span> }
+                </td>
+                <td data-label="Tipo">{{ tipoSuministro[s.tipo] }}</td>
+                <td data-label="Tarifa" class="cell-nowrap">{{ s.tarifaAcceso ?? '—' }}</td>
                 @if (puedeEditar()) {
-                  <td class="py-2 px-4 text-right">
-                    <button type="button" (click)="abrirSuministro(s)" class="p-1 hover:bg-info-soft rounded"
-                      [attr.aria-label]="'Editar suministro ' + s.cups"><ui-icon name="edit" [size]="16" /></button>
+                  <td data-label="Acciones">
+                    <div class="cell-actions">
+                      <button type="button" class="btn btn-ghost btn-icon" (click)="abrirSuministro(s)"
+                        [attr.aria-label]="'Editar suministro ' + s.cups" title="Editar"><ui-icon name="edit" [size]="16" /></button>
+                    </div>
                   </td>
                 }
               </tr>
             } @empty {
-              <tr><td colspan="6" class="py-12 text-center text-muted-foreground">Sin puntos de suministro</td></tr>
+              <tr><td [attr.colspan]="puedeEditar() ? 5 : 4" class="vtable-empty">Sin puntos de suministro.</td></tr>
             }
           </tbody>
         </table>
@@ -98,35 +107,48 @@
     </div>
   </div>
 
-  <div role="tabpanel" aria-labelledby="tab-con" [hidden]="tab() !== 'contratos'">
+  <div id="panel-contratos" role="tabpanel" aria-labelledby="tab-contratos" [hidden]="tab() !== 'contratos'">
     <div class="rounded-2xl border border-border bg-card overflow-hidden">
-      <div class="overflow-x-auto" tabindex="0" role="region" aria-labelledby="con-caption">
-        <table class="w-full text-sm">
+      <div class="vtable-region" tabindex="0" role="region" aria-labelledby="con-caption" style="--vtable-min: 64rem">
+        <table class="vtable">
           <caption id="con-caption" class="sr-only">Contratos de {{ f.nombre }}</caption>
+          <colgroup>
+            <col class="col-cups" style="inline-size: 13rem" />
+            <col style="inline-size: 10rem" />
+            <col style="inline-size: 9rem" />
+            <col class="col-texto" />
+            <col class="col-fecha" />
+            <col class="col-fecha" />
+            <col class="col-fecha" />
+          </colgroup>
           <thead>
-            <tr class="border-b border-border text-left text-muted-foreground">
-              <th scope="col" class="py-3 px-4 font-medium">CUPS</th>
-              <th scope="col" class="py-3 px-4 font-medium">Estado</th>
-              <th scope="col" class="py-3 px-4 font-medium">Comercializadora</th>
-              <th scope="col" class="py-3 px-4 font-medium">Colaborador</th>
-              <th scope="col" class="py-3 px-4 font-medium">Firma</th>
-              <th scope="col" class="py-3 px-4 font-medium">Activación</th>
-              <th scope="col" class="py-3 px-4 font-medium">Baja</th>
+            <tr>
+              <th scope="col" class="vtable-fix">CUPS</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Comercializadora</th>
+              <th scope="col">Colaborador</th>
+              <th scope="col">Firma</th>
+              <th scope="col">Activación</th>
+              <th scope="col">Baja</th>
             </tr>
           </thead>
           <tbody>
             @for (c of f.contratos; track c.id) {
-              <tr class="border-b border-border/50">
-                <th scope="row" class="py-2 px-4 font-normal text-left tabular-nums">{{ c.cups ?? '—' }}</th>
-                <td class="py-2 px-4"><app-status-badge [tone]="estadoTone(c.estado)">{{ estadoLabel(c.estado) }}</app-status-badge></td>
-                <td class="py-2 px-4">{{ c.comercializadora ?? '—' }}</td>
-                <td class="py-2 px-4">{{ c.colaborador ?? '—' }}</td>
-                <td class="py-2 px-4 tabular-nums">{{ fecha(c.fechaFirma) }}</td>
-                <td class="py-2 px-4 tabular-nums">{{ fecha(c.fechaActivacion) }}</td>
-                <td class="py-2 px-4 tabular-nums">{{ fecha(c.fechaBaja) }}</td>
+              <tr>
+                <th scope="row" class="vtable-fix">
+                  @if (c.cups; as cu) {
+                    <span class="cell-tail" [title]="cu"><span>{{ cu.slice(0, -4) }}</span>{{ cu.slice(-4) }}</span>
+                  } @else { <span class="text-muted-foreground">Sin CUPS</span> }
+                </th>
+                <td data-label="Estado"><app-status-badge [tone]="estadoTone(c.estado)">{{ estadoLabel(c.estado) }}</app-status-badge></td>
+                <td data-label="Comercializadora">{{ c.comercializadora ?? '—' }}</td>
+                <td data-label="Colaborador"><span class="cell-clamp2" [title]="c.colaborador ?? ''">{{ c.colaborador ?? '—' }}</span></td>
+                <td data-label="Firma" class="cell-nowrap tabular-nums">{{ fecha(c.fechaFirma) }}</td>
+                <td data-label="Activación" class="cell-nowrap tabular-nums">{{ fecha(c.fechaActivacion) }}</td>
+                <td data-label="Baja" class="cell-nowrap tabular-nums">{{ fecha(c.fechaBaja) }}</td>
               </tr>
             } @empty {
-              <tr><td colspan="7" class="py-12 text-center text-muted-foreground">Sin contratos con este DNI/CIF o CUPS</td></tr>
+              <tr><td colspan="7" class="vtable-empty">Sin contratos con este DNI/CIF o CUPS.</td></tr>
             }
           </tbody>
         </table>
@@ -135,39 +157,60 @@
   </div>
 
   @if (verFacturas) {
-    <div role="tabpanel" aria-labelledby="tab-fac" [hidden]="tab() !== 'facturas'">
+    <div id="panel-facturas" role="tabpanel" aria-labelledby="tab-facturas" [hidden]="tab() !== 'facturas'">
       <div class="rounded-2xl border border-border bg-card overflow-hidden">
-        <div class="overflow-x-auto" tabindex="0" role="region" aria-labelledby="fac-caption">
-          <table class="w-full text-sm">
+        <div class="vtable-region" tabindex="0" role="region" aria-labelledby="fac-caption" style="--vtable-min: 50rem">
+          <table class="vtable">
             <caption id="fac-caption" class="sr-only">Facturas de {{ f.nombre }}</caption>
+            <colgroup>
+              <col class="col-numdoc" />
+              <col class="col-cups" />
+              <col class="col-periodo" />
+              <col class="col-importe" />
+              <col class="col-estado" />
+            </colgroup>
             <thead>
-              <tr class="border-b border-border text-left text-muted-foreground">
-                <th scope="col" class="py-3 px-4 font-medium">Nº</th>
-                <th scope="col" class="py-3 px-4 font-medium">CUPS</th>
-                <th scope="col" class="py-3 px-4 font-medium">Periodo</th>
-                <th scope="col" class="py-3 px-4 font-medium text-right">Total</th>
-                <th scope="col" class="py-3 px-4 font-medium">Estado</th>
+              <tr>
+                <th scope="col" class="vtable-fix">Nº</th>
+                <th scope="col">CUPS</th>
+                <th scope="col">Periodo</th>
+                <th scope="col" class="cell-num">Total</th>
+                <th scope="col">Estado</th>
               </tr>
             </thead>
             <tbody>
               @if (facturas() === null) {
-                <tr><td colspan="5" class="py-12 text-center text-muted-foreground">Cargando…</td></tr>
+                <tr><td colspan="5" class="vtable-empty" role="status">Cargando facturas…</td></tr>
               }
               @for (fa of facturas() ?? []; track fa.id) {
-                <tr class="border-b border-border/50">
-                  <th scope="row" class="py-2 px-4 font-normal text-left whitespace-nowrap">
-                    <a [routerLink]="['/vibra/facturas', fa.id]" class="hover:underline tabular-nums">{{ fa.numero ?? 'borrador' }}</a>
-                    <div class="text-xs text-muted-foreground">{{ fecha(fa.fechaEmision ?? fa.createdAt) }}</div>
-                    @if (fa.deKilowy) { <app-status-badge tone="neutral">Kilowy</app-status-badge> }
+                <tr>
+                  <th scope="row" class="vtable-fix">
+                    <a [routerLink]="['/vibra/facturas', fa.id]" class="font-medium hover:underline underline-offset-2">
+                      @if (fa.numero; as n) {
+                        <span class="cell-tail" [title]="n"><span>{{ n.slice(0, -6) }}</span>{{ n.slice(-6) }}</span>
+                      } @else {
+                        Borrador
+                      }
+                    </a>
+                    <div class="cell-badges">
+                      <span class="text-xs text-muted-foreground tabular-nums">{{ fecha(fa.fechaEmision ?? fa.createdAt) }}</span>
+                      @if (fa.deKilowy) { <app-status-badge size="sm">Kilowy</app-status-badge> }
+                    </div>
                   </th>
-                  <td class="py-2 px-4 tabular-nums">{{ fa.cups }}</td>
-                  <td class="py-2 px-4 tabular-nums whitespace-nowrap">{{ fecha(fa.periodoDesde) }} – {{ fecha(fa.periodoHasta) }}</td>
-                  <td class="py-2 px-4 text-right tabular-nums">{{ euro(fa.total) }}</td>
-                  <td class="py-2 px-4"><app-status-badge [tone]="toneFactura(fa.estado)">{{ estadoFactura[fa.estado] }}</app-status-badge></td>
+                  <td data-label="CUPS">
+                    @if (fa.cups; as c) {
+                      <span class="cell-tail" [title]="c"><span>{{ c.slice(0, -4) }}</span>{{ c.slice(-4) }}</span>
+                    } @else { <span class="text-muted-foreground">—</span> }
+                  </td>
+                  <td data-label="Periodo" class="cell-nowrap tabular-nums" [title]="fecha(fa.periodoDesde) + ' – ' + fecha(fa.periodoHasta)">
+                    {{ periodo(fa.periodoDesde, fa.periodoHasta) }}
+                  </td>
+                  <td data-label="Total" class="cell-num font-medium">{{ euro(fa.total) }}</td>
+                  <td data-label="Estado"><app-status-badge [tone]="toneFactura(fa.estado)">{{ estadoFactura[fa.estado] }}</app-status-badge></td>
                 </tr>
               } @empty {
                 @if (facturas() !== null) {
-                  <tr><td colspan="5" class="py-12 text-center text-muted-foreground">Sin facturas con este DNI/CIF</td></tr>
+                  <tr><td colspan="5" class="vtable-empty">Sin facturas con este DNI/CIF.</td></tr>
                 }
               }
             </tbody>
@@ -191,7 +234,7 @@
     width="560px"
     (cancel)="sumEdit.set(null)"
     (save)="guardarSuministro()">
-    <form #sf="ngForm" class="grid grid-cols-1 sm:grid-cols-6 gap-3 py-2 text-sm" (ngSubmit)="sf.valid && guardarSuministro()">
+    <form #sf="ngForm" class="vform grid grid-cols-1 sm:grid-cols-6 gap-3 py-2 text-sm" (ngSubmit)="sf.valid && guardarSuministro()">
       <div class="campo sm:col-span-4 flex flex-col gap-1">
         <label for="sum-cups">CUPS</label>
         <!-- Misma regla que Cups.validar (backend); el backend comprueba además las letras de control -->

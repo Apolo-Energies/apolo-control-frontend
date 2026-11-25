@@ -5,10 +5,10 @@ import { RouterLink } from '@angular/router';
 
 import { PageHeader } from '../../../shared/components/page-header/page-header';
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
-import { StatusBadge, StatusTone } from '../../../shared/components/status-badge/status-badge';
+import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
-import { formatDate, formatEuro } from '../../../shared/utils/format';
+import { formatDate, formatEuro, formatPeriodo } from '../../../shared/utils/format';
 
 import { AuthService } from '../../../core/auth';
 import { VibraClienteService } from '../../../core/services/vibra-cliente.service';
@@ -22,6 +22,7 @@ import {
 } from '../../../core/models';
 import { mensajeError } from '../../../shared/utils/http-error';
 import { VibraClienteForm } from '../clientes/vibra-cliente-form';
+import { estadoAltaTone } from '../altas/vibra-alta-ui';
 
 type Pestana = 'datos' | 'suministros' | 'contratos' | 'facturas';
 
@@ -60,6 +61,21 @@ export class VibraClienteFichaView {
   protected readonly sumError = signal<string | null>(null);
 
   protected readonly fecha = formatDate;
+  protected readonly periodo = formatPeriodo;
+  protected readonly estadoTone = estadoAltaTone;
+
+  /** Pestañas con su contador (null = sin contar aún). */
+  protected readonly pestanas = computed(() => {
+    const f = this.ficha();
+    const fac = this.facturas();
+    const p: { id: Pestana; label: string; n: number | null }[] = [
+      { id: 'datos', label: 'Datos', n: null },
+      { id: 'suministros', label: 'Suministros', n: f?.suministros.length ?? null },
+      { id: 'contratos', label: 'Contratos', n: f?.contratos.length ?? null },
+    ];
+    if (this.verFacturas) p.push({ id: 'facturas', label: 'Facturas', n: fac ? fac.length : null });
+    return p;
+  });
   protected readonly tipoCliente = TIPO_CLIENTE_VIBRA_LABEL;
   protected readonly tipoSuministro = TIPO_SUMINISTRO_VIBRA_LABEL;
 
@@ -130,15 +146,6 @@ export class VibraClienteFichaView {
         this.sumError.set(mensajeError(err, 'No se pudo guardar'));
       },
     });
-  }
-
-  protected estadoTone(estado: string | null): StatusTone {
-    switch (estado) {
-      case 'ACTIVO': return 'success';
-      case 'BAJA': case 'CANCELADO': return 'danger';
-      case 'FIRMADO': case 'TRAMITADO': return 'info';
-      default: return 'neutral';
-    }
   }
 }
 

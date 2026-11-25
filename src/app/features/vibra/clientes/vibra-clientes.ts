@@ -10,6 +10,7 @@ import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { Icon } from '../../../shared/icons/icon';
+import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions-menu/actions-menu';
 
 import { AuthService } from '../../../core/auth';
 import { VibraClienteService } from '../../../core/services/vibra-cliente.service';
@@ -24,7 +25,7 @@ import { VibraClienteForm } from './vibra-cliente-form';
   selector: 'app-vibra-clientes',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormsModule, RouterLink, PageHeader, Pagination, TableSkeleton, ConfirmDialog, FormDialog,
-    StatusBadge, Icon, VibraClienteForm],
+    StatusBadge, Icon, VibraClienteForm, ActionsMenu],
   templateUrl: './vibra-clientes.html',
 })
 export class VibraClientes {
@@ -43,6 +44,12 @@ export class VibraClientes {
   protected readonly size = signal(20);
   protected q = '';
   protected tipo: TipoClienteVibra | '' = '';
+
+  /** Acciones poco frecuentes de la cabecera. */
+  protected readonly masAcciones: ActionsMenuItem[] = [
+    ...(this.puedeEditar() ? [{ label: 'Descargar Excel', icon: 'download', action: () => this.exportExcel() } satisfies ActionsMenuItem] : []),
+    ...(this.esAdmin() ? [{ label: 'Importar desde Kilowy', icon: 'upload', action: () => this.importOpen.set(true) } satisfies ActionsMenuItem] : []),
+  ];
 
   protected readonly formOpen = signal(false);
   protected readonly importOpen = signal(false);
@@ -74,6 +81,7 @@ export class VibraClientes {
   }
 
   protected buscar(): void { this.page.set(0); this.load(); }
+  protected limpiarFiltros(): void { this.q = ''; this.tipo = ''; this.buscar(); }
   protected onPage(p: number): void { this.page.set(p); this.load(); }
   protected onPageSize(s: number): void { this.size.set(s); this.page.set(0); this.load(); }
 

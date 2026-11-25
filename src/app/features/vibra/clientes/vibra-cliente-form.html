@@ -10,8 +10,8 @@
   width="640px"
   (cancel)="cancel.emit()"
   (save)="guardar()">
-  <form #f="ngForm" class="grid grid-cols-1 sm:grid-cols-6 gap-3 py-2 text-sm" (ngSubmit)="f.valid && guardar()">
-    <fieldset class="sm:col-span-6 flex gap-4">
+  <form #f="ngForm" class="vform grid grid-cols-1 sm:grid-cols-6 gap-3 py-2 text-sm" (ngSubmit)="f.valid && guardar()">
+    <fieldset class="sm:col-span-6 flex gap-4 border-0 p-0">
       <legend class="sr-only">Tipo de persona</legend>
       <label class="inline-flex items-center gap-2"><input type="radio" name="tipo" value="FISICA" [(ngModel)]="m.tipo" /> Física</label>
       <label class="inline-flex items-center gap-2"><input type="radio" name="tipo" value="JURIDICA" [(ngModel)]="m.tipo" /> Jurídica</label>

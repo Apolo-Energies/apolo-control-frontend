@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NgTemplateOutlet } from '@angular/common';
-import { RouterLink } from '@angular/router';
 
 import { PageHeader } from '../../../shared/components/page-header/page-header';
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
@@ -10,6 +9,7 @@ import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
+import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions-menu/actions-menu';
 
 import { VibraTarifaService } from '../../../core/services/vibra-tarifa.service';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -24,7 +24,7 @@ import { parsePrecios } from '../../../shared/utils/format';
 @Component({
   selector: 'app-vibra-preciario',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, NgTemplateOutlet, PageHeader, FormDialog, ConfirmDialog, StatusBadge, TableSkeleton, Icon],
+  imports: [ReactiveFormsModule, NgTemplateOutlet, PageHeader, FormDialog, ConfirmDialog, StatusBadge, TableSkeleton, Icon, ActionsMenu],
   templateUrl: './vibra-preciario.html',
 })
 export class VibraPreciario {
@@ -55,8 +55,21 @@ export class VibraPreciario {
   protected readonly detailData = signal<VibraTarifa | null>(null);
   protected readonly detailLoading = signal(false);
 
-  protected readonly tarifas20 = computed(() => this.all().filter(t => t.tipo === '2.0TD'));
-  protected readonly tarifas30 = computed(() => this.all().filter(t => t.tipo === '3.0TD'));
+  /** Una tabla por tipo de tarifa. */
+  protected readonly grupos = computed(() => (['2.0TD', '3.0TD'] as const).map((tipo) => ({
+    tipo, id: tipo.replace('.', ''), periodos: this.periodosTarifa(tipo), tarifas: this.all().filter((t) => t.tipo === tipo),
+  })));
+
+  /** Acciones de cada fila. */
+  protected readonly menus = computed(() => new Map<string, ActionsMenuItem[]>(this.all().map((t) => [t.id, [
+    { label: 'Ver detalle', icon: 'eye', action: () => this.verDetalle(t.id) },
+    { label: 'Editar', icon: 'edit', action: () => this.openEdit(t) },
+    { label: 'Eliminar', icon: 'trash', danger: true, separatorBefore: true, action: () => this.askDelete(t) },
+  ]])));
+
+  protected periodosTarifa(tipo: string | null | undefined): number[] {
+    return tipo === '2.0TD' ? [1, 2, 3] : [1, 2, 3, 4, 5, 6];
+  }
 
   protected readonly form = this.fb.group({
     nombre: ['', Validators.required],
@@ -273,7 +286,7 @@ export class VibraPreciario {
 
   protected fmt(n: number | null): string {
     if (n == null) return '—';
-    return n.toFixed(6);
+    return n.toLocaleString('es-ES', { minimumFractionDigits: 6, maximumFractionDigits: 6 });
   }
 
   protected verDetalle(id: string): void {
