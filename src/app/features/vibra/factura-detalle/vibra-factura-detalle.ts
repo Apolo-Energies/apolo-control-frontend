@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, signal, viewChild } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -8,8 +8,9 @@ import { PageHeader } from '../../../shared/components/page-header/page-header';
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
 import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
+import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions-menu/actions-menu';
 import { Icon } from '../../../shared/icons/icon';
-import { formatDate, formatDateTime, formatEuro, parseDecimal } from '../../../shared/utils/format';
+import { formatDate, formatDateTime, formatEuro, formatNumber, parseDecimal } from '../../../shared/utils/format';
 import { mensajeError } from '../../../shared/utils/http-error';
 
 import { AuthService } from '../../../core/auth';
@@ -49,7 +50,7 @@ const SIGUIENTES: Partial<Record<EstadoFacturaVibra, { estado: EstadoFacturaVibr
 @Component({
   selector: 'app-vibra-factura-detalle',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, PageHeader, FormDialog, ConfirmDialog, StatusBadge, Icon],
+  imports: [FormsModule, RouterLink, PageHeader, FormDialog, ConfirmDialog, StatusBadge, ActionsMenu, Icon],
   templateUrl: './vibra-factura-detalle.html',
 })
 export class VibraFacturaDetalle {
@@ -79,6 +80,7 @@ export class VibraFacturaDetalle {
   protected readonly euro = formatEuro;
   protected readonly fecha = formatDate;
   protected readonly fechaHora = formatDateTime;
+  protected readonly numero = formatNumber;
   protected readonly estadoLabel = ESTADO_FACTURA_VIBRA_LABEL;
   protected readonly tone = estadoFacturaTone;
   protected readonly ivas = IVAS_FACTURA_VIBRA;
@@ -86,15 +88,86 @@ export class VibraFacturaDetalle {
   protected readonly esBorrador = computed(() => this.factura()?.estado === 'BORRADOR');
   protected readonly siguientes = computed(() => SIGUIENTES[this.factura()?.estado ?? 'BORRADOR'] ?? []);
   protected readonly lineasCalculo = computed(() => this.factura()?.lineas.filter((l) => l.tipo !== 'OTRO') ?? []);
+  /** Conceptos extra por zona, sin zonas vacías. */
   protected readonly gruposConceptos = computed(() => {
-    const otros = this.factura()?.lineas.filter((l) => l.tipo === 'OTRO') ?? [];
+    const f = this.factura();
+    const editable = this.puedeEditar() && f?.estado === 'BORRADOR';
+    // Kilowy: sin líneas a 0 (p. ej. «detalle en Kilowy»)
+    const otros = f?.lineas.filter((l) => l.tipo === 'OTRO' && !(f.deKilowy && l.importe === 0)) ?? [];
     return [
-      { id: 'antes', titulo: 'Dentro de la base del impuesto eléctrico', lineas: otros.filter((l) => l.zona === 'ANTES') },
-      { id: 'despues', titulo: 'Después del impuesto eléctrico', lineas: otros.filter((l) => l.zona === 'DESPUES') },
-    ];
+      { id: 'antes', titulo: 'Dentro de la base del impuesto eléctrico', zona: 'ANTES' as const },
+      { id: 'despues', titulo: 'Después del impuesto eléctrico', zona: 'DESPUES' as const },
+    ]
+      .map((g) => ({
+        ...g,
+        lineas: otros.filter((l) => l.zona === g.zona).map((l) => ({
+          linea: l,
+          acciones: editable && l.origen === 'MANUAL' ? this.accionesLinea(l) : [],
+        })),
+      }))
+      .filter((g) => g.lineas.length);
   });
+  protected readonly conAccionesLinea = computed(() => this.gruposConceptos().some((g) => g.lineas.some((l) => l.acciones.length)));
   protected readonly potencias = computed(() => texto(this.factura()?.potencias, 'kW'));
   protected readonly consumos = computed(() => texto(this.factura()?.consumos, 'kWh'));
+
+  protected readonly subtitulo = computed(() => {
+    const f = this.factura();
+    if (!f) return null;
+    return [f.titular, f.contrato ? 'contrato #' + f.contrato : null].filter(Boolean).join(' · ') || null;
+  });
+  /** PDF disponible: las de Kilowy solo si se trajo su PDF. */
+  protected readonly conPdf = computed(() => { const f = this.factura(); return !!f && (!f.deKilowy || f.pdfKilowy); });
+  protected readonly puedeEnviar = computed(() => this.puedeEditar() && !this.esBorrador() && this.conPdf());
+
+  /** Resumen de importes; en las de Kilowy solo lo que trae importe (el desglose quedó en Kilowy). */
+  protected readonly resumen = computed(() => {
+    const f = this.factura();
+    if (!f) return [];
+    const filas = [
+      { label: 'Potencia', valor: f.totalPotencia },
+      { label: 'Energía', valor: f.totalEnergia },
+      { label: 'Impuesto eléctrico', valor: f.impuestoElectrico },
+      { label: 'Otros', valor: f.totalOtros },
+      { label: 'Base imponible', valor: f.subtotal },
+      { label: 'IVA', valor: f.iva },
+    ];
+    if (!f.deKilowy) return filas;
+    return f.subtotal ? filas.filter((r) => r.valor) : [];
+  });
+
+  /** Columna lateral: rentabilidad y/o importes. */
+  protected readonly conLateral = computed(() => this.factura()?.compraTotal != null || this.resumen().length > 0);
+
+  /** Cambios de estado de cobro (menú «Cambiar estado»). */
+  protected readonly estadoAcciones = computed<ActionsMenuItem[]>(() => {
+    if (!this.puedeEditar() || this.esBorrador()) return [];
+    return this.siguientes().map((s) => ({ label: s.label, disabled: !!this.ocupado(), action: () => this.cambiarEstado(s.estado) }));
+  });
+
+  /** Acciones poco frecuentes de la cabecera. */
+  protected readonly masAcciones = computed<ActionsMenuItem[]>(() => {
+    const f = this.factura();
+    if (!f) return [];
+    const ocupado = !!this.ocupado();
+    const items: ActionsMenuItem[] = [];
+    if (this.esBorrador()) {
+      if (this.puedeEditar() && f.compraPdfNombre) {
+        items.push(
+          { label: 'Subir otra compra', icon: 'upload', disabled: ocupado, action: () => this.elegirCompra() },
+          { label: 'Re-leer compra', icon: 'refresh-cw', disabled: ocupado, action: () => this.releer() },
+        );
+      }
+      if (this.puedeBorrar()) {
+        items.push({ label: 'Borrar borrador', icon: 'trash', danger: true, separatorBefore: items.length > 0, disabled: ocupado, action: () => this.borrar() });
+      }
+    } else if (this.puedeEnviar() && f.enviadaAt) {
+      items.push({ label: f.email ? 'Reenviar por correo' : 'Reenviar (sin email del cliente)', icon: 'mail', disabled: ocupado || !f.email, action: () => this.enviar() });
+    }
+    return items;
+  });
+
+  private readonly compraInput = viewChild<ElementRef<HTMLInputElement>>('compraInput');
 
   constructor() {
     effect(() => this.load(this.id()));
@@ -135,6 +208,10 @@ export class VibraFacturaDetalle {
 
   protected verCompra(): void {
     this.service.compraPdf(this.id()).subscribe({ next: abrirBlob, error: () => this.notify.error('No se pudo abrir la compra') });
+  }
+
+  protected elegirCompra(): void {
+    this.compraInput()?.nativeElement.click();
   }
 
   protected subirCompra(input: HTMLInputElement): void {
@@ -251,6 +328,13 @@ export class VibraFacturaDetalle {
     this.ejecutar('linea', this.service.deleteLinea(this.id(), l.id), `Concepto «${l.concepto}» quitado`);
   }
 
+  private accionesLinea(l: VibraFacturaLinea): ActionsMenuItem[] {
+    return [
+      { label: 'Editar', icon: 'edit', action: () => this.abrirLinea(l) },
+      { label: 'Quitar', icon: 'trash', danger: true, disabled: !!this.ocupado(), action: () => this.quitarLinea(l) },
+    ];
+  }
+
   protected ivaTexto(l: VibraFacturaLinea): string {
     return l.ivaPct === null ? 'Sin IVA (no sujeto)' : `IVA ${l.ivaPct} %`;
   }
@@ -260,7 +344,7 @@ function lineaVacia(): LineaForm {
   return { concepto: '', importe: '', zona: 'DESPUES', iva: '21' };
 }
 
-function texto(valores: (number | null)[] | undefined, unidad: string): string {
-  const partes = (valores ?? []).map((v, i) => (v ? `P${i + 1} ${String(v).replace('.', ',')} ${unidad}` : null)).filter(Boolean);
-  return partes.length ? partes.join(' · ') : '—';
+/** «P1 15 kW», uno por periodo con valor. */
+function texto(valores: (number | null)[] | undefined, unidad: string): string[] {
+  return (valores ?? []).flatMap((v, i) => (v ? [`P${i + 1} ${formatNumber(v)} ${unidad}`] : []));
 }

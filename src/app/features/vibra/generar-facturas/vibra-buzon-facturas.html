@@ -1,29 +1,29 @@
-<section class="rounded-2xl border border-border bg-card p-6 mb-4 flex flex-col gap-3 text-sm" aria-labelledby="buzon-titulo">
+<section class="rounded-2xl border border-border bg-card p-5 mb-4 flex flex-col gap-4 text-sm" aria-labelledby="buzon-titulo">
   <div class="flex flex-wrap items-start gap-3">
     <div class="flex-1 min-w-0">
-      <h2 id="buzon-titulo" class="font-medium text-base">Buzón de facturas {{ estado()?.buzon ?? '' }}</h2>
-      <p class="text-muted-foreground mt-1">
+      <h2 id="buzon-titulo" class="font-semibold text-base">Buzón de facturas {{ estado()?.buzon ?? '' }}</h2>
+      <p class="text-muted-foreground mt-1 max-w-[75ch]">
         Se lee el buzón sin marcar nada como leído: los PDF adjuntos (Apolo) y los enlaces de descarga (Endesa, Repsol…)
         crean su borrador con el contrato del CUPS. Lo que no casa queda «No procesado» con el motivo.
       </p>
     </div>
-    <button type="button" (click)="leer()" [disabled]="leyendo() || !estado()?.configurado || estado()?.leyendo"
-      class="inline-flex items-center gap-2 rounded-lg bg-primary-button text-primary-foreground px-4 py-2 font-medium disabled:opacity-50">
+    <button type="button" class="btn btn-primary" (click)="leer()" [disabled]="leyendo() || !estado()?.configurado || estado()?.leyendo">
       <ui-icon name="refresh-cw" [size]="16" />
       {{ leyendo() || estado()?.leyendo ? 'Leyendo…' : 'Leer ahora' }}
     </button>
   </div>
 
   @if (estado(); as e) {
-    <dl class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <dl class="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-3 border-t border-border pt-4">
       <div>
-        <dt class="text-muted-foreground">Lectura automática</dt>
+        <dt class="text-xs text-muted-foreground mb-1">Lectura automática</dt>
         <dd>
           @if (!e.configurado) {
             <app-status-badge tone="danger">Sin configurar</app-status-badge>
             <div class="text-muted-foreground mt-1">Faltan las variables VIBRA_BUZON_* del servidor</div>
           } @else if (e.habilitado) {
-            <app-status-badge tone="success">Activada</app-status-badge> {{ horario() }} · últimos {{ e.diasAtras }} días
+            <app-status-badge tone="success">Activada</app-status-badge>
+            <div class="text-muted-foreground mt-1">{{ horario() }} · últimos {{ e.diasAtras }} días</div>
           } @else {
             <app-status-badge tone="neutral">Apagada</app-status-badge>
             <div class="text-muted-foreground mt-1">Se enciende en Ajustes (vibra.buzon.habilitado)</div>
@@ -31,20 +31,22 @@
         </dd>
       </div>
       <div>
-        <dt class="text-muted-foreground">Última lectura</dt>
+        <dt class="text-xs text-muted-foreground mb-1">Última lectura</dt>
         <dd>
           @if (e.ultimaLectura) {
-            <span class="tabular-nums">{{ fmtFechaHora(e.ultimaLectura) }}</span>
-            @if (e.ultimoResultado === 'ERROR') { <app-status-badge tone="danger">Error</app-status-badge> }
+            <span class="inline-flex items-center gap-2">
+              <span class="tabular-nums">{{ fmtFechaHora(e.ultimaLectura) }}</span>
+              @if (e.ultimoResultado === 'ERROR') { <app-status-badge size="sm" tone="danger">Error</app-status-badge> }
+            </span>
             <div class="text-muted-foreground mt-1">{{ e.ultimoDetalle }}</div>
           } @else {
-            Nunca
+            <span class="text-muted-foreground">Nunca</span>
           }
         </dd>
       </div>
       <div>
-        <dt class="text-muted-foreground">Por revisar</dt>
-        <dd class="tabular-nums">{{ e.noProcesados }} no procesados · {{ e.errores }} con error</dd>
+        <dt class="text-xs text-muted-foreground mb-1">Por revisar</dt>
+        <dd class="tabular-nums">{{ e.noProcesados }} no {{ e.noProcesados === 1 ? 'procesado' : 'procesados' }} · {{ e.errores }} con error</dd>
       </div>
     </dl>
   }
@@ -53,15 +55,15 @@
 
 <div class="flex flex-wrap items-center gap-2 mb-4" role="group" aria-label="Filtro de correos">
   <button type="button" [attr.aria-pressed]="!soloPendientes()" (click)="filtrar(false)"
-    class="rounded-lg border border-border px-3 py-1.5 text-sm aria-pressed:bg-accent aria-pressed:font-medium hover:bg-accent">Todos</button>
+    class="btn btn-secondary aria-pressed:bg-accent aria-pressed:border-foreground/40">Todos</button>
   <button type="button" [attr.aria-pressed]="soloPendientes()" (click)="filtrar(true)"
-    class="rounded-lg border border-border px-3 py-1.5 text-sm aria-pressed:bg-accent aria-pressed:font-medium hover:bg-accent">
-    Por revisar <span class="tabular-nums">({{ pendientes() }})</span>
+    class="btn btn-secondary aria-pressed:bg-accent aria-pressed:border-foreground/40">
+    Por revisar <span class="tabular-nums text-xs text-muted-foreground">{{ pendientes() }}</span>
   </button>
 </div>
 
 @if (error(); as msg) {
-  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4">
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">
     {{ msg }} <button type="button" (click)="load()" class="ml-2 underline">Reintentar</button>
   </div>
 }
@@ -70,50 +72,59 @@
   <app-table-skeleton [cols]="5" [rows]="6" />
 } @else {
   <div class="rounded-2xl border border-border bg-card overflow-hidden">
-    <div class="overflow-auto max-h-[70vh]" tabindex="0" role="region" aria-labelledby="buzon-caption">
-      <table class="w-full text-sm">
-        <caption id="buzon-caption" class="text-left px-4 py-3 font-medium">
+    <div class="vtable-region" tabindex="0" role="region" aria-labelledby="buzon-caption" style="--vtable-min: 60rem">
+      <table class="vtable">
+        <caption id="buzon-caption" class="sr-only">
           {{ soloPendientes() ? 'Correos por revisar' : 'Correos leídos' }} ({{ total() }})
         </caption>
-        <thead class="sticky top-0 z-10 bg-card">
-          <tr class="border-b border-border text-left text-muted-foreground">
-            <th scope="col" class="py-3 px-4 font-medium">Recibido</th>
-            <th scope="col" class="py-3 px-4 font-medium">Remitente</th>
-            <th scope="col" class="py-3 px-4 font-medium">Asunto</th>
-            <th scope="col" class="py-3 px-4 font-medium">Estado</th>
-            <th scope="col" class="py-3 px-4"><span class="sr-only">Acciones</span></th>
+        <colgroup>
+          <col class="col-periodo" />
+          <col style="inline-size: 13rem" />
+          <col class="col-texto" />
+          <col style="inline-size: 15rem" />
+          <col class="col-acciones" style="inline-size: 9rem" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col" class="vtable-fix">Recibido</th>
+            <th scope="col">Remitente</th>
+            <th scope="col">Asunto</th>
+            <th scope="col">Estado</th>
+            <th scope="col"><span class="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>
           @for (c of rows(); track c.id) {
-            <tr class="border-b border-border/50 align-top">
-              <td class="py-2 px-4 tabular-nums whitespace-nowrap">{{ fmtFechaHora(c.fecha) }}</td>
-              <td class="py-2 px-4 break-all">
-                {{ c.comercializadora ?? 'No reconocido' }}
-                <div class="text-xs text-muted-foreground">{{ c.remitente }}</div>
+            <tr>
+              <th scope="row" class="vtable-fix cell-nowrap tabular-nums">{{ fmtFechaHora(c.fecha) }}</th>
+              <td data-label="Remitente">
+                <span class="cell-clamp2">{{ c.comercializadora ?? 'No reconocido' }}</span>
+                <span class="cell-sub truncate" [title]="c.remitente">{{ c.remitente }}</span>
               </td>
-              <th scope="row" class="py-2 px-4 font-normal text-left break-words">
-                {{ c.asunto ?? '(sin asunto)' }}
-                @if (c.nombreArchivo) { <div class="text-xs text-muted-foreground break-all">{{ c.nombreArchivo }}</div> }
-              </th>
-              <td class="py-2 px-4">
+              <td data-label="Asunto">
+                <span class="cell-clamp2" [title]="c.asunto ?? ''">{{ c.asunto ?? '(sin asunto)' }}</span>
+                @if (c.nombreArchivo) { <span class="cell-sub truncate" [title]="c.nombreArchivo">{{ c.nombreArchivo }}</span> }
+              </td>
+              <td data-label="Estado">
                 <app-status-badge [tone]="tone(c.estado)">{{ estadoLabel[c.estado] }}</app-status-badge>
-                @if (c.motivo) { <div class="mt-1" [class.text-danger-fg]="c.estado === 'ERROR'">{{ c.motivo }}</div> }
-                @if (c.intentos > 1) { <div class="text-xs text-muted-foreground">{{ c.intentos }} intentos</div> }
+                @if (c.motivo) {
+                  <span class="cell-sub" [class.!text-danger-fg]="c.estado === 'ERROR'"><span class="cell-clamp2" [title]="c.motivo">{{ c.motivo }}</span></span>
+                }
+                @if (c.intentos > 1) { <span class="cell-sub tabular-nums">{{ c.intentos }} intentos</span> }
               </td>
-              <td class="py-2 px-4">
-                <div class="flex flex-wrap justify-end gap-x-3 gap-y-1 whitespace-nowrap">
+              <td>
+                <div class="cell-actions flex-col items-end @max-[600px]:items-start">
                   @if (c.facturaId) {
-                    <a [routerLink]="['/vibra/facturas', c.facturaId]" class="underline">Revisar borrador</a>
+                    <a [routerLink]="['/vibra/facturas', c.facturaId]" class="underline underline-offset-2">Revisar borrador</a>
                   }
                   @if (c.tienePdf) {
-                    <button type="button" (click)="verPdf(c)" class="underline">Ver PDF</button>
+                    <button type="button" (click)="verPdf(c)" class="underline underline-offset-2">Ver PDF</button>
                   }
                   @if (c.enlace && c.estado !== 'PROCESADO') {
-                    <a [href]="c.enlace" target="_blank" rel="noopener noreferrer" class="underline">Abrir enlace</a>
+                    <a [href]="c.enlace" target="_blank" rel="noopener noreferrer" class="underline underline-offset-2">Abrir enlace</a>
                   }
                   @if (puedeReintentar(c)) {
-                    <button type="button" (click)="reintentar(c)" [disabled]="reintentando() !== null" class="underline disabled:opacity-50">
+                    <button type="button" (click)="reintentar(c)" [disabled]="reintentando() !== null" class="underline underline-offset-2 disabled:opacity-50">
                       {{ reintentando() === c.id ? 'Reintentando…' : 'Reintentar' }}
                     </button>
                   }
@@ -122,7 +133,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="5" class="py-8 px-4 text-center text-muted-foreground">
+              <td colspan="5" class="vtable-empty">
                 {{ soloPendientes() ? 'Nada por revisar' : 'Aún no se ha leído ningún correo' }}
               </td>
             </tr>
@@ -131,8 +142,10 @@
       </table>
     </div>
     @if (totalPages() > 1) {
-      <app-pagination [page]="page()" [pageSize]="size()" [totalElements]="total()" [totalPages]="totalPages()"
-        (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+      <div class="border-t border-border px-4 py-3">
+        <app-pagination [page]="page()" [pageSize]="size()" [totalElements]="total()" [totalPages]="totalPages()"
+          (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+      </div>
     }
   </div>
 }

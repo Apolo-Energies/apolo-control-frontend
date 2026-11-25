@@ -1,6 +1,7 @@
-<app-page-header title="Generar facturas" subtitle="Sube las facturas de compra de la comercializadora: cada una crea su borrador de factura Vibra">
-  <a routerLink="/vibra/facturas" class="text-sm text-muted-foreground hover:text-foreground">← Facturas</a>
-</app-page-header>
+<a routerLink="/vibra/facturas" class="inline-flex items-center gap-1 mb-2 rounded text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground">
+  <ui-icon name="chevron-left" [size]="16" /> Facturas
+</a>
+<app-page-header title="Generar facturas" subtitle="Cada factura de compra de la comercializadora crea su borrador de factura Vibra" />
 
 @if (puedeVerBuzon()) {
   <div class="tablist mb-4" focusgroup="tablist nomemory" role="tablist" aria-label="Facturas de compra">
@@ -18,30 +19,41 @@
 <div [attr.role]="puedeVerBuzon() ? 'tabpanel' : null" [attr.aria-labelledby]="puedeVerBuzon() ? 'tab-subir' : null"
   [hidden]="tab() !== 'subir'">
 
-<form class="rounded-2xl border border-border bg-card p-6 mb-4 flex flex-col gap-4 text-sm" aria-labelledby="gen-titulo"
+<form class="rounded-2xl border border-border bg-card p-5 mb-4 flex flex-col gap-4 text-sm" aria-labelledby="gen-titulo"
   (submit)="$event.preventDefault(); procesar(fileInput)">
-  <h2 id="gen-titulo" class="sr-only">Subir facturas de compra</h2>
-  <div class="flex flex-col gap-1">
-    <label for="gen-archivos" class="font-medium">PDF de las facturas de compra (10 MB como mucho cada uno)</label>
-    <input #fileInput id="gen-archivos" name="archivos" type="file" accept="application/pdf,.pdf" multiple required
-      aria-describedby="gen-ayuda" [disabled]="procesando()" (change)="elegir(fileInput)"
-      class="border border-border rounded-lg px-3 py-2 bg-input file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1" />
-    <p id="gen-ayuda" class="text-muted-foreground">
-      De cada PDF se sacan el cliente, el CUPS, el periodo, los consumos y las potencias. Con el CUPS se busca el contrato
-      y con su producto se calculan los precios de venta. El borrador queda en revisión: nunca se emite solo.
-      Un periodo ya facturado o con borrador se omite.
+  <h2 id="gen-titulo" class="font-semibold text-base">Subir facturas de compra</h2>
+  <div class="relative flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border bg-input/40 px-4 py-8 text-center
+    hover:border-primary/60 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-foreground"
+    [class.opacity-60]="procesando()">
+    <ui-icon name="upload" [size]="24" class="text-muted-foreground mb-1" />
+    <label for="gen-archivos" class="font-medium">
+      @if (archivos().length) {
+        {{ archivos().length }} {{ archivos().length === 1 ? 'PDF elegido' : 'PDF elegidos' }}
+      } @else {
+        Elige los PDF o arrástralos aquí
+      }
+    </label>
+    <p class="text-muted-foreground" id="gen-limite">
+      @if (archivos().length === 1) { {{ archivos()[0].name }} } @else { Uno o varios PDF, 10 MB como mucho cada uno }
     </p>
+    <input #fileInput id="gen-archivos" name="archivos" type="file" accept="application/pdf,.pdf" multiple required
+      aria-describedby="gen-limite gen-ayuda" [disabled]="procesando()" (change)="elegir(fileInput)"
+      class="absolute inset-0 size-full cursor-pointer opacity-0 disabled:cursor-not-allowed" />
   </div>
-  <div class="flex items-center gap-3">
-    <button type="submit" [disabled]="procesando() || !archivos().length"
-      class="inline-flex items-center gap-2 rounded-lg bg-primary-button text-primary-foreground px-4 py-2 font-medium disabled:opacity-50">
-      <ui-icon name="upload" [size]="16" />
-      {{ procesando() ? 'Procesando…' : 'Subir y generar ' + (archivos().length || '') + (archivos().length === 1 ? ' borrador' : ' borradores') }}
+  <p id="gen-ayuda" class="text-muted-foreground max-w-[75ch]">
+    De cada PDF se sacan el cliente, el CUPS, el periodo, los consumos y las potencias; con el CUPS se busca el contrato
+    y con su producto se calculan los precios de venta. El borrador queda en revisión: nunca se emite solo.
+    Un periodo ya facturado o con borrador se omite.
+  </p>
+  <div class="flex flex-wrap items-center gap-3">
+    <button type="submit" class="btn btn-primary" [disabled]="procesando() || !archivos().length">
+      <ui-icon name="file-plus" [size]="16" />
+      {{ procesando() ? 'Procesando…' : archivos().length > 1 ? 'Generar ' + archivos().length + ' borradores' : 'Generar borrador' }}
     </button>
     @if (procesando()) {
       <label for="gen-progreso" class="sr-only">Facturas procesadas</label>
       <progress id="gen-progreso" class="w-48 accent-primary" [value]="hechos()" [max]="archivos().length"></progress>
-      <span class="tabular-nums text-muted-foreground">{{ hechos() }} / {{ archivos().length }}</span>
+      <span class="tabular-nums text-muted-foreground">{{ hechos() }} de {{ archivos().length }}</span>
     }
   </div>
 </form>
@@ -51,39 +63,59 @@
 </p>
 
 @if (resultados().length) {
-  <div class="rounded-2xl border border-border bg-card overflow-hidden">
-    <div class="overflow-auto max-h-[70vh]" tabindex="0" role="region" aria-labelledby="gen-caption">
-      <table class="w-full text-sm">
-        <caption id="gen-caption" class="text-left px-4 py-3 font-medium">
-          Resultado: {{ creados() }} borradores creados · {{ errores() }} con error
-        </caption>
-        <thead class="sticky top-0 z-10 bg-card">
-          <tr class="border-b border-border text-left text-muted-foreground">
-            <th scope="col" class="py-3 px-4 font-medium">Archivo</th>
-            <th scope="col" class="py-3 px-4 font-medium">Resultado</th>
-            <th scope="col" class="py-3 px-4 font-medium">Cliente / CUPS</th>
-            <th scope="col" class="py-3 px-4"><span class="sr-only">Abrir</span></th>
+  <section class="rounded-2xl border border-border bg-card overflow-hidden" aria-labelledby="gen-res-titulo">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 pt-4 pb-2">
+      <h2 id="gen-res-titulo" class="font-semibold">Resultado</h2>
+      <span class="text-sm text-muted-foreground tabular-nums">
+        {{ creados() }} {{ creados() === 1 ? 'borrador creado' : 'borradores creados' }}
+        @if (errores()) { · <span class="text-danger-fg">{{ errores() }} con error</span> }
+      </span>
+    </div>
+    <div class="vtable-region" tabindex="0" role="region" aria-labelledby="gen-res-titulo" style="--vtable-min: 48rem">
+      <table class="vtable">
+        <caption class="sr-only">Resultado por archivo</caption>
+        <colgroup>
+          <col style="inline-size: 30%" />
+          <col class="col-estado" style="inline-size: 9.5rem" />
+          <col class="col-texto" />
+          <col class="col-acciones" style="inline-size: 9rem" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col" class="vtable-fix">Archivo</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Cliente y CUPS</th>
+            <th scope="col"><span class="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>
           @for (r of resultados(); track $index) {
-            <tr class="border-b border-border/50">
-              <th scope="row" class="py-2 px-4 font-normal text-left break-all">{{ r.archivo }}</th>
-              <td class="py-2 px-4">
+            <tr>
+              <th scope="row" class="vtable-fix">
+                <span class="cell-clamp2" [title]="r.archivo">{{ r.archivo }}</span>
+              </th>
+              <td data-label="Estado">
                 @if (r.facturaId) {
                   <app-status-badge tone="success">Borrador creado</app-status-badge>
                 } @else {
                   <app-status-badge tone="danger">Error</app-status-badge>
-                  <div class="text-danger-fg mt-1">{{ r.error }}</div>
                 }
               </td>
-              <td class="py-2 px-4">
-                {{ r.titular ?? '—' }}
-                <div class="text-xs text-muted-foreground tabular-nums">{{ r.cups }}</div>
-              </td>
-              <td class="py-2 px-4 text-right">
+              <td data-label="Cliente y CUPS">
                 @if (r.facturaId) {
-                  <a [routerLink]="['/vibra/facturas', r.facturaId]" class="underline">Revisar borrador</a>
+                  <span class="cell-clamp2" [title]="r.titular ?? ''">{{ r.titular ?? 'Sin titular' }}</span>
+                  @if (r.cups; as c) {
+                    <span class="cell-sub"><span class="cell-tail" [title]="c"><span>{{ c.slice(0, -4) }}</span>{{ c.slice(-4) }}</span></span>
+                  }
+                } @else {
+                  <span class="text-danger-fg">{{ r.error }}</span>
+                }
+              </td>
+              <td>
+                @if (r.facturaId) {
+                  <div class="cell-actions">
+                    <a [routerLink]="['/vibra/facturas', r.facturaId]" class="underline underline-offset-2">Revisar borrador</a>
+                  </div>
                 }
               </td>
             </tr>
@@ -91,6 +123,6 @@
         </tbody>
       </table>
     </div>
-  </div>
+  </section>
 }
 </div>
