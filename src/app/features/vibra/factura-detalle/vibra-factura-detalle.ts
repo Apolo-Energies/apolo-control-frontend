@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, si
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { Observable } from 'rxjs';
+import { Observable, catchError, of, switchMap } from 'rxjs';
 
 import { PageHeader } from '../../../shared/components/page-header/page-header';
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
@@ -68,6 +68,8 @@ export class VibraFacturaDetalle {
   protected readonly error = signal<string | null>(null);
   protected readonly ocupado = signal<string | null>(null);
   protected readonly confirmacion = signal<Confirmacion | null>(null);
+  /** Casilla «Enviar al emitir» (solo con email del cliente); desmarcada por defecto. */
+  protected readonly enviarAlEmitir = signal(false);
 
   protected readonly lineaEdit = signal<{ id: string | null } | null>(null);
   protected linea: LineaForm = lineaVacia();
@@ -108,10 +110,17 @@ export class VibraFacturaDetalle {
 
   // ── Acciones ──────────────────────────────────────────────────────────────
 
-  private ejecutar(clave: string, obs: Observable<VibraFactura>, ok: string): void {
+  /** ok: texto del aviso de éxito o qué hacer con la factura devuelta. */
+  private ejecutar(clave: string, obs: Observable<VibraFactura>, ok: string | ((f: VibraFactura) => void)): void {
     this.ocupado.set(clave);
     obs.subscribe({
-      next: (f) => { this.ocupado.set(null); this.confirmacion.set(null); this.factura.set(f); this.notify.success(ok); },
+      next: (f) => {
+        this.ocupado.set(null);
+        this.confirmacion.set(null);
+        this.factura.set(f);
+        if (typeof ok === 'string') this.notify.success(ok);
+        else ok(f);
+      },
       error: (err: HttpErrorResponse) => {
         this.ocupado.set(null);
         this.confirmacion.set(null);
@@ -157,42 +166,30 @@ export class VibraFacturaDetalle {
     });
   }
 
-  /** Casilla «Enviar al emitir» (solo con email del cliente). */
-  protected readonly enviarAlEmitir = signal(true);
-
-  /** Emite y, si se pidió, envía; un fallo del envío no deshace la emisión. */
+  /** Emite y, si se pidió, envía; un fallo del envío no deshace la emisión (queda emitida y avisa). */
   private emitirYEnviar(): void {
     const enviar = this.enviarAlEmitir() && !!this.factura()?.email;
-    this.ocupado.set('emitir');
-    this.service.emitir(this.id()).subscribe({
-      next: (f) => {
-        this.confirmacion.set(null);
-        this.factura.set(f);
-        if (!enviar) { this.ocupado.set(null); this.notify.success('Factura emitida'); return; }
-        this.service.enviar(f.id).subscribe({
-          next: (e) => { this.ocupado.set(null); this.factura.set(e); this.notify.success('Factura emitida y enviada a ' + e.email); },
-          error: (err: HttpErrorResponse) => {
-            this.ocupado.set(null);
-            this.notify.warn(mensajeError(err, 'No se pudo enviar') + '. La factura quedó emitida: envíala más tarde.', 'Emitida sin enviar');
-          },
-        });
-      },
-      error: (err: HttpErrorResponse) => {
-        this.ocupado.set(null);
-        this.confirmacion.set(null);
-        this.notify.error(mensajeError(err, 'No se pudo emitir'));
-      },
+    let envioFallido: string | null = null;
+    const obs = this.service.emitir(this.id()).pipe(
+      switchMap((f) => !enviar ? of(f) : this.service.enviar(f.id).pipe(
+        catchError((err: HttpErrorResponse) => { envioFallido = mensajeError(err, 'No se pudo enviar'); return of(f); }),
+      )),
+    );
+    this.ejecutar('emitir', obs, (f) => {
+      if (envioFallido) this.notify.warn(envioFallido + '. La factura quedó emitida: envíala más tarde.', 'Emitida sin enviar');
+      else this.notify.success(enviar ? 'Factura emitida y enviada a ' + f.email : 'Factura emitida');
     });
   }
 
   protected enviar(): void {
     const f = this.factura();
     if (!f) return;
+    const reenviar = !!f.enviadaAt;
     this.confirmacion.set({
-      titulo: 'Enviar por correo',
-      mensaje: `Se envía el PDF de la factura a ${f.email}.${f.enviadaAt ? ' Ya se envió el ' + formatDateTime(f.enviadaAt) + '.' : ''}`,
-      label: 'Enviar', tone: 'info',
-      accion: () => this.ejecutar('enviar', this.service.enviar(this.id()), 'Factura enviada'),
+      titulo: reenviar ? 'Reenviar por correo' : 'Enviar por correo',
+      mensaje: `Se envía el PDF de la factura a ${f.email}.${reenviar ? ' Ya se envió el ' + formatDateTime(f.enviadaAt!) + '.' : ''}`,
+      label: reenviar ? 'Reenviar' : 'Enviar', tone: 'info',
+      accion: () => this.ejecutar('enviar', this.service.enviar(this.id(), reenviar), reenviar ? 'Factura reenviada' : 'Factura enviada'),
     });
   }
 

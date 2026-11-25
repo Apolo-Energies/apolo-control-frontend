@@ -4,10 +4,6 @@ import { EstadoFacturaVibra } from './vibra-factura.model';
 export type EstadoVibraImpago =
   | 'IMPAGADA' | 'PLAN_PAGOS' | 'ILOCALIZABLE' | 'BUROFAX' | 'RECLAMACION' | 'INCOBRABLE' | 'PAGADO';
 
-export const ESTADO_VIBRA_IMPAGO_VALUES: EstadoVibraImpago[] = [
-  'IMPAGADA', 'PLAN_PAGOS', 'ILOCALIZABLE', 'BUROFAX', 'RECLAMACION', 'INCOBRABLE', 'PAGADO',
-];
-
 export const ESTADO_VIBRA_IMPAGO_LABEL: Record<EstadoVibraImpago, string> = {
   IMPAGADA: 'Impagada',
   PLAN_PAGOS: 'Plan de pagos / fraccionada',
@@ -17,6 +13,8 @@ export const ESTADO_VIBRA_IMPAGO_LABEL: Record<EstadoVibraImpago, string> = {
   INCOBRABLE: 'Incobrable',
   PAGADO: 'Pagado',
 };
+
+export const ESTADO_VIBRA_IMPAGO_VALUES = Object.keys(ESTADO_VIBRA_IMPAGO_LABEL) as EstadoVibraImpago[];
 
 export type ResultadoGestionImpagoVibra = 'REGIRO' | 'TRANSFERENCIA' | 'TARJETA' | 'PROMESA' | 'ILOCALIZABLE' | 'OTRO';
 
@@ -48,8 +46,10 @@ export interface VibraImpagoGestionPayload {
   volverLlamar?: string | null;
 }
 
+export type MotivoAvisoImpago = 'ENVIADO' | 'PAGADO' | 'SIN_EMAIL' | 'ERROR_CORREO';
+
 export interface VibraImpagoAviso {
-  enviado: boolean;
+  motivo: MotivoAvisoImpago;
   mensaje: string;
   avisadoAt: string | null;
 }
@@ -87,7 +87,6 @@ export interface VibraImpagoPayload {
   factura?: string | null;
   importe?: number | null;
   fechaDevolucion?: string | null;
-  estado?: EstadoVibraImpago | null;
   motivoDevolucion?: string | null;
   activoBaja?: string | null;
   colaborador?: string | null;

@@ -17,10 +17,13 @@ import { VibraFacturaService } from '../../../core/services/vibra-factura.servic
 import { NotificationService } from '../../../core/services/notification.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import {
-  VibraEnvioFacturasResult,
+  VibraEnvioFacturasResult, VibraEnvioPendientes,
   ESTADO_FACTURA_VIBRA_LABEL, EstadoFacturaVibra, KilowyFacturasImportResult, Page, VibraFacturaConteos, VibraFacturaFilter, VibraFacturaListItem,
 } from '../../../core/models';
 import { descargarBlob, estadoFacturaTone } from './vibra-factura-ui';
+
+/** Facturas por llamada de «Enviar las sin enviar» (como el backend). */
+const ENVIO_TOPE = 50;
 
 type Pestana = 'TODAS' | EstadoFacturaVibra | 'SIN_ENVIAR' | 'ENVIADA';
 
@@ -52,11 +55,13 @@ export class VibraFacturas {
   protected readonly importando = signal(false);
   protected readonly importResult = signal<KilowyFacturasImportResult | null>(null);
 
-  /** «Enviar todas las sin enviar» (admin y contabilidad, como el backend). */
+  /** «Enviar las sin enviar» (admin y contabilidad, como el backend); 50 por llamada. */
   protected readonly puedeEnviarTodas = this.auth.hasRole('admin', 'contabilidad');
   protected readonly envioOpen = signal(false);
   protected readonly enviando = signal(false);
+  protected readonly envioPendientes = signal<VibraEnvioPendientes | null>(null);
   protected readonly envioResult = signal<VibraEnvioFacturasResult | null>(null);
+  protected readonly envioTope = ENVIO_TOPE;
 
   protected readonly pestanas = PESTANAS;
   protected readonly estadoLabel = ESTADO_FACTURA_VIBRA_LABEL;
@@ -107,6 +112,20 @@ export class VibraFacturas {
     this.buscar();
   }
 
+  /** Abre el diálogo con cuántas se van a enviar. */
+  protected abrirEnvio(): void {
+    this.envioPendientes.set(null);
+    this.envioOpen.set(true);
+    this.service.pendientesDeEnvio().subscribe({
+      next: (p) => this.envioPendientes.set(p),
+      error: (err: HttpErrorResponse) => {
+        this.envioOpen.set(false);
+        this.notify.error(mensajeError(err, 'No se pudieron contar las facturas sin enviar'));
+      },
+    });
+  }
+
+  /** Envía un lote; desde el resumen, «Enviar las siguientes» manda el siguiente. */
   protected enviarTodas(): void {
     this.enviando.set(true);
     this.service.enviarPendientes().subscribe({

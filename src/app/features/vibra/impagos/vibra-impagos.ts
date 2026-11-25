@@ -28,7 +28,7 @@ import {
   VibraImpagoGestion,
   VibraImpagoPayload,
 } from '../../../core/models';
-import { formatDate, formatDateTime } from '../../../shared/utils/format';
+import { formatDate, formatDateTime, formatEuro } from '../../../shared/utils/format';
 import { mensajeError } from '../../../shared/utils/http-error';
 
 @Component({
@@ -68,8 +68,10 @@ export class VibraImpagos {
   protected readonly resultadoLabel = RESULTADO_GESTION_IMPAGO_LABEL;
   protected readonly fmtFecha = formatDate;
   protected readonly fmtFechaHora = formatDateTime;
-  /** Avisar por correo y marcar pagado (paga la factura): como el backend. */
+  /** Estados, gestiones y avisos de cobro: como el backend. */
   protected readonly puedeCobrar = computed(() => this.auth.hasRole('admin', 'contabilidad', 'operaciones'));
+  protected readonly puedeBorrar = computed(() => this.auth.hasRole('admin', 'contabilidad'));
+  protected readonly fmtEur = formatEuro;
   protected readonly clientesDisponibles = signal<string[]>([]);
   protected readonly showClientesDropdown = signal(false);
   protected readonly clienteQuery = signal('');
@@ -132,7 +134,6 @@ export class VibraImpagos {
     factura: [''],
     importe: [null as number | null],
     fechaDevolucion: [null as string | null],
-    estado: ['IMPAGADA' as EstadoVibraImpago],
     motivoDevolucion: [''],
     activoBaja: ['Activo'],
     colaborador: [''],
@@ -203,7 +204,7 @@ export class VibraImpagos {
     this.service.avisar(r.id).subscribe({
       next: (a) => {
         this.avisando.set(null);
-        if (a.enviado) this.notify.success('Cliente avisado por correo');
+        if (a.motivo === 'ENVIADO') this.notify.success('Cliente avisado por correo');
         else this.notify.warn(a.mensaje);
         this.load();
       },
@@ -266,7 +267,7 @@ export class VibraImpagos {
 
   protected openCreate(): void {
     this.editing.set(null);
-    this.form.reset({ estado: 'IMPAGADA', activoBaja: 'Activo' });
+    this.form.reset({ activoBaja: 'Activo' });
     this.clienteQuery.set('');
     this.dialogOpen.set(true);
   }
@@ -275,7 +276,7 @@ export class VibraImpagos {
     this.editing.set(r);
     this.form.reset({
       cliente: r.cliente ?? '', factura: r.factura ?? '', importe: r.importe,
-      fechaDevolucion: r.fechaDevolucion, estado: r.estado,
+      fechaDevolucion: r.fechaDevolucion,
       motivoDevolucion: r.motivoDevolucion ?? '', activoBaja: r.activoBaja ?? 'Activo',
       colaborador: r.colaborador ?? '', comentarios: r.comentarios ?? '',
     });
@@ -381,8 +382,9 @@ export class VibraImpagos {
     return v === 'Baja' ? 'danger' : 'success';
   }
 
-  protected fmtEur(n: number | null): string {
-    if (n == null) return '—';
-    return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
+  /** Recargo por devolución y si ya va en una factura; null sin recargo. */
+  protected recargoTexto(r: VibraImpago): string | null {
+    if (!r.recargo) return null;
+    return `${formatEuro(r.recargo)} · ${r.recargoFacturado ? 'en factura' : 'en la próxima factura'}`;
   }
 }

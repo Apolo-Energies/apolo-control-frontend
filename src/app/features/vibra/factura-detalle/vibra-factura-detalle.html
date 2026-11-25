@@ -57,7 +57,7 @@
     @if (puedeEditar() && !esBorrador() && (!f.deKilowy || f.pdfKilowy)) {
       <button type="button" (click)="enviar()" [disabled]="!!ocupado() || !f.email" [attr.title]="f.email ? null : 'La factura no tiene email del cliente'"
         class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">
-        <ui-icon name="mail" [size]="16" /> Enviar por correo
+        <ui-icon name="mail" [size]="16" /> {{ f.enviadaAt ? 'Reenviar' : 'Enviar por correo' }}
       </button>
     }
     @if (puedeEditar() && !esBorrador()) {

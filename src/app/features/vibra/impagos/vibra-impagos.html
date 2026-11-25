@@ -127,12 +127,16 @@
                   <app-status-badge [tone]="activoTone(r.activoBaja)">{{ r.activoBaja ?? '—' }}</app-status-badge>
                 </td>
                 <td class="py-2 px-4">
-                  <select #sel (change)="changeEstado(r, $any(sel.value), sel)" [attr.aria-label]="'Estado del impago de ' + (r.cliente ?? '')"
-                    class="border border-border rounded-md px-2 py-1 text-xs bg-input">
-                    @for (e of estadoValues; track e) {
-                      <option [value]="e" [selected]="r.estado === e" [disabled]="e === 'PAGADO' && !!r.facturaId && !puedeCobrar()">{{ estadoLabel[e] }}</option>
-                    }
-                  </select>
+                  @if (puedeCobrar()) {
+                    <select #sel (change)="changeEstado(r, $any(sel.value), sel)" [attr.aria-label]="'Estado del impago de ' + (r.cliente ?? '')"
+                      class="border border-border rounded-md px-2 py-1 text-xs bg-input">
+                      @for (e of estadoValues; track e) {
+                        <option [value]="e" [selected]="r.estado === e">{{ estadoLabel[e] }}</option>
+                      }
+                    </select>
+                  } @else {
+                    <app-status-badge [tone]="estadoTone(r.estado)">{{ estadoLabel[r.estado] }}</app-status-badge>
+                  }
                 </td>
                 <td class="py-2 px-4">{{ r.colaborador ?? '—' }}</td>
                 <td class="py-2 px-4 text-muted-foreground">{{ r.motivoDevolucion ?? '—' }}</td>
@@ -144,13 +148,11 @@
                     <span class="block text-muted-foreground">Sin gestionar</span>
                   }
                   @if (r.avisadoAt) { <span class="block text-muted-foreground">Avisado el {{ fmtFecha(r.avisadoAt) }}</span> }
-                  @if (r.recargo) {
-                    <span class="block text-muted-foreground">Recargo {{ fmtEur(r.recargo) }} · {{ r.recargoFacturado ? 'en factura' : 'en la próxima factura' }}</span>
-                  }
+                  @if (recargoTexto(r); as t) { <span class="block text-muted-foreground">Recargo {{ t }}</span> }
                 </td>
                 <td class="py-2 px-4 text-muted-foreground text-xs max-w-xs truncate">{{ r.comentarios ?? '—' }}</td>
                 <td class="py-2 px-4 text-right whitespace-nowrap">
-                  <button type="button" (click)="abrirGestion(r)" class="px-2 py-1 text-xs rounded border border-border hover:bg-accent mr-1">Gestión…</button>
+                  <button type="button" (click)="abrirGestion(r)" class="px-2 py-1 text-xs rounded border border-border hover:bg-accent mr-1">{{ puedeCobrar() ? 'Gestión…' : 'Gestiones' }}</button>
                   @if (puedeCobrar() && r.estado !== 'PAGADO' && r.facturaId) {
                     <button type="button" (click)="avisar(r)" [disabled]="avisando() === r.id"
                       class="px-2 py-1 text-xs rounded border border-border hover:bg-accent mr-1 disabled:opacity-50">
@@ -163,9 +165,11 @@
                   <button (click)="openEdit(r)" class="p-1 hover:bg-info-soft rounded ml-1" title="Editar">
                     <ui-icon name="edit" [size]="16" />
                   </button>
-                  <button (click)="askDelete(r)" class="p-1 hover:bg-danger-soft text-danger-fg rounded ml-1" title="Borrar">
-                    <ui-icon name="trash" [size]="16" />
-                  </button>
+                  @if (puedeBorrar()) {
+                    <button (click)="askDelete(r)" class="p-1 hover:bg-danger-soft text-danger-fg rounded ml-1" title="Borrar">
+                      <ui-icon name="trash" [size]="16" />
+                    </button>
+                  }
                 </td>
               </tr>
             }
@@ -223,7 +227,7 @@
         <div><dt class="text-xs text-muted-foreground">Importe</dt><dd class="font-medium tabular-nums">{{ fmtEur(d.importe) }}</dd></div>
         <div><dt class="text-xs text-muted-foreground">Estado</dt><dd><app-status-badge [tone]="estadoTone(d.estado)">{{ estadoLabel[d.estado] }}</app-status-badge></dd></div>
         <div><dt class="text-xs text-muted-foreground">Aviso al cliente</dt><dd>{{ d.avisadoAt ? 'Avisado el ' + fmtFechaHora(d.avisadoAt) : 'Sin avisar' }}</dd></div>
-        <div><dt class="text-xs text-muted-foreground">Recargo por devolución</dt><dd>{{ d.recargo ? fmtEur(d.recargo) + (d.recargoFacturado ? ' (en factura)' : ' (próxima factura)') : '—' }}</dd></div>
+        <div><dt class="text-xs text-muted-foreground">Recargo por devolución</dt><dd>{{ recargoTexto(d) ?? '—' }}</dd></div>
         <div><dt class="text-xs text-muted-foreground">Activo/Baja</dt><dd><app-status-badge [tone]="activoTone(d.activoBaja)">{{ d.activoBaja ?? '—' }}</app-status-badge></dd></div>
         <div><dt class="text-xs text-muted-foreground">Colaborador</dt><dd>{{ d.colaborador ?? '—' }}</dd></div>
         <div><dt class="text-xs text-muted-foreground">Motivo devolución</dt><dd>{{ d.motivoDevolucion ?? '—' }}</dd></div>
@@ -286,12 +290,6 @@
         </select>
       </div>
       <div>
-        <label class="text-sm font-medium">Estado</label>
-        <select formControlName="estado" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
-          @for (e of estadoValues; track e) {<option [value]="e">{{ estadoLabel[e] }}</option>}
-        </select>
-      </div>
-      <div>
         <label class="text-sm font-medium">Colaborador</label>
         <input formControlName="colaborador" placeholder="Colaborador" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
@@ -322,39 +320,42 @@
   [title]="'Gestión del cobro · ' + (gestionImpago()?.cliente ?? '')"
   [subtitle]="gestionImpago()?.factura ?? null"
   saveLabel="Apuntar gestión"
+  [readOnly]="!puedeCobrar()"
   [saving]="gestionGuardando()"
   width="640px"
   (cancel)="cerrarGestion()" (save)="guardarGestion()">
-  <form [formGroup]="gestionForm" (ngSubmit)="guardarGestion()" class="space-y-3" aria-label="Nueva gestión">
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <div class="campo">
-        <label for="gestion-resultado" class="text-sm font-medium">Resultado <span aria-hidden="true">*</span></label>
-        <select id="gestion-resultado" formControlName="resultado" required aria-describedby="gestion-resultado-error"
-          class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
-          <option value="" disabled>Elige…</option>
-          @for (x of resultados; track x) {<option [value]="x">{{ resultadoLabel[x] }}</option>}
-        </select>
-        @if (gestionForm.controls.resultado.touched && gestionForm.controls.resultado.invalid) {
-          <span id="gestion-resultado-error" class="text-xs text-danger-fg" aria-live="polite">Error: elige el resultado de la gestión</span>
-        }
+  @if (puedeCobrar()) {
+    <form [formGroup]="gestionForm" (ngSubmit)="guardarGestion()" class="space-y-3" aria-label="Nueva gestión">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="campo">
+          <label for="gestion-resultado" class="text-sm font-medium">Resultado <span aria-hidden="true">*</span></label>
+          <select id="gestion-resultado" formControlName="resultado" required aria-describedby="gestion-resultado-error"
+            class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
+            <option value="" disabled>Elige…</option>
+            @for (x of resultados; track x) {<option [value]="x">{{ resultadoLabel[x] }}</option>}
+          </select>
+          @if (gestionForm.controls.resultado.touched && gestionForm.controls.resultado.invalid) {
+            <span id="gestion-resultado-error" class="text-xs text-danger-fg" aria-live="polite">Error: elige el resultado de la gestión</span>
+          }
+        </div>
+        <div class="campo">
+          <label for="gestion-telefono" class="text-sm font-medium">Teléfono</label>
+          <input id="gestion-telefono" type="tel" formControlName="telefono" maxlength="30" autocomplete="off" inputmode="tel"
+            class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        </div>
+        <div class="campo">
+          <label for="gestion-volver" class="text-sm font-medium">Volver a llamar</label>
+          <input id="gestion-volver" type="date" formControlName="volverLlamar"
+            class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        </div>
       </div>
       <div class="campo">
-        <label for="gestion-telefono" class="text-sm font-medium">Teléfono</label>
-        <input id="gestion-telefono" type="tel" formControlName="telefono" maxlength="30" autocomplete="off" inputmode="tel"
-          class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        <label for="gestion-nota" class="text-sm font-medium">Nota</label>
+        <textarea id="gestion-nota" formControlName="nota" rows="3" maxlength="2000"
+          class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"></textarea>
       </div>
-      <div class="campo">
-        <label for="gestion-volver" class="text-sm font-medium">Volver a llamar</label>
-        <input id="gestion-volver" type="date" formControlName="volverLlamar"
-          class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
-      </div>
-    </div>
-    <div class="campo">
-      <label for="gestion-nota" class="text-sm font-medium">Nota</label>
-      <textarea id="gestion-nota" formControlName="nota" rows="3" maxlength="2000"
-        class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"></textarea>
-    </div>
-  </form>
+    </form>
+  }
 
   <h3 class="text-sm font-semibold mt-5 mb-2">Historial</h3>
   @if (gestionesCargando()) {

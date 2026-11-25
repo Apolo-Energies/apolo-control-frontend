@@ -143,9 +143,19 @@ export interface KilowyFacturasImportResult {
   avisos: string[];
 }
 
-/** Resumen de «Enviar todas las sin enviar». */
+/** Resumen de «Enviar las sin enviar» (como mucho 50 por llamada). */
 export interface VibraEnvioFacturasResult {
   enviadas: number;
+  /** Otro envío se adelantó. */
+  yaEnviadas: number;
   sinEmail: string[];
   errores: { numero: string; mensaje: string }[];
+  /** Con email que quedan para la siguiente llamada. */
+  pendientes: number;
+}
+
+/** Facturas de Control emitidas sin enviar. */
+export interface VibraEnvioPendientes {
+  conEmail: number;
+  sinEmail: number;
 }

@@ -5,10 +5,9 @@
       <ui-icon name="download" [size]="16" /> Excel
     </button>
     @if (puedeEnviarTodas) {
-      <button type="button" (click)="envioOpen.set(true)"
+      <button type="button" (click)="abrirEnvio()"
         class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
-        <ui-icon name="mail" [size]="16" /> Enviar todas las sin enviar
-        @if (conteos()['SIN_ENVIAR']) { <span class="tabular-nums text-xs text-muted-foreground">(≤ {{ conteos()['SIN_ENVIAR'] }})</span> }
+        <ui-icon name="mail" [size]="16" /> Enviar las sin enviar
       </button>
     }
     @if (isAdmin) {
@@ -173,29 +172,51 @@
   }
 </app-form-dialog>
 
-<app-confirm-dialog
+<app-form-dialog
   [open]="envioOpen()"
-  title="Enviar todas las sin enviar"
-  message="Se envía por correo el PDF de cada factura emitida en Control que aún no se ha enviado y tiene email del cliente. Las importadas de Kilowy no se envían. Al terminar verás cuántas salieron, cuáles no tienen email y los errores."
-  confirmLabel="Enviar"
+  title="Enviar las sin enviar"
   icon="mail"
-  tone="info"
-  [loading]="enviando()"
-  (confirm)="enviarTodas()"
-  (cancel)="envioOpen.set(false)" />
+  saveLabel="Enviar"
+  [saving]="enviando()"
+  [canSave]="!!envioPendientes()?.conEmail"
+  width="480px"
+  (cancel)="envioOpen.set(false)"
+  (save)="enviarTodas()">
+  <div aria-live="polite" class="text-sm space-y-2 my-2">
+    @if (envioPendientes(); as p) {
+      @if (p.conEmail) {
+        <p>Se enviará por correo el PDF de <strong class="tabular-nums">{{ p.conEmail > envioTope ? envioTope : p.conEmail }}</strong>
+          {{ p.conEmail === 1 ? 'factura' : 'facturas' }} emitidas en Control con email del cliente
+          @if (p.conEmail > envioTope) { (de {{ p.conEmail }}: el resto, en la siguiente tanda) }.</p>
+      } @else {
+        <p>No hay facturas sin enviar con email del cliente.</p>
+      }
+      @if (p.sinEmail) { <p class="text-muted-foreground">{{ p.sinEmail }} sin email del cliente no se envían.</p> }
+      <p class="text-muted-foreground">Las importadas de Kilowy y las ya enviadas no se envían.</p>
+    } @else {
+      <p class="text-muted-foreground">Contando las facturas sin enviar…</p>
+    }
+  </div>
+</app-form-dialog>
 
 <app-form-dialog
   [open]="envioResult() !== null"
   title="Envío terminado"
   icon="check"
-  [readOnly]="true"
+  [readOnly]="!envioResult()?.pendientes"
+  [saveLabel]="'Enviar las siguientes (' + (envioResult()?.pendientes ?? 0) + ')'"
+  cancelLabel="Cerrar"
+  [saving]="enviando()"
   width="480px"
-  (cancel)="envioResult.set(null)">
+  (cancel)="envioResult.set(null)"
+  (save)="enviarTodas()">
   @if (envioResult(); as r) {
     <dl class="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1 text-sm my-2">
       <dt>Enviadas</dt><dd class="text-right tabular-nums">{{ r.enviadas }}</dd>
+      @if (r.yaEnviadas) { <dt>Ya enviadas por otro envío</dt><dd class="text-right tabular-nums">{{ r.yaEnviadas }}</dd> }
       <dt>Sin email del cliente</dt><dd class="text-right tabular-nums">{{ r.sinEmail.length }}</dd>
       <dt>Con error</dt><dd class="text-right tabular-nums">{{ r.errores.length }}</dd>
+      <dt>Quedan por enviar</dt><dd class="text-right tabular-nums">{{ r.pendientes }}</dd>
     </dl>
     @if (r.sinEmail.length) {
       <p class="text-sm text-muted-foreground">Sin email: {{ r.sinEmail.join(', ') }}</p>

@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import {
-  VibraEnvioFacturasResult,
+  VibraEnvioFacturasResult, VibraEnvioPendientes,
   EstadoFacturaVibra, KilowyFacturasImportResult, Page, PageRequest, ResultadoCompraVibra, VibraFactura, VibraFacturaConteos,
   VibraFacturaFilter, VibraFacturaLineaPayload, VibraFacturaListItem,
 } from '../models';
@@ -71,11 +71,17 @@ export class VibraFacturaService {
     return this.http.post<VibraFactura>(`${this.baseUrl}/${id}/estado`, { estado, fecha, motivo });
   }
 
-  enviar(id: string): Observable<VibraFactura> {
-    return this.http.post<VibraFactura>(`${this.baseUrl}/${id}/enviar`, {});
+  /** 409 si ya se envió, salvo reenviar. */
+  enviar(id: string, reenviar = false): Observable<VibraFactura> {
+    return this.http.post<VibraFactura>(`${this.baseUrl}/${id}/enviar`, {}, { params: reenviar ? { reenviar: true } : {} });
   }
 
-  /** Envía todas las de Control sin enviar que tienen email. */
+  /** Cuántas de Control sin enviar hay, con y sin email. */
+  pendientesDeEnvio(): Observable<VibraEnvioPendientes> {
+    return this.http.get<VibraEnvioPendientes>(`${this.baseUrl}/enviar-pendientes`);
+  }
+
+  /** Envía las de Control sin enviar con email, hasta 50 por llamada (pendientes = las que quedan). */
   enviarPendientes(): Observable<VibraEnvioFacturasResult> {
     return this.http.post<VibraEnvioFacturasResult>(`${this.baseUrl}/enviar-pendientes`, {});
   }
