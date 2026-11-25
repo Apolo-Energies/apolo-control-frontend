@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import {
-  EstadoFacturaVibra, Page, PageRequest, ResultadoCompraVibra, VibraFactura, VibraFacturaConteos,
+  EstadoFacturaVibra, KilowyFacturasImportResult, Page, PageRequest, ResultadoCompraVibra, VibraFactura, VibraFacturaConteos,
   VibraFacturaFilter, VibraFacturaLineaPayload, VibraFacturaListItem,
 } from '../models';
 import { buildParams } from '../http/http-params.util';
@@ -22,6 +22,10 @@ export class VibraFacturaService {
   conteos(filter: VibraFacturaFilter = {}): Observable<VibraFacturaConteos> {
     const { estado: _e, envio: _v, ...resto } = filter;
     return this.http.get<VibraFacturaConteos>(`${this.baseUrl}/conteos`, { params: buildParams(resto) });
+  }
+
+  importarKilowy(): Observable<KilowyFacturasImportResult> {
+    return this.http.post<KilowyFacturasImportResult>(`${this.baseUrl}/importar-kilowy`, {});
   }
 
   exportExcel(filter: VibraFacturaFilter = {}): Observable<Blob> {

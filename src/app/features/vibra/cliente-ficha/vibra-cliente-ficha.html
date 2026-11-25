@@ -28,6 +28,11 @@
     <button type="button" role="tab" id="tab-con" [attr.aria-selected]="tab() === 'contratos'"
       [attr.focusgroupstart]="tab() === 'contratos' ? '' : null" (click)="tab.set('contratos')">
       Contratos ({{ f.contratos.length }})</button>
+    @if (verFacturas) {
+      <button type="button" role="tab" id="tab-fac" [attr.aria-selected]="tab() === 'facturas'"
+        [attr.focusgroupstart]="tab() === 'facturas' ? '' : null" (click)="tab.set('facturas')">
+        Facturas{{ facturas() ? ' (' + facturas()!.length + ')' : '' }}</button>
+    }
   </div>
 
   <div role="tabpanel" aria-labelledby="tab-datos" [hidden]="tab() !== 'datos'">
@@ -128,6 +133,49 @@
       </div>
     </div>
   </div>
+
+  @if (verFacturas) {
+    <div role="tabpanel" aria-labelledby="tab-fac" [hidden]="tab() !== 'facturas'">
+      <div class="rounded-2xl border border-border bg-card overflow-hidden">
+        <div class="overflow-x-auto" tabindex="0" role="region" aria-labelledby="fac-caption">
+          <table class="w-full text-sm">
+            <caption id="fac-caption" class="sr-only">Facturas de {{ f.nombre }}</caption>
+            <thead>
+              <tr class="border-b border-border text-left text-muted-foreground">
+                <th scope="col" class="py-3 px-4 font-medium">Nº</th>
+                <th scope="col" class="py-3 px-4 font-medium">CUPS</th>
+                <th scope="col" class="py-3 px-4 font-medium">Periodo</th>
+                <th scope="col" class="py-3 px-4 font-medium text-right">Total</th>
+                <th scope="col" class="py-3 px-4 font-medium">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (facturas() === null) {
+                <tr><td colspan="5" class="py-12 text-center text-muted-foreground">Cargando…</td></tr>
+              }
+              @for (fa of facturas() ?? []; track fa.id) {
+                <tr class="border-b border-border/50">
+                  <th scope="row" class="py-2 px-4 font-normal text-left whitespace-nowrap">
+                    <a [routerLink]="['/vibra/facturas', fa.id]" class="hover:underline tabular-nums">{{ fa.numero ?? 'borrador' }}</a>
+                    <div class="text-xs text-muted-foreground">{{ fecha(fa.fechaEmision ?? fa.createdAt) }}</div>
+                    @if (fa.deKilowy) { <app-status-badge tone="neutral">Kilowy</app-status-badge> }
+                  </th>
+                  <td class="py-2 px-4 tabular-nums">{{ fa.cups }}</td>
+                  <td class="py-2 px-4 tabular-nums whitespace-nowrap">{{ fecha(fa.periodoDesde) }} – {{ fecha(fa.periodoHasta) }}</td>
+                  <td class="py-2 px-4 text-right tabular-nums">{{ euro(fa.total) }}</td>
+                  <td class="py-2 px-4"><app-status-badge [tone]="toneFactura(fa.estado)">{{ estadoFactura[fa.estado] }}</app-status-badge></td>
+                </tr>
+              } @empty {
+                @if (facturas() !== null) {
+                  <tr><td colspan="5" class="py-12 text-center text-muted-foreground">Sin facturas con este DNI/CIF</td></tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  }
 
   <app-vibra-cliente-form [open]="editOpen()" [cliente]="f" (saved)="guardado($event)" (cancel)="editOpen.set(false)" />
 

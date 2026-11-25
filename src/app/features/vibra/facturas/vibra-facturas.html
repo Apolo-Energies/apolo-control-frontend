@@ -4,6 +4,12 @@
       class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
       <ui-icon name="download" [size]="16" /> Excel
     </button>
+    @if (isAdmin) {
+      <button type="button" (click)="importOpen.set(true)"
+        class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
+        <ui-icon name="upload" [size]="16" /> Importar desde Kilowy
+      </button>
+    }
     <a routerLink="/vibra/facturas/generar"
       class="inline-flex items-center gap-2 rounded-lg bg-primary-button text-primary-foreground px-4 py-2 text-sm font-medium">
       <ui-icon name="upload" [size]="16" /> Generar facturas
@@ -84,6 +90,9 @@
                     {{ f.numero ?? 'borrador' }}
                   </a>
                   <div class="text-xs text-muted-foreground">{{ fecha(f.fechaEmision ?? f.createdAt) }}</div>
+                  @if (f.deKilowy) {
+                    <app-status-badge tone="neutral">Kilowy</app-status-badge>
+                  }
                   @if (f.avisos > 0) {
                     <app-status-badge tone="warning">{{ f.avisos }} {{ f.avisos === 1 ? 'aviso' : 'avisos' }}</app-status-badge>
                   }
@@ -123,3 +132,36 @@
     </div>
   }
 </div>
+
+<app-confirm-dialog
+  [open]="importOpen()"
+  title="Importar facturas de Kilowy"
+  message="Se traen todas las facturas de Kilowy (sin borradores) con sus totales; el detalle y el PDF siguen en Kilowy. Se puede repetir: no duplica y no cambia el estado de las que se hayan tocado en Control. Las emitidas no entran en las remesas de Control (ya se cobran con las de Kilowy)."
+  confirmLabel="Importar"
+  icon="upload"
+  tone="info"
+  [loading]="importando()"
+  (confirm)="importar()"
+  (cancel)="importOpen.set(false)" />
+
+<app-form-dialog
+  [open]="importResult() !== null"
+  title="Importación terminada"
+  icon="check"
+  [readOnly]="true"
+  width="480px"
+  (cancel)="importResult.set(null)">
+  @if (importResult(); as r) {
+    <dl class="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1 text-sm my-2">
+      <dt>Creadas</dt><dd class="text-right tabular-nums">{{ r.creadas }}</dd>
+      <dt>Estado actualizado</dt><dd class="text-right tabular-nums">{{ r.actualizadas }}</dd>
+      <dt>Sin cambios</dt><dd class="text-right tabular-nums">{{ r.sinCambios }}</dd>
+      <dt>Cambiadas en Control (no se tocan)</dt><dd class="text-right tabular-nums">{{ r.cambiadasEnControl }}</dd>
+      <dt>Omitidas</dt><dd class="text-right tabular-nums">{{ r.omitidas }}</dd>
+    </dl>
+    @if (r.ultimaSecuencia > 0) {
+      <p class="text-sm text-muted-foreground">La numeración de Control sigue tras la secuencia {{ r.ultimaSecuencia }} de Kilowy.</p>
+    }
+    @for (a of r.avisos; track a) { <p class="text-sm text-warning-fg">{{ a }}</p> }
+  }
+</app-form-dialog>

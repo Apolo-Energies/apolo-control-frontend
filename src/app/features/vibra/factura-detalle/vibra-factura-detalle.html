@@ -15,10 +15,16 @@
   </app-page-header>
 
   <div class="flex flex-wrap gap-2 mb-4" role="toolbar" aria-label="Acciones de la factura">
-    <button type="button" (click)="verPdf()"
-      class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
-      <ui-icon name="eye" [size]="16" /> Ver PDF
-    </button>
+    @if (f.deKilowy) {
+      <p class="inline-flex items-center gap-2 text-sm text-muted-foreground" role="note">
+        <ui-icon name="info" [size]="16" /> Importada de Kilowy: el detalle y el PDF están en Kilowy.
+      </p>
+    } @else {
+      <button type="button" (click)="verPdf()"
+        class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
+        <ui-icon name="eye" [size]="16" /> Ver PDF
+      </button>
+    }
     @if (f.compraPdfNombre) {
       <button type="button" (click)="verCompra()"
         class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
@@ -42,11 +48,13 @@
         <ui-icon name="check" [size]="16" /> Emitir factura
       </button>
     }
-    @if (puedeEditar() && !esBorrador()) {
+    @if (puedeEditar() && !esBorrador() && !f.deKilowy) {
       <button type="button" (click)="enviar()" [disabled]="!!ocupado() || !f.email" [attr.title]="f.email ? null : 'La factura no tiene email del cliente'"
         class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">
         <ui-icon name="mail" [size]="16" /> Enviar por correo
       </button>
+    }
+    @if (puedeEditar() && !esBorrador()) {
       @for (s of siguientes(); track s.estado) {
         <button type="button" (click)="cambiarEstado(s.estado)" [disabled]="!!ocupado()"
           class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">

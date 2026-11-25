@@ -8,10 +8,13 @@ import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
 import { StatusBadge, StatusTone } from '../../../shared/components/status-badge/status-badge';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
-import { formatDate } from '../../../shared/utils/format';
+import { formatDate, formatEuro } from '../../../shared/utils/format';
 
 import { AuthService } from '../../../core/auth';
 import { VibraClienteService } from '../../../core/services/vibra-cliente.service';
+import { VibraFacturaService } from '../../../core/services/vibra-factura.service';
+import { ESTADO_FACTURA_VIBRA_LABEL, VibraFacturaListItem } from '../../../core/models';
+import { estadoFacturaTone } from '../facturas/vibra-factura-ui';
 import { NotificationService } from '../../../core/services/notification.service';
 import {
   ESTADO_VIBRA_ALTA_LABEL, EstadoVibraAlta, TIPO_CLIENTE_VIBRA_LABEL, TIPO_SUMINISTRO_VIBRA_LABEL,
@@ -20,7 +23,7 @@ import {
 import { mensajeError } from '../../../shared/utils/http-error';
 import { VibraClienteForm } from '../clientes/vibra-cliente-form';
 
-type Pestana = 'datos' | 'suministros' | 'contratos';
+type Pestana = 'datos' | 'suministros' | 'contratos' | 'facturas';
 
 /** Ficha del cliente Vibra (como la de Kilowy): Datos, Suministros y Contratos. */
 @Component({
@@ -33,11 +36,18 @@ export class VibraClienteFichaView {
   private readonly service = inject(VibraClienteService);
   private readonly notify = inject(NotificationService);
   private readonly auth = inject(AuthService);
+  private readonly facturaService = inject(VibraFacturaService);
 
   /** :id de la ruta (withComponentInputBinding). */
   readonly id = input.required<string>();
 
   protected readonly puedeEditar = computed(() => this.auth.hasRole('admin', 'operaciones'));
+  /** Mismos roles que la pantalla de Facturas. */
+  protected readonly verFacturas = this.auth.hasRole('admin', 'contabilidad', 'operaciones');
+  protected readonly facturas = signal<VibraFacturaListItem[] | null>(null);
+  protected readonly euro = formatEuro;
+  protected readonly estadoFactura = ESTADO_FACTURA_VIBRA_LABEL;
+  protected readonly toneFactura = estadoFacturaTone;
   protected readonly ficha = signal<VibraClienteFicha | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly tab = signal<Pestana>('datos');
@@ -72,8 +82,20 @@ export class VibraClienteFichaView {
   private load(id: string): void {
     this.error.set(null);
     this.service.ficha(id).subscribe({
-      next: (f) => this.ficha.set(f),
+      next: (f) => {
+        this.ficha.set(f);
+        this.loadFacturas(f.nif);
+      },
       error: (err: HttpErrorResponse) => this.error.set(err.error?.message ?? 'No se pudo cargar el cliente'),
+    });
+  }
+
+  /** Facturas del cliente por su DNI/CIF (como la pestaña Facturación del contrato en Kilowy). */
+  private loadFacturas(nif: string): void {
+    if (!this.verFacturas) return;
+    this.facturaService.list({ q: nif }, { size: 200, sort: 'fechaEmision,desc' }).subscribe({
+      next: (r) => this.facturas.set(r.content),
+      error: () => this.facturas.set([]),
     });
   }
 

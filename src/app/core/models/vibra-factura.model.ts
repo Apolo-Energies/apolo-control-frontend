@@ -30,6 +30,8 @@ export interface VibraFacturaListItem {
   compraComercializadora: string | null;
   enviadaAt: string | null;
   avisos: number;
+  /** Importada de Kilowy: sin PDF ni envío desde Control. */
+  deKilowy: boolean;
   createdAt: string;
 }
 
@@ -108,6 +110,7 @@ export interface VibraFactura {
   margen: number | null;
   margenPct: number | null;
   avisos: string[];
+  deKilowy: boolean;
   lineas: VibraFacturaLinea[];
   createdAt: string;
 }
@@ -125,4 +128,15 @@ export interface ResultadoCompraVibra {
   titular: string | null;
   cups: string | null;
   error: string | null;
+}
+
+/** Resumen de la importación de facturas de Kilowy. */
+export interface KilowyFacturasImportResult {
+  creadas: number;
+  actualizadas: number;
+  sinCambios: number;
+  cambiadasEnControl: number;
+  omitidas: number;
+  ultimaSecuencia: number;
+  avisos: string[];
 }
