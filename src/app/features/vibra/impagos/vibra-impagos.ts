@@ -1,13 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { NgTemplateOutlet } from '@angular/common';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { PageHeader } from '../../../shared/components/page-header/page-header';
+import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions-menu/actions-menu';
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
 import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 import { Pagination } from '../../../shared/components/pagination/pagination';
-import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
+import { StatusBadge, StatusTone } from '../../../shared/components/status-badge/status-badge';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
 import { VibraDevolucionesBanco } from './vibra-devoluciones-banco';
@@ -35,8 +37,8 @@ import { mensajeError } from '../../../shared/utils/http-error';
   selector: 'app-vibra-impagos',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    FormsModule, ReactiveFormsModule, RouterLink,
-    PageHeader, FormDialog, ConfirmDialog, Pagination, StatusBadge, TableSkeleton, Icon, VibraDevolucionesBanco,
+    FormsModule, ReactiveFormsModule, RouterLink, NgTemplateOutlet,
+    PageHeader, ActionsMenu, FormDialog, ConfirmDialog, Pagination, StatusBadge, TableSkeleton, Icon, VibraDevolucionesBanco,
   ],
   templateUrl: './vibra-impagos.html',
 })
@@ -111,7 +113,43 @@ export class VibraImpagos {
     this.load();
   }
 
+  protected ariaSort(field: string): 'ascending' | 'descending' | null {
+    if (this.sortField() !== field) return null;
+    return this.sortDir() === 'asc' ? 'ascending' : 'descending';
+  }
+
   protected readonly rows = computed(() => this.result()?.content ?? []);
+
+  /** Cabecera: acciones poco frecuentes. */
+  protected readonly masAcciones: ActionsMenuItem[] = [
+    { label: 'Exportar a Excel', icon: 'download', action: () => this.exportExcel() },
+  ];
+
+  /** Menús por fila: cambio de estado y acciones. */
+  protected readonly menus = computed(() => {
+    const cobrar = this.puedeCobrar();
+    const borrar = this.puedeBorrar();
+    const avisando = this.avisando();
+    return new Map(this.rows().map((r) => {
+      const estado: ActionsMenuItem[] = this.estadoValues.map((e) => ({
+        label: this.estadoLabel[e], checked: r.estado === e, action: () => this.changeEstado(r, e),
+      }));
+      const acciones: ActionsMenuItem[] = [
+        { label: 'Ver detalle', icon: 'eye', action: () => this.verDetalle(r.id) },
+        { label: 'Editar', icon: 'edit', action: () => this.openEdit(r) },
+      ];
+      if (cobrar && r.estado !== 'PAGADO' && r.facturaId) {
+        acciones.push({
+          label: avisando === r.id ? 'Enviando aviso…' : 'Avisar por correo', icon: 'mail',
+          disabled: avisando === r.id, action: () => this.avisar(r),
+        });
+      }
+      if (borrar) {
+        acciones.push({ label: 'Borrar', icon: 'trash', danger: true, separatorBefore: true, action: () => this.askDelete(r) });
+      }
+      return [r.id, { estado, acciones }] as const;
+    }));
+  });
   protected readonly total = computed(() => this.result()?.totalElements ?? 0);
   protected readonly totalPages = computed(() => this.result()?.totalPages ?? 0);
 
@@ -166,13 +204,14 @@ export class VibraImpagos {
   protected onPage(p: number): void { this.page.set(p); this.load(); }
   protected onPageSize(s: number): void { this.size.set(s); this.page.set(0); this.load(); }
   protected applyFilters(): void { this.page.set(0); this.load(); }
+  protected limpiar(): void { this.q = ''; this.estadoFilter = ''; this.applyFilters(); }
 
   /** Pagado con factura ligada pide confirmación: paga también la factura. */
   protected readonly pendientePago = signal<VibraImpago | null>(null);
 
-  protected changeEstado(r: VibraImpago, estado: EstadoVibraImpago, select?: HTMLSelectElement): void {
+  protected changeEstado(r: VibraImpago, estado: EstadoVibraImpago): void {
+    if (estado === r.estado) return;
     if (estado === 'PAGADO' && r.facturaId && r.facturaEstado !== 'PAGADA') {
-      if (select) select.value = r.estado;
       this.pendientePago.set(r);
       return;
     }
@@ -368,7 +407,7 @@ export class VibraImpagos {
     document.body.removeChild(a); URL.revokeObjectURL(url);
   }
 
-  protected estadoTone(estado: EstadoVibraImpago | null): 'success' | 'warning' | 'info' | 'danger' | 'neutral' {
+  protected estadoTone(estado: EstadoVibraImpago | null): StatusTone {
     switch (estado) {
       case 'PAGADO': return 'success';
       case 'IMPAGADA': return 'warning';
@@ -378,7 +417,16 @@ export class VibraImpagos {
     }
   }
 
-  protected activoTone(v: string | null): 'success' | 'danger' {
+  /** Etiqueta corta para el badge de la tabla (la completa va en el menú y en el nombre accesible). */
+  protected estadoCorto(estado: EstadoVibraImpago): string {
+    switch (estado) {
+      case 'PLAN_PAGOS': return 'Plan de pagos';
+      case 'RECLAMACION': return 'En reclamación';
+      default: return this.estadoLabel[estado];
+    }
+  }
+
+  protected activoTone(v: string | null): StatusTone {
     return v === 'Baja' ? 'danger' : 'success';
   }
 

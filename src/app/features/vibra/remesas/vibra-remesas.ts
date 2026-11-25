@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
 import { PageHeader } from '../../../shared/components/page-header/page-header';
+import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions-menu/actions-menu';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
@@ -20,12 +21,13 @@ import {
   VibraRemesaCobrable, VibraRemesaGrupo, VibraRemesaListItem, VibraRemesaPendientes,
 } from '../../../core/models';
 import { descargarXml, estadoRemesaTone, fechaMadrid } from './vibra-remesa-ui';
+import { estadoFacturaTone } from '../facturas/vibra-factura-ui';
 
 type Pestana = 'PENDIENTES' | 'REGIRO' | 'GENERADAS';
 
 const PESTANAS: { id: Pestana; label: string }[] = [
-  { id: 'PENDIENTES', label: 'Pendientes de cobro' },
-  { id: 'REGIRO', label: 'Regiro de impagados' },
+  { id: 'PENDIENTES', label: 'Pendientes' },
+  { id: 'REGIRO', label: 'Regiro' },
   { id: 'GENERADAS', label: 'Generadas' },
 ];
 
@@ -33,7 +35,7 @@ const PESTANAS: { id: Pestana; label: string }[] = [
 @Component({
   selector: 'app-vibra-remesas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, FormsModule, RouterLink, PageHeader, TableSkeleton, StatusBadge, ConfirmDialog, Icon],
+  imports: [NgTemplateOutlet, FormsModule, RouterLink, PageHeader, ActionsMenu, TableSkeleton, StatusBadge, ConfirmDialog, Icon],
   templateUrl: './vibra-remesas.html',
 })
 export class VibraRemesas {
@@ -47,6 +49,7 @@ export class VibraRemesas {
   protected readonly estadoLabel = ESTADO_REMESA_VIBRA_LABEL;
   protected readonly estadoFacturaLabel = ESTADO_FACTURA_VIBRA_LABEL;
   protected readonly estadoTone = estadoRemesaTone;
+  protected readonly facturaTone = estadoFacturaTone;
   protected readonly euro = formatEuro;
   protected readonly fecha = formatDate;
   /** Generar, descargar y anular: admin y contabilidad. Operaciones solo ve. */
@@ -81,6 +84,11 @@ export class VibraRemesas {
     const t = this.filtroTipo();
     return (this.remesas() ?? []).filter((r) => !t || r.tipo === t);
   });
+  /** Menú de fila de las generadas: anular. */
+  protected readonly menusRemesa = computed(() => new Map<string, ActionsMenuItem[]>(
+    (this.remesas() ?? []).filter((r) => r.estado === 'GENERADA').map((r) => [r.id, [
+      { label: 'Anular', icon: 'circle-x', danger: true, action: () => this.anulando.set(r) },
+    ]])));
   protected readonly conteos = computed<Record<Pestana, number | undefined>>(() => ({
     PENDIENTES: this.pendientes() ? this.totalPendientes() : undefined,
     REGIRO: this.regirables() ? this.facturasRegiro().length : undefined,

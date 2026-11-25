@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, input, signal, viewChild } from '@angular/core';
 
 import { Icon, IconName } from '../../icons/icon';
+import { StatusBadge, StatusTone } from '../status-badge/status-badge';
 
 export interface ActionsMenuItem {
   label: string;
@@ -9,6 +10,8 @@ export interface ActionsMenuItem {
   disabled?: boolean;
   /** Raya separadora antes del item. */
   separatorBefore?: boolean;
+  /** Opción elegida (menú de estado): menuitemradio marcado. */
+  checked?: boolean;
   action: () => void;
 }
 
@@ -23,7 +26,7 @@ const CON_ANCHOR = typeof CSS !== 'undefined' && CSS.supports('position-area', '
 @Component({
   selector: 'app-actions-menu',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icon],
+  imports: [Icon, StatusBadge],
   templateUrl: './actions-menu.html',
   host: { class: 'contents' },
 })
@@ -32,6 +35,10 @@ export class ActionsMenu {
   readonly label = input('Más');
   /** Solo icono (acciones de fila); el texto queda como nombre accesible. */
   readonly iconOnly = input(false);
+  /** Disparador como badge de estado con ese tono (estado editable en fila); `label` es el estado. */
+  readonly tone = input<StatusTone | null>(null);
+  /** Nombre accesible del disparador si el texto visible no basta (p. ej. «Estado del impago: Impagada»). */
+  readonly ariaLabel = input<string | null>(null);
 
   protected readonly id = `actions-menu-${++seq}`;
   protected readonly conCommand = CON_COMMAND;

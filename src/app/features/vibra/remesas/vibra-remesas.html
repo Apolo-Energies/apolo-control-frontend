@@ -1,5 +1,5 @@
-<app-page-header title="Remesas bancarias (SEPA)"
-  subtitle="Las facturas emitidas se agrupan por el día en que vence su cobro; cada grupo se convierte en un fichero XML para subir al banco." />
+<app-page-header title="Remesas"
+  subtitle="Las facturas emitidas se agrupan por el día de cobro; cada remesa es un fichero XML SEPA para subir al banco." />
 
 <div class="tablist mb-4" focusgroup="tablist nomemory" role="tablist" aria-label="Remesas">
   @for (p of pestanas; track p.id) {
@@ -20,93 +20,142 @@
   </div>
 }
 
-<!-- Facturas excluidas (con su motivo) -->
-<ng-template #excluidasTpl let-lista>
+<!-- Facturas excluidas, con su motivo -->
+<ng-template #excluidasTpl let-lista let-clave="clave">
   @if (lista.length > 0) {
-    <details class="rounded-xl border border-warning/40 bg-warning-soft px-4 py-3 mb-4 text-sm">
-      <summary class="cursor-pointer font-medium">
-        <ui-icon name="alert-triangle" [size]="16" class="inline-block align-text-bottom" />
-        {{ lista.length }} {{ lista.length === 1 ? 'factura no entrará' : 'facturas no entrarán' }} en ninguna remesa hasta que lo corrijas
+    <details class="group mb-4">
+      <summary class="flex cursor-pointer list-none items-center gap-2 rounded-xl [&::-webkit-details-marker]:hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground border border-warning/40 bg-warning-soft text-warning-fg px-4 py-3 text-sm font-medium">
+        <ui-icon name="alert-triangle" [size]="16" class="shrink-0" />
+        <span class="flex-1">
+          <span class="tabular-nums">{{ lista.length }}</span>
+          {{ lista.length === 1 ? 'factura no entra' : 'facturas no entran' }} en ninguna remesa hasta que lo corrijas
+        </span>
+        <span class="inline-flex shrink-0 items-center gap-1 font-normal"><span class="max-sm:sr-only group-open:hidden">Ver motivos</span><span class="hidden max-sm:sr-only group-open:inline">Ocultar</span> <ui-icon name="chevron-down" [size]="14" class="transition-transform group-open:rotate-180" /></span>
       </summary>
-      <ul class="mt-2 space-y-1">
-        @for (e of lista; track e.facturaId) {
-          <li>
-            <a [routerLink]="['/vibra/facturas', e.facturaId]" class="underline tabular-nums">{{ e.numero }}</a>
-            @if (e.contrato) { <span class="text-muted-foreground"> (contrato #{{ e.contrato }})</span> }
-            · {{ e.titular ?? '—' }} · <span class="tabular-nums">{{ euro(e.importe) }}</span> — {{ e.motivo }}
-          </li>
-        }
-      </ul>
+      <div class="mt-2 rounded-2xl border border-border bg-card overflow-hidden">
+        <div class="vtable-region" style="max-block-size: 50vh" tabindex="0" role="region" [attr.aria-labelledby]="'excl-cap-' + clave">
+          <table class="vtable">
+            <caption [id]="'excl-cap-' + clave" class="sr-only">Facturas que no entran en remesas y su motivo</caption>
+            <colgroup>
+              <col class="col-numdoc" />
+              <col class="col-texto" style="inline-size: 30%" />
+              <col class="col-importe" />
+              <col class="col-texto" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">Factura</th>
+                <th scope="col">Cliente</th>
+                <th scope="col" class="cell-num">Importe</th>
+                <th scope="col">Motivo</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (e of lista; track e.facturaId) {
+                <tr>
+                  <th scope="row">
+                    <a [routerLink]="['/vibra/facturas', e.facturaId]" class="cell-tail font-medium hover:underline underline-offset-2" [title]="e.numero"><span>{{ e.numero.slice(0, -6) }}</span>{{ e.numero.slice(-6) }}</a>
+                  </th>
+                  <td data-label="Cliente">
+                    <span class="cell-clamp2" [title]="e.titular ?? ''">{{ e.titular ?? 'Sin titular' }}</span>
+                    @if (e.contrato) { <span class="cell-sub tabular-nums">Contrato #{{ e.contrato }}</span> }
+                  </td>
+                  <td data-label="Importe" class="cell-num">{{ euro(e.importe) }}</td>
+                  <td data-label="Motivo">{{ e.motivo }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
     </details>
   }
+</ng-template>
+
+<!-- Fila de factura cobrable (pendientes y regiro) -->
+<ng-template #celdasFactura let-f let-pref="pref" let-marcada="marcada" let-regiro="regiro">
+  <th scope="row" class="vtable-fix">
+    <div class="flex items-start gap-3">
+      @if (puedeGestionar) {
+        <input type="checkbox" class="mt-0.5 size-4 shrink-0 accent-primary" [id]="pref + f.facturaId"
+          [checked]="marcada" (change)="alternar(f.facturaId, regiro)" />
+      }
+      <div class="min-w-0">
+        <label [attr.for]="puedeGestionar ? pref + f.facturaId : null" class="cell-tail font-medium" [title]="f.numero"><span>{{ f.numero.slice(0, -6) }}</span>{{ f.numero.slice(-6) }}</label>
+        <a [routerLink]="['/vibra/facturas', f.facturaId]" class="cell-sub hover:underline underline-offset-2">Ver factura</a>
+      </div>
+    </div>
+  </th>
+  <td data-label="Cliente">
+    <span class="cell-clamp2" [title]="f.titular ?? ''">{{ f.titular ?? 'Sin titular' }}</span>
+    @if (f.nif || f.contrato) {
+      <span class="cell-sub tabular-nums">{{ f.nif ?? '' }}{{ f.nif && f.contrato ? ' · ' : '' }}{{ f.contrato ? '#' + f.contrato : '' }}</span>
+    }
+  </td>
+  <td data-label="Cuenta" class="cell-nowrap tabular-nums">{{ f.cuenta }}</td>
 </ng-template>
 
 <!-- ── Pendientes de cobro ─────────────────────────────────────────────── -->
 <div role="tabpanel" aria-labelledby="tab-rem-PENDIENTES" [hidden]="tab() !== 'PENDIENTES'">
   @if (pendientes(); as p) {
-    <p class="text-sm text-muted-foreground mb-3">
-      {{ totalPendientes() }} {{ totalPendientes() === 1 ? 'factura' : 'facturas' }} · {{ euro(importePendientes()) }}.
-      Marca las que van en la remesa: lo que dejes sin marcar sigue pendiente. Las de cobro ya pasado se cobran mañana.
+    <p class="text-sm text-muted-foreground mb-4 max-w-[75ch]">
+      <span class="text-foreground font-medium tabular-nums">{{ totalPendientes() }} {{ totalPendientes() === 1 ? 'factura' : 'facturas' }} · {{ euro(importePendientes()) }}</span>.
+      Marca las que van en cada remesa; lo que quede sin marcar sigue pendiente. Las de cobro ya pasado se cobran mañana.
     </p>
-    <ng-container *ngTemplateOutlet="excluidasTpl; context: { $implicit: p.excluidas }" />
+    <ng-container *ngTemplateOutlet="excluidasTpl; context: { $implicit: p.excluidas, clave: 'pend' }" />
 
     @for (g of p.grupos; track g.fechaCobro) {
       <section class="rounded-2xl border border-border bg-card overflow-hidden mb-4" [attr.aria-labelledby]="'cap-' + g.fechaCobro">
-        <div class="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-border">
-          <h2 [id]="'cap-' + g.fechaCobro" class="font-semibold">Cobro el {{ fecha(g.fechaCobro) }}</h2>
-          <span class="text-sm text-muted-foreground tabular-nums">
-            {{ marcadasDe(g).length }} de {{ g.recibos }} facturas · {{ euro(importeMarcado(g)) }}
-          </span>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 border-b border-border">
+          <div class="min-w-0 flex-1">
+            <h2 [id]="'cap-' + g.fechaCobro" class="font-semibold">Cobro el <span class="tabular-nums">{{ fecha(g.fechaCobro) }}</span></h2>
+            <p class="text-sm text-muted-foreground tabular-nums">
+              {{ marcadasDe(g).length }} de {{ g.recibos }} marcadas · {{ euro(importeMarcado(g)) }}
+            </p>
+          </div>
           @if (puedeGestionar) {
-            <div class="ml-auto flex gap-2">
-              <button type="button" (click)="todas(g.facturas, !todasMarcadas(g.facturas))"
-                class="rounded-lg border border-border bg-card px-3 py-1.5 text-sm hover:bg-accent">
+            <div class="flex flex-wrap gap-2">
+              <button type="button" class="btn btn-ghost" (click)="todas(g.facturas, !todasMarcadas(g.facturas))">
                 {{ todasMarcadas(g.facturas) ? 'Quitar todas' : 'Marcar todas' }}
               </button>
-              <button type="button" (click)="generar(g)" [disabled]="marcadasDe(g).length === 0 || ocupado() !== null"
-                class="inline-flex items-center gap-2 rounded-lg bg-primary-button text-primary-foreground px-3 py-1.5 text-sm font-medium disabled:opacity-50">
+              <button type="button" class="btn btn-secondary" (click)="generar(g)" [disabled]="marcadasDe(g).length === 0 || ocupado() !== null">
                 <ui-icon name="file-plus" [size]="16" />
                 {{ ocupado() === 'g-' + g.fechaCobro ? 'Generando…' : 'Generar remesa (' + marcadasDe(g).length + ')' }}
               </button>
             </div>
           }
         </div>
-        <div class="overflow-auto" tabindex="0" role="region" [attr.aria-labelledby]="'cap-' + g.fechaCobro">
-          <table class="w-full text-sm">
+        <div class="vtable-region" tabindex="0" role="region" [attr.aria-labelledby]="'cap-' + g.fechaCobro" style="--vtable-min: 40rem">
+          <table class="vtable">
             <caption class="sr-only">Facturas con cobro el {{ fecha(g.fechaCobro) }}</caption>
+            <colgroup>
+              <col class="col-numdoc" style="inline-size: 14rem" />
+              <col class="col-texto" />
+              <col class="col-cups" style="inline-size: 10rem" />
+              <col class="col-importe" />
+            </colgroup>
             <thead>
-              <tr class="border-b border-border text-left text-muted-foreground">
-                @if (puedeGestionar) {
-                  <th scope="col" class="py-2 px-4 w-10">
-                    <input type="checkbox" class="size-4 accent-primary" [checked]="todasMarcadas(g.facturas)"
-                      [indeterminate]="algunaMarcada(g.facturas)" (change)="todas(g.facturas, !todasMarcadas(g.facturas))"
-                      [attr.aria-label]="'Todas las facturas del ' + fecha(g.fechaCobro)" />
-                  </th>
-                }
-                <th scope="col" class="py-2 px-4 font-medium">Factura</th>
-                <th scope="col" class="py-2 px-4 font-medium">Cliente</th>
-                <th scope="col" class="py-2 px-4 font-medium">Contrato</th>
-                <th scope="col" class="py-2 px-4 font-medium">Cuenta</th>
-                <th scope="col" class="py-2 px-4 font-medium text-right">Importe</th>
+              <tr>
+                <th scope="col" class="vtable-fix">
+                  <div class="flex items-center gap-3">
+                    @if (puedeGestionar) {
+                      <input type="checkbox" class="size-4 shrink-0 accent-primary" [checked]="todasMarcadas(g.facturas)"
+                        [indeterminate]="algunaMarcada(g.facturas)" (change)="todas(g.facturas, !todasMarcadas(g.facturas))"
+                        [attr.aria-label]="'Todas las facturas del ' + fecha(g.fechaCobro)" />
+                    }
+                    Factura
+                  </div>
+                </th>
+                <th scope="col">Cliente</th>
+                <th scope="col">Cuenta</th>
+                <th scope="col" class="cell-num">Importe</th>
               </tr>
             </thead>
             <tbody>
               @for (f of g.facturas; track f.facturaId) {
-                <tr class="border-b border-border/50 hover:bg-accent/40">
-                  @if (puedeGestionar) {
-                    <td class="py-2 px-4">
-                      <input type="checkbox" class="size-4 accent-primary" [id]="'m-' + f.facturaId"
-                        [checked]="marcadas().has(f.facturaId)" (change)="alternar(f.facturaId)" />
-                    </td>
-                  }
-                  <th scope="row" class="py-2 px-4 font-normal text-left whitespace-nowrap">
-                    <label [attr.for]="puedeGestionar ? 'm-' + f.facturaId : null" class="tabular-nums">{{ f.numero }}</label>
-                    <div class="text-xs"><a [routerLink]="['/vibra/facturas', f.facturaId]" class="text-muted-foreground hover:underline">Ver factura</a></div>
-                  </th>
-                  <td class="py-2 px-4">{{ f.titular ?? '—' }}<div class="text-xs text-muted-foreground tabular-nums">{{ f.nif }}</div></td>
-                  <td class="py-2 px-4 tabular-nums">#{{ f.contrato }}</td>
-                  <td class="py-2 px-4 tabular-nums whitespace-nowrap">{{ f.cuenta }}</td>
-                  <td class="py-2 px-4 text-right tabular-nums whitespace-nowrap">{{ euro(f.importe) }}</td>
+                <tr>
+                  <ng-container *ngTemplateOutlet="celdasFactura; context: { $implicit: f, pref: 'm-', marcada: marcadas().has(f.facturaId), regiro: false }" />
+                  <td data-label="Importe" class="cell-num font-medium">{{ euro(f.importe) }}</td>
                 </tr>
               }
             </tbody>
@@ -114,7 +163,7 @@
         </div>
       </section>
     } @empty {
-      <p class="rounded-2xl border border-border bg-card py-16 text-center text-muted-foreground">
+      <p class="rounded-2xl border border-border bg-card py-16 px-4 text-center text-muted-foreground">
         No hay facturas emitidas pendientes de cobro.
       </p>
     }
@@ -126,79 +175,82 @@
 <!-- ── Regiro de impagados ─────────────────────────────────────────────── -->
 <div role="tabpanel" aria-labelledby="tab-rem-REGIRO" [hidden]="tab() !== 'REGIRO'">
   @if (regirables(); as p) {
-    <p class="text-sm text-muted-foreground mb-3">
+    <p class="text-sm text-muted-foreground mb-4 max-w-[75ch]">
       Facturas devueltas o impagadas que se pueden volver a girar al cliente. Marca las que van y elige el día de cobro.
     </p>
-    <ng-container *ngTemplateOutlet="excluidasTpl; context: { $implicit: p.excluidas }" />
+    <ng-container *ngTemplateOutlet="excluidasTpl; context: { $implicit: p.excluidas, clave: 'regiro' }" />
 
     <section class="rounded-2xl border border-border bg-card overflow-hidden" aria-labelledby="cap-regiro">
-      <div class="flex flex-wrap items-end gap-3 px-4 py-3 border-b border-border">
-        <h2 id="cap-regiro" class="font-semibold self-center">Regiro</h2>
-        <span class="text-sm text-muted-foreground tabular-nums self-center">
-          {{ seleccionRegiro().n }} de {{ facturasRegiro().length }} facturas · {{ euro(seleccionRegiro().importe) }}
-        </span>
+      <div class="flex flex-wrap items-end gap-x-4 gap-y-3 px-4 py-3 border-b border-border">
+        <div class="min-w-0 flex-1 self-center">
+          <h2 id="cap-regiro" class="font-semibold">Regiro</h2>
+          <p class="text-sm text-muted-foreground tabular-nums">
+            {{ seleccionRegiro().n }} de {{ facturasRegiro().length }} marcadas · {{ euro(seleccionRegiro().importe) }}
+          </p>
+        </div>
         @if (puedeGestionar && facturasRegiro().length > 0) {
-          <div class="ml-auto flex flex-wrap items-end gap-2">
-            <div class="campo flex flex-col gap-1 text-sm">
+          <form class="filterbar" (ngSubmit)="generarRegiro()">
+            <div class="filter campo">
               <label for="regiro-fecha">Fecha de cobro</label>
               <input id="regiro-fecha" type="date" name="fechaRegiro" required [min]="manana" [(ngModel)]="fechaRegiro"
-                aria-describedby="regiro-fecha-error" class="border border-border rounded-lg px-3 py-1.5 bg-input" />
+                aria-describedby="regiro-fecha-error" />
               <span id="regiro-fecha-error" class="error-msg">Error: elige un día a partir de mañana</span>
             </div>
-            <button type="button" (click)="generarRegiro()" [disabled]="seleccionRegiro().n === 0 || ocupado() !== null"
-              class="inline-flex items-center gap-2 rounded-lg bg-primary-button text-primary-foreground px-3 py-1.5 text-sm font-medium disabled:opacity-50">
-              <ui-icon name="repeat" [size]="16" />
-              {{ ocupado() === 'regiro' ? 'Generando…' : 'Generar remesa de regiro (' + seleccionRegiro().n + ')' }}
-            </button>
-          </div>
+            <div class="filter-actions">
+              <button type="submit" class="btn btn-secondary" [disabled]="seleccionRegiro().n === 0 || ocupado() !== null">
+                <ui-icon name="repeat" [size]="16" />
+                {{ ocupado() === 'regiro' ? 'Generando…' : 'Generar remesa de regiro (' + seleccionRegiro().n + ')' }}
+              </button>
+            </div>
+          </form>
         }
       </div>
-      <div class="overflow-auto" tabindex="0" role="region" aria-labelledby="cap-regiro">
-        <table class="w-full text-sm">
+      <div class="vtable-region" tabindex="0" role="region" aria-labelledby="cap-regiro" style="--vtable-min: 60rem">
+        <table class="vtable">
           <caption class="sr-only">Facturas devueltas e impagadas que se pueden regirar</caption>
+          <colgroup>
+            <col class="col-numdoc" style="inline-size: 14rem" />
+            <col class="col-texto" />
+            <col class="col-cups" style="inline-size: 10rem" />
+            <col class="col-texto" style="inline-size: 13rem" />
+            <col class="col-corto" />
+            <col class="col-importe" />
+          </colgroup>
           <thead>
-            <tr class="border-b border-border text-left text-muted-foreground">
-              @if (puedeGestionar) {
-                <th scope="col" class="py-2 px-4 w-10">
-                  <input type="checkbox" class="size-4 accent-primary" [checked]="todasMarcadas(facturasRegiro(), true)"
-                    [indeterminate]="algunaMarcada(facturasRegiro(), true)"
-                    (change)="todas(facturasRegiro(), !todasMarcadas(facturasRegiro(), true), true)" aria-label="Todas las facturas" />
-                </th>
-              }
-              <th scope="col" class="py-2 px-4 font-medium">Factura</th>
-              <th scope="col" class="py-2 px-4 font-medium">Cliente</th>
-              <th scope="col" class="py-2 px-4 font-medium">Contrato</th>
-              <th scope="col" class="py-2 px-4 font-medium">Cuenta</th>
-              <th scope="col" class="py-2 px-4 font-medium">Devolución</th>
-              <th scope="col" class="py-2 px-4 font-medium">Intento</th>
-              <th scope="col" class="py-2 px-4 font-medium text-right">Importe</th>
+            <tr>
+              <th scope="col" class="vtable-fix">
+                <div class="flex items-center gap-3">
+                  @if (puedeGestionar) {
+                    <input type="checkbox" class="size-4 shrink-0 accent-primary" [checked]="todasMarcadas(facturasRegiro(), true)"
+                      [indeterminate]="algunaMarcada(facturasRegiro(), true)"
+                      (change)="todas(facturasRegiro(), !todasMarcadas(facturasRegiro(), true), true)" aria-label="Todas las facturas" />
+                  }
+                  Factura
+                </div>
+              </th>
+              <th scope="col">Cliente</th>
+              <th scope="col">Cuenta</th>
+              <th scope="col">Devolución</th>
+              <th scope="col">Intento</th>
+              <th scope="col" class="cell-num">Importe</th>
             </tr>
           </thead>
           <tbody>
             @for (f of facturasRegiro(); track f.facturaId) {
-              <tr class="border-b border-border/50 hover:bg-accent/40">
-                @if (puedeGestionar) {
-                  <td class="py-2 px-4">
-                    <input type="checkbox" class="size-4 accent-primary" [id]="'r-' + f.facturaId"
-                      [checked]="marcadasRegiro().has(f.facturaId)" (change)="alternar(f.facturaId, true)" />
-                  </td>
-                }
-                <th scope="row" class="py-2 px-4 font-normal text-left whitespace-nowrap">
-                  <label [attr.for]="puedeGestionar ? 'r-' + f.facturaId : null" class="tabular-nums">{{ f.numero }}</label>
-                  <div class="text-xs"><a [routerLink]="['/vibra/facturas', f.facturaId]" class="text-muted-foreground hover:underline">Ver factura</a></div>
-                </th>
-                <td class="py-2 px-4">{{ f.titular ?? '—' }}<div class="text-xs text-muted-foreground tabular-nums">{{ f.nif }}</div></td>
-                <td class="py-2 px-4 tabular-nums">#{{ f.contrato }}</td>
-                <td class="py-2 px-4 tabular-nums whitespace-nowrap">{{ f.cuenta }}</td>
-                <td class="py-2 px-4">
-                  {{ estadoFacturaLabel[f.estado] }}{{ f.fechaDevolucion ? ' el ' + fecha(f.fechaDevolucion) : '' }}
-                  @if (f.motivoDevolucion) { <div class="text-xs text-muted-foreground">{{ f.motivoDevolucion }}</div> }
+              <tr>
+                <ng-container *ngTemplateOutlet="celdasFactura; context: { $implicit: f, pref: 'r-', marcada: marcadasRegiro().has(f.facturaId), regiro: true }" />
+                <td data-label="Devolución">
+                  <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <app-status-badge size="sm" [tone]="facturaTone(f.estado)">{{ estadoFacturaLabel[f.estado] }}</app-status-badge>
+                    @if (f.fechaDevolucion) { <span class="cell-nowrap tabular-nums">{{ fecha(f.fechaDevolucion) }}</span> }
+                  </span>
+                  @if (f.motivoDevolucion; as m) { <span class="cell-sub"><span class="cell-clamp2" [title]="m">{{ m }}</span></span> }
                 </td>
-                <td class="py-2 px-4 tabular-nums">{{ f.intento }}º cobro</td>
-                <td class="py-2 px-4 text-right tabular-nums whitespace-nowrap">{{ euro(f.importe) }}</td>
+                <td data-label="Intento" class="cell-nowrap tabular-nums">{{ f.intento }}º cobro</td>
+                <td data-label="Importe" class="cell-num font-medium">{{ euro(f.importe) }}</td>
               </tr>
             } @empty {
-              <tr><td [attr.colspan]="puedeGestionar ? 8 : 7" class="py-16 text-center text-muted-foreground">
+              <tr><td colspan="6" class="vtable-empty">
                 No hay facturas devueltas ni impagadas para regirar.
               </td></tr>
             }
@@ -213,64 +265,81 @@
 
 <!-- ── Generadas ───────────────────────────────────────────────────────── -->
 <div role="tabpanel" aria-labelledby="tab-rem-GENERADAS" [hidden]="tab() !== 'GENERADAS'">
-  <div class="mb-3 flex flex-col gap-1 text-sm w-60">
-    <label for="rem-tipo">Tipo</label>
-    <select id="rem-tipo" [ngModel]="filtroTipo()" (ngModelChange)="filtroTipo.set($event)"
-      class="border border-border rounded-lg px-3 py-2 bg-input">
-      <option value="">Todas</option>
-      <option value="EMITIDAS">De facturas emitidas</option>
-      <option value="IMPAGADOS">De impagados</option>
-    </select>
-  </div>
+  <search class="mb-4 block">
+    <div class="filterbar">
+      <div class="filter">
+        <label for="rem-tipo">Tipo</label>
+        <select id="rem-tipo" name="tipo" [ngModel]="filtroTipo()" [ngModelOptions]="{ standalone: true }" (ngModelChange)="filtroTipo.set($event)">
+          <option value="">Todas</option>
+          <option value="EMITIDAS">De facturas emitidas</option>
+          <option value="IMPAGADOS">De impagados</option>
+        </select>
+      </div>
+    </div>
+  </search>
   @if (remesas() === null && !error()) {
     <app-table-skeleton [cols]="9" [rows]="6" />
   } @else {
     <div class="rounded-2xl border border-border bg-card overflow-hidden">
-      <div class="overflow-auto max-h-[70vh]" tabindex="0" role="region" aria-labelledby="remesas-caption">
-        <table class="w-full text-sm">
+      <div class="vtable-region" tabindex="0" role="region" aria-labelledby="remesas-caption" style="--vtable-min: 60rem">
+        <table class="vtable">
           <caption id="remesas-caption" class="sr-only">Remesas generadas</caption>
-          <thead class="sticky top-0 z-10 bg-card">
-            <tr class="border-b border-border text-left text-muted-foreground">
-              <th scope="col" class="py-3 px-4 font-medium">Nº</th>
-              <th scope="col" class="py-3 px-4 font-medium">Tipo</th>
-              <th scope="col" class="py-3 px-4 font-medium">Cobro</th>
-              <th scope="col" class="py-3 px-4 font-medium">Cuenta</th>
-              <th scope="col" class="py-3 px-4 font-medium text-right">Recibos</th>
-              <th scope="col" class="py-3 px-4 font-medium text-right">Importe</th>
-              <th scope="col" class="py-3 px-4 font-medium">Generada</th>
-              <th scope="col" class="py-3 px-4 font-medium">Estado</th>
-              @if (puedeGestionar) { <th scope="col" class="py-3 px-4 font-medium"><span class="sr-only">Acciones</span></th> }
+          <colgroup>
+            <col class="col-corto" style="inline-size: 6rem" />
+            <col class="col-texto" style="inline-size: 11rem" />
+            <col class="col-fecha" />
+            <col class="col-cups" style="inline-size: 10rem" />
+            <col class="col-corto" style="inline-size: 6rem" />
+            <col class="col-importe" style="inline-size: 8rem" />
+            <col class="col-texto" />
+            <col class="col-estado" />
+            @if (puedeGestionar) { <col class="col-acciones" /> }
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col" class="vtable-fix">Nº</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Cobro</th>
+              <th scope="col">Cuenta</th>
+              <th scope="col" class="cell-num">Recibos</th>
+              <th scope="col" class="cell-num">Importe</th>
+              <th scope="col">Generada</th>
+              <th scope="col">Estado</th>
+              @if (puedeGestionar) { <th scope="col"><span class="sr-only">Acciones</span></th> }
             </tr>
           </thead>
           <tbody>
             @for (r of remesasFiltradas(); track r.id) {
-              <tr class="border-b border-border/50 hover:bg-accent/40">
-                <th scope="row" class="py-2 px-4 font-normal text-left">
-                  <a [routerLink]="['/vibra/remesas', r.id]" class="hover:underline tabular-nums">{{ r.numero }}</a>
+              <tr>
+                <th scope="row" class="vtable-fix">
+                  <a [routerLink]="['/vibra/remesas', r.id]" class="font-medium tabular-nums hover:underline underline-offset-2">{{ r.numero }}</a>
                 </th>
-                <td class="py-2 px-4">{{ tipoLabel[r.tipo] }}</td>
-                <td class="py-2 px-4 tabular-nums whitespace-nowrap">{{ fecha(r.fechaCobro) }}</td>
-                <td class="py-2 px-4 tabular-nums whitespace-nowrap">{{ r.cuenta }}</td>
-                <td class="py-2 px-4 text-right tabular-nums">{{ r.recibos }}</td>
-                <td class="py-2 px-4 text-right tabular-nums whitespace-nowrap">{{ euro(r.importe) }}</td>
-                <td class="py-2 px-4 tabular-nums whitespace-nowrap">
-                  {{ fecha(r.createdAt) }}
-                  @if (r.creadaPorNombre) { <div class="text-xs text-muted-foreground">{{ r.creadaPorNombre }}</div> }
+                <td data-label="Tipo">{{ tipoLabel[r.tipo] }}</td>
+                <td data-label="Cobro" class="cell-nowrap tabular-nums">{{ fecha(r.fechaCobro) }}</td>
+                <td data-label="Cuenta" class="cell-nowrap tabular-nums">{{ r.cuenta }}</td>
+                <td data-label="Recibos" class="cell-num">{{ r.recibos }}</td>
+                <td data-label="Importe" class="cell-num font-medium">{{ euro(r.importe) }}</td>
+                <td data-label="Generada">
+                  <span class="cell-nowrap tabular-nums">{{ fecha(r.createdAt) }}</span>
+                  @if (r.creadaPorNombre) { <span class="cell-sub">{{ r.creadaPorNombre }}</span> }
                 </td>
-                <td class="py-2 px-4"><app-status-badge [tone]="estadoTone(r.estado)">{{ estadoLabel[r.estado] }}</app-status-badge></td>
+                <td data-label="Estado"><app-status-badge [tone]="estadoTone(r.estado)">{{ estadoLabel[r.estado] }}</app-status-badge></td>
                 @if (puedeGestionar) {
-                  <td class="py-2 px-4 whitespace-nowrap">
-                    <button type="button" (click)="descargar(r)" class="inline-flex items-center gap-1 underline hover:no-underline">
-                      <ui-icon name="download" [size]="14" /> Descargar XML
-                    </button>
-                    @if (r.estado === 'GENERADA') {
-                      <button type="button" (click)="anulando.set(r)" class="ml-3 text-danger-fg underline hover:no-underline">Anular</button>
-                    }
+                  <td data-label="Acciones">
+                    <div class="cell-actions">
+                      <button type="button" class="btn btn-secondary btn-icon" (click)="descargar(r)"
+                        title="Descargar XML" [attr.aria-label]="'Descargar XML de la remesa nº ' + r.numero">
+                        <ui-icon name="download" [size]="16" />
+                      </button>
+                      @if (r.estado === 'GENERADA') {
+                        <app-actions-menu [items]="menusRemesa().get(r.id) ?? []" [iconOnly]="true" [label]="'Más acciones de la remesa nº ' + r.numero" />
+                      }
+                    </div>
                   </td>
                 }
               </tr>
             } @empty {
-              <tr><td [attr.colspan]="puedeGestionar ? 9 : 8" class="py-16 text-center text-muted-foreground">
+              <tr><td [attr.colspan]="puedeGestionar ? 9 : 8" class="vtable-empty">
                 Todavía no hay remesas generadas.
               </td></tr>
             }

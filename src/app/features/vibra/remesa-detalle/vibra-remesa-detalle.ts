@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 
 import { PageHeader } from '../../../shared/components/page-header/page-header';
+import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions-menu/actions-menu';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
@@ -24,7 +25,7 @@ type Accion = 'anular' | 'cobrada';
 @Component({
   selector: 'app-vibra-remesa-detalle',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, PageHeader, TableSkeleton, StatusBadge, ConfirmDialog, Icon],
+  imports: [RouterLink, PageHeader, ActionsMenu, TableSkeleton, StatusBadge, ConfirmDialog, Icon],
   templateUrl: './vibra-remesa-detalle.html',
 })
 export class VibraRemesaDetalle {
@@ -50,6 +51,11 @@ export class VibraRemesaDetalle {
   protected readonly error = signal<string | null>(null);
   protected readonly confirmar = signal<Accion | null>(null);
   protected readonly ocupado = signal(false);
+
+  /** Cabecera: anular (poco frecuente, destructiva). */
+  protected readonly masAcciones: ActionsMenuItem[] = [
+    { label: 'Anular remesa', icon: 'circle-x', danger: true, action: () => this.confirmar.set('anular') },
+  ];
 
   constructor() {
     effect(() => this.load(this.id()));
