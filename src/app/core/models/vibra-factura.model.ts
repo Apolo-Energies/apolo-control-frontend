@@ -111,6 +111,8 @@ export interface VibraFactura {
   margenPct: number | null;
   avisos: string[];
   deKilowy: boolean;
+  /** Importada con su PDF de Kilowy guardado en Control. */
+  pdfKilowy: boolean;
   lineas: VibraFacturaLinea[];
   createdAt: string;
 }

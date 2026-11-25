@@ -84,7 +84,10 @@ export class Layout {
             { label: 'Equipo', url: '/vibra/equipo', icon: 'users' as const },
             { label: 'Liquidaciones', url: '/vibra/liquidaciones', icon: 'wallet' as const },
           ] : []),
-          ...(isAdmin ? [{ label: 'Importar datos', url: '/vibra/importar', icon: 'upload' as const }] : []),
+          ...(isAdmin ? [
+            { label: 'Importar datos', url: '/vibra/importar', icon: 'upload' as const },
+            { label: 'Migración desde Kilowy', url: '/vibra/migracion-kilowy', icon: 'arrow-left-right' as const },
+          ] : []),
         ],
       },
       {

@@ -335,6 +335,13 @@ export const routes: Routes = [
               import('./features/vibra/remesa-detalle/vibra-remesa-detalle').then((m) => m.VibraRemesaDetalle),
           },
           {
+            path: 'migracion-kilowy',
+            data: { roles: ['admin'] },
+            canActivate: [authGuard],
+            loadComponent: () =>
+              import('./features/vibra/migracion-kilowy/vibra-migracion-kilowy').then((m) => m.VibraMigracionKilowy),
+          },
+          {
             path: 'contrato-servicio',
             loadComponent: () =>
               import('./features/vibra/contrato-servicio/vibra-contrato-servicio').then((m) => m.VibraContratoServicio),

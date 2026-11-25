@@ -39,3 +39,4 @@ export * from './telkes-tarifa.model';
 export * from './telkes-dashboard.model';
 export * from './telkes-impago.model';
 export * from './telkes-ocr.model';
+export * from './vibra-migracion-kilowy.model';
