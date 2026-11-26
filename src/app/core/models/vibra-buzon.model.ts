@@ -38,4 +38,5 @@ export interface VibraBuzonEstado {
   ultimoDetalle: string | null;
   noProcesados: number;
   errores: number;
+  endesaConfigurado: boolean;
 }

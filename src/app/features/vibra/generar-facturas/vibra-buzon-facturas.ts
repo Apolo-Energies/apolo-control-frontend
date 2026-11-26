@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
+import { Observable } from 'rxjs';
 
 import { Pagination } from '../../../shared/components/pagination/pagination';
 import { StatusBadge, StatusTone } from '../../../shared/components/status-badge/status-badge';
@@ -50,7 +51,7 @@ export class VibraBuzonFacturas {
   protected readonly size = signal(20);
   protected readonly soloPendientes = signal(false);
   protected readonly leyendo = signal(false);
-  /** Resultado de «Leer ahora», para el lector de pantalla. */
+  /** Aviso de la lectura lanzada (buzón o Endesa), para el lector de pantalla. */
   protected readonly aviso = signal<string | null>(null);
   protected readonly reintentando = signal<string | null>(null);
 
@@ -58,6 +59,8 @@ export class VibraBuzonFacturas {
   protected readonly total = computed(() => this.result()?.totalElements ?? 0);
   protected readonly totalPages = computed(() => this.result()?.totalPages ?? 0);
   protected readonly pendientes = computed(() => (this.estado()?.noProcesados ?? 0) + (this.estado()?.errores ?? 0));
+  protected readonly endesaTitulo = computed(() =>
+    this.estado()?.endesaConfigurado === false ? 'Faltan las variables VIBRA_ENDESA_* del servidor' : '');
   protected readonly horario = computed(() => {
     const e = this.estado();
     if (!e) return '';
@@ -114,17 +117,26 @@ export class VibraBuzonFacturas {
   protected onPageSize(s: number): void { this.size.set(s); this.page.set(0); this.load(); }
 
   protected leer(): void {
+    this.lanzar(this.service.leer(), 'Leyendo el buzón…', 'No se pudo leer el buzón');
+  }
+
+  protected traerEndesa(): void {
+    this.lanzar(this.service.traerEndesa(), 'Trayendo las facturas de Endesa…', 'No se pudieron traer las facturas de Endesa');
+  }
+
+  /** Lectura en segundo plano (buzón o Endesa): comparten turno y se sigue con cargarEstado(). */
+  private lanzar(peticion: Observable<void>, enCurso: string, fallo: string): void {
     if (this.leyendo()) return;
     this.leyendo.set(true);
     this.aviso.set(null);
-    this.service.leer().subscribe({
+    peticion.subscribe({
       next: () => {
-        this.aviso.set('Leyendo el buzón…');
+        this.aviso.set(enCurso);
         this.cargarEstado();
       },
       error: (err: HttpErrorResponse) => {
         this.leyendo.set(false);
-        this.notify.error(mensajeError(err, 'No se pudo leer el buzón'));
+        this.notify.error(mensajeError(err, fallo));
         this.cargarEstado();
       },
     });

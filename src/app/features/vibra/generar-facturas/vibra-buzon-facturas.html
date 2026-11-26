@@ -5,11 +5,18 @@
       <p class="text-muted-foreground mt-1 max-w-[75ch]">
         Se lee el buzón sin marcar nada como leído: los PDF adjuntos (Apolo) y los enlaces de descarga (Endesa, Repsol…)
         crean su borrador con el contrato del CUPS. Lo que no casa queda «No procesado» con el motivo.
+        Las de Endesa también se traen de su portal.
       </p>
     </div>
+    <button type="button" class="btn btn-secondary" (click)="traerEndesa()"
+      [disabled]="leyendo() || !estado()?.endesaConfigurado || estado()?.leyendo"
+      [title]="endesaTitulo()">
+      <ui-icon name="download" [size]="16" />
+      Traer de Endesa
+    </button>
     <button type="button" class="btn btn-primary" (click)="leer()" [disabled]="leyendo() || !estado()?.configurado || estado()?.leyendo">
       <ui-icon name="refresh-cw" [size]="16" />
-      {{ leyendo() || estado()?.leyendo ? 'Leyendo…' : 'Leer ahora' }}
+      {{ leyendo() || estado()?.leyendo ? 'En curso…' : 'Leer ahora' }}
     </button>
   </div>
 

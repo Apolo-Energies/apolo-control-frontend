@@ -26,6 +26,11 @@ export class VibraBuzonService {
     return this.http.post<void>(`${this.baseUrl}/leer`, {});
   }
 
+  /** Arranca la sincronización con el portal de Endesa en segundo plano (202); el resultado sale en estado(). */
+  traerEndesa(): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/endesa/sincronizar`, {});
+  }
+
   reintentar(id: string): Observable<VibraBuzonCorreo> {
     return this.http.post<VibraBuzonCorreo>(`${this.baseUrl}/${id}/reintentar`, {});
   }
