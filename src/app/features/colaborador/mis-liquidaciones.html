@@ -1,0 +1,74 @@
+<app-page-header title="Mis liquidaciones" subtitle="Comisiones liquidadas cada mes y tu autofactura a Apolo" />
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">
+    {{ msg }} <button type="button" (click)="load()" class="ml-2 underline">Reintentar</button>
+  </div>
+}
+
+@if (loading() && rows().length === 0) {
+  <app-table-skeleton [cols]="6" [rows]="6" />
+} @else {
+  <div class="rounded-2xl border border-border bg-card overflow-hidden">
+    <div class="vtable-region" tabindex="0" role="region" aria-labelledby="mis-liq-caption" style="--vtable-min: 52rem">
+      <table class="vtable">
+        <caption id="mis-liq-caption" class="sr-only">Tus liquidaciones mensuales</caption>
+        <colgroup>
+          <col style="inline-size: 9.5rem" />
+          <col class="col-estado" style="inline-size: 11rem" />
+          <col class="col-importe" />
+          <col class="col-importe" />
+          <col class="col-importe" style="inline-size: 8rem" />
+          <col class="col-importe" />
+          <col class="col-texto" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col" class="vtable-fix">Mes</th>
+            <th scope="col">Estado</th>
+            <th scope="col" class="cell-num">Altas</th>
+            <th scope="col" class="cell-num">Bajas</th>
+            <th scope="col" class="cell-num">Renovaciones</th>
+            <th scope="col" class="cell-num">Neto</th>
+            <th scope="col" class="cell-num">Autofactura</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of rows(); track l.id) {
+            <tr>
+              <th scope="row" class="vtable-fix cell-nowrap font-medium">{{ mes(l.mes) }}</th>
+              <td data-label="Estado">
+                @if (l.estado === 'PAGADA') {
+                  <app-status-badge tone="success">Pagada</app-status-badge>
+                  <span class="cell-sub tabular-nums">el {{ fecha(l.fechaPago) }}</span>
+                } @else {
+                  <app-status-badge tone="warning">Pendiente de pago</app-status-badge>
+                }
+              </td>
+              <td data-label="Altas" class="cell-num">{{ eur(l.totalAltas) }}</td>
+              <td data-label="Bajas" class="cell-num" [class.text-danger-fg]="l.totalBajas < 0">{{ eur(l.totalBajas) }}</td>
+              <td data-label="Renovaciones" class="cell-num">{{ eur(l.totalAniversarios) }}</td>
+              <td data-label="Neto" class="cell-num font-semibold" [class.text-danger-fg]="l.totalNeto < 0">{{ eur(l.totalNeto) }}</td>
+              <td data-label="Autofactura">
+                <div class="cell-actions items-center">
+                  @if (l.autofacturaNumero) {
+                    <span class="text-xs text-muted-foreground text-right tabular-nums">{{ l.autofacturaNumero }}<br />{{ fecha(l.autofacturaFecha) }}</span>
+                  }
+                  <button type="button" (click)="descargar(l)" [disabled]="descargando() === l.id" class="btn btn-secondary">
+                    <ui-icon name="download" [size]="16" />
+                    {{ descargando() === l.id ? 'Generando…' : 'PDF' }}
+                    <span class="sr-only">de la autofactura de {{ mes(l.mes) }}</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="vtable-empty">
+              Aún no tienes liquidaciones. Aparecen aquí cuando administración guarda la de un mes.
+            </td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}

@@ -1,0 +1,35 @@
+<button #trigger type="button" [class]="tone() ? 'menu-badge-trigger' : 'btn btn-secondary'"
+  [class.btn-icon]="iconOnly() && !tone()"
+  [id]="id + '-trigger'" aria-haspopup="menu" [attr.aria-expanded]="abierto()"
+  [attr.commandfor]="conCommand ? id : null" [attr.command]="conCommand ? 'toggle-popover' : null"
+  [attr.popovertarget]="conCommand ? null : id"
+  [attr.aria-label]="ariaLabel() ?? (iconOnly() ? label() : null)" [attr.title]="iconOnly() ? label() : null"
+  (pointerdown)="porPuntero = true" (keydown)="onTriggerKey($event)">
+  @if (tone(); as t) {
+    <app-status-badge [tone]="t">{{ label() }} <ui-icon name="chevron-down" [size]="12" /></app-status-badge>
+  } @else if (iconOnly()) {
+    <ui-icon name="more-horizontal" [size]="16" />
+  } @else {
+    {{ label() }} <ui-icon name="chevron-down" [size]="14" />
+  }
+</button>
+<div #menu [id]="id" popover="auto" class="actions-menu" (toggle)="onToggle($event)">
+  <div focusgroup="menu nomemory" [attr.aria-labelledby]="id + '-trigger'" (keydown)="onMenuKey($event)">
+    @for (it of items(); track it.label) {
+      @if (it.separatorBefore) { <hr /> }
+      <button type="button" [class.menu-danger]="it.danger" [disabled]="it.disabled"
+        [attr.role]="it.checked !== undefined ? 'menuitemradio' : null"
+        [attr.aria-checked]="it.checked !== undefined ? it.checked : null"
+        (click)="run(it)" (pointermove)="onHover($event)">
+        <span class="menu-icon">
+          @if (it.checked) {
+            <ui-icon name="check" [size]="16" />
+          } @else if (it.icon) {
+            <ui-icon [name]="it.icon" [size]="16" />
+          }
+        </span>
+        {{ it.label }}
+      </button>
+    }
+  </div>
+</div>

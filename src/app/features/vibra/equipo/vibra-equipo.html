@@ -1,0 +1,255 @@
+<app-page-header title="Equipo" [subtitle]="rows().length + ' colaboradores · comisión, autofactura y acceso al portal'" />
+
+<search class="mb-4 block">
+  <form class="filterbar" (ngSubmit)="load()">
+    <div class="filter filter-grow">
+      <label for="eq-q">Buscar</label>
+      <input id="eq-q" type="search" name="q" [(ngModel)]="q" placeholder="Nombre del colaborador"
+        autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-secondary">
+        <ui-icon name="search" [size]="16" /> Buscar
+      </button>
+    </div>
+  </form>
+</search>
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">
+    {{ msg }} <button type="button" (click)="load()" class="ml-2 underline">Reintentar</button>
+  </div>
+}
+
+@if (loading() && rows().length === 0) {
+  <app-table-skeleton [cols]="6" [rows]="8" />
+} @else {
+  <div class="rounded-2xl border border-border bg-card overflow-hidden">
+    <div class="vtable-region" tabindex="0" role="region" aria-labelledby="equipo-caption" style="--vtable-min: 56rem">
+      <table class="vtable">
+        <caption id="equipo-caption" class="sr-only">Colaboradores Vibra: comisión por alta, autofactura y acceso al portal</caption>
+        <colgroup>
+          <col class="col-texto" />
+          <col style="inline-size: 10rem" />
+          <col style="inline-size: 12rem" />
+          <col style="inline-size: 10rem" />
+          <col style="inline-size: 16rem" />
+          @if (isAdmin) { <col style="inline-size: 4.5rem" /> }
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col" class="vtable-fix">Colaborador</th>
+            <th scope="col" class="cell-num">Contratos activos</th>
+            <th scope="col" class="cell-num">Comisión por alta</th>
+            <th scope="col">Autofactura</th>
+            <th scope="col">Acceso al portal</th>
+            @if (isAdmin) { <th scope="col"><span class="sr-only">Acciones</span></th> }
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of rows(); track c.clave) {
+            <tr rowLink>
+              <th scope="row" class="vtable-fix font-medium">
+                <span class="cell-clamp2" [title]="c.nombre">{{ c.nombre }}</span>
+              </th>
+              <td data-label="Contratos activos" class="cell-num">{{ c.contratosActivos }}</td>
+              <td data-label="Comisión por alta" class="cell-num">
+                <div class="inline-flex items-center justify-end gap-1">
+                  @if (isAdmin) {
+                    <label class="inline-flex items-center gap-1">
+                      <span class="sr-only">Comisión por alta de {{ c.nombre }} en euros{{ c.comisionAlta == null ? ', sin fijar' : '' }}</span>
+                      <input #com type="number" inputmode="decimal" min="0" step="0.01"
+                        [value]="c.comisionAlta ?? ''" [disabled]="saving() === c.clave"
+                        (blur)="guardarComision(c, com)" (keyup.enter)="com.blur()"
+                        placeholder="Sin fijar"
+                        class="cell-input w-24 text-end tabular-nums" [class.border-warning]="c.comisionAlta == null" />
+                      <span aria-hidden="true" class="text-muted-foreground">€</span>
+                    </label>
+                  } @else if (c.comisionAlta != null) {
+                    {{ eur(c.comisionAlta) }}
+                  } @else {
+                    <app-status-badge size="sm" tone="warning">Sin comisión</app-status-badge>
+                  }
+                  <button data-row-primary type="button" (click)="verHistorial(c)" class="btn btn-ghost btn-icon"
+                    [attr.aria-label]="'Histórico de comisión de ' + c.nombre" title="Histórico de comisión">
+                    <ui-icon name="clock" [size]="16" />
+                  </button>
+                </div>
+              </td>
+              <td data-label="Autofactura">
+                @if (c.datosFiscalesCompletos) {
+                  <app-status-badge tone="success">Datos completos</app-status-badge>
+                } @else {
+                  <app-status-badge tone="warning">Faltan datos</app-status-badge>
+                }
+              </td>
+              <td data-label="Acceso al portal">
+                @if (!c.accesoEmail) {
+                  <app-status-badge>Sin acceso</app-status-badge>
+                } @else {
+                  <app-status-badge [tone]="c.accesoActivo ? 'success' : 'neutral'">
+                    {{ c.accesoActivo ? 'Activo' : 'Desactivado' }}
+                  </app-status-badge>
+                  <span class="cell-sub truncate" [title]="c.accesoEmail">{{ c.accesoEmail }}</span>
+                }
+              </td>
+              @if (isAdmin) {
+                <td data-label="Acciones">
+                  <div class="cell-actions">
+                    <app-actions-menu [items]="menus().get(c.clave) ?? []" [iconOnly]="true" [label]="'Acciones de ' + c.nombre" />
+                  </div>
+                </td>
+              }
+            </tr>
+          } @empty {
+            <tr><td [attr.colspan]="isAdmin ? 6 : 5" class="vtable-empty">
+              Sin colaboradores con esta búsqueda.
+            </td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+<app-form-dialog
+  [open]="historialDe() !== null"
+  [title]="'Histórico de comisión'"
+  [subtitle]="historialDe()?.nombre ?? null"
+  icon="clock"
+  [readOnly]="true"
+  width="520px"
+  (cancel)="cerrarHistorial()">
+  @if (historialLoading()) {
+    <div class="py-8 text-center text-muted-foreground">Cargando…</div>
+  } @else if (historial().length === 0) {
+    <div class="py-8 text-center text-muted-foreground">Sin cambios registrados</div>
+  } @else {
+    <table class="w-full text-sm">
+      <caption class="sr-only">Cambios de comisión</caption>
+      <thead>
+        <tr class="border-b border-border text-left text-muted-foreground">
+          <th scope="col" class="py-2 font-medium">Fecha</th>
+          <th scope="col" class="py-2 font-medium text-right">Antes</th>
+          <th scope="col" class="py-2 font-medium text-right">Ahora</th>
+          <th scope="col" class="py-2 font-medium">Usuario</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (h of historial(); track $index) {
+          <tr class="border-b border-border/50">
+            <td class="py-2 pr-3 cell-nowrap tabular-nums">{{ fecha(h.fecha) }}</td>
+            <td class="py-2 pr-3 cell-num">{{ eur(h.anterior) }}</td>
+            <td class="py-2 pr-3 cell-num">{{ eur(h.nuevo) }}</td>
+            <td class="py-2">{{ h.usuario ?? '—' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</app-form-dialog>
+
+<app-form-dialog
+  [open]="accesoDe() !== null"
+  title="Dar acceso al portal"
+  [subtitle]="accesoDe()?.nombre ?? null"
+  icon="user"
+  [saving]="accesoSaving()"
+  [canSave]="!!af.valid"
+  saveLabel="Dar acceso"
+  [errorMessage]="accesoError()"
+  width="480px"
+  (cancel)="cerrarAcceso()"
+  (save)="darAcceso()">
+  <form #af="ngForm" class="flex flex-col gap-4 py-2 text-sm" (ngSubmit)="af.valid && darAcceso()">
+    <p class="text-muted-foreground">
+      Podrá entrar en Control con este email: verá sus contratos, cargará contratos nuevos y descargará su autofactura.
+      Pásale la contraseña inicial por un canal seguro; la puede cambiar en «Mi perfil».
+    </p>
+    <div class="campo vfield">
+      <label for="acc-email">Email (inicio de sesión)</label>
+      <input id="acc-email" name="email" type="email" [(ngModel)]="acceso.email" #em="ngModel" required email maxlength="255"
+        autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
+        [attr.aria-invalid]="em.invalid && em.touched"
+        [attr.aria-describedby]="em.invalid && em.touched ? 'acc-email-error' : null" />
+      <p id="acc-email-error" class="error-msg">Error: escribe un email con el formato nombre&#64;dominio.es.</p>
+    </div>
+    <div class="campo vfield">
+      <label for="acc-password">Contraseña inicial</label>
+      <input id="acc-password" name="password" [type]="verPassword() ? 'text' : 'password'" [(ngModel)]="acceso.password"
+        #pw="ngModel" required [pattern]="passwordPattern" autocomplete="new-password"
+        [attr.aria-invalid]="pw.invalid && pw.touched"
+        [attr.aria-describedby]="pw.invalid && pw.touched ? 'acc-password-ayuda acc-password-error' : 'acc-password-ayuda'" />
+      <p id="acc-password-ayuda" class="vfield-help">Al menos 10 caracteres, con letras y números.</p>
+      <p id="acc-password-error" class="error-msg">Error: la contraseña debe tener al menos 10 caracteres, con letras y números.</p>
+    </div>
+    <label class="inline-flex items-center gap-2 min-h-10 self-start">
+      <input type="checkbox" class="size-4" [checked]="verPassword()" (change)="verPassword.set(!verPassword())" /> Mostrar contraseña
+    </label>
+  </form>
+</app-form-dialog>
+
+<app-form-dialog
+  [open]="fiscalDe() !== null"
+  title="Datos fiscales de su autofactura"
+  [subtitle]="fiscalDe()?.nombre ?? null"
+  icon="edit"
+  [saving]="fiscalSaving()"
+  [canSave]="!!ff.valid"
+  saveLabel="Guardar"
+  [errorMessage]="fiscalError()"
+  width="600px"
+  (cancel)="cerrarFiscal()"
+  (save)="guardarFiscal()">
+  <form #ff="ngForm" class="grid grid-cols-1 sm:grid-cols-4 gap-x-3 gap-y-4 py-2 text-sm" (ngSubmit)="ff.valid && guardarFiscal()">
+    <fieldset class="sm:col-span-4 flex flex-wrap gap-x-5">
+      <legend class="vfield-label mb-1">Tipo</legend>
+      @for (t of tiposFiscales; track t[0]) {
+        <label class="inline-flex items-center gap-2 min-h-10">
+          <input type="radio" class="size-4" name="tipoFiscal" [value]="t[0]" [(ngModel)]="fiscal.tipoFiscal" /> {{ t[1] }}
+        </label>
+      }
+    </fieldset>
+    <div class="campo vfield sm:col-span-2">
+      <label for="fis-nombre">Nombre o razón social</label>
+      <input id="fis-nombre" name="nombreFiscal" [(ngModel)]="fiscal.nombreFiscal" maxlength="255" autocomplete="off"
+        [placeholder]="fiscalDe()?.nombre ?? ''" />
+    </div>
+    <div class="campo vfield sm:col-span-2">
+      <label for="fis-nif">NIF</label>
+      <input id="fis-nif" name="nifFiscal" [(ngModel)]="fiscal.nifFiscal" #fnif="ngModel" maxlength="20"
+        pattern="[A-Za-z0-9 .\-]{8,20}" autocomplete="off" spellcheck="false"
+        [attr.aria-invalid]="fnif.invalid && fnif.touched"
+        [attr.aria-describedby]="fnif.invalid && fnif.touched ? 'fis-nif-error' : null" class="uppercase" />
+      <p id="fis-nif-error" class="error-msg">Error: escribe un DNI, NIE o CIF (p. ej. 12345678Z).</p>
+    </div>
+    <div class="campo vfield sm:col-span-4">
+      <label for="fis-dir">Dirección fiscal (calle, número, código postal, población y provincia)</label>
+      <input id="fis-dir" name="direccionFiscal" [(ngModel)]="fiscal.direccionFiscal" maxlength="500" autocomplete="off" />
+    </div>
+    <div class="campo vfield sm:col-span-4">
+      <label for="fis-iban">IBAN de cobro</label>
+      <input id="fis-iban" name="iban" [(ngModel)]="fiscal.iban" #fiban="ngModel" maxlength="40"
+        pattern="[A-Za-z]{2}[0-9]{2}[A-Za-z0-9 ]{11,36}" autocomplete="off" spellcheck="false"
+        [attr.aria-invalid]="fiban.invalid && fiban.touched"
+        [attr.aria-describedby]="fiban.invalid && fiban.touched ? 'fis-iban-error' : null" class="uppercase tabular-nums" />
+      <p id="fis-iban-error" class="error-msg">Error: escribe un IBAN (p. ej. ES91 2100 0418 4502 0005 1332).</p>
+    </div>
+    <div class="campo vfield sm:col-span-2">
+      <label for="fis-iva">IVA %</label>
+      <input id="fis-iva" name="ivaPct" type="number" min="0" max="100" step="0.01" inputmode="decimal" required
+        [(ngModel)]="fiscal.ivaPct" class="tabular-nums" />
+      <p class="error-msg">Error: porcentaje entre 0 y 100.</p>
+    </div>
+    <div class="campo vfield sm:col-span-2">
+      <label for="fis-irpf">Retención IRPF %</label>
+      <input id="fis-irpf" name="irpfPct" type="number" min="0" max="100" step="0.01" inputmode="decimal" required
+        [(ngModel)]="fiscal.irpfPct" class="tabular-nums" />
+      <p class="error-msg">Error: porcentaje entre 0 y 100.</p>
+    </div>
+    <p class="sm:col-span-4 text-xs text-muted-foreground">
+      Para emitir la autofactura hacen falta tipo, nombre, NIF, dirección e IBAN.
+      Las autofacturas ya emitidas no cambian.
+    </p>
+  </form>
+</app-form-dialog>

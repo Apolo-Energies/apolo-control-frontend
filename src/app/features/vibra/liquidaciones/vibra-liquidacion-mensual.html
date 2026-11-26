@@ -1,0 +1,172 @@
+<div class="mb-4 flex flex-wrap items-end gap-3">
+  <search class="grow">
+    <form class="filterbar" (submit)="$event.preventDefault()">
+      <div class="filter filter-grow">
+        <label for="lm-colab">Colaborador</label>
+        <select id="lm-colab" name="clave" [(ngModel)]="clave" (change)="load()">
+          <option value="">Elige un colaborador</option>
+          @for (c of colaboradores(); track c.clave) {
+            <option [value]="c.clave">{{ c.nombre }}{{ c.sinComision ? ' · sin comisión' : '' }}</option>
+          }
+        </select>
+      </div>
+      <div class="filter">
+        <label for="lm-mes">Mes</label>
+        <input id="lm-mes" type="month" name="mes" [(ngModel)]="mes" (change)="load()" required class="tabular-nums" />
+      </div>
+    </form>
+  </search>
+  @if (liq(); as l) {
+    <div class="flex flex-wrap items-center gap-2 ml-auto">
+      <button type="button" (click)="exportar()" class="btn btn-secondary">
+        <ui-icon name="download" [size]="16" /> Exportar Excel
+      </button>
+      @if (isAdmin && l.estado === 'GUARDADA') {
+        <app-actions-menu [items]="masAcciones" />
+      }
+      @if (isAdmin) {
+        @if (l.estado === 'BORRADOR') {
+          <button type="button" (click)="guardar()" [disabled]="!puedeGuardar() || busy()" class="btn btn-primary">
+            Guardar liquidación
+          </button>
+        } @else if (l.estado === 'GUARDADA') {
+          <button type="button" (click)="pagarOpen.set(true)" [disabled]="busy()" class="btn btn-primary">
+            <ui-icon name="wallet" [size]="16" /> Marcar pagada
+          </button>
+        }
+      }
+    </div>
+  }
+</div>
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">{{ msg }}</div>
+}
+
+@if (!clave) {
+  <p class="rounded-2xl border border-dashed border-border py-16 px-4 text-center text-muted-foreground">
+    Elige un colaborador y un mes para ver su liquidación.
+  </p>
+} @else if (loading() && !liq()) {
+  <app-table-skeleton [cols]="8" [rows]="6" />
+} @else if (liq(); as l) {
+  <section class="rounded-2xl border border-border bg-card p-4 sm:p-5 mb-4" aria-labelledby="lm-resumen" aria-live="polite">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mb-4">
+      <h2 id="lm-resumen" class="text-base font-semibold">{{ l.colaborador }} · {{ mesLargo(l.mes) }}</h2>
+      <app-status-badge [tone]="estadoTone(l.estado)">{{ estadoLabel(l.estado) }}</app-status-badge>
+      @if (l.fechaPago) { <span class="text-sm text-muted-foreground tabular-nums">Pagada el {{ fecha(l.fechaPago) }}</span> }
+    </div>
+    <dl class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-3 text-sm">
+      <div>
+        <dt class="text-xs text-muted-foreground">{{ l.estado === 'BORRADOR' ? 'Comisión por alta' : 'Comisión actual' }}</dt>
+        <dd class="tabular-nums" [class.text-warning-fg]="l.comisionAlta == null">{{ l.comisionAlta != null ? eur(l.comisionAlta) : 'Sin fijar' }}</dd>
+      </div>
+      <div><dt class="text-xs text-muted-foreground">Por renovación</dt><dd class="tabular-nums">{{ eur(l.importeRenovacion) }}</dd></div>
+      <div><dt class="text-xs text-muted-foreground">Altas</dt><dd class="tabular-nums">{{ eur(l.totalAltas) }}</dd></div>
+      <div><dt class="text-xs text-muted-foreground">Bajas</dt><dd class="tabular-nums" [class.text-danger-fg]="l.totalBajas < 0">{{ eur(l.totalBajas) }}</dd></div>
+      <div><dt class="text-xs text-muted-foreground">Renovaciones</dt><dd class="tabular-nums">{{ eur(l.totalAniversarios) }}</dd></div>
+      <div>
+        <dt class="text-xs text-muted-foreground">Neto</dt>
+        <dd class="text-lg font-semibold tabular-nums whitespace-nowrap" [class.text-danger-fg]="l.totalNeto < 0">{{ eur(l.totalNeto) }}</dd>
+      </div>
+    </dl>
+  </section>
+
+  @if (l.comisionAlta == null) {
+    <div class="rounded-xl border border-warning/40 bg-warning-soft text-warning-fg px-4 py-3 mb-3 text-sm" role="status">
+      {{ l.colaborador }} no tiene comisión por alta: ponla en Vibra → Equipo para poder guardar.
+    </div>
+  }
+  @if (l.lineasARevisar > 0) {
+    <div class="rounded-xl border border-warning/40 bg-warning-soft text-warning-fg px-4 py-3 mb-3 text-sm" role="status">
+      {{ l.lineasARevisar }} {{ l.lineasARevisar === 1 ? 'línea a revisar' : 'líneas a revisar' }}: faltan o no cuadran las fechas de activación o baja. Corrígelas en Altas para poder guardar.
+    </div>
+  }
+  @if (l.hayCambios) {
+    <div class="rounded-xl border border-info/40 bg-info-soft text-info-fg px-4 py-3 mb-3 text-sm" role="status">
+      Los datos de las altas o la comisión han cambiado desde que se guardó. Los importes guardados no cambian.
+    </div>
+  }
+
+  <div class="rounded-2xl border border-border bg-card overflow-hidden">
+    <div class="vtable-region" tabindex="0" role="region" aria-labelledby="liq-mensual-caption" style="--vtable-min: 64rem">
+      <table class="vtable">
+        <caption id="liq-mensual-caption" class="sr-only">Líneas de la liquidación de {{ l.colaborador }} en {{ mesLargo(l.mes) }}</caption>
+        <colgroup>
+          <col style="inline-size: 11rem" />
+          <col class="col-texto" />
+          <col class="col-cups" />
+          <col class="col-fecha" />
+          <col class="col-fecha" />
+          <col class="col-corto" />
+          <col class="col-importe" />
+          <col class="col-importe" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col" class="vtable-fix">Concepto</th>
+            <th scope="col">Titular</th>
+            <th scope="col">CUPS</th>
+            <th scope="col">Activación</th>
+            <th scope="col">Baja</th>
+            <th scope="col" class="cell-num">Días</th>
+            <th scope="col" class="cell-num">Comisión</th>
+            <th scope="col" class="cell-num">Importe</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of l.lineas; track r.altaId + r.tipo + r.aniversario) {
+            <tr>
+              <th scope="row" class="vtable-fix">
+                {{ tipo(r) }}
+                @if (r.revisar) { <div class="cell-badges"><app-status-badge size="sm" tone="warning">A revisar</app-status-badge></div> }
+              </th>
+              <td data-label="Titular"><span class="cell-clamp2" [title]="r.titular ?? ''">{{ r.titular ?? 'Sin titular' }}</span></td>
+              <td data-label="CUPS">
+                @if (r.cups; as c) {
+                  <span [cellTail]="c" [title]="c"></span>
+                } @else { <span class="text-muted-foreground">Sin CUPS</span> }
+              </td>
+              <td data-label="Activación" class="cell-nowrap tabular-nums" [class.text-warning-fg]="r.revisar && !r.fechaActivacion">
+                {{ r.fechaActivacion ? fecha(r.fechaActivacion) : (r.revisar ? 'Falta' : '') }}
+              </td>
+              <td data-label="Baja" class="cell-nowrap tabular-nums">{{ r.fechaBaja ? fecha(r.fechaBaja) : '' }}</td>
+              <td data-label="Días activo" class="cell-num">{{ r.diasActivo ?? '' }}</td>
+              <td data-label="Comisión" class="cell-num">{{ eur(r.comisionAplicada) }}</td>
+              <td data-label="Importe" class="cell-num font-medium" [class.text-danger-fg]="r.importe < 0">{{ eur(r.importe) }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="8" class="vtable-empty">Nada que liquidar en {{ mesLargo(l.mes) }}.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+<app-form-dialog
+  [open]="pagarOpen()"
+  title="Marcar liquidación pagada"
+  [subtitle]="(liq()?.colaborador ?? '') + ' · ' + mesLargo(liq()?.mes ?? '') + ' · ' + eur(liq()?.totalNeto ?? null)"
+  icon="wallet"
+  saveLabel="Marcar pagada"
+  [saving]="busy()"
+  [canSave]="!!fechaPago && fechaPago <= hoy"
+  (cancel)="pagarOpen.set(false)"
+  (save)="pagar()">
+  <div class="vfield py-2 text-sm">
+    <label for="lm-fecha-pago">Fecha de pago</label>
+    <input id="lm-fecha-pago" type="date" [(ngModel)]="fechaPago" [max]="hoy" required aria-describedby="lm-fecha-pago-ayuda" class="tabular-nums" />
+    <p id="lm-fecha-pago-ayuda" class="vfield-help">Las altas de esta liquidación pasarán a «Pagado».</p>
+  </div>
+</app-form-dialog>
+
+<app-confirm-dialog
+  [open]="borrarOpen()"
+  title="Borrar liquidación"
+  [message]="'¿Borrar la liquidación guardada de ' + (liq()?.colaborador ?? '') + ' en ' + mesLargo(liq()?.mes ?? '') + '? Sus líneas volverán a salir en el borrador.'"
+  confirmLabel="Borrar"
+  [loading]="busy()"
+  tone="danger"
+  (confirm)="borrar()"
+  (cancel)="borrarOpen.set(false)" />

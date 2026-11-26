@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 
 import { Icon } from '../../../shared/icons/icon';
 import { PageHeader } from '../../../shared/components/page-header/page-header';
@@ -14,11 +14,12 @@ import { NotificationService } from '../../../core/services/notification.service
 import type { PdfOferta } from '../../../core/services/contrato-pdf.service';
 import { VibraContratoPdfService, PdfContratoData } from '../../../core/services/vibra-contrato-pdf.service';
 import { VibraOcrResult, VibraAltaPayload, VibraTarifa } from '../../../core/models';
+import { formatDate } from '../../../shared/utils/format';
 
 @Component({
   selector: 'app-vibra-contrato-servicio',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, Icon, PageHeader, BrandLoader],
+  imports: [ReactiveFormsModule, Icon, PageHeader, BrandLoader],
   templateUrl: './vibra-contrato-servicio.html',
 })
 export class VibraContratoServicio {
@@ -165,6 +166,8 @@ export class VibraContratoServicio {
   protected getPotenciaPeriodo(t: VibraTarifa, p: number): number | null {
     return (t as unknown as Record<string, number | null>)['p' + p + 'Potencia'] ?? null;
   }
+
+  protected readonly fecha = formatDate;
 
   protected fmt(n: number | null | undefined): string {
     if (n == null) return '—';

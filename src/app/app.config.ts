@@ -56,7 +56,7 @@ export const appConfig: ApplicationConfig = {
       deps: [PLATFORM_ID, AuthService, MasterDataService],
       useFactory:
         (platformId: object, auth: AuthService, masterData: MasterDataService) => async () => {
-          if (isPlatformBrowser(platformId) && auth.isAuthenticated()) {
+          if (isPlatformBrowser(platformId) && auth.isAuthenticated() && !auth.esColaborador()) {
             await masterData.initialize();
           }
         },

@@ -1,0 +1,424 @@
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">{{ msg }}</div>
+}
+
+@if (factura(); as f) {
+  <a routerLink="/vibra/facturas" class="inline-flex items-center gap-1 mb-2 rounded text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground">
+    <ui-icon name="chevron-left" [size]="16" /> Facturas
+  </a>
+  <app-page-header [title]="f.numero ? 'Factura ' + f.numero : 'Borrador de factura'" [subtitle]="subtitulo()">
+    @if (conPdf()) {
+      <button secondary type="button" class="btn btn-secondary" (click)="verPdf()">
+        <ui-icon name="eye" [size]="16" /> {{ esBorrador() ? 'Vista previa' : 'Ver PDF' }}
+      </button>
+    }
+    @if (f.compraPdfNombre) {
+      <button secondary type="button" class="btn btn-secondary" (click)="verCompra()">
+        <ui-icon name="file-text" [size]="16" /> Ver compra
+      </button>
+    } @else if (puedeEditar() && esBorrador()) {
+      <button secondary type="button" class="btn btn-secondary" (click)="elegirCompra()" [disabled]="!!ocupado()">
+        <ui-icon name="upload" [size]="16" /> {{ ocupado() === 'compra' ? 'Leyendo…' : 'Subir compra' }}
+      </button>
+    }
+    @if (estadoAcciones().length) {
+      <app-actions-menu label="Cambiar estado" [items]="estadoAcciones()" />
+    }
+    @if (masAcciones().length) {
+      <app-actions-menu [items]="masAcciones()" />
+    }
+    @if (puedeEditar() && esBorrador()) {
+      <label class="inline-flex items-center gap-2 text-sm ps-1" [attr.title]="f.email ? 'Se envía a ' + f.email : null">
+        <input type="checkbox" class="size-4 accent-primary" aria-describedby="enviar-al-emitir-ayuda" [checked]="enviarAlEmitir() && !!f.email" [disabled]="!f.email || !!ocupado()"
+          (change)="enviarAlEmitir.set($any($event.target).checked)" />
+        {{ f.email ? 'Enviar al emitir' : 'Sin email: no se envía' }}
+        <span id="enviar-al-emitir-ayuda" class="sr-only">{{ f.email ? 'a ' + f.email : 'el cliente no tiene email' }}</span>
+      </label>
+    }
+    @if (puedeEditar() && esBorrador()) {
+      <button primary type="button" class="btn btn-primary" (click)="emitir()" [disabled]="!!ocupado()">
+        <ui-icon name="check" [size]="16" /> Emitir factura
+      </button>
+    } @else if (puedeEnviar() && !f.enviadaAt) {
+      <button primary type="button" class="btn btn-primary" (click)="enviar()" [disabled]="!!ocupado() || !f.email"
+        [attr.title]="f.email ? null : 'La factura no tiene email del cliente'">
+        <ui-icon name="mail" [size]="16" /> Enviar por correo
+      </button>
+    }
+  </app-page-header>
+
+  @if (puedeEditar() && esBorrador()) {
+    <input #compraInput type="file" accept="application/pdf,.pdf" hidden (change)="subirCompra(compraInput)" />
+  }
+
+  <section class="rounded-2xl border border-border bg-card px-5 py-4 mb-4" aria-label="Resumen de la factura">
+    <dl class="flex flex-wrap items-end gap-x-8 gap-y-3 text-sm">
+      <div>
+        <dt class="text-xs text-muted-foreground mb-1">Estado</dt>
+        <dd class="flex flex-wrap items-center gap-1.5">
+          <app-status-badge [tone]="tone(f.estado)">{{ estadoLabel[f.estado] }}</app-status-badge>
+          @if (f.deKilowy) { <app-status-badge size="sm">Kilowy</app-status-badge> }
+        </dd>
+      </div>
+      @if (!esBorrador()) {
+        <div>
+          <dt class="text-xs text-muted-foreground mb-1">Envío</dt>
+          <dd class="h-6 flex items-center">
+            @if (f.enviadaAt) {
+              <span class="tabular-nums" [title]="'Enviada el ' + fechaHora(f.enviadaAt)">Enviada el {{ fecha(f.enviadaAt) }}</span>
+            } @else {
+              <span class="text-muted-foreground">Sin enviar</span>
+            }
+          </dd>
+        </div>
+      }
+      <div>
+        <dt class="text-xs text-muted-foreground mb-1">Periodo</dt>
+        <dd class="h-6 flex items-center tabular-nums whitespace-nowrap">
+          {{ fecha(f.periodoDesde) }} – {{ fecha(f.periodoHasta) }}
+          <span class="text-muted-foreground ms-1.5">{{ f.dias }} {{ f.dias === 1 ? 'día' : 'días' }}</span>
+        </dd>
+      </div>
+      @if (f.fechaEmision) {
+        <div>
+          <dt class="text-xs text-muted-foreground mb-1">Emisión</dt>
+          <dd class="h-6 flex items-center tabular-nums">{{ fecha(f.fechaEmision) }}</dd>
+        </div>
+      }
+      @if (f.fechaCobro) {
+        <div>
+          <dt class="text-xs text-muted-foreground mb-1">Cobro</dt>
+          <dd class="h-6 flex items-center tabular-nums">{{ fecha(f.fechaCobro) }}</dd>
+        </div>
+      }
+      @if (f.fechaPago) {
+        <div>
+          <dt class="text-xs text-muted-foreground mb-1">Pagada</dt>
+          <dd class="h-6 flex items-center tabular-nums">{{ fecha(f.fechaPago) }}</dd>
+        </div>
+      }
+      @if (f.fechaDevolucion) {
+        <div>
+          <dt class="text-xs text-muted-foreground mb-1">Devuelta</dt>
+          <dd class="h-6 flex items-center gap-1.5">
+            <span class="tabular-nums">{{ fecha(f.fechaDevolucion) }}</span>
+            @if (f.motivoDevolucion) { <span class="text-muted-foreground">· {{ f.motivoDevolucion }}</span> }
+          </dd>
+        </div>
+      }
+      <div class="ms-auto text-end">
+        <dt class="text-xs text-muted-foreground mb-1">Total</dt>
+        <dd class="text-2xl font-semibold tabular-nums whitespace-nowrap leading-none">{{ euro(f.total) }}</dd>
+      </div>
+    </dl>
+    @if (f.deKilowy) {
+      <p class="flex items-start gap-2 mt-3 pt-3 border-t border-border text-sm text-muted-foreground" role="note">
+        <ui-icon name="info" [size]="16" class="mt-0.5 shrink-0" />
+        <span>
+          Importada de Kilowy: el desglose del cálculo está en Kilowy.
+          @if (!f.pdfKilowy) {
+            Falta su PDF: tráelo en <a routerLink="/vibra/migracion-kilowy" class="underline underline-offset-2 hover:text-foreground">Migración desde Kilowy</a>.
+          }
+        </span>
+      </p>
+    }
+  </section>
+
+  @if (esBorrador() && f.avisos.length) {
+    <section class="rounded-xl border border-warning/40 bg-warning-soft px-4 py-3 mb-4 text-sm" aria-labelledby="avisos-titulo">
+      <h2 id="avisos-titulo" class="font-semibold mb-1">
+        Revisa antes de emitir · {{ f.avisos.length }} {{ f.avisos.length === 1 ? 'punto' : 'puntos' }}
+      </h2>
+      <p class="text-muted-foreground mb-2">Son avisos: puedes emitirla igualmente.</p>
+      <ul class="list-disc pl-5 space-y-1">
+        @for (a of f.avisos; track a) { <li>{{ a }}</li> }
+      </ul>
+    </section>
+  }
+
+  <div class="grid grid-cols-1 gap-4 mb-4" [class.lg:grid-cols-3]="conLateral()">
+    <section class="rounded-2xl border border-border bg-card p-5" [class.lg:col-span-2]="conLateral()" aria-labelledby="datos-titulo">
+      <h2 id="datos-titulo" class="font-semibold mb-4">Cliente y suministro</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5 text-sm">
+        <dl class="flex flex-col gap-3">
+          <div>
+            <dt class="text-muted-foreground">Cliente</dt>
+            <dd>{{ f.titular ?? 'Sin titular' }}
+              @if (f.nif) { <span class="text-muted-foreground tabular-nums ms-1">{{ f.nif }}</span> }
+            </dd>
+          </div>
+          @if (f.email) {
+            <div><dt class="text-muted-foreground">Email</dt><dd class="break-all">{{ f.email }}</dd></div>
+          }
+          @if (f.direccion) {
+            <div><dt class="text-muted-foreground">Dirección</dt><dd>{{ f.direccion }}</dd></div>
+          }
+          <div>
+            <dt class="text-muted-foreground">Forma de pago</dt>
+            <dd>Domiciliación bancaria
+              @if (f.ibanEnmascarado) { <span class="tabular-nums whitespace-nowrap">{{ f.ibanEnmascarado }}</span> }
+              @else { <span class="text-warning-fg">(sin IBAN)</span> }
+            </dd>
+          </div>
+        </dl>
+        <dl class="flex flex-col gap-3">
+          <div><dt class="text-muted-foreground">CUPS</dt><dd class="tabular-nums break-all">{{ f.cups }}</dd></div>
+          @if (f.direccionSuministro) {
+            <div><dt class="text-muted-foreground">Dirección del suministro</dt><dd>{{ f.direccionSuministro }}</dd></div>
+          }
+          <div>
+            <dt class="text-muted-foreground">Contrato y producto</dt>
+            <dd>
+              {{ f.contrato ? '#' + f.contrato : (f.altaId ? 'Sin nº de Kilowy' : 'Sin contrato') }}
+              · {{ f.producto ?? 'sin producto' }}
+              @if (f.tarifaAcceso) { <span class="text-muted-foreground"> · {{ f.tarifaAcceso }}</span> }
+            </dd>
+          </div>
+          @if (potencias().length) {
+            <div>
+              <dt class="text-muted-foreground">Potencias</dt>
+              <dd class="tabular-nums flex flex-wrap gap-x-3">
+                @for (v of potencias(); track $index) { <span class="whitespace-nowrap">{{ v }}</span> }
+              </dd>
+            </div>
+          }
+          @if (consumos().length) {
+            <div>
+              <dt class="text-muted-foreground">Consumos</dt>
+              <dd class="tabular-nums flex flex-wrap gap-x-3">
+                @for (v of consumos(); track $index) { <span class="whitespace-nowrap">{{ v }}</span> }
+              </dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </section>
+
+    @if (conLateral()) {
+      <div class="flex flex-col gap-4">
+        @if (f.compraTotal !== null) {
+          <section class="rounded-2xl border border-border bg-card p-5" aria-labelledby="rent-titulo">
+            <h2 id="rent-titulo" class="font-semibold mb-3">Rentabilidad</h2>
+            <dl class="text-sm flex flex-col gap-2">
+              <div class="flex justify-between gap-4">
+                <dt class="text-muted-foreground">Compra{{ f.compraComercializadora ? ' · ' + f.compraComercializadora : '' }}</dt>
+                <dd class="tabular-nums whitespace-nowrap">{{ euro(f.compraTotal) }}</dd>
+              </div>
+              <div class="flex justify-between gap-4">
+                <dt class="text-muted-foreground">Le facturamos</dt>
+                <dd class="tabular-nums whitespace-nowrap">{{ euro(f.total) }}</dd>
+              </div>
+              @if (f.margen !== null) {
+                <div class="flex justify-between gap-4 font-semibold border-t border-border pt-2" [class.text-danger-fg]="f.margen <= 0">
+                  <dt>Margen</dt>
+                  <dd class="tabular-nums whitespace-nowrap">
+                    {{ euro(f.margen) }}
+                    @if (f.margenPct !== null) { <span class="font-normal ms-1">({{ numero(f.margenPct) }} %)</span> }
+                  </dd>
+                </div>
+              }
+              @if (f.compraFechaEmision) {
+                <div class="flex justify-between gap-4">
+                  <dt class="text-muted-foreground">Emisión de la compra</dt>
+                  <dd class="tabular-nums">{{ fecha(f.compraFechaEmision) }}</dd>
+                </div>
+              }
+            </dl>
+          </section>
+        }
+        @if (resumen().length) {
+          <section class="rounded-2xl border border-border bg-card p-5" aria-labelledby="resumen-titulo">
+            <h2 id="resumen-titulo" class="font-semibold mb-3">Importes</h2>
+            <dl class="text-sm flex flex-col gap-1.5">
+              @for (r of resumen(); track r.label) {
+                <div class="flex justify-between gap-4">
+                  <dt class="text-muted-foreground">{{ r.label }}</dt><dd class="tabular-nums whitespace-nowrap">{{ euro(r.valor) }}</dd>
+                </div>
+              }
+              <div class="flex justify-between gap-4 font-semibold border-t border-border pt-2 mt-1">
+                <dt>Total</dt><dd class="tabular-nums whitespace-nowrap">{{ euro(f.total) }}</dd>
+              </div>
+            </dl>
+          </section>
+        }
+      </div>
+    }
+  </div>
+
+  @if (!f.deKilowy) {
+    <section class="rounded-2xl border border-border bg-card overflow-hidden mb-4" aria-labelledby="calc-titulo">
+      <h2 id="calc-titulo" class="font-semibold px-5 pt-4 pb-2">Cálculo de la factura</h2>
+      <div class="vtable-region" tabindex="0" role="region" aria-labelledby="calc-titulo">
+        <table class="vtable">
+          <caption class="sr-only">Cálculo de la factura por concepto</caption>
+          <colgroup>
+            <col style="inline-size: 14rem" />
+            <col class="col-texto" />
+            <col class="col-importe" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col" class="vtable-fix">Concepto</th>
+              <th scope="col">Cálculo</th>
+              <th scope="col" class="cell-num">Importe</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of lineasCalculo(); track l.id) {
+              <tr>
+                <th scope="row" class="vtable-fix">{{ l.concepto }}</th>
+                <td data-label="Cálculo" class="text-muted-foreground tabular-nums">{{ l.detalle }}</td>
+                <td data-label="Importe" class="cell-num">{{ euro(l.importe) }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="3" class="vtable-empty">Sin potencia ni energía: revisa la compra.</td></tr>
+            }
+            <tr>
+              <th scope="row" class="vtable-fix">Impuesto eléctrico</th>
+              <td data-label="Cálculo" class="text-muted-foreground tabular-nums">{{ numero(f.iePct) }} % s/ {{ euro(f.baseIe) }}</td>
+              <td data-label="Importe" class="cell-num">{{ euro(f.impuestoElectrico) }}</td>
+            </tr>
+            @for (t of f.tramosIva; track $index) {
+              <tr>
+                <th scope="row" class="vtable-fix">{{ t.pct === null ? 'No sujeto a IVA' : 'IVA ' + t.pct + ' %' }}</th>
+                <td data-label="Cálculo" class="text-muted-foreground tabular-nums">{{ t.pct === null ? 'Base' : 's/' }} {{ euro(t.base) }}</td>
+                <td data-label="Importe" class="cell-num">{{ euro(t.pct === null ? 0 : t.cuota) }}</td>
+              </tr>
+            }
+            <tr class="font-semibold">
+              <th scope="row" class="vtable-fix !font-semibold">Total factura</th>
+              <td aria-hidden="true" class="@max-[600px]:hidden"></td>
+              <td data-label="Importe" class="cell-num">{{ euro(f.total) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  @if (gruposConceptos().length || (puedeEditar() && esBorrador())) {
+    <section class="rounded-2xl border border-border bg-card overflow-hidden mb-4" aria-labelledby="conceptos-titulo">
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 pt-4 pb-2">
+        <h2 id="conceptos-titulo" class="font-semibold">Otros conceptos</h2>
+        @if (puedeEditar() && esBorrador()) {
+          <button type="button" class="btn btn-secondary ms-auto" (click)="abrirLinea(null)">
+            <ui-icon name="plus" [size]="16" /> Añadir concepto
+          </button>
+        }
+      </div>
+      @if (esBorrador()) {
+        <p class="px-5 pb-3 text-sm text-muted-foreground max-w-[75ch]">
+          Los sacados de la compra se regeneran al re-leerla; los añadidos a mano se conservan.
+          Importe sin IVA, en negativo para un descuento.
+        </p>
+      }
+      @if (gruposConceptos().length) {
+        <div class="vtable-region" tabindex="0" role="region" aria-labelledby="conceptos-titulo">
+          <table class="vtable">
+            <caption class="sr-only">Otros conceptos de la factura</caption>
+            <colgroup>
+              <col class="col-texto" />
+              <col style="inline-size: 10.5rem" />
+              <col class="col-estado" />
+              <col class="col-importe" />
+              @if (conAccionesLinea()) { <col class="col-acciones" /> }
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col" class="vtable-fix">Concepto</th>
+                <th scope="col">IVA</th>
+                <th scope="col">Origen</th>
+                <th scope="col" class="cell-num">Importe</th>
+                @if (conAccionesLinea()) { <th scope="col"><span class="sr-only">Acciones</span></th> }
+              </tr>
+            </thead>
+            @for (grupo of gruposConceptos(); track grupo.id) {
+              <tbody>
+                <tr>
+                  <th scope="rowgroup" [attr.colspan]="conAccionesLinea() ? 5 : 4"
+                    class="!py-2 @max-[600px]:!ps-0 text-xs !font-medium text-muted-foreground">{{ grupo.titulo }}</th>
+                </tr>
+                @for (item of grupo.lineas; track item.linea.id) {
+                  <tr>
+                    <th scope="row" class="vtable-fix">{{ item.linea.concepto }}</th>
+                    <td data-label="IVA" class="cell-nowrap text-muted-foreground">{{ ivaTexto(item.linea) }}</td>
+                    <td data-label="Origen" class="cell-nowrap text-muted-foreground">{{ item.linea.origen === 'AUTO' ? 'De la compra' : 'A mano' }}</td>
+                    <td data-label="Importe" class="cell-num">{{ euro(item.linea.importe) }}</td>
+                    @if (conAccionesLinea()) {
+                      <td>
+                        @if (item.acciones.length) {
+                          <div class="cell-actions">
+                            <app-actions-menu [iconOnly]="true" [label]="'Acciones de ' + item.linea.concepto" [items]="item.acciones" />
+                          </div>
+                        }
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            }
+          </table>
+        </div>
+      } @else {
+        <p class="px-5 pb-5 text-sm text-muted-foreground">Sin otros conceptos.</p>
+      }
+    </section>
+  }
+
+  <app-form-dialog
+    [open]="lineaEdit() !== null"
+    [title]="lineaEdit()?.id ? 'Editar concepto' : 'Añadir concepto'"
+    [icon]="lineaEdit()?.id ? 'edit' : 'plus'"
+    [saving]="lineaSaving()"
+    [canSave]="!!lf.valid && importeValido()"
+    [saveLabel]="lineaEdit()?.id ? 'Guardar concepto' : 'Añadir a la factura'"
+    [errorMessage]="lineaError()"
+    width="520px"
+    (cancel)="lineaEdit.set(null)"
+    (save)="guardarLinea()">
+    <form #lf="ngForm" class="flex flex-col gap-3 py-2 text-sm" (ngSubmit)="guardarLinea()">
+      <div class="campo flex flex-col gap-1">
+        <label for="lin-concepto">Concepto (lo que ve el cliente)</label>
+        <input id="lin-concepto" name="concepto" [(ngModel)]="linea.concepto" #con="ngModel" required maxlength="255"
+          [attr.aria-describedby]="con.invalid && (con.dirty || con.touched) ? 'lin-concepto-error' : null"
+          class="border border-border rounded-lg px-3 py-2 bg-input" />
+        <p id="lin-concepto-error" class="error-msg">Error: escribe el concepto.</p>
+      </div>
+      <div class="campo flex flex-col gap-1">
+        <label for="lin-importe">Importe (€, sin IVA; negativo = descuento)</label>
+        <input id="lin-importe" name="importe" [(ngModel)]="linea.importe" #imp="ngModel" required inputmode="decimal"
+          pattern="-?[0-9]{1,9}([.,][0-9]{1,2})?" autocomplete="off"
+          [attr.aria-describedby]="imp.invalid && (imp.dirty || imp.touched) ? 'lin-importe-error' : null"
+          class="border border-border rounded-lg px-3 py-2 bg-input tabular-nums" />
+        <p id="lin-importe-error" class="error-msg">Error: escribe un importe como 12,50 o -5 (máximo 2 decimales).</p>
+      </div>
+      <fieldset class="flex flex-col gap-1">
+        <legend class="mb-1">Dónde va</legend>
+        <label class="inline-flex items-center gap-2"><input type="radio" name="zona" value="DESPUES" [(ngModel)]="linea.zona" /> Después del impuesto eléctrico (con su IVA)</label>
+        <label class="inline-flex items-center gap-2"><input type="radio" name="zona" value="ANTES" [(ngModel)]="linea.zona" /> Dentro de la base del impuesto eléctrico (IVA general)</label>
+      </fieldset>
+      @if (linea.zona === 'DESPUES') {
+        <div class="campo flex flex-col gap-1">
+          <label for="lin-iva">IVA</label>
+          <select id="lin-iva" name="iva" [(ngModel)]="linea.iva" class="border border-border rounded-lg px-3 py-2 bg-input">
+            @for (i of ivas; track $index) {
+              <option [value]="i === null ? '' : '' + i">{{ i === null ? 'Sin IVA (no sujeto)' : i + ' %' }}</option>
+            }
+          </select>
+        </div>
+      }
+    </form>
+  </app-form-dialog>
+
+  <app-confirm-dialog
+    [open]="confirmacion() !== null"
+    [title]="confirmacion()?.titulo ?? ''"
+    [message]="confirmacion()?.mensaje ?? ''"
+    [confirmLabel]="confirmacion()?.label ?? 'Aceptar'"
+    [tone]="confirmacion()?.tone ?? 'warning'"
+    [loading]="!!ocupado()"
+    (confirm)="confirmacion()?.accion()"
+    (cancel)="confirmacion.set(null)" />
+} @else if (!error()) {
+  <p class="text-sm text-muted-foreground" role="status">Cargando factura…</p>
+}

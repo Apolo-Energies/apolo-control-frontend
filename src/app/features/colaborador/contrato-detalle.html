@@ -1,0 +1,57 @@
+<a routerLink="/colaborador/contratos" class="inline-flex items-center gap-1 min-h-10 text-sm text-muted-foreground hover:text-foreground mb-1">
+  <ui-icon name="chevron-left" [size]="16" /> Mis contratos
+</a>
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3" role="alert">{{ msg }}</div>
+} @else if (contrato(); as c) {
+  <app-page-header [title]="c.titular ?? 'Contrato'"
+    [subtitle]="(c.numeroContrato ? 'Contrato nº ' + c.numeroContrato + ' · ' : '') + (c.cups ?? '')">
+    <app-status-badge [tone]="estadoTone(c.estado)">{{ estadoLabel(c.estado) }}</app-status-badge>
+  </app-page-header>
+
+  <dl class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 rounded-2xl border border-border bg-card p-4 sm:p-5 mb-4 text-sm">
+    @for (f of fechas(); track f.label) {
+      <div>
+        <dt class="text-muted-foreground text-xs">{{ f.label }}</dt>
+        <dd class="tabular-nums font-medium">{{ f.valor ? fecha(f.valor) : 'Pendiente' }}</dd>
+      </div>
+    }
+  </dl>
+
+  <div class="grid gap-4 md:grid-cols-2">
+    <section class="rounded-2xl border border-border bg-card p-4 sm:p-5" aria-labelledby="det-suministro">
+      <h2 id="det-suministro" class="font-semibold mb-3">Suministro</h2>
+      <dl class="grid grid-cols-[minmax(6.5rem,auto)_1fr] gap-x-4 gap-y-2 text-sm [&>dt]:text-muted-foreground">
+        @if (c.cups) { <dt>CUPS</dt><dd class="tabular-nums break-all">{{ c.cups }}</dd> }
+        @if (c.direccionSuministro || c.poblacion) {
+          <dt>Dirección</dt>
+          <dd>{{ c.direccionSuministro }}@if (c.poblacion) {@if (c.direccionSuministro) {, }{{ c.poblacion }}}@if (c.provincia) { ({{ c.provincia }})}</dd>
+        }
+        @if (potencias().length) {
+          <dt>Potencias</dt>
+          <dd class="flex flex-wrap gap-x-3 gap-y-1 tabular-nums">
+            @for (p of potencias(); track p.periodo) { <span class="whitespace-nowrap">{{ p.periodo }} {{ p.valor }} kW</span> }
+          </dd>
+        }
+        <dt>Comercializadora</dt><dd>{{ c.comercializadora ?? 'Pendiente de tramitar' }}</dd>
+        @if (c.tarifaNombre) { <dt>Producto</dt><dd>{{ c.tarifaNombre }}</dd> }
+      </dl>
+    </section>
+
+    <section class="rounded-2xl border border-border bg-card p-4 sm:p-5" aria-labelledby="det-titular">
+      <h2 id="det-titular" class="font-semibold mb-3">Titular</h2>
+      <dl class="grid grid-cols-[minmax(6.5rem,auto)_1fr] gap-x-4 gap-y-2 text-sm [&>dt]:text-muted-foreground">
+        @if (c.nifCif) { <dt>NIF/CIF</dt><dd class="tabular-nums">{{ c.nifCif }}</dd> }
+        @if (c.telefono) { <dt>Teléfono</dt><dd><a [href]="'tel:' + c.telefono" class="underline-offset-2 hover:underline tabular-nums">{{ c.telefono }}</a></dd> }
+        @if (c.email) { <dt>Email</dt><dd class="break-all">{{ c.email }}</dd> }
+        @if (c.cuentaBancaria) { <dt>IBAN</dt><dd class="tabular-nums break-all">{{ c.cuentaBancaria }}</dd> }
+      </dl>
+      @if (!c.nifCif && !c.telefono && !c.email && !c.cuentaBancaria) {
+        <p class="text-sm text-muted-foreground">Sin datos de contacto.</p>
+      }
+    </section>
+  </div>
+} @else {
+  <p class="py-16 text-center text-muted-foreground" role="status">Cargando contrato…</p>
+}

@@ -27,6 +27,8 @@ export class Layout {
   protected readonly sections = computed<SidebarSection[]>(() => {
     const isAdmin = this.auth.hasRole('admin');
     const showUsers = this.auth.hasRole('admin', 'operaciones');
+    const verLiquidacionesVibra = this.auth.hasRole('admin', 'contabilidad');
+    const verFacturasVibra = this.auth.hasRole('admin', 'contabilidad', 'operaciones');
 
     const base: SidebarSection[] = [
       {
@@ -66,14 +68,26 @@ export class Layout {
             children: [
               { label: 'Contrato Servicio', url: '/vibra/contrato-servicio', icon: 'file-plus' as const },
               { label: 'Altas', url: '/vibra/altas', icon: 'users' as const },
+              { label: 'Clientes', url: '/vibra/clientes', icon: 'user' as const },
               { label: 'Tramitación', url: '/vibra/tramitacion', icon: 'check-square' as const },
               { label: 'Renovaciones', url: '/vibra/renovaciones', icon: 'repeat' as const },
             ],
           },
           { label: 'Preciario', url: '/vibra/preciario', icon: 'euro' as const },
+          ...(verFacturasVibra ? [
+            { label: 'Facturas', url: '/vibra/facturas', icon: 'file-text' as const },
+            { label: 'Generar facturas', url: '/vibra/facturas/generar', icon: 'upload' as const },
+            { label: 'Remesas', url: '/vibra/remesas', icon: 'euro' as const },
+          ] : []),
           { label: 'Impagos', url: '/vibra/impagos', icon: 'alert-triangle' as const },
-          { label: 'Liquidaciones', url: '/vibra/liquidaciones', icon: 'wallet' as const },
-          ...(isAdmin ? [{ label: 'Importar datos', url: '/vibra/importar', icon: 'upload' as const }] : []),
+          ...(verLiquidacionesVibra ? [
+            { label: 'Equipo', url: '/vibra/equipo', icon: 'users' as const },
+            { label: 'Liquidaciones', url: '/vibra/liquidaciones', icon: 'wallet' as const },
+          ] : []),
+          ...(isAdmin ? [
+            { label: 'Importar datos', url: '/vibra/importar', icon: 'upload' as const },
+            { label: 'Migración desde Kilowy', url: '/vibra/migracion-kilowy', icon: 'arrow-left-right' as const },
+          ] : []),
         ],
       },
       {

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { NgTemplateOutlet } from '@angular/common';
 
 import { PageHeader } from '../../../shared/components/page-header/page-header';
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
@@ -9,22 +9,34 @@ import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
+import { RowLink } from '../../../shared/directives/row-link';
+import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions-menu/actions-menu';
 
 import { VibraTarifaService } from '../../../core/services/vibra-tarifa.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { VibraTarifa, VibraTarifaPayload } from '../../../core/models';
+import { AuthService } from '../../../core/auth';
+import {
+  ACCION_CARGA_TARIFA_LABEL, AccionCargaTarifa, CargaTarifasResponse, VibraTarifa, VibraTarifaPayload,
+} from '../../../core/models';
+import { mensajeError } from '../../../shared/utils/http-error';
+import { StatusTone } from '../../../shared/components/status-badge/status-badge';
 import { parsePrecios } from '../../../shared/utils/format';
 
 @Component({
   selector: 'app-vibra-preciario',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, PageHeader, FormDialog, ConfirmDialog, StatusBadge, TableSkeleton, Icon],
+  imports: [ReactiveFormsModule, NgTemplateOutlet, PageHeader, FormDialog, ConfirmDialog, StatusBadge, TableSkeleton, Icon, ActionsMenu, RowLink],
   templateUrl: './vibra-preciario.html',
 })
 export class VibraPreciario {
   private readonly service = inject(VibraTarifaService);
   private readonly notify = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
+  private readonly auth = inject(AuthService);
+
+  /** Solo admin cambia el estado desde la lista (el resto ve el badge). */
+  protected readonly isAdmin = this.auth.hasRole('admin');
+  protected readonly toggling = signal<string | null>(null);
 
   protected readonly all = signal<VibraTarifa[]>([]);
   protected readonly loading = signal(true);
@@ -44,8 +56,21 @@ export class VibraPreciario {
   protected readonly detailData = signal<VibraTarifa | null>(null);
   protected readonly detailLoading = signal(false);
 
-  protected readonly tarifas20 = computed(() => this.all().filter(t => t.tipo === '2.0TD'));
-  protected readonly tarifas30 = computed(() => this.all().filter(t => t.tipo === '3.0TD'));
+  /** Una tabla por tipo de tarifa. */
+  protected readonly grupos = computed(() => (['2.0TD', '3.0TD'] as const).map((tipo) => ({
+    tipo, id: tipo.replace('.', ''), periodos: this.periodosTarifa(tipo), tarifas: this.all().filter((t) => t.tipo === tipo),
+  })));
+
+  /** Acciones de cada fila. */
+  protected readonly menus = computed(() => new Map<string, ActionsMenuItem[]>(this.all().map((t) => [t.id, [
+    { label: 'Ver detalle', icon: 'eye', action: () => this.verDetalle(t.id) },
+    { label: 'Editar', icon: 'edit', action: () => this.openEdit(t) },
+    { label: 'Eliminar', icon: 'trash', danger: true, separatorBefore: true, action: () => this.askDelete(t) },
+  ]])));
+
+  protected periodosTarifa(tipo: string | null | undefined): number[] {
+    return tipo === '2.0TD' ? [1, 2, 3] : [1, 2, 3, 4, 5, 6];
+  }
 
   protected readonly form = this.fb.group({
     nombre: ['', Validators.required],
@@ -64,6 +89,19 @@ export class VibraPreciario {
     p5Potencia: [null as number | null],
     p6Potencia: [null as number | null],
   });
+
+  // Carga de precios desde la plantilla Excel (solo admin)
+  protected readonly cargaOpen = signal(false);
+  protected readonly cargaArchivo = signal<File | null>(null);
+  protected readonly cargaPreview = signal<CargaTarifasResponse | null>(null);
+  protected readonly cargaLeyendo = signal(false);
+  protected readonly cargaAplicando = signal(false);
+  protected readonly cargaError = signal<string | null>(null);
+  protected readonly cargaPuedeAplicar = computed(() => {
+    const p = this.cargaPreview();
+    return !!p && p.errores === 0 && p.crear + p.actualizar + p.nuevaVersion > 0;
+  });
+  protected readonly accionLabel = ACCION_CARGA_TARIFA_LABEL;
 
   constructor() { this.load(); }
 
@@ -153,9 +191,103 @@ export class VibraPreciario {
     });
   }
 
+  protected toggleActiva(t: VibraTarifa, activa: boolean): void {
+    this.toggling.set(t.id);
+    this.all.update(list => list.map(x => (x.id === t.id ? { ...x, activa } : x)));
+    this.service.cambiarActiva(t.id, activa).subscribe({
+      next: () => {
+        this.toggling.set(null);
+        this.notify.success(`${t.nombre}: ${activa ? 'activa' : 'inactiva'}`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.toggling.set(null);
+        this.all.update(list => list.map(x => (x.id === t.id ? { ...x, activa: !activa } : x)));
+        this.notify.error(err.error?.message ?? 'No se pudo cambiar el estado');
+      },
+    });
+  }
+
+  // ── Carga de precios ─────────────────────────────────────
+
+  protected abrirCarga(): void {
+    this.cargaArchivo.set(null);
+    this.cargaPreview.set(null);
+    this.cargaError.set(null);
+    this.cargaOpen.set(true);
+  }
+
+  protected cerrarCarga(): void { this.cargaOpen.set(false); }
+
+  protected descargarPlantilla(): void {
+    this.service.plantilla().subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'vibra-plantilla-precios.xlsx';
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
+      },
+      error: () => this.notify.error('No se pudo descargar la plantilla'),
+    });
+  }
+
+  /** Al elegir archivo se pide la vista previa (no cambia nada). */
+  protected onArchivoCarga(ev: Event): void {
+    const file = (ev.target as HTMLInputElement).files?.[0] ?? null;
+    this.cargaArchivo.set(file);
+    this.cargaPreview.set(null);
+    this.cargaError.set(null);
+    if (!file) return;
+    this.cargaLeyendo.set(true);
+    this.service.cargar(file, false).subscribe({
+      next: (r) => { this.cargaPreview.set(r); this.cargaLeyendo.set(false); },
+      error: (err: HttpErrorResponse) => {
+        this.cargaLeyendo.set(false);
+        this.cargaError.set(mensajeError(err, 'No se pudo leer el Excel'));
+      },
+    });
+  }
+
+  protected aplicarCarga(): void {
+    const file = this.cargaArchivo();
+    if (!file || !this.cargaPuedeAplicar()) return;
+    this.cargaAplicando.set(true);
+    this.service.cargar(file, true).subscribe({
+      next: (r) => {
+        this.cargaAplicando.set(false);
+        this.notify.success(`Precios cargados: ${r.crear} nuevos, ${r.actualizar} actualizados, ${r.nuevaVersion} versiones nuevas`);
+        this.cerrarCarga();
+        this.load();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.cargaAplicando.set(false);
+        // 422: hay filas con error; trae la vista previa actualizada
+        if (err.status === 422 && err.error?.filas) this.cargaPreview.set(err.error as CargaTarifasResponse);
+        this.cargaError.set(mensajeError(err, 'No se aplicó ningún cambio: revisa las filas con error'));
+      },
+    });
+  }
+
+  protected tonoAccion(a: AccionCargaTarifa): StatusTone {
+    switch (a) {
+      case 'CREAR': return 'success';
+      case 'ACTUALIZAR': return 'info';
+      case 'NUEVA_VERSION': return 'purple';
+      case 'ERROR': return 'danger';
+      default: return 'neutral';
+    }
+  }
+
+  /** Precios de una fila de la carga: los periodos con valor, separados por « · ». */
+  protected periodos(valores: (number | null)[]): string {
+    const v = valores.map((n, i) => (n == null ? null : `P${i + 1} ${n.toLocaleString('es-ES', { maximumFractionDigits: 6 })}`))
+      .filter((x): x is string => x !== null);
+    return v.length ? v.join(' · ') : '—';
+  }
+
   protected fmt(n: number | null): string {
     if (n == null) return '—';
-    return n.toFixed(6);
+    return n.toLocaleString('es-ES', { minimumFractionDigits: 6, maximumFractionDigits: 6 });
   }
 
   protected verDetalle(id: string): void {

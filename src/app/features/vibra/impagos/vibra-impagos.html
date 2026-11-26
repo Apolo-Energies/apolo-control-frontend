@@ -1,149 +1,196 @@
-<app-page-header title="Impagos" [subtitle]="total() + ' de ' + total() + ' registros'">
-  <a routerLink="/vibra/dashboard" class="text-sm text-muted-foreground hover:text-foreground">← Volver al Dashboard</a>
-  <button (click)="exportExcel()" class="ml-auto inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
-    <ui-icon name="download" [size]="16" /> Exportar
-  </button>
-  <button (click)="openCreate()" class="inline-flex items-center gap-2 rounded-lg bg-danger text-white px-4 py-2 text-sm font-medium hover:opacity-90">
-    <ui-icon name="plus" [size]="16" /> Nuevo Impago
+<app-page-header title="Impagos" [subtitle]="total() + (total() === 1 ? ' impago' : ' impagos')">
+  @if (puedeSubirDevoluciones()) {
+    <button secondary type="button" class="btn btn-secondary" (click)="tab.set('devoluciones'); subirDevoluciones.set(true)">
+      <ui-icon name="upload" [size]="16" /> Subir devoluciones del banco
+    </button>
+  }
+  <app-actions-menu [items]="masAcciones" />
+  <button primary type="button" class="btn btn-primary" (click)="openCreate()">
+    <ui-icon name="plus" [size]="16" /> Nuevo impago
   </button>
 </app-page-header>
 
-<!-- Filtros -->
-<div class="flex flex-wrap items-center gap-2 mb-4">
-  <div class="relative flex-1 max-w-md">
-    <ui-icon name="search" [size]="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-    <input
-      [(ngModel)]="q" (keyup.enter)="applyFilters()"
-      placeholder="Buscar cliente, factura, colaborador…"
-      class="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-sm bg-input" />
+@if (puedeVerDevoluciones()) {
+  <div class="tablist mb-4" focusgroup="tablist nomemory" role="tablist" aria-label="Impagos">
+    <button type="button" role="tab" id="tab-impagos" [attr.aria-selected]="tab() === 'impagos'"
+      [attr.focusgroupstart]="tab() === 'impagos' ? '' : null" (click)="tab.set('impagos')">
+      Impagos
+      @if (result()) { <span class="ml-1 tabular-nums text-xs text-muted-foreground">{{ total() }}</span> }
+    </button>
+    <button type="button" role="tab" id="tab-devoluciones" [attr.aria-selected]="tab() === 'devoluciones'"
+      [attr.focusgroupstart]="tab() === 'devoluciones' ? '' : null" (click)="tab.set('devoluciones')">Devoluciones procesadas</button>
   </div>
-  <select [(ngModel)]="estadoFilter" (change)="applyFilters()"
-    class="border border-border rounded-lg px-3 py-2 text-sm bg-input">
-    <option value="">Todos los estados</option>
-    @for (e of estadoValues; track e) {<option [value]="e">{{ e }}</option>}
-  </select>
-  <button (click)="applyFilters()" class="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90">
-    Buscar
-  </button>
-</div>
 
-@if (error(); as msg) {
-  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4">
-    {{ msg }} <button (click)="load()" class="ml-2 underline">Reintentar</button>
+  <div role="tabpanel" aria-labelledby="tab-devoluciones" [hidden]="tab() !== 'devoluciones'">
+    <app-vibra-devoluciones-banco [(subirAbierto)]="subirDevoluciones" [puedeAplicar]="puedeSubirDevoluciones()"
+      (aplicado)="load()" />
   </div>
 }
 
-@if (loading() && !result()) {
-  <app-table-skeleton [cols]="10" [rows]="8" />
-} @else {
-  <div class="rounded-2xl border border-border bg-card overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-border text-left text-muted-foreground bg-neutral-soft/50">
-            <th (click)="setSort('fechaDevolucion')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
-              <span class="inline-flex items-center gap-1">Fecha devolución
-                @if (sortField()==='fechaDevolucion') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
-              </span>
-            </th>
-            <th (click)="setSort('cliente')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
-              <span class="inline-flex items-center gap-1">Cliente
-                @if (sortField()==='cliente') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
-              </span>
-            </th>
-            <th (click)="setSort('factura')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
-              <span class="inline-flex items-center gap-1">Factura
-                @if (sortField()==='factura') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
-              </span>
-            </th>
-            <th (click)="setSort('importe')" class="py-3 px-4 font-medium text-right cursor-pointer select-none hover:bg-accent">
-              <span class="inline-flex items-center gap-1">Importe
-                @if (sortField()==='importe') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
-              </span>
-            </th>
-            <th (click)="setSort('activoBaja')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
-              <span class="inline-flex items-center gap-1">Activo/Baja
-                @if (sortField()==='activoBaja') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
-              </span>
-            </th>
-            <th (click)="setSort('estado')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
-              <span class="inline-flex items-center gap-1">Estado
-                @if (sortField()==='estado') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
-              </span>
-            </th>
-            <th (click)="setSort('colaborador')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
-              <span class="inline-flex items-center gap-1">Colaborador
-                @if (sortField()==='colaborador') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
-              </span>
-            </th>
-            <th (click)="setSort('motivoDevolucion')" class="py-3 px-4 font-medium cursor-pointer select-none hover:bg-accent">
-              <span class="inline-flex items-center gap-1">Motivo devolución
-                @if (sortField()==='motivoDevolucion') { <ui-icon [name]="sortDir()==='asc'?'arrow-up':'arrow-down'" [size]="12"/> }
-              </span>
-            </th>
-            <th class="py-3 px-4 font-medium">Comentarios</th>
-            <th class="py-3 px-4 font-medium text-right">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (r of rows(); track r.id) {
-            <tr class="border-b border-border/50 hover:bg-accent/40">
-              <td class="py-2 px-4">{{ r.fechaDevolucion ?? '—' }}</td>
-              <td class="py-2 px-4">{{ r.cliente ?? '—' }}</td>
-              <td class="py-2 px-4 text-muted-foreground">{{ r.factura ?? '—' }}</td>
-              <td class="py-2 px-4 text-right tabular-nums">{{ fmtEur(r.importe) }}</td>
-              <td class="py-2 px-4">
-                <app-status-badge [tone]="activoTone(r.activoBaja)">{{ r.activoBaja ?? '—' }}</app-status-badge>
-              </td>
-              <td class="py-2 px-4">
-                <select (change)="changeEstado(r, $any($event.target).value)"
-                  class="border border-border rounded-md px-2 py-1 text-xs bg-input">
-                  @for (e of estadoValues; track e) {
-                    <option [value]="e" [selected]="r.estado === e">{{ e }}</option>
-                  }
-                  @if (r.estado && !estadoValues.includes($any(r.estado))) {
-                    <option [value]="r.estado" selected>{{ r.estado }}</option>
-                  }
-                </select>
-              </td>
-              <td class="py-2 px-4">{{ r.colaborador ?? '—' }}</td>
-              <td class="py-2 px-4 text-muted-foreground">{{ r.motivoDevolucion ?? '—' }}</td>
-              <td class="py-2 px-4 text-muted-foreground text-xs max-w-xs truncate">{{ r.comentarios ?? '—' }}</td>
-              <td class="py-2 px-4 text-right whitespace-nowrap">
-                <button (click)="verDetalle(r.id)" class="p-1 hover:bg-info-soft rounded" title="Ver detalle">
-                  <ui-icon name="eye" [size]="16" />
-                </button>
-                <button (click)="openEdit(r)" class="p-1 hover:bg-info-soft rounded ml-1" title="Editar">
-                  <ui-icon name="edit" [size]="16" />
-                </button>
-                <button (click)="askDelete(r)" class="p-1 hover:bg-danger-soft text-danger-fg rounded ml-1" title="Borrar">
-                  <ui-icon name="trash" [size]="16" />
-                </button>
-              </td>
-            </tr>
-          }
-          @if (rows().length === 0) {
-            <tr><td colspan="10" class="py-16">
-              <div class="flex flex-col items-center gap-2 text-muted-foreground">
-                <ui-icon name="search" [size]="40" class="opacity-30"/>
-                <p class="font-medium text-base">Sin impagos</p>
-                <p class="text-xs">Probá ajustar los filtros o crear uno nuevo</p>
-              </div>
-            </td></tr>
-          }
-        </tbody>
-      </table>
-    </div>
-    @if (totalPages() > 1) {
-      <div class="border-t border-border">
-        <app-pagination
-          [page]="page()" [pageSize]="size()"
-          [totalElements]="total()" [totalPages]="totalPages()"
-          (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+<div [attr.role]="puedeVerDevoluciones() ? 'tabpanel' : null" [attr.aria-labelledby]="puedeVerDevoluciones() ? 'tab-impagos' : null"
+  [hidden]="tab() !== 'impagos'">
+
+  <search class="mb-4 block">
+    <form class="filterbar" (ngSubmit)="applyFilters()">
+      <div class="filter filter-grow">
+        <label for="imp-q">Buscar</label>
+        <input id="imp-q" type="search" name="q" [(ngModel)]="q" placeholder="Cliente, factura o colaborador"
+          autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
       </div>
-    }
-  </div>
-}
+      <div class="filter">
+        <label for="imp-estado">Estado</label>
+        <select id="imp-estado" name="estado" [(ngModel)]="estadoFilter" (change)="applyFilters()">
+          <option value="">Todos</option>
+          @for (e of estadoValues; track e) { <option [value]="e">{{ estadoLabel[e] }}</option> }
+        </select>
+      </div>
+      <div class="filter-actions">
+        <button type="submit" class="btn btn-secondary">
+          <ui-icon name="search" [size]="16" /> Buscar
+        </button>
+        <button type="button" class="btn btn-ghost" (click)="limpiar()">Limpiar</button>
+      </div>
+    </form>
+  </search>
+
+  @if (error(); as msg) {
+    <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">
+      {{ msg }} <button type="button" (click)="load()" class="ml-2 underline">Reintentar</button>
+    </div>
+  }
+
+  <!-- Cabecera ordenable -->
+  <ng-template #sortTh let-campo let-texto="texto">
+    <button type="button" class="th-sort" (click)="setSort(campo)">
+      {{ texto }}
+      @if (sortField() === campo) {
+        <ui-icon [name]="sortDir() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="12" aria-hidden="true" />
+      }
+    </button>
+  </ng-template>
+
+  @if (loading() && !result()) {
+    <app-table-skeleton [cols]="7" [rows]="8" />
+  } @else {
+    <div class="rounded-2xl border border-border bg-card overflow-hidden">
+      <div class="vtable-region" tabindex="0" role="region" aria-labelledby="impagos-caption" style="--vtable-min: 66rem">
+        <table class="vtable">
+          <caption id="impagos-caption" class="sr-only">Impagos de Vibra</caption>
+          <colgroup>
+            <col class="col-texto" />
+            <col class="col-numdoc" style="inline-size: 10rem" />
+            <col class="col-fecha" style="inline-size: 8.5rem" />
+            <col class="col-importe" />
+            <col class="col-estado" style="inline-size: 11rem" />
+            <col class="col-texto" style="inline-size: 12rem" />
+            <col class="col-acciones" style="inline-size: 5.75rem" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col" class="vtable-fix" [attr.aria-sort]="ariaSort('cliente')">
+                <ng-container *ngTemplateOutlet="sortTh; context: { $implicit: 'cliente', texto: 'Cliente' }" />
+              </th>
+              <th scope="col" [attr.aria-sort]="ariaSort('factura')">
+                <ng-container *ngTemplateOutlet="sortTh; context: { $implicit: 'factura', texto: 'Factura' }" />
+              </th>
+              <th scope="col" [attr.aria-sort]="ariaSort('fechaDevolucion')">
+                <ng-container *ngTemplateOutlet="sortTh; context: { $implicit: 'fechaDevolucion', texto: 'Devolución' }" />
+              </th>
+              <th scope="col" class="cell-num" [attr.aria-sort]="ariaSort('importe')">
+                <ng-container *ngTemplateOutlet="sortTh; context: { $implicit: 'importe', texto: 'Importe' }" />
+              </th>
+              <th scope="col" [attr.aria-sort]="ariaSort('estado')">
+                <ng-container *ngTemplateOutlet="sortTh; context: { $implicit: 'estado', texto: 'Estado' }" />
+              </th>
+              <th scope="col">Gestión</th>
+              <th scope="col"><span class="sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of rows(); track r.id) {
+              <tr rowLink>
+                <th scope="row" class="vtable-fix">
+                  <span class="cell-clamp2 font-medium" [title]="r.cliente ?? ''">{{ r.cliente ?? 'Sin cliente' }}</span>
+                  <div class="cell-badges">
+                    @if (r.activoBaja) {
+                      <app-status-badge size="sm" [tone]="activoTone(r.activoBaja)">{{ r.activoBaja }}</app-status-badge>
+                    }
+                    @if (r.colaborador) {
+                      <span class="text-xs text-muted-foreground" [title]="'Colaborador: ' + r.colaborador">{{ r.colaborador }}</span>
+                    }
+                  </div>
+                </th>
+                <td data-label="Factura">
+                  @if (r.factura; as n) {
+                    @if (r.facturaId) {
+                      <a [cellTail]="n" [keep]="6" [routerLink]="['/vibra/facturas', r.facturaId]" class="hover:underline underline-offset-2" [title]="n"></a>
+                    } @else {
+                      <span [cellTail]="n" [keep]="6" [title]="n"></span>
+                    }
+                    @if (r.facturaEstado) { <span class="cell-sub">Factura {{ facturaLabel[r.facturaEstado].toLowerCase() }}</span> }
+                  } @else {
+                    <span class="text-muted-foreground">Sin factura</span>
+                  }
+                </td>
+                <td data-label="Devolución">
+                  <span class="cell-nowrap tabular-nums">{{ r.fechaDevolucion ? fmtFecha(r.fechaDevolucion) : 'Sin fecha' }}</span>
+                  @if (r.motivoDevolucion; as m) {
+                    <span class="cell-sub"><span class="cell-clamp2" [title]="m">{{ m }}</span></span>
+                  }
+                </td>
+                <td data-label="Importe" class="cell-num font-medium">{{ r.importe === null ? '—' : fmtEur(r.importe) }}</td>
+                <td data-label="Estado">
+                  @if (puedeCobrar()) {
+                    <app-actions-menu [items]="menus().get(r.id)?.estado ?? []" [label]="estadoCorto(r.estado)"
+                      [tone]="estadoTone(r.estado)" [ariaLabel]="'Estado del impago de ' + (r.cliente ?? 'sin cliente') + ': ' + estadoLabel[r.estado]" />
+                  } @else {
+                    <app-status-badge [tone]="estadoTone(r.estado)" [title]="estadoLabel[r.estado]">{{ estadoCorto(r.estado) }}</app-status-badge>
+                  }
+                </td>
+                <td data-label="Gestión">
+                  @if (r.ultimaGestion; as g) {
+                    <span>{{ resultadoLabel[g.resultado] }}</span>
+                    <span class="cell-nowrap tabular-nums text-muted-foreground"> · {{ fmtFecha(g.createdAt) }}</span>
+                    @if (g.volverLlamar) { <span class="cell-sub tabular-nums">Volver a llamar el {{ fmtFecha(g.volverLlamar) }}</span> }
+                  } @else {
+                    <span class="text-muted-foreground">Sin gestionar</span>
+                  }
+                  @if (r.avisadoAt) { <span class="cell-sub tabular-nums">Avisado el {{ fmtFecha(r.avisadoAt) }}</span> }
+                  @if (recargoTexto(r); as t) { <span class="cell-sub">Recargo {{ t }}</span> }
+                  @if (r.comentarios; as c) {
+                    <span class="cell-sub"><span class="cell-clamp2" [title]="c">{{ c }}</span></span>
+                  }
+                </td>
+                <td data-label="Acciones">
+                  <div class="cell-actions">
+                    <button data-row-primary type="button" class="btn btn-secondary btn-icon" (click)="abrirGestion(r)"
+                      [title]="puedeCobrar() ? 'Gestión del cobro' : 'Gestiones'"
+                      [attr.aria-label]="(puedeCobrar() ? 'Gestión del cobro de ' : 'Gestiones de ') + (r.cliente ?? 'sin cliente')">
+                      <ui-icon name="message-square" [size]="16" />
+                    </button>
+                    <app-actions-menu [items]="menus().get(r.id)?.acciones ?? []" [iconOnly]="true"
+                      [label]="'Más acciones de ' + (r.cliente ?? 'sin cliente')" />
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7" class="vtable-empty">Sin impagos con estos filtros.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (totalPages() > 1) {
+        <div class="border-t border-border">
+          <app-pagination
+            [page]="page()" [pageSize]="size()"
+            [totalElements]="total()" [totalPages]="totalPages()"
+            (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+        </div>
+      }
+    </div>
+  }
+
+</div>
 
 <!-- Confirm delete -->
 <app-confirm-dialog
@@ -168,22 +215,26 @@
   @if (detailLoading()) {
     <div class="py-8 text-center text-muted-foreground">Cargando…</div>
   } @else if (detailData(); as d) {
-    <div class="space-y-3 py-2 text-sm">
-      <div class="grid grid-cols-2 gap-3">
-        <div><dt class="text-xs text-muted-foreground">Fecha devolución</dt><dd class="tabular-nums">{{ d.fechaDevolucion ?? '—' }}</dd></div>
-        <div><dt class="text-xs text-muted-foreground">Importe</dt><dd class="font-medium tabular-nums">{{ fmtEur(d.importe) }}</dd></div>
-        <div><dt class="text-xs text-muted-foreground">Estado</dt><dd><app-status-badge [tone]="estadoTone(d.estado)">{{ d.estado ?? '—' }}</app-status-badge></dd></div>
-        <div><dt class="text-xs text-muted-foreground">Activo/Baja</dt><dd><app-status-badge [tone]="activoTone(d.activoBaja)">{{ d.activoBaja ?? '—' }}</app-status-badge></dd></div>
-        <div><dt class="text-xs text-muted-foreground">Colaborador</dt><dd>{{ d.colaborador ?? '—' }}</dd></div>
-        <div><dt class="text-xs text-muted-foreground">Motivo devolución</dt><dd>{{ d.motivoDevolucion ?? '—' }}</dd></div>
-      </div>
-      @if (d.comentarios) {
-        <div>
-          <dt class="text-xs text-muted-foreground">Comentarios</dt>
-          <dd class="whitespace-pre-wrap">{{ d.comentarios }}</dd>
-        </div>
-      }
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 py-2">
+      <app-status-badge [tone]="estadoTone(d.estado)">{{ estadoLabel[d.estado] }}</app-status-badge>
+      @if (d.importe !== null) { <span class="text-lg font-semibold tabular-nums">{{ fmtEur(d.importe) }}</span> }
+      @if (d.activoBaja) { <app-status-badge size="sm" [tone]="activoTone(d.activoBaja)">{{ d.activoBaja }}</app-status-badge> }
     </div>
+    <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 py-2 text-sm">
+      @if (d.fechaDevolucion) {
+        <dt class="text-muted-foreground">Devolución</dt>
+        <dd class="tabular-nums">{{ fmtFecha(d.fechaDevolucion) }}@if (d.motivoDevolucion) { · {{ d.motivoDevolucion }} }</dd>
+      } @else if (d.motivoDevolucion) {
+        <dt class="text-muted-foreground">Motivo</dt><dd>{{ d.motivoDevolucion }}</dd>
+      }
+      <dt class="text-muted-foreground">Aviso al cliente</dt>
+      <dd class="tabular-nums">{{ d.avisadoAt ? 'Avisado el ' + fmtFechaHora(d.avisadoAt) : 'Sin avisar' }}</dd>
+      @if (recargoTexto(d); as t) { <dt class="text-muted-foreground">Recargo</dt><dd class="tabular-nums">{{ t }}</dd> }
+      @if (d.colaborador) { <dt class="text-muted-foreground">Colaborador</dt><dd>{{ d.colaborador }}</dd> }
+      @if (d.comentarios) {
+        <dt class="text-muted-foreground">Comentarios</dt><dd class="whitespace-pre-wrap">{{ d.comentarios }}</dd>
+      }
+    </dl>
   }
 </app-form-dialog>
 
@@ -194,14 +245,14 @@
   width="760px"
   (cancel)="closeDialog()" (save)="submit()">
   <form [formGroup]="form" class="space-y-4">
-    <div class="grid grid-cols-2 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div>
-        <label class="text-sm font-medium">Fecha devolución</label>
-        <input type="date" formControlName="fechaDevolucion" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        <label for="imp-f-fecha" class="text-sm font-medium">Fecha devolución</label>
+        <input type="date" id="imp-f-fecha" formControlName="fechaDevolucion" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
       <div class="relative">
-        <label class="text-sm font-medium">Cliente *</label>
-        <input formControlName="cliente"
+        <label for="imp-f-cliente" class="text-sm font-medium">Cliente <span aria-hidden="true">*</span></label>
+        <input id="imp-f-cliente" formControlName="cliente"
           (focus)="showClientesDropdown.set(true)"
           (input)="onClienteInput($event); showClientesDropdown.set(true)"
           (blur)="onClienteBlur()"
@@ -220,38 +271,104 @@
         }
       </div>
       <div>
-        <label class="text-sm font-medium">Factura</label>
-        <input formControlName="factura" placeholder="Factura" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        <label for="imp-f-factura" class="text-sm font-medium">Factura</label>
+        <input id="imp-f-factura" formControlName="factura" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
       <div>
-        <label class="text-sm font-medium">Importe (€)</label>
-        <input type="number" step="0.01" formControlName="importe" placeholder="Importe (€)" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
+        <label for="imp-f-importe" class="text-sm font-medium">Importe (€)</label>
+        <input type="number" step="0.01" inputmode="decimal" id="imp-f-importe" formControlName="importe" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input tabular-nums"/>
       </div>
       <div>
-        <label class="text-sm font-medium">Activo/Baja</label>
-        <select formControlName="activoBaja" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
+        <label for="imp-f-activo" class="text-sm font-medium">Activo/Baja</label>
+        <select id="imp-f-activo" formControlName="activoBaja" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
           <option value="Activo">Activo</option>
           <option value="Baja">Baja</option>
         </select>
       </div>
       <div>
-        <label class="text-sm font-medium">Estado</label>
-        <select formControlName="estado" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
-          @for (e of estadoValues; track e) {<option [value]="e">{{ e }}</option>}
-        </select>
+        <label for="imp-f-colab" class="text-sm font-medium">Colaborador</label>
+        <input id="imp-f-colab" formControlName="colaborador" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
       <div>
-        <label class="text-sm font-medium">Colaborador</label>
-        <input formControlName="colaborador" placeholder="Colaborador" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
-      </div>
-      <div>
-        <label class="text-sm font-medium">Motivo devolución</label>
-        <input formControlName="motivoDevolucion" placeholder="Motivo devolución" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        <label for="imp-f-motivo" class="text-sm font-medium">Motivo devolución</label>
+        <input id="imp-f-motivo" formControlName="motivoDevolucion" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
       </div>
     </div>
     <div>
-      <label class="text-sm font-medium">Comentarios</label>
-      <textarea formControlName="comentarios" rows="3" placeholder="Comentarios" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"></textarea>
+      <label for="imp-f-coment" class="text-sm font-medium">Comentarios</label>
+      <textarea id="imp-f-coment" formControlName="comentarios" rows="3" class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"></textarea>
     </div>
   </form>
+</app-form-dialog>
+
+<!-- Confirmar pagado: paga también la factura -->
+<app-confirm-dialog
+  [open]="!!pendientePago()"
+  title="Marcar pagado"
+  [message]="'La factura ' + (pendientePago()?.factura ?? '') + ' pasará a pagada con fecha de hoy. ¿Continuar?'"
+  confirmLabel="Marcar pagado"
+  (confirm)="confirmarPago()"
+  (cancel)="pendientePago.set(null)" />
+
+<!-- Gestiones de cobro -->
+<app-form-dialog
+  [open]="!!gestionImpago()"
+  [title]="'Gestión del cobro · ' + (gestionImpago()?.cliente ?? '')"
+  [subtitle]="gestionImpago()?.factura ?? null"
+  saveLabel="Apuntar gestión"
+  [readOnly]="!puedeCobrar()"
+  [saving]="gestionGuardando()"
+  width="640px"
+  (cancel)="cerrarGestion()" (save)="guardarGestion()">
+  @if (puedeCobrar()) {
+    <form [formGroup]="gestionForm" (ngSubmit)="guardarGestion()" class="space-y-3" aria-label="Nueva gestión">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="campo">
+          <label for="gestion-resultado" class="text-sm font-medium">Resultado <span aria-hidden="true">*</span></label>
+          <select id="gestion-resultado" formControlName="resultado" required aria-describedby="gestion-resultado-error"
+            class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input">
+            <option value="" disabled>Elige…</option>
+            @for (x of resultados; track x) {<option [value]="x">{{ resultadoLabel[x] }}</option>}
+          </select>
+          @if (gestionForm.controls.resultado.touched && gestionForm.controls.resultado.invalid) {
+            <span id="gestion-resultado-error" class="text-xs text-danger-fg" aria-live="polite">Error: elige el resultado de la gestión</span>
+          }
+        </div>
+        <div class="campo">
+          <label for="gestion-telefono" class="text-sm font-medium">Teléfono</label>
+          <input id="gestion-telefono" type="tel" formControlName="telefono" maxlength="30" autocomplete="off" inputmode="tel"
+            class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        </div>
+        <div class="campo">
+          <label for="gestion-volver" class="text-sm font-medium">Volver a llamar</label>
+          <input id="gestion-volver" type="date" formControlName="volverLlamar"
+            class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"/>
+        </div>
+      </div>
+      <div class="campo">
+        <label for="gestion-nota" class="text-sm font-medium">Nota</label>
+        <textarea id="gestion-nota" formControlName="nota" rows="3" maxlength="2000"
+          class="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-input"></textarea>
+      </div>
+    </form>
+  }
+
+  <h3 class="text-sm font-semibold mt-5 mb-2">Historial</h3>
+  @if (gestionesCargando()) {
+    <p class="text-sm text-muted-foreground">Cargando…</p>
+  } @else if (gestionesLista().length === 0) {
+    <p class="text-sm text-muted-foreground">Sin gestiones todavía.</p>
+  } @else {
+    <ol class="space-y-2 text-sm">
+      @for (g of gestionesLista(); track g.id) {
+        <li class="rounded-lg border border-border px-3 py-2">
+          <span class="font-medium">{{ resultadoLabel[g.resultado] }}</span>
+          <span class="text-muted-foreground"> · {{ fmtFechaHora(g.createdAt) }}{{ g.usuario ? ' · ' + g.usuario : '' }}</span>
+          @if (g.telefono) { <span class="block text-xs text-muted-foreground">Tel. {{ g.telefono }}</span> }
+          @if (g.volverLlamar) { <span class="block text-xs text-muted-foreground">Volver a llamar el {{ fmtFecha(g.volverLlamar) }}</span> }
+          @if (g.nota) { <p class="whitespace-pre-wrap mt-1">{{ g.nota }}</p> }
+        </li>
+      }
+    </ol>
+  }
 </app-form-dialog>

@@ -1,0 +1,68 @@
+<app-page-header title="Mi perfil" />
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">{{ msg }}</div>
+}
+
+<div class="grid gap-4 md:grid-cols-2 items-start">
+  @if (perfil(); as p) {
+    <section class="rounded-2xl border border-border bg-card p-4 sm:p-5" aria-labelledby="perfil-datos">
+      <h2 id="perfil-datos" class="font-semibold mb-3">Tus datos</h2>
+      <dl class="grid grid-cols-[minmax(8rem,auto)_1fr] gap-x-4 gap-y-2 text-sm [&>dt]:text-muted-foreground">
+        <dt>Colaborador</dt><dd>{{ p.nombre }}</dd>
+        <dt>Email</dt><dd class="break-all">{{ p.email }}</dd>
+        <dt>Comisión por alta</dt>
+        <dd class="tabular-nums">{{ p.comisionAlta != null ? eur(p.comisionAlta) : 'Sin fijar' }}</dd>
+      </dl>
+
+      <div class="flex flex-wrap items-center gap-2 mt-6 mb-3">
+        <h3 class="font-semibold">Datos fiscales de tu autofactura</h3>
+        @if (!p.datosFiscalesCompletos) { <app-status-badge tone="warning">Incompletos</app-status-badge> }
+      </div>
+      <dl class="grid grid-cols-[minmax(8rem,auto)_1fr] gap-x-4 gap-y-2 text-sm [&>dt]:text-muted-foreground">
+        <dt>Tipo</dt><dd>@if (p.tipoFiscal) { {{ tipoLabel[p.tipoFiscal] }} } @else { <span class="text-warning-fg">Falta</span> }</dd>
+        <dt>Nombre o razón social</dt><dd>@if (p.nombreFiscal) { {{ p.nombreFiscal }} } @else { <span class="text-warning-fg">Falta</span> }</dd>
+        <dt>NIF</dt><dd class="tabular-nums">@if (p.nifFiscal) { {{ p.nifFiscal }} } @else { <span class="text-warning-fg">Falta</span> }</dd>
+        <dt>Dirección fiscal</dt><dd>@if (p.direccionFiscal) { {{ p.direccionFiscal }} } @else { <span class="text-warning-fg">Falta</span> }</dd>
+        <dt>IBAN de cobro</dt><dd class="tabular-nums break-all">@if (p.iban) { {{ p.iban }} } @else { <span class="text-warning-fg">Falta</span> }</dd>
+        <dt>IVA</dt><dd class="tabular-nums">{{ p.ivaPct }} %</dd>
+        <dt>Retención IRPF</dt><dd class="tabular-nums">{{ p.irpfPct }} %</dd>
+      </dl>
+      <p class="text-xs text-muted-foreground mt-4">
+        @if (p.datosFiscalesCompletos) { Si algún dato no es correcto, pide a administración que lo cambie. }
+        @else { Sin estos datos no se puede emitir tu autofactura: pásaselos a administración. }
+      </p>
+    </section>
+  }
+
+  <section class="rounded-2xl border border-border bg-card p-4 sm:p-5" aria-labelledby="perfil-password">
+    <h2 id="perfil-password" class="font-semibold mb-3">Cambiar contraseña</h2>
+    <form #pf="ngForm" ngNativeValidate aria-labelledby="perfil-password" class="flex flex-col gap-4 text-sm" (ngSubmit)="cambiarPassword(pf)">
+      <input type="email" name="username" autocomplete="username" [value]="perfil()?.email ?? ''" hidden />
+      <div class="campo vfield">
+        <label for="pw-actual">Contraseña actual</label>
+        <input id="pw-actual" name="actual" [type]="verPassword() ? 'text' : 'password'" [(ngModel)]="actual"
+          required autocomplete="current-password" />
+      </div>
+      <div class="campo vfield">
+        <label for="pw-nueva">Contraseña nueva</label>
+        <input id="pw-nueva" name="nueva" [type]="verPassword() ? 'text' : 'password'" [(ngModel)]="nueva" #nv="ngModel"
+          required [pattern]="pattern" autocomplete="new-password"
+          aria-describedby="pw-nueva-ayuda" />
+        <p id="pw-nueva-ayuda" class="vfield-help">Al menos 10 caracteres, con letras y números.</p>
+        <p class="error-msg">Error: la contraseña debe tener al menos 10 caracteres, con letras y números.</p>
+      </div>
+      <label class="inline-flex items-center gap-2 min-h-10 self-start">
+        <input type="checkbox" class="size-4" [checked]="verPassword()" (change)="verPassword.set(!verPassword())" /> Mostrar contraseñas
+      </label>
+      @if (errorPassword(); as msg) {
+        <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3" role="alert">{{ msg }}</div>
+      }
+      <div class="grid sm:flex sm:justify-end">
+        <button type="submit" [disabled]="saving()" class="btn btn-primary">
+          {{ saving() ? 'Guardando…' : 'Cambiar contraseña' }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>

@@ -1,64 +1,79 @@
-<app-page-header title="Tramitación de Contratos" [subtitle]="total() + ' pendientes'">
-  <a routerLink="/vibra/dashboard" class="text-sm text-muted-foreground hover:text-foreground">← Volver al Dashboard</a>
-  <button (click)="exportExcel()" class="ml-auto inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
+<app-page-header title="Tramitación de contratos" [subtitle]="total() + (total() === 1 ? ' contrato pendiente de gestionar' : ' contratos pendientes de gestionar')">
+  <button secondary type="button" class="btn btn-secondary" (click)="exportExcel()">
     <ui-icon name="download" [size]="16" /> Descargar Excel
   </button>
 </app-page-header>
 
 @if (error(); as msg) {
-  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4">
-    {{ msg }} <button (click)="load()" class="ml-2 underline">Reintentar</button>
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">
+    {{ msg }} <button type="button" (click)="load()" class="ml-2 underline">Reintentar</button>
   </div>
 }
 
 @if (loading()) {
-  <app-table-skeleton [cols]="12" [rows]="6" />
+  <app-table-skeleton [cols]="6" [rows]="6" />
 } @else {
   <div class="rounded-2xl border border-border bg-card overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
+    <div class="vtable-region" tabindex="0" role="region" aria-labelledby="tram-caption" style="--vtable-min: 64rem">
+      <table class="vtable">
+        <caption id="tram-caption" class="sr-only">Contratos pendientes de tramitar</caption>
+        <colgroup>
+          <col style="inline-size: 12rem" />
+          <col class="col-cups" />
+          <col class="col-texto" />
+          <col style="inline-size: 12rem" />
+          <col style="inline-size: 8rem" />
+          <col style="inline-size: 9.5rem" />
+        </colgroup>
         <thead>
-          <tr class="border-b border-border text-left text-muted-foreground bg-neutral-soft/50">
-            <th class="py-3 px-4 font-medium">CUPS</th>
-            <th class="py-3 px-4 font-medium">Dirección</th>
-            <th class="py-3 px-4 font-medium">Población</th>
-            <th class="py-3 px-4 font-medium">Provincia</th>
-            <th class="py-3 px-4 font-medium">Potencia</th>
-            <th class="py-3 px-4 font-medium">Comentarios</th>
-            <th class="py-3 px-4 font-medium">Titular</th>
-            <th class="py-3 px-4 font-medium">CIF</th>
-            <th class="py-3 px-4 font-medium">Email</th>
-            <th class="py-3 px-4 font-medium">Teléfono</th>
-            <th class="py-3 px-4 font-medium">Cuenta</th>
-            <th class="py-3 px-4 font-medium text-center">Acción</th>
+          <tr>
+            <th scope="col" class="vtable-fix">Titular</th>
+            <th scope="col">CUPS</th>
+            <th scope="col">Dirección</th>
+            <th scope="col">Contacto y cuenta</th>
+            <th scope="col">Comentarios</th>
+            <th scope="col"><span class="sr-only">Acción</span></th>
           </tr>
         </thead>
         <tbody>
           @for (r of rows(); track r.id) {
-            <tr class="border-b border-border/50 hover:bg-accent/40">
-              <td class="py-2 px-4 tabular-nums text-xs">{{ r.cups ?? '—' }}</td>
-              <td class="py-2 px-4">{{ r.direccionSuministro ?? '—' }}</td>
-              <td class="py-2 px-4">{{ r.poblacion ?? '—' }}</td>
-              <td class="py-2 px-4">{{ r.provincia ?? '—' }}</td>
-              <td class="py-2 px-4 text-xs">{{ r.potenciaOriginal ?? '—' }}</td>
-              <td class="py-2 px-4 text-muted-foreground text-xs max-w-xs truncate">{{ r.comentarios ?? '—' }}</td>
-              <td class="py-2 px-4 font-medium">{{ r.titular ?? '—' }}</td>
-              <td class="py-2 px-4 tabular-nums text-xs">{{ r.nifCif ?? '—' }}</td>
-              <td class="py-2 px-4 text-muted-foreground text-xs">{{ r.email ?? '—' }}</td>
-              <td class="py-2 px-4 tabular-nums text-xs">{{ r.telefono ?? '—' }}</td>
-              <td class="py-2 px-4 tabular-nums text-xs">{{ r.cuentaBancaria ?? '—' }}</td>
-              <td class="py-2 px-4 text-center">
-                <button (click)="marcarGestionado(r)"
-                  class="inline-flex items-center gap-1 rounded-lg bg-success text-white px-3 py-1.5 text-xs font-medium hover:opacity-90">
-                  <ui-icon name="check" [size]="14" /> Gestionado
-                </button>
+            <tr>
+              <th scope="row" class="vtable-fix">
+                <span class="cell-clamp2 font-medium" [title]="r.titular ?? ''">{{ r.titular ?? 'Sin titular' }}</span>
+                @if (r.nifCif) { <span class="cell-sub tabular-nums">{{ r.nifCif }}</span> }
+              </th>
+              <td data-label="CUPS">
+                @if (r.cups; as c) {
+                  <span [cellTail]="c" [title]="c"></span>
+                } @else { <span class="text-muted-foreground">—</span> }
+                @if (r.potenciaOriginal) { <span class="cell-sub cell-clamp2" [title]="r.potenciaOriginal">{{ r.potenciaOriginal }}</span> }
+              </td>
+              <td data-label="Dirección">
+                <span class="cell-clamp2" [title]="r.direccionSuministro ?? ''">{{ r.direccionSuministro ?? '—' }}</span>
+                @if (r.poblacion || r.provincia) {
+                  <span class="cell-sub">{{ r.poblacion }}{{ r.poblacion && r.provincia ? ' · ' : '' }}{{ r.provincia }}</span>
+                }
+              </td>
+              <td data-label="Contacto" class="min-w-0">
+                @if (r.telefono) { <span class="block tabular-nums cell-nowrap">{{ r.telefono }}</span> }
+                @if (r.email) { <span class="cell-sub truncate" [title]="r.email">{{ r.email }}</span> }
+                @if (r.cuentaBancaria; as cb) {
+                  <span class="cell-sub" [cellTail]="cb" [title]="'Cuenta ' + cb"></span>
+                }
+                @if (!r.telefono && !r.email && !r.cuentaBancaria) { <span class="text-muted-foreground">—</span> }
+              </td>
+              <td data-label="Comentarios"><span class="cell-clamp2 text-xs" [title]="r.comentarios ?? ''">{{ r.comentarios ?? '—' }}</span></td>
+              <td data-label="Acción">
+                <div class="cell-actions">
+                  <button type="button" class="btn btn-secondary" (click)="marcarGestionado(r)"
+                    [attr.aria-label]="'Marcar como gestionado: ' + (r.titular ?? r.cups ?? 'contrato')">
+                    <ui-icon name="check" [size]="16" /> Gestionado
+                  </button>
+                </div>
               </td>
             </tr>
-          }
-          @if (rows().length === 0) {
-            <tr><td colspan="12" class="py-12 text-center text-muted-foreground">
-              Todo tramitado — no hay contratos pendientes 🎉
-            </td></tr>
+          } @empty {
+            <tr><td colspan="6" class="vtable-empty">Todo tramitado: no hay contratos pendientes.</td></tr>
           }
         </tbody>
       </table>

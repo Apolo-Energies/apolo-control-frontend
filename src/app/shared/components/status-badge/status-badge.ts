@@ -17,6 +17,8 @@ export type StatusTone =
 })
 export class StatusBadge {
   readonly tone = input<StatusTone>('neutral');
+  /** sm: secundario (Kilowy, avisos, activo/baja), sin punto. */
+  readonly size = input<'md' | 'sm'>('md');
 
   protected readonly classes = computed(() => {
     switch (this.tone()) {

@@ -74,6 +74,20 @@ export interface VibraAlta {
   historialLiquidaciones: string | null;
   comentarios: string | null;
 
+  /** Producto (tarifa Vibra) del contrato. */
+  tarifaId: string | null;
+  tarifaAcceso: string | null;
+  /** Precios propios P1–P6 (null = el del producto). */
+  precioEnergia: (number | null)[];
+  precioPotencia: (number | null)[];
+  /** Solo en el detalle. */
+  servicios?: VibraAltaServicio[] | null;
+  /** Nº de Kilowy en las importadas; si no, el propio. */
+  numeroContrato: string | null;
+  contratoEnviadoAt: string | null;
+  /** Solo al crear con envío: por qué no se envió el contrato. */
+  avisoContrato?: string | null;
+
   createdAt: string;
   updatedAt: string;
 }
@@ -115,6 +129,59 @@ export interface VibraAltaPayload {
   comisionComercializadora?: number | null;
   historialLiquidaciones?: string | null;
   comentarios?: string | null;
+  /** Al editar, null = no cambia el producto. */
+  tarifaId?: string | null;
+  /** Solo al crear: envía el contrato al email del alta. */
+  enviarContrato?: boolean;
+}
+
+export type ModoServicioVibra = 'IMPORTE_DIA' | 'IMPORTE_MES' | 'IMPORTE_FACTURA' | 'PCT_COMPRA';
+export type ZonaServicioVibra = 'ANTES' | 'DESPUES';
+
+export const MODO_SERVICIO_LABEL: Record<ModoServicioVibra, string> = {
+  PCT_COMPRA: '% de la factura de compra',
+  IMPORTE_MES: '€ al mes (prorrateado por días)',
+  IMPORTE_DIA: '€ por día',
+  IMPORTE_FACTURA: '€ por factura',
+};
+
+/** Servicio del contrato: una línea en cada factura. ivaPct null = no sujeto. */
+export interface VibraAltaServicio {
+  concepto: string;
+  modo: ModoServicioVibra;
+  valor: number;
+  ivaPct: number | null;
+  zona: ZonaServicioVibra;
+}
+
+/** Precios propios (6 periodos, null = el del producto), tarifa de acceso y servicios. */
+export interface VibraAltaPreciosPayload {
+  energia: (number | null)[];
+  potencia: (number | null)[];
+  tarifaAcceso: string | null;
+  servicios: VibraAltaServicio[];
+}
+
+export interface KilowyFichasImportResult {
+  contratos: number;
+  leidas: number;
+  fallidas: number;
+  sinAlta: number;
+  completadas: number;
+  sinCambios: number;
+  rellenados: Record<string, number>;
+  avisos: string[];
+}
+
+/** Estado de la importación de fichas de Kilowy (en segundo plano). */
+export interface KilowyFichasEstado {
+  enCurso: boolean;
+  inicio: string | null;
+  fin: string | null;
+  contratos: number;
+  leidas: number;
+  resultado: KilowyFichasImportResult | null;
+  error: string | null;
 }
 
 export interface KilowySyncResult {

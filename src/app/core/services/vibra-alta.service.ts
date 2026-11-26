@@ -6,6 +6,7 @@ import { environment } from '../../../environments/environment';
 import {
   CambiarEstadoVibraAltaPayload,
   GestionadoPayload,
+  KilowyFichasEstado,
   KilowySyncResult,
   LiquidacionColaboradorPayload,
   LiquidadoPayload,
@@ -18,6 +19,7 @@ import {
   VibraAlta,
   VibraAltaFilter,
   VibraAltaPayload,
+  VibraAltaPreciosPayload,
   VibraImportResult,
 } from '../models';
 import { buildParams } from '../http/http-params.util';
@@ -69,8 +71,28 @@ export class VibraAltaService {
     return this.http.patch<VibraAlta>(`${this.baseUrl}/${id}/liquidacion-colaborador`, payload);
   }
 
+  contratoPdf(id: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/${id}/contrato.pdf`, { responseType: 'blob' });
+  }
+
+  enviarContrato(id: string): Observable<VibraAlta> {
+    return this.http.post<VibraAlta>(`${this.baseUrl}/${id}/enviar-contrato`, {});
+  }
+
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
+  actualizarPrecios(id: string, payload: VibraAltaPreciosPayload): Observable<VibraAlta> {
+    return this.http.put<VibraAlta>(`${this.baseUrl}/${id}/precios`, payload);
+  }
+
+  importarKilowyFichas(): Observable<KilowyFichasEstado> {
+    return this.http.post<KilowyFichasEstado>(`${this.baseUrl}/importar-kilowy-fichas`, {});
+  }
+
+  estadoImportacionKilowyFichas(): Observable<KilowyFichasEstado> {
+    return this.http.get<KilowyFichasEstado>(`${this.baseUrl}/importar-kilowy-fichas`);
   }
 
   syncKilowy(): Observable<KilowySyncResult> {

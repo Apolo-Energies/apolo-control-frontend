@@ -1,12 +1,42 @@
 import { Routes } from '@angular/router';
 
-import { authGuard, guestGuard } from './core/auth/auth.guard';
+import { authGuard, colaboradorGuard, guestGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   {
     path: 'login',
     canMatch: [guestGuard],
     loadComponent: () => import('./features/auth/login').then((m) => m.Login),
+  },
+  // Portal del colaborador Vibra: árbol propio, sin el layout interno
+  {
+    path: 'colaborador',
+    canActivate: [colaboradorGuard],
+    loadComponent: () => import('./features/colaborador/colaborador-layout').then((m) => m.ColaboradorLayout),
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'contratos' },
+      {
+        path: 'contratos',
+        loadComponent: () => import('./features/colaborador/mis-contratos').then((m) => m.MisContratos),
+      },
+      {
+        path: 'contratos/nuevo',
+        loadComponent: () => import('./features/colaborador/cargar-contrato').then((m) => m.CargarContrato),
+      },
+      {
+        path: 'contratos/:id',
+        loadComponent: () => import('./features/colaborador/contrato-detalle').then((m) => m.ContratoDetalle),
+      },
+      {
+        path: 'liquidaciones',
+        loadComponent: () => import('./features/colaborador/mis-liquidaciones').then((m) => m.MisLiquidaciones),
+      },
+      {
+        path: 'perfil',
+        loadComponent: () => import('./features/colaborador/mi-perfil').then((m) => m.MiPerfil),
+      },
+      { path: '**', redirectTo: 'contratos' },
+    ],
   },
   {
     path: '',
@@ -224,6 +254,15 @@ export const routes: Routes = [
               import('./features/vibra/dashboard/vibra-dashboard').then((m) => m.VibraDashboard),
           },
           {
+            path: 'clientes',
+            loadComponent: () => import('./features/vibra/clientes/vibra-clientes').then((m) => m.VibraClientes),
+          },
+          {
+            path: 'clientes/:id',
+            loadComponent: () =>
+              import('./features/vibra/cliente-ficha/vibra-cliente-ficha').then((m) => m.VibraClienteFichaView),
+          },
+          {
             path: 'altas',
             loadComponent: () =>
               import('./features/vibra/altas/vibra-altas').then((m) => m.VibraAltas),
@@ -250,8 +289,57 @@ export const routes: Routes = [
           },
           {
             path: 'liquidaciones',
+            data: { roles: ['admin', 'contabilidad'] },
+            canActivate: [authGuard],
             loadComponent: () =>
               import('./features/vibra/liquidaciones/vibra-liquidaciones').then((m) => m.VibraLiquidaciones),
+          },
+          {
+            path: 'equipo',
+            data: { roles: ['admin', 'contabilidad'] },
+            canActivate: [authGuard],
+            loadComponent: () =>
+              import('./features/vibra/equipo/vibra-equipo').then((m) => m.VibraEquipo),
+          },
+          {
+            path: 'facturas',
+            data: { roles: ['admin', 'contabilidad', 'operaciones'] },
+            canActivate: [authGuard],
+            loadComponent: () => import('./features/vibra/facturas/vibra-facturas').then((m) => m.VibraFacturas),
+          },
+          {
+            path: 'facturas/generar',
+            data: { roles: ['admin', 'contabilidad', 'operaciones'] },
+            canActivate: [authGuard],
+            loadComponent: () =>
+              import('./features/vibra/generar-facturas/vibra-generar-facturas').then((m) => m.VibraGenerarFacturas),
+          },
+          {
+            path: 'facturas/:id',
+            data: { roles: ['admin', 'contabilidad', 'operaciones'] },
+            canActivate: [authGuard],
+            loadComponent: () =>
+              import('./features/vibra/factura-detalle/vibra-factura-detalle').then((m) => m.VibraFacturaDetalle),
+          },
+          {
+            path: 'remesas',
+            data: { roles: ['admin', 'contabilidad', 'operaciones'] },
+            canActivate: [authGuard],
+            loadComponent: () => import('./features/vibra/remesas/vibra-remesas').then((m) => m.VibraRemesas),
+          },
+          {
+            path: 'remesas/:id',
+            data: { roles: ['admin', 'contabilidad', 'operaciones'] },
+            canActivate: [authGuard],
+            loadComponent: () =>
+              import('./features/vibra/remesa-detalle/vibra-remesa-detalle').then((m) => m.VibraRemesaDetalle),
+          },
+          {
+            path: 'migracion-kilowy',
+            data: { roles: ['admin'] },
+            canActivate: [authGuard],
+            loadComponent: () =>
+              import('./features/vibra/migracion-kilowy/vibra-migracion-kilowy').then((m) => m.VibraMigracionKilowy),
           },
           {
             path: 'contrato-servicio',

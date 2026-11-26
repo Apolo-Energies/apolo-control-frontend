@@ -1,0 +1,42 @@
+<div class="min-h-dvh bg-background text-foreground flex flex-col">
+  <header class="border-b border-border bg-card/40">
+    <div class="max-w-6xl mx-auto px-4 lg:px-6 min-h-14 py-2 flex items-center gap-x-4">
+      <a routerLink="/colaborador/contratos" class="font-semibold tracking-tight whitespace-nowrap">
+        Apolo <span class="text-muted-foreground font-normal md:hidden lg:inline">· Colaboradores Vibra</span>
+      </a>
+
+      <nav aria-label="Portal del colaborador" class="portal-tabbar md:ml-2">
+        <ul class="flex gap-1">
+          @for (e of enlaces; track e.url) {
+            <li>
+              <a [routerLink]="e.url" routerLinkActive="nav-actual" ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: e.exact }"
+                class="flex items-center gap-2 whitespace-nowrap px-3 min-h-10 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-foreground">
+                <ui-icon [name]="e.icon" [size]="18" />
+                <span class="lg:hidden">{{ e.corto }}</span>
+                <span class="hidden lg:inline">{{ e.label }}</span>
+              </a>
+            </li>
+          }
+        </ul>
+      </nav>
+
+      <div class="ml-auto flex items-center gap-1">
+        <span class="hidden lg:inline text-sm text-muted-foreground max-w-48 truncate mr-1" [title]="nombre">{{ nombre }}</span>
+        <button type="button" (click)="theme.toggle()"
+          class="h-10 w-10 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground flex items-center justify-center"
+          [attr.aria-label]="theme.isDark() ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'">
+          <ui-icon [name]="theme.isDark() ? 'sun' : 'moon'" [size]="18" />
+        </button>
+        <button type="button" (click)="salir()"
+          class="h-10 px-3 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-foreground inline-flex items-center gap-2">
+          <ui-icon name="log-out" [size]="16" /> Salir
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="portal-main flex-1 w-full max-w-6xl mx-auto px-4 lg:px-6 py-6">
+    <router-outlet />
+  </main>
+</div>

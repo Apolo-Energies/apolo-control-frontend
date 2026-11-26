@@ -1,0 +1,247 @@
+<app-page-header title="Facturas" [subtitle]="total() + ' facturas de venta Vibra'">
+  @if (puedeEnviarTodas) {
+    <button secondary type="button" class="btn btn-secondary" (click)="abrirEnvio()">
+      <ui-icon name="mail" [size]="16" /> Enviar las sin enviar
+    </button>
+  }
+  <app-actions-menu [items]="masAcciones" />
+  <a primary routerLink="/vibra/facturas/generar" class="btn btn-primary">
+    <ui-icon name="file-plus" [size]="16" /> Generar facturas
+  </a>
+</app-page-header>
+
+<div class="tablist mb-4" focusgroup="tablist nomemory" role="tablist" aria-label="Estado de la factura">
+  @for (p of pestanas; track p.id) {
+    <button type="button" role="tab" [id]="'tab-fac-' + p.id" aria-controls="facturas-panel"
+      [attr.aria-selected]="tab() === p.id" [attr.focusgroupstart]="tab() === p.id ? '' : null"
+      (click)="elegir(p.id)">
+      {{ p.label }}
+      @if (conteos()[p.id] !== undefined) {
+        <span class="ml-1 tabular-nums text-xs text-muted-foreground">{{ conteos()[p.id] }}</span>
+      }
+    </button>
+  }
+</div>
+
+<search class="mb-4 block">
+  <form class="filterbar" (ngSubmit)="buscar()">
+    <div class="filter filter-grow">
+      <label for="fac-q">Buscar</label>
+      <input id="fac-q" type="search" name="q" [(ngModel)]="q" placeholder="Nº de factura, cliente, DNI/CIF o CUPS"
+        autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+    </div>
+    <div class="filter">
+      <label for="fac-desde">Emitida desde</label>
+      <input id="fac-desde" type="date" name="desde" [(ngModel)]="desde" />
+    </div>
+    <div class="filter">
+      <label for="fac-hasta">Emitida hasta</label>
+      <input id="fac-hasta" type="date" name="hasta" [(ngModel)]="hasta" />
+    </div>
+    <div class="filter filter-sm">
+      <label for="fac-importe">Importe (€)</label>
+      <input id="fac-importe" type="text" inputmode="decimal" name="importe" [(ngModel)]="importe"
+        pattern="-?[0-9]+([.,][0-9]{1,2})?" class="tabular-nums" />
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-secondary">
+        <ui-icon name="search" [size]="16" /> Buscar
+      </button>
+      <button type="button" class="btn btn-ghost" (click)="limpiar()">Limpiar</button>
+    </div>
+  </form>
+</search>
+
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">
+    {{ msg }} <button type="button" (click)="load()" class="ml-2 underline">Reintentar</button>
+  </div>
+}
+
+<div id="facturas-panel" role="tabpanel" [attr.aria-labelledby]="'tab-fac-' + tab()">
+  @if (loading() && !result()) {
+    <app-table-skeleton [cols]="7" [rows]="8" />
+  } @else {
+    <div class="rounded-2xl border border-border bg-card overflow-hidden">
+      <div class="vtable-region" tabindex="0" role="region" aria-labelledby="facturas-caption" style="--vtable-min: 66rem">
+        <table class="vtable">
+          <caption id="facturas-caption" class="sr-only">Facturas de venta Vibra</caption>
+          <colgroup>
+            <col class="col-numdoc" />
+            <col class="col-texto" />
+            <col class="col-cups" />
+            <col class="col-periodo" />
+            <col class="col-importe" />
+            <col class="col-importe" />
+            <col class="col-estado" style="inline-size: 9.5rem" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col" class="vtable-fix">Nº</th>
+              <th scope="col">Cliente</th>
+              <th scope="col">Contrato / CUPS</th>
+              <th scope="col">Periodo</th>
+              <th scope="col" class="cell-num">Total</th>
+              <th scope="col" class="cell-num">Margen</th>
+              <th scope="col">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (f of rows(); track f.id) {
+              <tr rowLink>
+                <th scope="row" class="vtable-fix">
+                  <a data-row-primary [routerLink]="['/vibra/facturas', f.id]" class="font-medium hover:underline underline-offset-2">
+                    @if (f.numero; as n) {
+                      <span [cellTail]="n" [keep]="6" [title]="n"></span>
+                    } @else {
+                      Borrador
+                    }
+                  </a>
+                  <div class="cell-badges">
+                    <span class="text-xs text-muted-foreground tabular-nums">{{ fecha(f.fechaEmision ?? f.createdAt) }}</span>
+                    @if (f.deKilowy) {
+                      <app-status-badge size="sm">Kilowy</app-status-badge>
+                    }
+                    @if (f.avisos > 0) {
+                      <app-status-badge size="sm" tone="warning">{{ f.avisos }} {{ f.avisos === 1 ? 'aviso' : 'avisos' }}</app-status-badge>
+                    }
+                  </div>
+                </th>
+                <td data-label="Cliente">
+                  <span class="cell-clamp2" [title]="f.titular ?? ''">{{ f.titular ?? '—' }}</span>
+                  @if (f.nif) { <span class="cell-sub tabular-nums">{{ f.nif }}</span> }
+                </td>
+                <td data-label="Contrato">
+                  @if (f.contrato) {
+                    <span class="tabular-nums">#{{ f.contrato }}</span>
+                  } @else {
+                    <span class="text-muted-foreground">Sin contrato</span>
+                  }
+                  @if (f.tarifaAcceso) { <span class="text-muted-foreground"> · {{ f.tarifaAcceso }}</span> }
+                  @if (f.cups; as c) {
+                    <span [cellTail]="c" class="cell-sub" [title]="c"></span>
+                  }
+                </td>
+                <td data-label="Periodo" class="cell-nowrap tabular-nums"
+                  [title]="fecha(f.periodoDesde) + ' – ' + fecha(f.periodoHasta)">
+                  {{ periodo(f.periodoDesde, f.periodoHasta) }}
+                </td>
+                <td data-label="Total" class="cell-num font-medium">{{ euro(f.total) }}</td>
+                <td data-label="Margen" class="cell-num" [class.text-danger-fg]="f.margen !== null && f.margen <= 0">
+                  {{ euro(f.margen) }}
+                  @if (f.margenPct !== null) { <span class="cell-sub" [class.text-danger-fg]="f.margen !== null && f.margen <= 0">{{ numero(f.margenPct) }} %</span> }
+                </td>
+                <td data-label="Estado">
+                  <app-status-badge [tone]="tone(f.estado)">{{ estadoLabel[f.estado] }}</app-status-badge>
+                  @if (f.estado !== 'BORRADOR') {
+                    @if (f.enviadaAt) {
+                      <span class="cell-sub cell-nowrap tabular-nums" [title]="'Enviada el ' + fechaHora(f.enviadaAt)">Enviada {{ fecha(f.enviadaAt) }}</span>
+                    } @else {
+                      <span class="cell-sub">Sin enviar</span>
+                    }
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7" class="vtable-empty">
+                Sin facturas con estos filtros. Sube las compras en «Generar facturas».
+              </td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (totalPages() > 1) {
+        <div class="border-t border-border px-4 py-3">
+          <app-pagination [page]="page()" [pageSize]="size()" [totalElements]="total()" [totalPages]="totalPages()"
+            (pageChange)="onPage($event)" (pageSizeChange)="onPageSize($event)" />
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<app-confirm-dialog
+  [open]="importOpen()"
+  title="Importar facturas de Kilowy"
+  message="Migración desde Kilowy: se traen todas sus facturas (sin borradores) con sus totales; el detalle queda en Kilowy y el PDF se trae en «Migración desde Kilowy». Se puede repetir hasta el corte: no duplica y no cambia el estado de las que se hayan tocado en Control. Las emitidas ya están remesadas en Kilowy: no entran en remesas nuevas (márcalas pagadas al cobrarse); las devueltas e impagadas se regiran desde Control."
+  confirmLabel="Importar"
+  icon="upload"
+  tone="info"
+  [loading]="importando()"
+  (confirm)="importar()"
+  (cancel)="importOpen.set(false)" />
+
+<app-form-dialog
+  [open]="importResult() !== null"
+  title="Importación terminada"
+  icon="check"
+  [readOnly]="true"
+  width="480px"
+  (cancel)="importResult.set(null)">
+  @if (importResult(); as r) {
+    <dl class="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1 text-sm my-2">
+      <dt>Creadas</dt><dd class="text-right tabular-nums">{{ r.creadas }}</dd>
+      <dt>Estado actualizado</dt><dd class="text-right tabular-nums">{{ r.actualizadas }}</dd>
+      <dt>Sin cambios</dt><dd class="text-right tabular-nums">{{ r.sinCambios }}</dd>
+      <dt>Cambiadas en Control (no se tocan)</dt><dd class="text-right tabular-nums">{{ r.cambiadasEnControl }}</dd>
+      <dt>Omitidas</dt><dd class="text-right tabular-nums">{{ r.omitidas }}</dd>
+    </dl>
+    @if (r.ultimaSecuencia > 0) {
+      <p class="text-sm text-muted-foreground">La numeración de Control sigue tras la secuencia {{ r.ultimaSecuencia }} de Kilowy.</p>
+    }
+    @for (a of r.avisos; track a) { <p class="text-sm text-warning-fg">{{ a }}</p> }
+  }
+</app-form-dialog>
+
+<app-form-dialog
+  [open]="envioOpen()"
+  title="Enviar las sin enviar"
+  icon="mail"
+  saveLabel="Enviar"
+  [saving]="enviando()"
+  [canSave]="!!envioPendientes()?.conEmail"
+  width="480px"
+  (cancel)="envioOpen.set(false)"
+  (save)="enviarTodas()">
+  <div aria-live="polite" class="text-sm space-y-2 my-2">
+    @if (envioPendientes(); as p) {
+      @if (p.conEmail) {
+        <p>Se enviará por correo el PDF de <strong class="tabular-nums">{{ p.conEmail > envioTope ? envioTope : p.conEmail }}</strong>
+          {{ p.conEmail === 1 ? 'factura' : 'facturas' }} emitidas en Control con email del cliente
+          @if (p.conEmail > envioTope) { (de {{ p.conEmail }}: el resto, en la siguiente tanda) }.</p>
+      } @else {
+        <p>No hay facturas sin enviar con email del cliente.</p>
+      }
+      @if (p.sinEmail) { <p class="text-muted-foreground">{{ p.sinEmail }} sin email del cliente no se envían.</p> }
+      <p class="text-muted-foreground">Las importadas de Kilowy y las ya enviadas no se envían.</p>
+    } @else {
+      <p class="text-muted-foreground">Contando las facturas sin enviar…</p>
+    }
+  </div>
+</app-form-dialog>
+
+<app-form-dialog
+  [open]="envioResult() !== null"
+  title="Envío terminado"
+  icon="check"
+  [readOnly]="!envioResult()?.pendientes"
+  [saveLabel]="'Enviar las siguientes (' + (envioResult()?.pendientes ?? 0) + ')'"
+  cancelLabel="Cerrar"
+  [saving]="enviando()"
+  width="480px"
+  (cancel)="envioResult.set(null)"
+  (save)="enviarTodas()">
+  @if (envioResult(); as r) {
+    <dl class="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1 text-sm my-2">
+      <dt>Enviadas</dt><dd class="text-right tabular-nums">{{ r.enviadas }}</dd>
+      @if (r.yaEnviadas) { <dt>Ya enviadas por otro envío</dt><dd class="text-right tabular-nums">{{ r.yaEnviadas }}</dd> }
+      <dt>Sin email del cliente</dt><dd class="text-right tabular-nums">{{ r.sinEmail.length }}</dd>
+      <dt>Con error</dt><dd class="text-right tabular-nums">{{ r.errores.length }}</dd>
+      <dt>Quedan por enviar</dt><dd class="text-right tabular-nums">{{ r.pendientes }}</dd>
+    </dl>
+    @if (r.sinEmail.length) {
+      <p class="text-sm text-muted-foreground">Sin email: {{ r.sinEmail.join(', ') }}</p>
+    }
+    @for (e of r.errores; track e.numero) { <p class="text-sm text-danger-fg">Error: {{ e.numero }} — {{ e.mensaje }}</p> }
+  }
+</app-form-dialog>

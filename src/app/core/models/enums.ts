@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'comercial' | 'contabilidad' | 'operaciones';
+export type UserRole = 'admin' | 'comercial' | 'contabilidad' | 'operaciones' | 'colaborador';
 
 export type ContractStatus =
   | 'previo'
@@ -29,6 +29,7 @@ export const USER_ROLE_LABEL: Record<UserRole, string> = {
   comercial: 'Comercial',
   contabilidad: 'Contabilidad',
   operaciones: 'Operaciones',
+  colaborador: 'Colaborador Vibra',
 };
 
 export const CONTRACT_STATUS_LABEL: Record<ContractStatus, string> = {
@@ -56,6 +57,7 @@ export const SUPPLY_TYPE_LABEL: Record<SupplyType, string> = {
   OTRO: 'Otro',
 };
 
+// Sin 'colaborador': su usuario se crea desde Vibra → Equipo
 export const USER_ROLE_VALUES: readonly UserRole[] = [
   'admin',
   'comercial',

@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { RouterLink } from '@angular/router';
 
 import { PageHeader } from '../../../shared/components/page-header/page-header';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
@@ -9,11 +8,12 @@ import { Icon } from '../../../shared/icons/icon';
 import { VibraAltaService } from '../../../core/services/vibra-alta.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { VibraAlta } from '../../../core/models';
+import { CellTail } from '../../../shared/components/cell-tail/cell-tail';
 
 @Component({
   selector: 'app-vibra-tramitacion',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, PageHeader, TableSkeleton, Icon],
+  imports: [PageHeader, TableSkeleton, Icon, CellTail],
   templateUrl: './vibra-tramitacion.html',
 })
 export class VibraTramitacion {

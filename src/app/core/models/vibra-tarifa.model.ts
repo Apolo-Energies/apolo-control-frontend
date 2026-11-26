@@ -49,3 +49,39 @@ export interface VibraTarifaFilter {
   tipo?: string;
   activa?: boolean;
 }
+
+// ── Carga de precios desde la plantilla Excel ────────────────────
+
+export type AccionCargaTarifa = 'CREAR' | 'ACTUALIZAR' | 'NUEVA_VERSION' | 'SIN_CAMBIOS' | 'ERROR';
+
+export const ACCION_CARGA_TARIFA_LABEL: Record<AccionCargaTarifa, string> = {
+  CREAR: 'Crear',
+  ACTUALIZAR: 'Actualizar',
+  NUEVA_VERSION: 'Versión nueva',
+  SIN_CAMBIOS: 'Sin cambios',
+  ERROR: 'Error',
+};
+
+export interface FilaCargaTarifa {
+  fila: number;
+  nombre: string | null;
+  tipo: string | null;
+  activa: boolean | null;
+  energia: (number | null)[];
+  potencia: (number | null)[];
+  accion: AccionCargaTarifa;
+  motivo: string | null;
+  productoId: string | null;
+  /** Nombre con el que queda (el de la versión nueva si se versiona). */
+  nombreResultado: string | null;
+}
+
+export interface CargaTarifasResponse {
+  aplicado: boolean;
+  crear: number;
+  actualizar: number;
+  nuevaVersion: number;
+  sinCambios: number;
+  errores: number;
+  filas: FilaCargaTarifa[];
+}

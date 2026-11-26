@@ -18,6 +18,10 @@ export class PerfilService {
     return this.http.put<PerfilResponse>(this.base, request);
   }
 
+  cambiarPassword(actual: string, nueva: string): Observable<void> {
+    return this.http.put<void>(`${this.base}/password`, { actual, nueva });
+  }
+
   uploadFirma(file: File): Observable<void> {
     const form = new FormData();
     form.append('file', file);

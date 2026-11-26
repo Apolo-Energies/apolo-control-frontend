@@ -1,0 +1,128 @@
+<a routerLink="/vibra/facturas" class="inline-flex items-center gap-1 mb-2 rounded text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground">
+  <ui-icon name="chevron-left" [size]="16" /> Facturas
+</a>
+<app-page-header title="Generar facturas" subtitle="Cada factura de compra de la comercializadora crea su borrador de factura Vibra" />
+
+@if (puedeVerBuzon()) {
+  <div class="tablist mb-4" focusgroup="tablist nomemory" role="tablist" aria-label="Facturas de compra">
+    <button type="button" role="tab" id="tab-subir" [attr.aria-selected]="tab() === 'subir'"
+      [attr.focusgroupstart]="tab() === 'subir' ? '' : null" (click)="tab.set('subir')">Subir PDF</button>
+    <button type="button" role="tab" id="tab-buzon" [attr.aria-selected]="tab() === 'buzon'"
+      [attr.focusgroupstart]="tab() === 'buzon' ? '' : null" (click)="tab.set('buzon')">Buzón de facturas</button>
+  </div>
+
+  <div role="tabpanel" aria-labelledby="tab-buzon" [hidden]="tab() !== 'buzon'">
+    @if (tab() === 'buzon') { <app-vibra-buzon-facturas /> }
+  </div>
+}
+
+<div [attr.role]="puedeVerBuzon() ? 'tabpanel' : null" [attr.aria-labelledby]="puedeVerBuzon() ? 'tab-subir' : null"
+  [hidden]="tab() !== 'subir'">
+
+<form class="rounded-2xl border border-border bg-card p-5 mb-4 flex flex-col gap-4 text-sm" aria-labelledby="gen-titulo"
+  (submit)="$event.preventDefault(); procesar(fileInput)">
+  <h2 id="gen-titulo" class="font-semibold text-base">Subir facturas de compra</h2>
+  <div class="relative flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border bg-input/40 px-4 py-8 text-center
+    hover:border-primary/60 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-foreground"
+    [class.opacity-60]="procesando()">
+    <ui-icon name="upload" [size]="24" class="text-muted-foreground mb-1" />
+    <label for="gen-archivos" class="font-medium">
+      @if (archivos().length) {
+        {{ archivos().length }} {{ archivos().length === 1 ? 'PDF elegido' : 'PDF elegidos' }}
+      } @else {
+        Elige los PDF o arrástralos aquí
+      }
+    </label>
+    <p class="text-muted-foreground" id="gen-limite">
+      @if (archivos().length === 1) { {{ archivos()[0].name }} } @else { Uno o varios PDF, 10 MB como mucho cada uno }
+    </p>
+    <input #fileInput id="gen-archivos" name="archivos" type="file" accept="application/pdf,.pdf" multiple required
+      aria-describedby="gen-limite gen-ayuda" [disabled]="procesando()" (change)="elegir(fileInput)"
+      class="absolute inset-0 size-full cursor-pointer opacity-0 disabled:cursor-not-allowed" />
+  </div>
+  <p id="gen-ayuda" class="text-muted-foreground max-w-[75ch]">
+    De cada PDF se sacan el cliente, el CUPS, el periodo, los consumos y las potencias; con el CUPS se busca el contrato
+    y con su producto se calculan los precios de venta. El borrador queda en revisión: nunca se emite solo.
+    Un periodo ya facturado o con borrador se omite.
+  </p>
+  <div class="flex flex-wrap items-center gap-3">
+    <button type="submit" class="btn btn-primary" [disabled]="procesando() || !archivos().length">
+      <ui-icon name="file-plus" [size]="16" />
+      {{ procesando() ? 'Procesando…' : archivos().length > 1 ? 'Generar ' + archivos().length + ' borradores' : 'Generar borrador' }}
+    </button>
+    @if (procesando()) {
+      <label for="gen-progreso" class="sr-only">Facturas procesadas</label>
+      <progress id="gen-progreso" class="w-48 accent-primary" [value]="hechos()" [max]="archivos().length"></progress>
+      <span class="tabular-nums text-muted-foreground">{{ hechos() }} de {{ archivos().length }}</span>
+    }
+  </div>
+</form>
+
+<p role="status" class="sr-only">
+  @if (!procesando() && hechos() > 0) { Terminado: {{ creados() }} borradores creados y {{ errores() }} con error. }
+</p>
+
+@if (resultados().length) {
+  <section class="rounded-2xl border border-border bg-card overflow-hidden" aria-labelledby="gen-res-titulo">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 pt-4 pb-2">
+      <h2 id="gen-res-titulo" class="font-semibold">Resultado</h2>
+      <span class="text-sm text-muted-foreground tabular-nums">
+        {{ creados() }} {{ creados() === 1 ? 'borrador creado' : 'borradores creados' }}
+        @if (errores()) { · <span class="text-danger-fg">{{ errores() }} con error</span> }
+      </span>
+    </div>
+    <div class="vtable-region" tabindex="0" role="region" aria-labelledby="gen-res-titulo" style="--vtable-min: 48rem">
+      <table class="vtable">
+        <caption class="sr-only">Resultado por archivo</caption>
+        <colgroup>
+          <col style="inline-size: 30%" />
+          <col class="col-estado" style="inline-size: 9.5rem" />
+          <col class="col-texto" />
+          <col class="col-acciones" style="inline-size: 9rem" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col" class="vtable-fix">Archivo</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Cliente y CUPS</th>
+            <th scope="col"><span class="sr-only">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of resultados(); track $index) {
+            <tr rowLink>
+              <th scope="row" class="vtable-fix">
+                <span class="cell-clamp2" [title]="r.archivo">{{ r.archivo }}</span>
+              </th>
+              <td data-label="Estado">
+                @if (r.facturaId) {
+                  <app-status-badge tone="success">Borrador creado</app-status-badge>
+                } @else {
+                  <app-status-badge tone="danger">Error</app-status-badge>
+                }
+              </td>
+              <td data-label="Cliente y CUPS">
+                @if (r.facturaId) {
+                  <span class="cell-clamp2" [title]="r.titular ?? ''">{{ r.titular ?? 'Sin titular' }}</span>
+                  @if (r.cups; as c) {
+                    <span class="cell-sub" [cellTail]="c" [title]="c"></span>
+                  }
+                } @else {
+                  <span class="text-danger-fg">{{ r.error }}</span>
+                }
+              </td>
+              <td>
+                @if (r.facturaId) {
+                  <div class="cell-actions">
+                    <a data-row-primary [routerLink]="['/vibra/facturas', r.facturaId]" class="underline underline-offset-2">Revisar borrador</a>
+                  </div>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}
+</div>

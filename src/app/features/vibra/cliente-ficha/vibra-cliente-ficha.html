@@ -1,0 +1,286 @@
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">{{ msg }}</div>
+}
+
+@if (ficha(); as f) {
+  <a routerLink="/vibra/clientes" class="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+    <ui-icon name="chevron-left" [size]="16" /> Clientes
+  </a>
+  <app-page-header [title]="f.nombre" [subtitle]="'Persona ' + tipoCliente[f.tipo].toLowerCase() + ' · ' + f.nif + (f.deKilowy ? ' · importado de Kilowy' : '')">
+    @if (puedeEditar()) {
+      <button secondary type="button" class="btn btn-secondary" (click)="editOpen.set(true)">
+        <ui-icon name="edit" [size]="16" /> Editar cliente
+      </button>
+    }
+  </app-page-header>
+
+  @if (f.dniRevisar) {
+    <div class="rounded-xl border border-warning/40 bg-warning-soft text-warning-fg px-4 py-3 mb-4 text-sm" role="status">
+      El DNI/CIF que vino de Kilowy no es válido. Corrígelo con «Editar cliente».
+    </div>
+  }
+
+  <div class="tablist mb-4" focusgroup="tablist nomemory" role="tablist" aria-label="Ficha del cliente">
+    @for (p of pestanas(); track p.id) {
+      <button type="button" role="tab" [id]="'tab-' + p.id" [attr.aria-controls]="'panel-' + p.id"
+        [attr.aria-selected]="tab() === p.id" [attr.focusgroupstart]="tab() === p.id ? '' : null" (click)="tab.set(p.id)">
+        {{ p.label }}
+        @if (p.n !== null) { <span class="ml-1 tabular-nums text-xs text-muted-foreground">{{ p.n }}</span> }
+      </button>
+    }
+  </div>
+
+  <div id="panel-datos" role="tabpanel" aria-labelledby="tab-datos" [hidden]="tab() !== 'datos'">
+    <div class="rounded-2xl border border-border bg-card p-6">
+      <dl class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm">
+        @if (f.telefono1) { <div><dt class="text-xs text-muted-foreground">Teléfono</dt><dd class="tabular-nums">{{ f.telefono1 }}</dd></div> }
+        @if (f.telefono2) { <div><dt class="text-xs text-muted-foreground">Teléfono 2</dt><dd class="tabular-nums">{{ f.telefono2 }}</dd></div> }
+        @if (f.email) { <div class="min-w-0"><dt class="text-xs text-muted-foreground">Email</dt><dd class="break-all">{{ f.email }}</dd></div> }
+        @if (!f.telefono1 && !f.telefono2 && !f.email) {
+          <div><dt class="text-xs text-muted-foreground">Contacto</dt><dd class="text-muted-foreground">Sin teléfono ni email</dd></div>
+        }
+        <div class="sm:col-span-2 lg:col-span-3"><dt class="text-xs text-muted-foreground">Dirección del cliente</dt><dd>{{ direccion() }}</dd></div>
+        @if (f.fechaAlta) { <div><dt class="text-xs text-muted-foreground">Fecha de alta</dt><dd class="tabular-nums">{{ fecha(f.fechaAlta) }}</dd></div> }
+        <div><dt class="text-xs text-muted-foreground">Origen</dt><dd>{{ f.deKilowy ? 'Importado de Kilowy' : 'Creado en Control' }}</dd></div>
+        @if (f.observaciones) {
+          <div class="sm:col-span-2 lg:col-span-3"><dt class="text-xs text-muted-foreground">Observaciones</dt><dd class="whitespace-pre-line">{{ f.observaciones }}</dd></div>
+        }
+      </dl>
+    </div>
+  </div>
+
+  <div id="panel-suministros" role="tabpanel" aria-labelledby="tab-suministros" [hidden]="tab() !== 'suministros'">
+    @if (puedeEditar()) {
+      <div class="flex justify-end mb-3">
+        <button type="button" class="btn btn-secondary" (click)="abrirSuministro(null)">
+          <ui-icon name="plus" [size]="16" /> Nuevo punto de suministro
+        </button>
+      </div>
+    }
+    <div class="rounded-2xl border border-border bg-card overflow-hidden">
+      <div class="vtable-region" tabindex="0" role="region" aria-labelledby="sum-caption" style="--vtable-min: 44rem">
+        <table class="vtable">
+          <caption id="sum-caption" class="sr-only">Puntos de suministro de {{ f.nombre }}</caption>
+          <colgroup>
+            <col class="col-cups" style="inline-size: 13rem" />
+            <col class="col-texto" />
+            <col style="inline-size: 5rem" />
+            <col style="inline-size: 6rem" />
+            @if (puedeEditar()) { <col style="inline-size: 4rem" /> }
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col" class="vtable-fix">CUPS</th>
+              <th scope="col">Dirección</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Tarifa</th>
+              @if (puedeEditar()) { <th scope="col"><span class="sr-only">Acciones</span></th> }
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of f.suministros; track s.id) {
+              <tr rowLink>
+                <th scope="row" class="vtable-fix">
+                  <span [cellTail]="s.cups" [title]="s.cups"></span>
+                </th>
+                <td data-label="Dirección">
+                  <span class="cell-clamp2" [title]="s.direccion ?? ''">{{ s.direccion ?? 'Sin dirección' }}</span>
+                  @if (s.cp || s.poblacion) { <span class="cell-sub">{{ s.cp }} {{ s.poblacion ?? '' }}{{ s.provincia ? ' (' + s.provincia + ')' : '' }}</span> }
+                </td>
+                <td data-label="Tipo">{{ tipoSuministro[s.tipo] }}</td>
+                <td data-label="Tarifa" class="cell-nowrap">{{ s.tarifaAcceso ?? '—' }}</td>
+                @if (puedeEditar()) {
+                  <td data-label="Acciones">
+                    <div class="cell-actions">
+                      <button data-row-primary type="button" class="btn btn-ghost btn-icon" (click)="abrirSuministro(s)"
+                        [attr.aria-label]="'Editar suministro ' + s.cups" title="Editar"><ui-icon name="edit" [size]="16" /></button>
+                    </div>
+                  </td>
+                }
+              </tr>
+            } @empty {
+              <tr><td [attr.colspan]="puedeEditar() ? 5 : 4" class="vtable-empty">Sin puntos de suministro.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-contratos" role="tabpanel" aria-labelledby="tab-contratos" [hidden]="tab() !== 'contratos'">
+    <div class="rounded-2xl border border-border bg-card overflow-hidden">
+      <div class="vtable-region" tabindex="0" role="region" aria-labelledby="con-caption" style="--vtable-min: 64rem">
+        <table class="vtable">
+          <caption id="con-caption" class="sr-only">Contratos de {{ f.nombre }}</caption>
+          <colgroup>
+            <col class="col-cups" style="inline-size: 13rem" />
+            <col style="inline-size: 10rem" />
+            <col style="inline-size: 9rem" />
+            <col class="col-texto" />
+            <col class="col-fecha" />
+            <col class="col-fecha" />
+            <col class="col-fecha" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col" class="vtable-fix">CUPS</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Comercializadora</th>
+              <th scope="col">Colaborador</th>
+              <th scope="col">Firma</th>
+              <th scope="col">Activación</th>
+              <th scope="col">Baja</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of f.contratos; track c.id) {
+              <tr>
+                <th scope="row" class="vtable-fix">
+                  @if (c.cups; as cu) {
+                    <span [cellTail]="cu" [title]="cu"></span>
+                  } @else { <span class="text-muted-foreground">Sin CUPS</span> }
+                </th>
+                <td data-label="Estado"><app-status-badge [tone]="estadoTone(c.estado)">{{ estadoLabel(c.estado) }}</app-status-badge></td>
+                <td data-label="Comercializadora">{{ c.comercializadora ?? '—' }}</td>
+                <td data-label="Colaborador"><span class="cell-clamp2" [title]="c.colaborador ?? ''">{{ c.colaborador ?? '—' }}</span></td>
+                <td data-label="Firma" class="cell-nowrap tabular-nums">{{ fecha(c.fechaFirma) }}</td>
+                <td data-label="Activación" class="cell-nowrap tabular-nums">{{ fecha(c.fechaActivacion) }}</td>
+                <td data-label="Baja" class="cell-nowrap tabular-nums">{{ fecha(c.fechaBaja) }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7" class="vtable-empty">Sin contratos con este DNI/CIF o CUPS.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  @if (verFacturas) {
+    <div id="panel-facturas" role="tabpanel" aria-labelledby="tab-facturas" [hidden]="tab() !== 'facturas'">
+      <div class="rounded-2xl border border-border bg-card overflow-hidden">
+        <div class="vtable-region" tabindex="0" role="region" aria-labelledby="fac-caption" style="--vtable-min: 50rem">
+          <table class="vtable">
+            <caption id="fac-caption" class="sr-only">Facturas de {{ f.nombre }}</caption>
+            <colgroup>
+              <col class="col-numdoc" />
+              <col class="col-cups" />
+              <col class="col-periodo" />
+              <col class="col-importe" />
+              <col class="col-estado" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col" class="vtable-fix">Nº</th>
+                <th scope="col">CUPS</th>
+                <th scope="col">Periodo</th>
+                <th scope="col" class="cell-num">Total</th>
+                <th scope="col">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (facturas() === null) {
+                <tr><td colspan="5" class="vtable-empty" role="status">Cargando facturas…</td></tr>
+              }
+              @for (fa of facturas() ?? []; track fa.id) {
+                <tr rowLink>
+                  <th scope="row" class="vtable-fix">
+                    <a data-row-primary [routerLink]="['/vibra/facturas', fa.id]" class="font-medium hover:underline underline-offset-2">
+                      @if (fa.numero; as n) {
+                        <span [cellTail]="n" [keep]="6" [title]="n"></span>
+                      } @else {
+                        Borrador
+                      }
+                    </a>
+                    <div class="cell-badges">
+                      <span class="text-xs text-muted-foreground tabular-nums">{{ fecha(fa.fechaEmision ?? fa.createdAt) }}</span>
+                      @if (fa.deKilowy) { <app-status-badge size="sm">Kilowy</app-status-badge> }
+                    </div>
+                  </th>
+                  <td data-label="CUPS">
+                    @if (fa.cups; as c) {
+                      <span [cellTail]="c" [title]="c"></span>
+                    } @else { <span class="text-muted-foreground">—</span> }
+                  </td>
+                  <td data-label="Periodo" class="cell-nowrap tabular-nums" [title]="fecha(fa.periodoDesde) + ' – ' + fecha(fa.periodoHasta)">
+                    {{ periodo(fa.periodoDesde, fa.periodoHasta) }}
+                  </td>
+                  <td data-label="Total" class="cell-num font-medium">{{ euro(fa.total) }}</td>
+                  <td data-label="Estado"><app-status-badge [tone]="toneFactura(fa.estado)">{{ estadoFactura[fa.estado] }}</app-status-badge></td>
+                </tr>
+              } @empty {
+                @if (facturas() !== null) {
+                  <tr><td colspan="5" class="vtable-empty">Sin facturas con este DNI/CIF.</td></tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  }
+
+  <app-vibra-cliente-form [open]="editOpen()" [cliente]="f" (saved)="guardado($event)" (cancel)="editOpen.set(false)" />
+
+  <app-form-dialog
+    [open]="sumEdit() !== null"
+    [title]="sumEdit()?.id ? 'Editar punto de suministro' : 'Nuevo punto de suministro'"
+    [subtitle]="f.nombre"
+    icon="bolt"
+    [saving]="sumSaving()"
+    [canSave]="!!sf.valid"
+    saveLabel="Guardar"
+    [errorMessage]="sumError()"
+    width="560px"
+    (cancel)="sumEdit.set(null)"
+    (save)="guardarSuministro()">
+    <form #sf="ngForm" class="vform grid grid-cols-1 sm:grid-cols-6 gap-3 py-2 text-sm" (ngSubmit)="sf.valid && guardarSuministro()">
+      <div class="campo sm:col-span-4 flex flex-col gap-1">
+        <label for="sum-cups">CUPS</label>
+        <!-- Misma regla que Cups.validar (backend); el backend comprueba además las letras de control -->
+        <input id="sum-cups" name="cups" [(ngModel)]="sum.cups" #cups="ngModel" required maxlength="30"
+          pattern="[Ee][Ss][0-9 ]{16,20}[A-Za-z]{2}([0-9][A-Za-z])?" autocomplete="off"
+          [attr.aria-describedby]="cups.invalid && (cups.dirty || cups.touched) ? 'sum-cups-error' : null"
+          class="border border-border rounded-lg px-3 py-2 bg-input uppercase tabular-nums" />
+        <p id="sum-cups-error" class="error-msg">Error: el CUPS es ES + 16 cifras + 2 letras (p. ej. ES0021000044099000TQ).</p>
+      </div>
+      <div class="campo sm:col-span-1 flex flex-col gap-1">
+        <label for="sum-tipo">Tipo</label>
+        <select id="sum-tipo" name="tipo" [(ngModel)]="sum.tipo" class="border border-border rounded-lg px-3 py-2 bg-input">
+          <option value="LUZ">Luz</option>
+          <option value="GAS">Gas</option>
+        </select>
+      </div>
+      <div class="campo sm:col-span-1 flex flex-col gap-1">
+        <label for="sum-tarifa">Tarifa</label>
+        <input id="sum-tarifa" name="tarifaAcceso" [(ngModel)]="sum.tarifaAcceso" maxlength="20" list="tarifas-acceso"
+          class="border border-border rounded-lg px-3 py-2 bg-input" />
+        <datalist id="tarifas-acceso"><option value="2.0TD"></option><option value="3.0TD"></option><option value="6.1TD"></option></datalist>
+      </div>
+      <div class="campo sm:col-span-6 flex flex-col gap-1">
+        <label for="sum-dir">Dirección de suministro</label>
+        <input id="sum-dir" name="direccion" [(ngModel)]="sum.direccion" maxlength="255"
+          class="border border-border rounded-lg px-3 py-2 bg-input" />
+      </div>
+      <div class="campo sm:col-span-2 flex flex-col gap-1">
+        <label for="sum-cp">Código postal</label>
+        <input id="sum-cp" name="cp" [(ngModel)]="sum.cp" #scp="ngModel" pattern="\d{5}" inputmode="numeric" maxlength="5"
+          [attr.aria-describedby]="scp.invalid && (scp.dirty || scp.touched) ? 'sum-cp-error' : null"
+          class="border border-border rounded-lg px-3 py-2 bg-input" />
+        <p id="sum-cp-error" class="error-msg">Error: el código postal tiene 5 cifras.</p>
+      </div>
+      <div class="campo sm:col-span-2 flex flex-col gap-1">
+        <label for="sum-pob">Población</label>
+        <input id="sum-pob" name="poblacion" [(ngModel)]="sum.poblacion" maxlength="120"
+          class="border border-border rounded-lg px-3 py-2 bg-input" />
+      </div>
+      <div class="campo sm:col-span-2 flex flex-col gap-1">
+        <label for="sum-prov">Provincia</label>
+        <input id="sum-prov" name="provincia" [(ngModel)]="sum.provincia" maxlength="80"
+          class="border border-border rounded-lg px-3 py-2 bg-input" />
+      </div>
+    </form>
+  </app-form-dialog>
+} @else if (!error()) {
+  <app-table-skeleton [cols]="4" [rows]="6" />
+}

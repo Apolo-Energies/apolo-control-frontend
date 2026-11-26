@@ -1,7 +1,10 @@
 <span
-  class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium border whitespace-nowrap"
+  class="inline-flex shrink-0 items-center gap-1.5 rounded-md border font-medium leading-none whitespace-nowrap align-middle"
+  [class]="size() === 'sm' ? 'h-5 px-1.5 text-[11px]' : 'h-6 px-2 text-xs'"
   [ngClass]="classes()"
 >
-  <span class="h-1.5 w-1.5 rounded-full" [ngClass]="dotClass()"></span>
+  @if (size() !== 'sm') {
+    <span class="size-1.5 shrink-0 rounded-full" [ngClass]="dotClass()" aria-hidden="true"></span>
+  }
   <ng-content />
 </span>

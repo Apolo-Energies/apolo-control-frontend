@@ -1,0 +1,127 @@
+@if (error(); as msg) {
+  <div class="rounded-xl border border-danger/40 bg-danger-soft text-danger-fg px-4 py-3 mb-4" role="alert">
+    {{ msg }} <button type="button" (click)="load()" class="ml-2 underline">Reintentar</button>
+  </div>
+}
+
+<a routerLink="/vibra/remesas" class="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+  <ui-icon name="chevron-left" [size]="14" /> Remesas
+</a>
+
+@if (remesa(); as r) {
+  <app-page-header [title]="'Remesa nº ' + r.numero" [subtitle]="tipoLabel[r.tipo] + ' · cuenta ' + r.cuenta">
+    @if (puedeGestionar && r.estado === 'GENERADA') {
+      <button secondary type="button" class="btn btn-secondary" (click)="confirmar.set('cobrada')" [disabled]="r.fechaCobro > hoy"
+        [title]="r.fechaCobro > hoy ? 'Se podrá marcar cobrada a partir del ' + fecha(r.fechaCobro) : ''">
+        <ui-icon name="check-circle" [size]="16" /> Marcar cobrada
+      </button>
+    }
+    @if (puedeGestionar && r.estado === 'GENERADA') {
+      <app-actions-menu [items]="masAcciones" />
+    }
+    @if (puedeGestionar) {
+      <button primary type="button" class="btn btn-primary" (click)="descargar(r)">
+        <ui-icon name="download" [size]="16" /> Descargar XML
+      </button>
+    }
+  </app-page-header>
+
+  <section class="rounded-2xl border border-border bg-card px-5 py-4 mb-6" aria-label="Resumen de la remesa">
+    <dl class="flex flex-wrap items-start gap-x-10 gap-y-4 text-sm">
+      <div>
+        <dt class="text-xs text-muted-foreground mb-1">Estado</dt>
+        <dd>
+          <app-status-badge [tone]="estadoTone(r.estado)">{{ estadoLabel[r.estado] }}</app-status-badge>
+          @if (r.cobradaAt) { <span class="cell-sub tabular-nums">el {{ fechaHora(r.cobradaAt) }}</span> }
+          @if (r.anuladaAt) { <span class="cell-sub tabular-nums">el {{ fechaHora(r.anuladaAt) }}</span> }
+        </dd>
+      </div>
+      <div>
+        <dt class="text-xs text-muted-foreground mb-1">Importe</dt>
+        <dd class="text-xl font-semibold tabular-nums cell-nowrap">{{ euro(r.importe) }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs text-muted-foreground mb-1">Cobro</dt>
+        <dd class="tabular-nums cell-nowrap">{{ fecha(r.fechaCobro) }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs text-muted-foreground mb-1">Recibos</dt>
+        <dd class="tabular-nums">
+          {{ r.recibos }}
+          <span class="text-muted-foreground">·
+            {{ r.enBanco }} en el banco · {{ r.cobrados }} {{ r.cobrados === 1 ? 'cobrado' : 'cobrados' }} ·
+            <span [class.text-danger-fg]="r.devueltos > 0">{{ r.devueltos }} {{ r.devueltos === 1 ? 'devuelto' : 'devueltos' }}</span>
+          </span>
+        </dd>
+      </div>
+      <div>
+        <dt class="text-xs text-muted-foreground mb-1">Generada</dt>
+        <dd class="tabular-nums">{{ fecha(r.createdAt) }}@if (r.creadaPorNombre) { <span class="text-muted-foreground"> por {{ r.creadaPorNombre }}</span> }</dd>
+      </div>
+    </dl>
+    @if (puedeGestionar && r.estado === 'GENERADA' && r.fechaCobro > hoy) {
+      <p class="mt-3 text-sm text-muted-foreground">Se podrá marcar cobrada a partir del {{ fecha(r.fechaCobro) }}.</p>
+    }
+  </section>
+
+  <h2 id="recibos-caption" class="text-base font-semibold mb-2">Facturas de la remesa</h2>
+  <div class="rounded-2xl border border-border bg-card overflow-hidden">
+    <div class="vtable-region" tabindex="0" role="region" aria-labelledby="recibos-caption" style="--vtable-min: 52rem">
+      <table class="vtable">
+        <caption class="sr-only">Facturas de la remesa nº {{ r.numero }}</caption>
+        <colgroup>
+          <col class="col-numdoc" />
+          <col class="col-texto" />
+          <col class="col-cups" />
+          <col class="col-corto" style="inline-size: 6.5rem" />
+          <col class="col-importe" />
+          <col class="col-estado" style="inline-size: 8.5rem" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col" class="vtable-fix">Factura</th>
+            <th scope="col">Cliente</th>
+            <th scope="col">Cuenta</th>
+            <th scope="col">Intento</th>
+            <th scope="col" class="cell-num">Importe</th>
+            <th scope="col">Resultado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of r.lineas; track l.facturaId) {
+            <tr rowLink>
+              <th scope="row" class="vtable-fix">
+                <a data-row-primary [cellTail]="l.factura" [keep]="6" [routerLink]="['/vibra/facturas', l.facturaId]" class="font-medium hover:underline underline-offset-2" [title]="l.factura"></a>
+              </th>
+              <td data-label="Cliente">
+                <span class="cell-clamp2" [title]="l.titular ?? ''">{{ l.titular ?? 'Sin titular' }}</span>
+                @if (l.nif || l.contrato) {
+                  <span class="cell-sub tabular-nums">{{ l.nif ?? '' }}{{ l.nif && l.contrato ? ' · ' : '' }}{{ l.contrato ? '#' + l.contrato : '' }}</span>
+                }
+              </td>
+              <td data-label="Cuenta" class="cell-nowrap tabular-nums">{{ l.cuenta }}</td>
+              <td data-label="Intento" class="cell-nowrap tabular-nums">{{ l.intento }}º cobro</td>
+              <td data-label="Importe" class="cell-num font-medium">{{ euro(l.importe) }}</td>
+              <td data-label="Resultado"><app-status-badge [tone]="resultadoTone(l.resultado)">{{ resultadoLabel[l.resultado] }}</app-status-badge></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="vtable-empty">La remesa no tiene facturas.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <app-confirm-dialog
+    [open]="confirmar() !== null"
+    [title]="confirmar() === 'anular' ? 'Anular remesa' : 'Marcar cobrada'"
+    [message]="confirmar() ? mensaje(confirmar()!, r) : ''"
+    [confirmLabel]="confirmar() === 'anular' ? 'Anular' : 'Marcar cobrada'"
+    [tone]="confirmar() === 'anular' ? 'danger' : 'info'"
+    [loading]="ocupado()"
+    (confirm)="ejecutar()"
+    (cancel)="confirmar.set(null)"
+  />
+} @else if (!error()) {
+  <app-table-skeleton [cols]="7" [rows]="6" />
+}

@@ -10,7 +10,9 @@ import { PageHeader } from '../../../shared/components/page-header/page-header';
 import { Pagination } from '../../../shared/components/pagination/pagination';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
-import { Icon, IconName } from '../../../shared/icons/icon';
+import { Icon } from '../../../shared/icons/icon';
+import { RowLink } from '../../../shared/directives/row-link';
+import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 
 import { VibraRenovacionService } from '../../../core/services/vibra-renovacion.service';
 import { VibraDashboardService } from '../../../core/services/vibra-dashboard.service';
@@ -18,6 +20,8 @@ import { ListStateService } from '../../../core/services/list-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { COMERCIALIZADORA_VIBRA_VALUES, VibraAlta, VibraRenovaciones as Renovaciones } from '../../../core/models';
 import { formatDate, safeText } from '../../../shared/utils/format';
+import { CellTail } from '../../../shared/components/cell-tail/cell-tail';
+import { ariaSort } from '../../../shared/utils/sort';
 
 type SortCol = 'titular' | 'cups' | 'colaborador' | 'comercializadora'
              | 'fechaActivacionContrato' | 'fechaRenovacion' | 'consumo';
@@ -34,8 +38,24 @@ function extractMessage(err: HttpErrorResponse): string {
 @Component({
   selector: 'app-vibra-renovaciones',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, NgTemplateOutlet, PageHeader, Pagination, TableSkeleton, FormDialog, Icon],
+  imports: [FormsModule, NgTemplateOutlet, PageHeader, Pagination, TableSkeleton, FormDialog, Icon, StatusBadge, CellTail, RowLink],
   templateUrl: './vibra-renovaciones.html',
+  styles: `
+    .ren-toggle {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      min-block-size: 2.5rem; padding-inline: 0.25rem; border-radius: 0.5rem;
+    }
+    .ren-toggle:focus-visible { outline: 2px solid var(--color-foreground); outline-offset: 2px; }
+    .ren-chevron { color: var(--color-muted-foreground); transition: rotate 0.15s; }
+    .ren-toggle[aria-expanded="false"] .ren-chevron { rotate: -90deg; }
+    .ren-comentario {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;
+      inline-size: 100%; padding: 0.25rem; margin: -0.25rem; border-radius: 0.375rem; text-align: start;
+    }
+    .ren-comentario:focus-visible { outline: 2px solid var(--color-foreground); outline-offset: 0; }
+    @media (hover: hover) { .ren-comentario:hover { background-color: var(--color-accent); } }
+    @media (prefers-reduced-motion: reduce) { .ren-chevron { transition: none; } }
+  `,
 })
 export class VibraRenovaciones implements OnDestroy {
   private readonly service = inject(VibraRenovacionService);
@@ -180,13 +200,8 @@ export class VibraRenovaciones implements OnDestroy {
     this.applyFilters();
   }
 
-  protected sortIcon(col: SortCol): IconName {
-    if (this.sortCol() !== col) return 'arrow-down';
-    return this.sortDir() === 'asc' ? 'arrow-up' : 'arrow-down';
-  }
-
-  protected sortIconClass(col: SortCol): string {
-    return this.sortCol() === col ? 'text-primary' : 'opacity-25';
+  protected ariaSort(col: SortCol): 'ascending' | 'descending' | null {
+    return ariaSort(this.sortCol() === col, this.sortDir());
   }
 
   protected openEdit(row: VibraAlta): void {

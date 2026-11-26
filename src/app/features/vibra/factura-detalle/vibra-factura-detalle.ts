@@ -1,0 +1,350 @@
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, signal, viewChild } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { Observable, catchError, of, switchMap } from 'rxjs';
+
+import { PageHeader } from '../../../shared/components/page-header/page-header';
+import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
+import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
+import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
+import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions-menu/actions-menu';
+import { Icon } from '../../../shared/icons/icon';
+import { formatDate, formatDateTime, formatEuro, formatNumber, parseDecimal } from '../../../shared/utils/format';
+import { mensajeError } from '../../../shared/utils/http-error';
+
+import { AuthService } from '../../../core/auth';
+import { VibraFacturaService } from '../../../core/services/vibra-factura.service';
+import { NotificationService } from '../../../core/services/notification.service';
+import {
+  ESTADO_FACTURA_VIBRA_LABEL, EstadoFacturaVibra, IVAS_FACTURA_VIBRA, MAX_PDF_COMPRA_BYTES, VibraFactura, VibraFacturaLinea,
+  ZonaLineaFacturaVibra,
+} from '../../../core/models';
+import { abrirBlob, estadoFacturaTone } from '../facturas/vibra-factura-ui';
+
+interface Confirmacion {
+  titulo: string;
+  mensaje: string;
+  label: string;
+  tone: 'danger' | 'warning' | 'info';
+  accion: () => void;
+}
+
+interface LineaForm {
+  concepto: string;
+  importe: string;
+  zona: ZonaLineaFacturaVibra;
+  /** '' = sin IVA (no sujeto). */
+  iva: string;
+}
+
+/** Siguientes estados de cobro desde el actual (como los botones de Kilowy). */
+const SIGUIENTES: Partial<Record<EstadoFacturaVibra, { estado: EstadoFacturaVibra; label: string }[]>> = {
+  EMITIDA: [{ estado: 'PAGADA', label: 'Marcar pagada' }, { estado: 'IMPAGADA', label: 'Marcar impagada' }],
+  PAGADA: [{ estado: 'IMPAGADA', label: 'Marcar impagada' }, { estado: 'EMITIDA', label: 'Volver a emitida' }],
+  IMPAGADA: [{ estado: 'PAGADA', label: 'Marcar pagada' }, { estado: 'EMITIDA', label: 'Volver a emitida' }],
+  DEVUELTA: [{ estado: 'PAGADA', label: 'Marcar pagada' }, { estado: 'EMITIDA', label: 'Volver a emitida' }],
+};
+
+/** Factura Vibra: borrador generado desde la compra (conceptos extra, emitir) o emitida (cobro y envío). */
+@Component({
+  selector: 'app-vibra-factura-detalle',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [FormsModule, RouterLink, PageHeader, FormDialog, ConfirmDialog, StatusBadge, ActionsMenu, Icon],
+  templateUrl: './vibra-factura-detalle.html',
+})
+export class VibraFacturaDetalle {
+  private readonly service = inject(VibraFacturaService);
+  private readonly notify = inject(NotificationService);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+
+  /** :id de la ruta (withComponentInputBinding). */
+  readonly id = input.required<string>();
+
+  protected readonly puedeEditar = computed(() => this.auth.hasRole('admin', 'contabilidad', 'operaciones'));
+  protected readonly puedeBorrar = computed(() => this.auth.hasRole('admin', 'contabilidad'));
+
+  protected readonly factura = signal<VibraFactura | null>(null);
+  protected readonly error = signal<string | null>(null);
+  protected readonly ocupado = signal<string | null>(null);
+  protected readonly confirmacion = signal<Confirmacion | null>(null);
+  /** Casilla «Enviar al emitir» (solo con email del cliente); desmarcada por defecto. */
+  protected readonly enviarAlEmitir = signal(false);
+
+  protected readonly lineaEdit = signal<{ id: string | null } | null>(null);
+  protected linea: LineaForm = lineaVacia();
+  protected readonly lineaSaving = signal(false);
+  protected readonly lineaError = signal<string | null>(null);
+
+  protected readonly euro = formatEuro;
+  protected readonly fecha = formatDate;
+  protected readonly fechaHora = formatDateTime;
+  protected readonly numero = formatNumber;
+  protected readonly estadoLabel = ESTADO_FACTURA_VIBRA_LABEL;
+  protected readonly tone = estadoFacturaTone;
+  protected readonly ivas = IVAS_FACTURA_VIBRA;
+
+  protected readonly esBorrador = computed(() => this.factura()?.estado === 'BORRADOR');
+  protected readonly siguientes = computed(() => SIGUIENTES[this.factura()?.estado ?? 'BORRADOR'] ?? []);
+  protected readonly lineasCalculo = computed(() => this.factura()?.lineas.filter((l) => l.tipo !== 'OTRO') ?? []);
+  /** Conceptos extra por zona, sin zonas vacías. */
+  protected readonly gruposConceptos = computed(() => {
+    const f = this.factura();
+    const editable = this.puedeEditar() && f?.estado === 'BORRADOR';
+    // Kilowy: sin líneas a 0 (p. ej. «detalle en Kilowy»)
+    const otros = f?.lineas.filter((l) => l.tipo === 'OTRO' && !(f.deKilowy && l.importe === 0)) ?? [];
+    return [
+      { id: 'antes', titulo: 'Dentro de la base del impuesto eléctrico', zona: 'ANTES' as const },
+      { id: 'despues', titulo: 'Después del impuesto eléctrico', zona: 'DESPUES' as const },
+    ]
+      .map((g) => ({
+        ...g,
+        lineas: otros.filter((l) => l.zona === g.zona).map((l) => ({
+          linea: l,
+          acciones: editable && l.origen === 'MANUAL' ? this.accionesLinea(l) : [],
+        })),
+      }))
+      .filter((g) => g.lineas.length);
+  });
+  protected readonly conAccionesLinea = computed(() => this.gruposConceptos().some((g) => g.lineas.some((l) => l.acciones.length)));
+  protected readonly potencias = computed(() => texto(this.factura()?.potencias, 'kW'));
+  protected readonly consumos = computed(() => texto(this.factura()?.consumos, 'kWh'));
+
+  protected readonly subtitulo = computed(() => {
+    const f = this.factura();
+    if (!f) return null;
+    return [f.titular, f.contrato ? 'contrato #' + f.contrato : null].filter(Boolean).join(' · ') || null;
+  });
+  /** PDF disponible: las de Kilowy solo si se trajo su PDF. */
+  protected readonly conPdf = computed(() => { const f = this.factura(); return !!f && (!f.deKilowy || f.pdfKilowy); });
+  protected readonly puedeEnviar = computed(() => this.puedeEditar() && !this.esBorrador() && this.conPdf());
+
+  /** Resumen de importes; en las de Kilowy solo lo que trae importe (el desglose quedó en Kilowy). */
+  protected readonly resumen = computed(() => {
+    const f = this.factura();
+    if (!f) return [];
+    const filas = [
+      { label: 'Potencia', valor: f.totalPotencia },
+      { label: 'Energía', valor: f.totalEnergia },
+      { label: 'Impuesto eléctrico', valor: f.impuestoElectrico },
+      { label: 'Otros', valor: f.totalOtros },
+      { label: 'Base imponible', valor: f.subtotal },
+      { label: 'IVA', valor: f.iva },
+    ];
+    if (!f.deKilowy) return filas;
+    return f.subtotal ? filas.filter((r) => r.valor) : [];
+  });
+
+  /** Columna lateral: rentabilidad y/o importes. */
+  protected readonly conLateral = computed(() => this.factura()?.compraTotal != null || this.resumen().length > 0);
+
+  /** Cambios de estado de cobro (menú «Cambiar estado»). */
+  protected readonly estadoAcciones = computed<ActionsMenuItem[]>(() => {
+    if (!this.puedeEditar() || this.esBorrador()) return [];
+    return this.siguientes().map((s) => ({ label: s.label, disabled: !!this.ocupado(), action: () => this.cambiarEstado(s.estado) }));
+  });
+
+  /** Acciones poco frecuentes de la cabecera. */
+  protected readonly masAcciones = computed<ActionsMenuItem[]>(() => {
+    const f = this.factura();
+    if (!f) return [];
+    const ocupado = !!this.ocupado();
+    const items: ActionsMenuItem[] = [];
+    if (this.esBorrador()) {
+      if (this.puedeEditar() && f.compraPdfNombre) {
+        items.push(
+          { label: 'Subir otra compra', icon: 'upload', disabled: ocupado, action: () => this.elegirCompra() },
+          { label: 'Re-leer compra', icon: 'refresh-cw', disabled: ocupado, action: () => this.releer() },
+        );
+      }
+      if (this.puedeBorrar()) {
+        items.push({ label: 'Borrar borrador', icon: 'trash', danger: true, separatorBefore: items.length > 0, disabled: ocupado, action: () => this.borrar() });
+      }
+    } else if (this.puedeEnviar() && f.enviadaAt) {
+      items.push({ label: f.email ? 'Reenviar por correo' : 'Reenviar (sin email del cliente)', icon: 'mail', disabled: ocupado || !f.email, action: () => this.enviar() });
+    }
+    return items;
+  });
+
+  private readonly compraInput = viewChild<ElementRef<HTMLInputElement>>('compraInput');
+
+  constructor() {
+    effect(() => this.load(this.id()));
+  }
+
+  private load(id: string): void {
+    this.error.set(null);
+    this.service.get(id).subscribe({
+      next: (f) => this.factura.set(f),
+      error: (err: HttpErrorResponse) => this.error.set(mensajeError(err, 'No se pudo cargar la factura')),
+    });
+  }
+
+  // ── Acciones ──────────────────────────────────────────────────────────────
+
+  /** ok: texto del aviso de éxito o qué hacer con la factura devuelta. */
+  private ejecutar(clave: string, obs: Observable<VibraFactura>, ok: string | ((f: VibraFactura) => void)): void {
+    this.ocupado.set(clave);
+    obs.subscribe({
+      next: (f) => {
+        this.ocupado.set(null);
+        this.confirmacion.set(null);
+        this.factura.set(f);
+        if (typeof ok === 'string') this.notify.success(ok);
+        else ok(f);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.ocupado.set(null);
+        this.confirmacion.set(null);
+        this.notify.error(mensajeError(err, 'No se pudo completar la acción'));
+      },
+    });
+  }
+
+  protected verPdf(): void {
+    this.service.pdf(this.id()).subscribe({ next: abrirBlob, error: () => this.notify.error('No se pudo generar el PDF') });
+  }
+
+  protected verCompra(): void {
+    this.service.compraPdf(this.id()).subscribe({ next: abrirBlob, error: () => this.notify.error('No se pudo abrir la compra') });
+  }
+
+  protected elegirCompra(): void {
+    this.compraInput()?.nativeElement.click();
+  }
+
+  protected subirCompra(input: HTMLInputElement): void {
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (file.size > MAX_PDF_COMPRA_BYTES) { this.notify.error('El PDF pasa de 10 MB'); return; }
+    this.ejecutar('compra', this.service.releer(this.id(), file), 'Compra leída: borrador regenerado');
+  }
+
+  protected releer(): void {
+    this.confirmacion.set({
+      titulo: 'Re-leer la compra',
+      mensaje: 'Se vuelve a leer la factura de compra y se regeneran los conceptos automáticos. Los conceptos añadidos a mano se conservan.',
+      label: 'Re-leer', tone: 'info',
+      accion: () => this.ejecutar('releer', this.service.releer(this.id()), 'Compra re-leída: borrador regenerado'),
+    });
+  }
+
+  protected emitir(): void {
+    const f = this.factura();
+    if (!f) return;
+    const avisos = f.avisos.length ? ` Hay ${f.avisos.length} ${f.avisos.length === 1 ? 'aviso' : 'avisos'} sin revisar.` : '';
+    this.confirmacion.set({
+      titulo: 'Emitir factura',
+      mensaje: `Se asigna número y fecha de emisión de hoy por ${formatEuro(f.total)}. Una factura emitida ya no se puede cambiar.${avisos}`,
+      label: 'Emitir', tone: 'warning',
+      accion: () => this.emitirYEnviar(),
+    });
+  }
+
+  /** Emite y, si se pidió, envía; un fallo del envío no deshace la emisión (queda emitida y avisa). */
+  private emitirYEnviar(): void {
+    const enviar = this.enviarAlEmitir() && !!this.factura()?.email;
+    let envioFallido: string | null = null;
+    const obs = this.service.emitir(this.id()).pipe(
+      switchMap((f) => !enviar ? of(f) : this.service.enviar(f.id).pipe(
+        catchError((err: HttpErrorResponse) => { envioFallido = mensajeError(err, 'No se pudo enviar'); return of(f); }),
+      )),
+    );
+    this.ejecutar('emitir', obs, (f) => {
+      if (envioFallido) this.notify.warn(envioFallido + '. La factura quedó emitida: envíala más tarde.', 'Emitida sin enviar');
+      else this.notify.success(enviar ? 'Factura emitida y enviada a ' + f.email : 'Factura emitida');
+    });
+  }
+
+  protected enviar(): void {
+    const f = this.factura();
+    if (!f) return;
+    const reenviar = !!f.enviadaAt;
+    this.confirmacion.set({
+      titulo: reenviar ? 'Reenviar por correo' : 'Enviar por correo',
+      mensaje: `Se envía el PDF de la factura a ${f.email}.${reenviar ? ' Ya se envió el ' + formatDateTime(f.enviadaAt!) + '.' : ''}`,
+      label: reenviar ? 'Reenviar' : 'Enviar', tone: 'info',
+      accion: () => this.ejecutar('enviar', this.service.enviar(this.id(), reenviar), reenviar ? 'Factura reenviada' : 'Factura enviada'),
+    });
+  }
+
+  protected cambiarEstado(estado: EstadoFacturaVibra): void {
+    this.ejecutar('estado', this.service.cambiarEstado(this.id(), estado), `Factura ${ESTADO_FACTURA_VIBRA_LABEL[estado].toLowerCase()}`);
+  }
+
+  protected borrar(): void {
+    this.confirmacion.set({
+      titulo: 'Borrar borrador',
+      mensaje: 'Se borra el borrador y su factura de compra. Podrás generarlo de nuevo subiendo la compra.',
+      label: 'Borrar', tone: 'danger',
+      accion: () => {
+        this.ocupado.set('borrar');
+        this.service.borrar(this.id()).subscribe({
+          next: () => { this.ocupado.set(null); this.confirmacion.set(null); this.notify.success('Borrador borrado'); void this.router.navigate(['/vibra/facturas']); },
+          error: (err: HttpErrorResponse) => { this.ocupado.set(null); this.confirmacion.set(null); this.notify.error(mensajeError(err, 'No se pudo borrar')); },
+        });
+      },
+    });
+  }
+
+  // ── Conceptos extra ───────────────────────────────────────────────────────
+
+  protected abrirLinea(l: VibraFacturaLinea | null): void {
+    this.linea = l
+      ? { concepto: l.concepto, importe: String(l.importe).replace('.', ','), zona: l.zona, iva: l.ivaPct === null ? '' : String(l.ivaPct) }
+      : lineaVacia();
+    this.lineaError.set(null);
+    this.lineaEdit.set({ id: l?.id ?? null });
+  }
+
+  protected importeValido(): boolean {
+    const n = parseDecimal(this.linea.importe);
+    return n !== null && !Number.isNaN(n) && n !== 0;
+  }
+
+  protected guardarLinea(): void {
+    const edit = this.lineaEdit();
+    if (!edit || !this.linea.concepto.trim() || !this.importeValido()) {
+      this.lineaError.set('Error: escribe el concepto y un importe distinto de 0 (negativo para un descuento).');
+      return;
+    }
+    const payload = {
+      concepto: this.linea.concepto.trim(),
+      importe: parseDecimal(this.linea.importe) as number,
+      zona: this.linea.zona,
+      ivaPct: this.linea.zona === 'ANTES' ? 21 : this.linea.iva === '' ? null : Number(this.linea.iva),
+    };
+    this.lineaSaving.set(true);
+    const obs = edit.id ? this.service.updateLinea(this.id(), edit.id, payload) : this.service.addLinea(this.id(), payload);
+    obs.subscribe({
+      next: (f) => { this.lineaSaving.set(false); this.lineaEdit.set(null); this.factura.set(f); },
+      error: (err: HttpErrorResponse) => { this.lineaSaving.set(false); this.lineaError.set(mensajeError(err, 'No se pudo guardar el concepto')); },
+    });
+  }
+
+  protected quitarLinea(l: VibraFacturaLinea): void {
+    this.ejecutar('linea', this.service.deleteLinea(this.id(), l.id), `Concepto «${l.concepto}» quitado`);
+  }
+
+  private accionesLinea(l: VibraFacturaLinea): ActionsMenuItem[] {
+    return [
+      { label: 'Editar', icon: 'edit', action: () => this.abrirLinea(l) },
+      { label: 'Quitar', icon: 'trash', danger: true, disabled: !!this.ocupado(), action: () => this.quitarLinea(l) },
+    ];
+  }
+
+  protected ivaTexto(l: VibraFacturaLinea): string {
+    return l.ivaPct === null ? 'Sin IVA (no sujeto)' : `IVA ${l.ivaPct} %`;
+  }
+}
+
+function lineaVacia(): LineaForm {
+  return { concepto: '', importe: '', zona: 'DESPUES', iva: '21' };
+}
+
+/** «P1 15 kW», uno por periodo con valor. */
+function texto(valores: (number | null)[] | undefined, unidad: string): string[] {
+  return (valores ?? []).flatMap((v, i) => (v ? [`P${i + 1} ${formatNumber(v)} ${unidad}`] : []));
+}

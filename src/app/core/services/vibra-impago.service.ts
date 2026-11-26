@@ -7,8 +7,14 @@ import {
   CambiarEstadoVibraImpagoPayload,
   Page,
   PageRequest,
+  VibraDevolucionAplicarPayload,
+  VibraDevolucionLeida,
+  VibraDevolucionLote,
   VibraImpago,
+  VibraImpagoAviso,
   VibraImpagoFilter,
+  VibraImpagoGestion,
+  VibraImpagoGestionPayload,
   VibraImpagoPayload,
 } from '../models';
 import { buildParams } from '../http/http-params.util';
@@ -44,6 +50,19 @@ export class VibraImpagoService {
     return this.http.patch<VibraImpago>(`${this.baseUrl}/${id}/estado`, payload);
   }
 
+  gestiones(id: string): Observable<VibraImpagoGestion[]> {
+    return this.http.get<VibraImpagoGestion[]>(`${this.baseUrl}/${id}/gestiones`);
+  }
+
+  addGestion(id: string, payload: VibraImpagoGestionPayload): Observable<VibraImpagoGestion> {
+    return this.http.post<VibraImpagoGestion>(`${this.baseUrl}/${id}/gestiones`, payload);
+  }
+
+  /** Aviso por correo al cliente; sin email no falla (enviado=false con el motivo). */
+  avisar(id: string): Observable<VibraImpagoAviso> {
+    return this.http.post<VibraImpagoAviso>(`${this.baseUrl}/${id}/avisar`, {});
+  }
+
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
@@ -53,5 +72,26 @@ export class VibraImpagoService {
       params: buildParams(filter),
       responseType: 'blob',
     });
+  }
+
+  // ── Devoluciones del banco ─────────────────────────────────────────────────
+
+  /** Vista previa del PDF del banco (no marca nada). */
+  leerDevoluciones(pdf: File): Observable<VibraDevolucionLeida> {
+    const fd = new FormData();
+    fd.append('pdf', pdf);
+    return this.http.post<VibraDevolucionLeida>(`${this.baseUrl}/devoluciones/leer`, fd);
+  }
+
+  aplicarDevoluciones(payload: VibraDevolucionAplicarPayload): Observable<VibraDevolucionLote> {
+    return this.http.post<VibraDevolucionLote>(`${this.baseUrl}/devoluciones/aplicar`, payload);
+  }
+
+  devoluciones(): Observable<VibraDevolucionLote[]> {
+    return this.http.get<VibraDevolucionLote[]>(`${this.baseUrl}/devoluciones`);
+  }
+
+  devolucion(id: string): Observable<VibraDevolucionLote> {
+    return this.http.get<VibraDevolucionLote>(`${this.baseUrl}/devoluciones/${id}`);
   }
 }
