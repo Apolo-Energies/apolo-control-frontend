@@ -57,9 +57,9 @@
         </thead>
         <tbody>
           @for (c of rows(); track c.id) {
-            <tr>
+            <tr rowLink>
               <th scope="row" class="vtable-fix">
-                <a [routerLink]="['/colaborador/contratos', c.id]" class="cell-clamp2 font-medium underline-offset-2 hover:underline"
+                <a data-row-primary [routerLink]="['/colaborador/contratos', c.id]" class="cell-clamp2 font-medium underline-offset-2 hover:underline"
                   [title]="c.titular ?? ''">{{ c.titular ?? 'Sin titular' }}</a>
                 @if (c.nifCif) { <span class="cell-sub tabular-nums">{{ c.nifCif }}</span> }
               </th>

@@ -66,9 +66,9 @@
         </thead>
         <tbody>
           @for (c of rows(); track c.id) {
-            <tr>
+            <tr rowLink>
               <th scope="row" class="vtable-fix">
-                <a [routerLink]="['/vibra/clientes', c.id]" class="cell-clamp2 font-medium hover:underline underline-offset-2" [title]="c.nombre">{{ c.nombre }}</a>
+                <a data-row-primary [routerLink]="['/vibra/clientes', c.id]" class="cell-clamp2 font-medium hover:underline underline-offset-2" [title]="c.nombre">{{ c.nombre }}</a>
               </th>
               <td data-label="DNI/CIF">
                 <span class="tabular-nums cell-nowrap">{{ c.nif }}</span>

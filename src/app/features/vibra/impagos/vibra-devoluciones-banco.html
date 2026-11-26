@@ -40,7 +40,7 @@
           <tr><td colspan="8" class="vtable-empty">Cargando…</td></tr>
         } @else {
           @for (l of lotes(); track l.id) {
-            <tr>
+            <tr rowLink>
               <th scope="row" class="vtable-fix">
                 <span class="cell-clamp2" [title]="l.archivo">{{ l.archivo }}</span>
               </th>
@@ -57,7 +57,7 @@
               </td>
               <td data-label="Acciones">
                 <div class="cell-actions">
-                  <button type="button" (click)="verDetalle(l.id)" class="btn btn-secondary btn-icon"
+                  <button data-row-primary type="button" (click)="verDetalle(l.id)" class="btn btn-secondary btn-icon"
                     title="Ver detalle" [attr.aria-label]="'Ver detalle de ' + l.archivo">
                     <ui-icon name="eye" [size]="16" />
                   </button>
@@ -251,7 +251,7 @@
           </thead>
           <tbody>
             @for (x of d.lineas; track x.orden) {
-              <tr>
+              <tr rowLink>
                 <th scope="row" class="vtable-fix">
                   <span class="cell-clamp2" [title]="x.titular ?? ''">{{ x.titular ?? '—' }}</span>
                   @if (x.ibanEnmascarado) { <span class="cell-sub tabular-nums">{{ x.ibanEnmascarado }}</span> }
@@ -262,7 +262,7 @@
                 <td data-label="Factura">
                   @if (x.facturaId) {
                     @let n = x.facturaNumero ?? 'Ver factura';
-                    <a [cellTail]="n" [keep]="6" [routerLink]="['/vibra/facturas', x.facturaId]" class="underline underline-offset-2" [title]="n"></a>
+                    <a data-row-primary [cellTail]="n" [keep]="6" [routerLink]="['/vibra/facturas', x.facturaId]" class="underline underline-offset-2" [title]="n"></a>
                   } @else if (x.facturaNumero; as n) {
                     <span [cellTail]="n" [keep]="6" [title]="n"></span>
                   } @else {

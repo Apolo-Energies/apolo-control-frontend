@@ -48,7 +48,7 @@
         </thead>
         <tbody>
           @for (c of rows(); track c.clave) {
-            <tr>
+            <tr rowLink>
               <th scope="row" class="vtable-fix font-medium">
                 <span class="cell-clamp2" [title]="c.nombre">{{ c.nombre }}</span>
               </th>
@@ -70,7 +70,7 @@
                   } @else {
                     <app-status-badge size="sm" tone="warning">Sin comisión</app-status-badge>
                   }
-                  <button type="button" (click)="verHistorial(c)" class="btn btn-ghost btn-icon"
+                  <button data-row-primary type="button" (click)="verHistorial(c)" class="btn btn-ghost btn-icon"
                     [attr.aria-label]="'Histórico de comisión de ' + c.nombre" title="Histórico de comisión">
                     <ui-icon name="clock" [size]="16" />
                   </button>

@@ -12,6 +12,7 @@ import { StatusBadge } from '../../../shared/components/status-badge/status-badg
 import { Pagination } from '../../../shared/components/pagination/pagination';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
+import { RowLink } from '../../../shared/directives/row-link';
 import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions-menu/actions-menu';
 
 import { VibraAltaService } from '../../../core/services/vibra-alta.service';
@@ -84,7 +85,7 @@ interface MenusFila { acciones: ActionsMenuItem[]; estados: ActionsMenuItem[]; c
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule, ReactiveFormsModule, NgTemplateOutlet,
-    PageHeader, FormDialog, ConfirmDialog, StatusBadge, Pagination, TableSkeleton, Icon, ActionsMenu, CellTail,
+    PageHeader, FormDialog, ConfirmDialog, StatusBadge, Pagination, TableSkeleton, Icon, ActionsMenu, CellTail, RowLink,
   ],
   templateUrl: './vibra-altas.html',
 })

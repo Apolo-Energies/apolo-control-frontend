@@ -8,6 +8,7 @@ import { Pagination } from '../../shared/components/pagination/pagination';
 import { StatusBadge } from '../../shared/components/status-badge/status-badge';
 import { TableSkeleton } from '../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../shared/icons/icon';
+import { RowLink } from '../../shared/directives/row-link';
 import { VibraPortalService } from '../../core/services/vibra-portal.service';
 import { ESTADO_VIBRA_ALTA_VALUES, Page, PortalContrato } from '../../core/models';
 import { formatDate } from '../../shared/utils/format';
@@ -19,7 +20,7 @@ import { CellTail } from '../../shared/components/cell-tail/cell-tail';
 @Component({
   selector: 'app-mis-contratos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, PageHeader, Pagination, StatusBadge, TableSkeleton, Icon, CellTail],
+  imports: [FormsModule, RouterLink, PageHeader, Pagination, StatusBadge, TableSkeleton, Icon, CellTail, RowLink],
   templateUrl: './mis-contratos.html',
 })
 export class MisContratos {

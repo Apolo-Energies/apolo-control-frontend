@@ -8,6 +8,7 @@ import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
+import { RowLink } from '../../../shared/directives/row-link';
 
 import { AuthService } from '../../../core/auth';
 import { VibraColaboradorService } from '../../../core/services/vibra-colaborador.service';
@@ -30,7 +31,7 @@ import { formatDateTime, formatEuro } from '../../../shared/utils/format';
 @Component({
   selector: 'app-vibra-equipo',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, PageHeader, ActionsMenu, FormDialog, StatusBadge, TableSkeleton, Icon],
+  imports: [FormsModule, PageHeader, ActionsMenu, FormDialog, StatusBadge, TableSkeleton, Icon, RowLink],
   templateUrl: './vibra-equipo.html',
 })
 export class VibraEquipo {

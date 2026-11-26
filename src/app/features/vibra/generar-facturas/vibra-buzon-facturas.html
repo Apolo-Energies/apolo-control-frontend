@@ -95,7 +95,7 @@
         </thead>
         <tbody>
           @for (c of rows(); track c.id) {
-            <tr>
+            <tr rowLink>
               <th scope="row" class="vtable-fix cell-nowrap tabular-nums">{{ fmtFechaHora(c.fecha) }}</th>
               <td data-label="Remitente">
                 <span class="cell-clamp2">{{ c.comercializadora ?? 'No reconocido' }}</span>
@@ -115,7 +115,7 @@
               <td>
                 <div class="cell-actions flex-col items-end @max-[600px]:items-start">
                   @if (c.facturaId) {
-                    <a [routerLink]="['/vibra/facturas', c.facturaId]" class="underline underline-offset-2">Revisar borrador</a>
+                    <a data-row-primary [routerLink]="['/vibra/facturas', c.facturaId]" class="underline underline-offset-2">Revisar borrador</a>
                   }
                   @if (c.tienePdf) {
                     <button type="button" (click)="verPdf(c)" class="underline underline-offset-2">Ver PDF</button>

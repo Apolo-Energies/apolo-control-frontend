@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { PageHeader } from '../../../shared/components/page-header/page-header';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { Icon } from '../../../shared/icons/icon';
+import { RowLink } from '../../../shared/directives/row-link';
 import { mensajeError } from '../../../shared/utils/http-error';
 import { VibraBuzonFacturas } from './vibra-buzon-facturas';
 
@@ -22,7 +23,7 @@ import { CellTail } from '../../../shared/components/cell-tail/cell-tail';
 @Component({
   selector: 'app-vibra-generar-facturas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, PageHeader, StatusBadge, Icon, VibraBuzonFacturas, CellTail],
+  imports: [RouterLink, PageHeader, StatusBadge, Icon, VibraBuzonFacturas, CellTail, RowLink],
   templateUrl: './vibra-generar-facturas.html',
 })
 export class VibraGenerarFacturas {

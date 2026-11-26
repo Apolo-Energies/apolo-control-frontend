@@ -79,7 +79,7 @@
           </thead>
           <tbody>
             @for (s of f.suministros; track s.id) {
-              <tr>
+              <tr rowLink>
                 <th scope="row" class="vtable-fix">
                   <span [cellTail]="s.cups" [title]="s.cups"></span>
                 </th>
@@ -92,7 +92,7 @@
                 @if (puedeEditar()) {
                   <td data-label="Acciones">
                     <div class="cell-actions">
-                      <button type="button" class="btn btn-ghost btn-icon" (click)="abrirSuministro(s)"
+                      <button data-row-primary type="button" class="btn btn-ghost btn-icon" (click)="abrirSuministro(s)"
                         [attr.aria-label]="'Editar suministro ' + s.cups" title="Editar"><ui-icon name="edit" [size]="16" /></button>
                     </div>
                   </td>
@@ -183,9 +183,9 @@
                 <tr><td colspan="5" class="vtable-empty" role="status">Cargando facturas…</td></tr>
               }
               @for (fa of facturas() ?? []; track fa.id) {
-                <tr>
+                <tr rowLink>
                   <th scope="row" class="vtable-fix">
-                    <a [routerLink]="['/vibra/facturas', fa.id]" class="font-medium hover:underline underline-offset-2">
+                    <a data-row-primary [routerLink]="['/vibra/facturas', fa.id]" class="font-medium hover:underline underline-offset-2">
                       @if (fa.numero; as n) {
                         <span [cellTail]="n" [keep]="6" [title]="n"></span>
                       } @else {

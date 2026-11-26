@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
+import { RowLink } from '../../../shared/directives/row-link';
 import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions-menu/actions-menu';
 
 import { VibraTarifaService } from '../../../core/services/vibra-tarifa.service';
@@ -24,7 +25,7 @@ import { parsePrecios } from '../../../shared/utils/format';
 @Component({
   selector: 'app-vibra-preciario',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, NgTemplateOutlet, PageHeader, FormDialog, ConfirmDialog, StatusBadge, TableSkeleton, Icon, ActionsMenu],
+  imports: [ReactiveFormsModule, NgTemplateOutlet, PageHeader, FormDialog, ConfirmDialog, StatusBadge, TableSkeleton, Icon, ActionsMenu, RowLink],
   templateUrl: './vibra-preciario.html',
 })
 export class VibraPreciario {

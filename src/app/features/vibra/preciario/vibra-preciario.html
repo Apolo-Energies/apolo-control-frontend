@@ -50,10 +50,10 @@
             </thead>
             <tbody>
               @for (t of g.tarifas; track t.id) {
-                <tr [class.text-muted-foreground]="!t.activa">
+                <tr rowLink [class.text-muted-foreground]="!t.activa">
                   <th scope="row" class="vtable-fix">
                     <button type="button" class="cell-clamp2 text-start font-medium text-foreground hover:underline underline-offset-2"
-                      [title]="t.nombre" (click)="verDetalle(t.id)">{{ t.nombre }}</button>
+                      data-row-primary [title]="t.nombre" (click)="verDetalle(t.id)">{{ t.nombre }}</button>
                   </th>
                   @for (p of g.periodos; track p) { <td [attr.data-label]="'Energía P' + p" class="cell-num">{{ fmt($any(t)['p' + p + 'Energia']) }}</td> }
                   @for (p of g.periodos; track p) { <td [attr.data-label]="'Potencia P' + p" class="cell-num">{{ fmt($any(t)['p' + p + 'Potencia']) }}</td> }

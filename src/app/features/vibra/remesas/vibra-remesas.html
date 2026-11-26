@@ -310,9 +310,9 @@
           </thead>
           <tbody>
             @for (r of remesasFiltradas(); track r.id) {
-              <tr>
+              <tr rowLink>
                 <th scope="row" class="vtable-fix">
-                  <a [routerLink]="['/vibra/remesas', r.id]" class="font-medium tabular-nums hover:underline underline-offset-2">{{ r.numero }}</a>
+                  <a data-row-primary [routerLink]="['/vibra/remesas', r.id]" class="font-medium tabular-nums hover:underline underline-offset-2">{{ r.numero }}</a>
                 </th>
                 <td data-label="Tipo">{{ tipoLabel[r.tipo] }}</td>
                 <td data-label="Cobro" class="cell-nowrap tabular-nums">{{ fecha(r.fechaCobro) }}</td>

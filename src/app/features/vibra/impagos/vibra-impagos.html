@@ -108,7 +108,7 @@
           </thead>
           <tbody>
             @for (r of rows(); track r.id) {
-              <tr>
+              <tr rowLink>
                 <th scope="row" class="vtable-fix">
                   <span class="cell-clamp2 font-medium" [title]="r.cliente ?? ''">{{ r.cliente ?? 'Sin cliente' }}</span>
                   <div class="cell-badges">
@@ -163,7 +163,7 @@
                 </td>
                 <td data-label="Acciones">
                   <div class="cell-actions">
-                    <button type="button" class="btn btn-secondary btn-icon" (click)="abrirGestion(r)"
+                    <button data-row-primary type="button" class="btn btn-secondary btn-icon" (click)="abrirGestion(r)"
                       [title]="puedeCobrar() ? 'Gestión del cobro' : 'Gestiones'"
                       [attr.aria-label]="(puedeCobrar() ? 'Gestión del cobro de ' : 'Gestiones de ') + (r.cliente ?? 'sin cliente')">
                       <ui-icon name="message-square" [size]="16" />

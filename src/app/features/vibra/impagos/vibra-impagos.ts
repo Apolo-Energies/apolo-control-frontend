@@ -12,6 +12,7 @@ import { Pagination } from '../../../shared/components/pagination/pagination';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
+import { RowLink } from '../../../shared/directives/row-link';
 import { VibraDevolucionesBanco } from './vibra-devoluciones-banco';
 
 import { VibraImpagoService } from '../../../core/services/vibra-impago.service';
@@ -41,7 +42,7 @@ import { activoBajaTone, estadoImpagoCorto, estadoImpagoTone } from './vibra-imp
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule, ReactiveFormsModule, RouterLink, NgTemplateOutlet,
-    PageHeader, ActionsMenu, FormDialog, ConfirmDialog, Pagination, StatusBadge, TableSkeleton, Icon, VibraDevolucionesBanco, CellTail,
+    PageHeader, ActionsMenu, FormDialog, ConfirmDialog, Pagination, StatusBadge, TableSkeleton, Icon, VibraDevolucionesBanco, CellTail, RowLink,
   ],
   templateUrl: './vibra-impagos.html',
 })

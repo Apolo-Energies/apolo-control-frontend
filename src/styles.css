@@ -702,6 +702,11 @@
       background-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-card));
     }
   }
+  /* Fila que abre su ficha (directiva rowLink) */
+  .vtable tbody > tr.row-link:has([data-row-primary]) { cursor: pointer; }
+  .vtable tbody > tr.row-link:has([data-row-primary]:focus-visible) > * {
+    background-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-card));
+  }
   .vtable .vtable-fix {
     position: sticky;
     inset-inline-start: 0;

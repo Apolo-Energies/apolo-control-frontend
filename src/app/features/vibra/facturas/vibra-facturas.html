@@ -88,9 +88,9 @@
           </thead>
           <tbody>
             @for (f of rows(); track f.id) {
-              <tr>
+              <tr rowLink>
                 <th scope="row" class="vtable-fix">
-                  <a [routerLink]="['/vibra/facturas', f.id]" class="font-medium hover:underline underline-offset-2">
+                  <a data-row-primary [routerLink]="['/vibra/facturas', f.id]" class="font-medium hover:underline underline-offset-2">
                     @if (f.numero; as n) {
                       <span [cellTail]="n" [keep]="6" [title]="n"></span>
                     } @else {

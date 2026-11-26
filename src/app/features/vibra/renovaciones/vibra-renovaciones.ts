@@ -11,6 +11,7 @@ import { Pagination } from '../../../shared/components/pagination/pagination';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
 import { Icon } from '../../../shared/icons/icon';
+import { RowLink } from '../../../shared/directives/row-link';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 
 import { VibraRenovacionService } from '../../../core/services/vibra-renovacion.service';
@@ -37,7 +38,7 @@ function extractMessage(err: HttpErrorResponse): string {
 @Component({
   selector: 'app-vibra-renovaciones',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, NgTemplateOutlet, PageHeader, Pagination, TableSkeleton, FormDialog, Icon, StatusBadge, CellTail],
+  imports: [FormsModule, NgTemplateOutlet, PageHeader, Pagination, TableSkeleton, FormDialog, Icon, StatusBadge, CellTail, RowLink],
   templateUrl: './vibra-renovaciones.html',
   styles: `
     .ren-toggle {

@@ -144,7 +144,7 @@
       </thead>
       <tbody>
         @for (row of rows; track row.id) {
-          <tr>
+          <tr rowLink>
             <th scope="row" class="vtable-fix">
               <span class="cell-clamp2 font-medium" [title]="row.titular ?? ''">{{ text(row.titular) }}</span>
               @if (row.nifCif) { <span class="cell-sub tabular-nums">{{ row.nifCif }}</span> }
@@ -166,7 +166,7 @@
             <td data-label="Comercializadora">{{ text(row.comercializadora) }}</td>
             <td data-label="Consumo" class="cell-num">{{ fmtNumber(row.consumo) }}</td>
             <td data-label="Comentarios">
-              <button type="button" class="ren-comentario" (click)="openEdit(row)"
+              <button data-row-primary type="button" class="ren-comentario" (click)="openEdit(row)"
                 [attr.aria-label]="'Editar comentario de ' + text(row.titular)">
                 @if (row.comentarios) {
                   <span class="cell-clamp2 text-xs" [title]="row.comentarios">{{ row.comentarios }}</span>

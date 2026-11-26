@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
 import { StatusBadge, StatusTone } from '../../../shared/components/status-badge/status-badge';
 import { Icon } from '../../../shared/icons/icon';
+import { RowLink } from '../../../shared/directives/row-link';
 import { formatDate, formatDateTime, formatEuro } from '../../../shared/utils/format';
 import { mensajeError } from '../../../shared/utils/http-error';
 
@@ -35,7 +36,7 @@ interface FilaEditable {
 @Component({
   selector: 'app-vibra-devoluciones-banco',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, FormDialog, StatusBadge, Icon, CellTail],
+  imports: [RouterLink, FormDialog, StatusBadge, Icon, CellTail, RowLink],
   templateUrl: './vibra-devoluciones-banco.html',
 })
 export class VibraDevolucionesBanco {

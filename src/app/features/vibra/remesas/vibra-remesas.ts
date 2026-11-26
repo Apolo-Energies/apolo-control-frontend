@@ -10,6 +10,7 @@ import { TableSkeleton } from '../../../shared/components/table-skeleton/table-s
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 import { Icon } from '../../../shared/icons/icon';
+import { RowLink } from '../../../shared/directives/row-link';
 import { formatDate, formatEuro } from '../../../shared/utils/format';
 import { mensajeError } from '../../../shared/utils/http-error';
 
@@ -36,7 +37,7 @@ const PESTANAS: { id: Pestana; label: string }[] = [
 @Component({
   selector: 'app-vibra-remesas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, FormsModule, RouterLink, PageHeader, ActionsMenu, TableSkeleton, StatusBadge, ConfirmDialog, Icon, CellTail],
+  imports: [NgTemplateOutlet, FormsModule, RouterLink, PageHeader, ActionsMenu, TableSkeleton, StatusBadge, ConfirmDialog, Icon, CellTail, RowLink],
   templateUrl: './vibra-remesas.html',
 })
 export class VibraRemesas {

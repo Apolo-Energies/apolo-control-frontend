@@ -90,7 +90,7 @@
         </thead>
         <tbody>
           @for (r of resultados(); track $index) {
-            <tr>
+            <tr rowLink>
               <th scope="row" class="vtable-fix">
                 <span class="cell-clamp2" [title]="r.archivo">{{ r.archivo }}</span>
               </th>
@@ -114,7 +114,7 @@
               <td>
                 @if (r.facturaId) {
                   <div class="cell-actions">
-                    <a [routerLink]="['/vibra/facturas', r.facturaId]" class="underline underline-offset-2">Revisar borrador</a>
+                    <a data-row-primary [routerLink]="['/vibra/facturas', r.facturaId]" class="underline underline-offset-2">Revisar borrador</a>
                   </div>
                 }
               </td>

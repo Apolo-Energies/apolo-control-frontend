@@ -8,6 +8,7 @@ import { TableSkeleton } from '../../../shared/components/table-skeleton/table-s
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 import { Icon } from '../../../shared/icons/icon';
+import { RowLink } from '../../../shared/directives/row-link';
 import { formatDate, formatDateTime, formatEuro } from '../../../shared/utils/format';
 import { mensajeError } from '../../../shared/utils/http-error';
 
@@ -26,7 +27,7 @@ type Accion = 'anular' | 'cobrada';
 @Component({
   selector: 'app-vibra-remesa-detalle',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, PageHeader, ActionsMenu, TableSkeleton, StatusBadge, ConfirmDialog, Icon, CellTail],
+  imports: [RouterLink, PageHeader, ActionsMenu, TableSkeleton, StatusBadge, ConfirmDialog, Icon, CellTail, RowLink],
   templateUrl: './vibra-remesa-detalle.html',
 })
 export class VibraRemesaDetalle {

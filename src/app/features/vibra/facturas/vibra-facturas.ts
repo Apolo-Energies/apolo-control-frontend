@@ -8,6 +8,7 @@ import { Pagination } from '../../../shared/components/pagination/pagination';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { Icon } from '../../../shared/icons/icon';
+import { RowLink } from '../../../shared/directives/row-link';
 import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
 import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions-menu/actions-menu';
@@ -44,7 +45,7 @@ const PESTANAS: { id: Pestana; label: string }[] = [
 @Component({
   selector: 'app-vibra-facturas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, PageHeader, Pagination, TableSkeleton, StatusBadge, Icon, ConfirmDialog, FormDialog, ActionsMenu, CellTail],
+  imports: [FormsModule, RouterLink, PageHeader, Pagination, TableSkeleton, StatusBadge, Icon, ConfirmDialog, FormDialog, ActionsMenu, CellTail, RowLink],
   templateUrl: './vibra-facturas.html',
 })
 export class VibraFacturas {

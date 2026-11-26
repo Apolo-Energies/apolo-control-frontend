@@ -10,6 +10,7 @@ import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm
 import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { Icon } from '../../../shared/icons/icon';
+import { RowLink } from '../../../shared/directives/row-link';
 import { ActionsMenu, ActionsMenuItem } from '../../../shared/components/actions-menu/actions-menu';
 
 import { AuthService } from '../../../core/auth';
@@ -25,7 +26,7 @@ import { VibraClienteForm } from './vibra-cliente-form';
   selector: 'app-vibra-clientes',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormsModule, RouterLink, PageHeader, Pagination, TableSkeleton, ConfirmDialog, FormDialog,
-    StatusBadge, Icon, VibraClienteForm, ActionsMenu],
+    StatusBadge, Icon, VibraClienteForm, ActionsMenu, RowLink],
   templateUrl: './vibra-clientes.html',
 })
 export class VibraClientes {

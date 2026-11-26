@@ -6,6 +6,7 @@ import { Pagination } from '../../../shared/components/pagination/pagination';
 import { StatusBadge, StatusTone } from '../../../shared/components/status-badge/status-badge';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
+import { RowLink } from '../../../shared/directives/row-link';
 import { formatDateTime } from '../../../shared/utils/format';
 import { mensajeError, mensajeErrorBlob } from '../../../shared/utils/http-error';
 import { abrirBlob } from '../facturas/vibra-factura-ui';
@@ -29,7 +30,7 @@ function horaCron(cron: string): string | null {
 @Component({
   selector: 'app-vibra-buzon-facturas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, Pagination, StatusBadge, TableSkeleton, Icon],
+  imports: [RouterLink, Pagination, StatusBadge, TableSkeleton, Icon, RowLink],
   templateUrl: './vibra-buzon-facturas.html',
 })
 export class VibraBuzonFacturas {

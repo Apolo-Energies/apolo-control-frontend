@@ -8,6 +8,7 @@ import { FormDialog } from '../../../shared/components/form-dialog/form-dialog';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { TableSkeleton } from '../../../shared/components/table-skeleton/table-skeleton';
 import { Icon } from '../../../shared/icons/icon';
+import { RowLink } from '../../../shared/directives/row-link';
 import { formatDate, formatEuro, formatPeriodo } from '../../../shared/utils/format';
 
 import { AuthService } from '../../../core/auth';
@@ -31,7 +32,7 @@ type Pestana = 'datos' | 'suministros' | 'contratos' | 'facturas';
 @Component({
   selector: 'app-vibra-cliente-ficha',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, PageHeader, FormDialog, StatusBadge, TableSkeleton, Icon, VibraClienteForm, CellTail],
+  imports: [FormsModule, RouterLink, PageHeader, FormDialog, StatusBadge, TableSkeleton, Icon, VibraClienteForm, CellTail, RowLink],
   templateUrl: './vibra-cliente-ficha.html',
 })
 export class VibraClienteFichaView {
